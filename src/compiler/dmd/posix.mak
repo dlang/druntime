@@ -82,6 +82,7 @@ OBJ_BASE= \
     critical.o \
     deh2.o \
     dmain2.o \
+    invariant.o \
     invariant_.o \
     lifetime.o \
     llmath.o \
