@@ -425,11 +425,6 @@ private:
         {
             return s ? s[0 .. strlen(s)] : null;
         }
-
-        string toString(invariant(char)* s)
-        {
-            return s ? s[0 .. strlen(s)] : null;
-        }
     }
 }
 else

@@ -586,7 +586,7 @@ Checks to see if string is well formed or not. $(D S) can be an array
  */
 void validate(S)(in S s)
 {
-    invariant len = s.length;
+    auto len = s.length;
     for (size_t i = 0; i < len; )
     {
 	decode(s, i);
@@ -749,7 +749,7 @@ wstring toUTF16(in char[] s)
     return cast(wstring)r;
 }
 
-alias const(wchar)* wptr;
+alias wchar* wptr;
 /** ditto */
 wptr toUTF16z(in char[] s)
 {
