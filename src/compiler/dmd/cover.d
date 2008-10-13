@@ -19,7 +19,10 @@ private
     version( Windows )
         import sys.windows.windows;
     else version( Posix )
+    {
+        import stdc.posix.fcntl;
         import stdc.posix.unistd;
+    }
     import bitmanip;
     import stdc.stdio;
     import util.utf;
