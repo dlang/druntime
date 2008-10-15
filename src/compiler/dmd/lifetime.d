@@ -66,7 +66,7 @@ private
     extern (C) size_t  gc_sizeOf( void* p );
     extern (C) BlkInfo gc_query( void* p );
 
-    extern (C) void onFinalizeError( ClassInfo c, Exception e );
+    extern (C) void onFinalizeError( ClassInfo c, Throwable e );
     extern (C) void onOutOfMemoryError();
 
     extern (C) void _d_monitordelete(Object h, bool det = true);
@@ -78,6 +78,15 @@ private
 
     alias bool function(Object) CollectHandler;
     CollectHandler collectHandler = null;
+}
+
+
+/**
+ *
+ */
+extern (C) void* _d_allocmemory(size_t sz)
+{
+    return gc_malloc(sz);
 }
 
 
@@ -399,15 +408,6 @@ struct Array
 /**
  *
  */
-void* _d_allocmemory(size_t nbytes)
-{
-    return gc_malloc(nbytes);
-}
-
-
-/**
- *
- */
 extern (C) void _d_delarray(Array *p)
 {
     if (p)
@@ -499,7 +499,7 @@ extern (C) void rt_finalize(void* p, bool det = true)
                 if ((cast(void**)p)[1]) // if monitor is not null
                     _d_monitordelete(cast(Object)p, det);
             }
-            catch (Exception e)
+            catch (Throwable e)
             {
                 onFinalizeError(**pc, e);
             }

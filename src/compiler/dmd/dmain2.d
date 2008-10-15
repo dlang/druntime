@@ -18,7 +18,7 @@ private
     import stdc.string;
 }
 
-version( Windows )
+version(Windows)
 {
     extern (Windows) void*      LocalFree(void*);
     extern (Windows) wchar_t*   GetCommandLineW();
@@ -42,36 +42,47 @@ extern (C) void thread_joinAll();
  * These functions must be defined for any D program linked
  * against this library.
  */
-extern (C) void onAssertError( string file, size_t line );
-extern (C) void onAssertErrorMsg( string file, size_t line, string msg );
-extern (C) void onArrayBoundsError( string file, size_t line );
-extern (C) void onSwitchError( string file, size_t line );
+extern (C) void onAssertError(string file, size_t line);
+extern (C) void onAssertErrorMsg(string file, size_t line, string msg);
+extern (C) void onArrayBoundsError(string file, size_t line);
+extern (C) void onHiddenFuncError(Object o);
+extern (C) void onSwitchError(string file, size_t line);
 extern (C) bool runModuleUnitTests();
 
 // this function is called from the utf module
-//extern (C) void onUnicodeError( string msg, size_t idx );
+//extern (C) void onUnicodeError(string msg, size_t idx);
 
 /***********************************
  * These are internal callbacks for various language errors.
  */
-extern (C) void _d_assert( string file, uint line )
+extern (C) void _d_assert(string file, uint line)
 {
-    onAssertError( file, line );
+    onAssertError(file, line);
 }
 
-extern (C) static void _d_assert_msg( string msg, string file, uint line )
+extern (C) static void _d_assert_msg(string msg, string file, uint line)
 {
-    onAssertErrorMsg( file, line, msg );
+    onAssertErrorMsg(file, line, msg);
 }
 
-extern (C) void _d_array_bounds( string file, uint line )
+extern (C) void _d_array_bounds(string file, uint line)
 {
-    onArrayBoundsError( file, line );
+    onArrayBoundsError(file, line);
 }
 
-extern (C) void _d_switch_error( string file, uint line )
+extern (C) void _d_switch_error(string file, uint line)
 {
-    onSwitchError( file, line );
+    onSwitchError(file, line);
+}
+
+extern (C) void _d_hidden_func()
+{
+    Object o;
+    asm
+    {
+        mov o, EAX;
+    }
+    onHiddenFuncError(o);
 }
 
 bool _d_isHalting = false;
@@ -92,9 +103,9 @@ void _d_criticalInit()
     }
 }
 
-alias void delegate( Exception ) ExceptionHandler;
+alias void delegate(Throwable) ExceptionHandler;
 
-extern (C) bool rt_init( ExceptionHandler dg = null )
+extern (C) bool rt_init(ExceptionHandler dg = null)
 {
     _d_criticalInit();
 
@@ -106,10 +117,10 @@ extern (C) bool rt_init( ExceptionHandler dg = null )
         _moduleCtor();
         return true;
     }
-    catch( Exception e )
+    catch (Throwable e)
     {
-        if( dg )
-            dg( e );
+        if (dg)
+            dg(e);
     }
     catch
     {
@@ -128,7 +139,7 @@ void _d_criticalTerm()
     }
 }
 
-extern (C) bool rt_term( ExceptionHandler dg = null )
+extern (C) bool rt_term(ExceptionHandler dg = null)
 {
     try
     {
@@ -138,10 +149,10 @@ extern (C) bool rt_term( ExceptionHandler dg = null )
         gc_term();
         return true;
     }
-    catch( Exception e )
+    catch (Throwable e)
     {
-        if( dg )
-            dg( e );
+        if (dg)
+            dg(e);
     }
     catch
     {
@@ -192,7 +203,7 @@ extern (C) int main(int argc, char **argv)
 
         for (size_t i = 0, p = 0; i < wargc; i++)
         {
-            int wlen = wcslen( wargs[i] );
+            int wlen = wcslen(wargs[i]);
             int clen = WideCharToMultiByte(65001, 0, &wargs[i][0], wlen, null, 0, null, 0);
             args[i]  = cargp[p .. p+clen];
             p += clen; assert(p <= cargl);
@@ -226,19 +237,19 @@ extern (C) int main(int argc, char **argv)
             {
                 dg();
             }
-            catch (Exception e)
+            catch (Throwable e)
             {
                 while (e)
                 {
                     if (e.file)
                     {
-                       // fprintf(stderr, "%.*s(%u): %.*s\n", e.file, e.line, e.msg);
-                       console (e.classinfo.name)("@")(e.file)("(")(e.line)("): ")(e.toString)("\n");
+                        // fprintf(stderr, "%.*s(%u): %.*s\n", e.file, e.line, e.msg);
+                        console (e.classinfo.name)("@")(e.file)("(")(e.line)("): ")(e.msg)("\n");
                     }
                     else
                     {
-                       // fprintf(stderr, "%.*s\n", e.toString());
-                       console (e.classinfo.name)(": ")(e.toString)("\n");
+                        // fprintf(stderr, "%.*s\n", e.toString());
+                        console (e.toString)("\n");
                     }
                     if (e.info)
                     {

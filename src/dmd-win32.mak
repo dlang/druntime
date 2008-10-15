@@ -1,19 +1,20 @@
 # Makefile to build the composite D runtime library for Win32
 # Designed to work with DigitalMars make
 # Targets:
-#	make
-#		Same as make all
-#	make lib
-#		Build the runtime library
+#   make
+#       Same as make all
+#   make lib
+#       Build the runtime library
 #   make doc
 #       Generate documentation
-#	make clean
-#		Delete unneeded files created by build process
+#   make clean
+#       Delete unneeded files created by build process
 
 LIB_TARGET=druntime-dmd.lib
-LIB_MASK=druntime-dmd*.lib
+DUP_TARGET=druntime.lib
+LIB_MASK=druntime*.lib
 
-DIR_CC=core
+DIR_CC=common
 DIR_RT=compiler\dmd
 DIR_GC=gc\basic
 
@@ -52,23 +53,25 @@ lib : $(ALL_OBJS)
 	make -fwin32.mak lib DC=$(DC) ADD_DFLAGS="$(ADD_DFLAGS)" ADD_CFLAGS="$(ADD_CFLAGS)"
 	cd ..
 	cd $(DIR_RT)
-	make -fwin32.mak lib
+	make -fwin32.mak lib DC=$(DC)
 	cd ..\..
 	cd $(DIR_GC)
 	make -fwin32.mak lib DC=$(DC) ADD_DFLAGS="$(ADD_DFLAGS)" ADD_CFLAGS="$(ADD_CFLAGS)"
 	cd ..\..
 	$(RM) $(LIB_TARGET)
 	$(LC) -c -n $(LIB_TARGET) $(LIB_CC) $(LIB_RT) $(LIB_GC)
+	$(RM) $(DUP_TARGET)
+	copy $(LIB_TARGET) $(DUP_TARGET)
 
 doc : $(ALL_DOCS)
 	cd $(DIR_CC)
-	make -fwin32.mak doc
+	make -fwin32.mak doc DC=$(DC)
 	cd ..
 	cd $(DIR_RT)
-	make -fwin32.mak doc
+	make -fwin32.mak doc DC=$(DC)
 	cd ..\..
 	cd $(DIR_GC)
-	make -fwin32.mak doc
+	make -fwin32.mak doc DC=$(DC)
 	cd ..\..
 
 ######################################################

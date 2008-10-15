@@ -6,7 +6,7 @@
  * License:   BSD Style, see LICENSE
  * Authors:   Sean Kelly
  */
-module exception;
+module core.exception;
 
 
 private
