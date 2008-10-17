@@ -157,6 +157,8 @@ else version( Posix )
         import stdc.posix.time;
         import stdc.errno;
 
+        extern (C) int getErrno();
+
         version( GNU )
         {
             import gcc.builtins;
