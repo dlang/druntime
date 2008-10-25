@@ -10,8 +10,8 @@
 #	make clean
 #		Delete unneeded files created by build process
 
-LIB_TARGET=tango-gc-stub.lib
-LIB_MASK=tango-gc-stub*.lib
+LIB_TARGET=druntime-gc-stub.lib
+LIB_MASK=druntime-gc-stub*.lib
 
 CP=xcopy /y
 RM=del /f
@@ -23,13 +23,12 @@ ADD_DFLAGS=
 CFLAGS=-mn -6 -r $(ADD_CFLAGS)
 #CFLAGS=-g -mn -6 -r $(ADD_CFLAGS)
 
-### warnings disabled because gcx has issues ###
+DFLAGS=-release -O -inline -w -nofloat $(ADD_DFLAGS)
+#DFLAGS=-g -w -nofloat $(ADD_DFLAGS)
 
-DFLAGS=-release -O -inline $(ADD_DFLAGS)
-#DFLAGS=-g -release $(ADD_DFLAGS)
 
-TFLAGS=-O -inline $(ADD_DFLAGS)
-#TFLAGS=-g $(ADD_DFLAGS)
+TFLAGS=-O -inline -w  -nofloat $(ADD_DFLAGS)
+#TFLAGS=-g -w -nofloat $(ADD_DFLAGS)
 
 DOCFLAGS=-version=DDoc
 
@@ -37,7 +36,7 @@ CC=dmc
 LC=lib
 DC=dmd
 
-LIB_DEST=..
+LIB_DEST=..\..\..\lib
 
 .DEFAULT: .asm .c .cpp .d .html .obj
 
@@ -93,3 +92,4 @@ clean :
 install :
 	$(MD) $(LIB_DEST)
 	$(CP) $(LIB_MASK) $(LIB_DEST)\.
+	copy gc.obj $(LIB_DEST)\gcstub.obj

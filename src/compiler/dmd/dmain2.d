@@ -13,18 +13,22 @@ module rt.dmain2;
 private
 {
     import util.console;
-    import stdc.stddef;
-    import stdc.stdlib;
-    import stdc.string;
+    import core.stdc.stddef;
+    import core.stdc.stdlib;
+    import core.stdc.string;
 }
 
-version(Windows)
+version (Windows)
 {
+    extern (Windows) alias int function() FARPROC;
+    extern (Windows) FARPROC    GetProcAddress(void*, in char*);
+    extern (Windows) void*      LoadLibraryA(in char*);
+    extern (Windows) int        FreeLibrary(void*);
     extern (Windows) void*      LocalFree(void*);
     extern (Windows) wchar_t*   GetCommandLineW();
     extern (Windows) wchar_t**  CommandLineToArgvW(wchar_t*, int*);
     extern (Windows) export int WideCharToMultiByte(uint, uint, wchar_t*, int, char*, int, char*, int);
-    pragma(lib, "shell32.lib");   // needed for CommandLineToArgvW
+    pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
 }
 
 extern (C) void _STI_monitor_staticctor();
@@ -37,6 +41,21 @@ extern (C) void _minit();
 extern (C) void _moduleCtor();
 extern (C) void _moduleDtor();
 extern (C) void thread_joinAll();
+
+/***********************************
+ * These are a temporary means of providing a GC hook for DLL use.  They may be
+ * replaced with some other similar functionality later.
+ */
+
+extern (C) void* rt_loadLibrary(in char[] name)
+{
+    throw new Exception("rt_loadLibrary not yet implemented on linux.");
+}
+
+extern (C) void rt_unloadLibrary(void* ptr)
+{
+    throw new Exception("rt_unloadLibrary not yet implemented.");
+}
 
 /***********************************
  * These functions must be defined for any D program linked

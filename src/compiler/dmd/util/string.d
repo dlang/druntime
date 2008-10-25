@@ -8,16 +8,16 @@
  */
 module rt.util.string;
 
-private import stdc.string;
+private import core.stdc.string;
 
 char[] intToString( char[] buf, uint val )
 {
     assert( buf.length > 9 );
-    char* p = buf.ptr + buf.length;
+    auto p = buf.ptr + buf.length;
 
     do
     {
-        *--p = val % 10 + '0';
+        *--p = cast(char)(val % 10 + '0');
     } while( val /= 10 );
 
     return buf[p - buf.ptr .. $];
