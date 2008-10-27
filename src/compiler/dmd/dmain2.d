@@ -12,6 +12,7 @@ module rt.dmain2;
 
 private
 {
+    import memory;
     import util.console;
     import core.stdc.stddef;
     import core.stdc.stdlib;
@@ -46,15 +47,50 @@ extern (C) void thread_joinAll();
  * These are a temporary means of providing a GC hook for DLL use.  They may be
  * replaced with some other similar functionality later.
  */
+extern (C)
+{
+    void* gc_getProxy();
+    void  gc_setProxy(void* p);
+    void  gc_clrProxy();
 
+    alias void* function()      gcGetFn;
+    alias void  function(void*) gcSetFn;
+    alias void  function()      gcClrFn;
+}
 extern (C) void* rt_loadLibrary(in char[] name)
 {
+    version (Windows)
+    {
+        char[260] temp = void;
+        temp[0 .. name.length] = name[];
+        temp[name.length] = cast(char) 0;
+        void* ptr = LoadLibraryA(temp.ptr);
+        if (ptr is null)
+            return ptr;
+        gcSetFn gcSet = cast(gcSetFn) GetProcAddress(ptr, "gc_setProxy");
+        if (gcSet !is null)
+            gcSet(gc_getProxy());
+        return ptr;
+    }
+    else version (linux)
+    {
     throw new Exception("rt_loadLibrary not yet implemented on linux.");
 }
+}
 
-extern (C) void rt_unloadLibrary(void* ptr)
+extern (C) bool rt_unloadLibrary(void* ptr)
 {
-    throw new Exception("rt_unloadLibrary not yet implemented.");
+    version (Windows)
+{
+        gcClrFn gcClr  = cast(gcClrFn) GetProcAddress(ptr, "gc_clrProxy");
+        if (gcClr !is null)
+            gcClr();
+        return FreeLibrary(ptr) != 0;
+    }
+    else version (linux)
+    {
+        throw new Exception("rt_unloadLibrary not yet implemented on linux.");
+    }
 }
 
 /***********************************
@@ -131,6 +167,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
     try
     {
         gc_init();
+        initStaticDataGC();
         version (Windows)
             _minit();
         _moduleCtor();
@@ -312,6 +349,7 @@ extern (C) int main(int argc, char **argv)
     void runAll()
     {
         gc_init();
+        initStaticDataGC();
         version (Windows)
             _minit();
         _moduleCtor();

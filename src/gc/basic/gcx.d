@@ -89,9 +89,7 @@ private
 
     extern (C) void rt_finalize( void* p, bool det = true );
 
-    alias void delegate( void*, void* ) scanFn;
 
-    extern (C) void rt_scanStaticData( scanFn scan );
 
     version (MULTI_THREADED)
     {
@@ -99,6 +97,7 @@ private
         extern (C) void thread_suspendAll();
         extern (C) void thread_resumeAll();
 
+        alias void delegate( void*, void* ) scanFn;
         extern (C) void thread_scanAll( scanFn fn, void* curStackTop = null );
     }
 
@@ -2245,7 +2244,6 @@ struct Gcx
             pool.mark.copy(&pool.freebits);
         }
 
-        rt_scanStaticData( &mark );
 
         version (MULTI_THREADED)
         {
