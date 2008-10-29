@@ -1166,6 +1166,20 @@ class GC
 
 
     /**
+     *
+     */
+    int delegate(int delegate(inout void*)) rootIter()
+    {
+        if (!thread_needLock())
+        {
+            return &gcx.rootIter;
+        }
+        else synchronized (gcLock)
+        {
+            return &gcx.rootIter;
+        }
+    }
+    /**
      * add range to scan for roots
      */
     void addRange(void *p, size_t sz)
@@ -1209,6 +1223,20 @@ class GC
     }
 
 
+    /**
+     *
+     */
+    int delegate(int delegate(inout Range)) rangeIter()
+    {
+        if (!thread_needLock())
+        {
+            return &gcx.rangeIter;
+        }
+        else synchronized (gcLock)
+        {
+            return &gcx.rangeIter;
+        }
+    }
     /**
      * do full garbage collection
      */
@@ -1575,6 +1603,20 @@ struct Gcx
     /**
      *
      */
+    int rootIter(int delegate(inout void*) dg)
+    {
+        int result = 0;
+        for( size_t i = 0; i < nroots; ++i )
+        {
+            result = dg(roots[i]);
+            if (result)
+                break;
+        }
+        return result;
+    }
+    /**
+     *
+     */
     void addRange(void *pbot, void *ptop)
     {
         debug(PRINTF) printf("Thread %x ", pthread_self());
@@ -1625,6 +1667,20 @@ struct Gcx
     }
 
 
+    /**
+     *
+     */
+    int rangeIter(int delegate(inout Range) dg)
+    {
+        int result = 0;
+        for( size_t i = 0; i < nranges; ++i )
+        {
+            result = dg(ranges[i]);
+            if (result)
+                break;
+        }
+        return result;
+    }
     /**
      * Find Pool that pointer is in.
      * Return null if not in a Pool.
