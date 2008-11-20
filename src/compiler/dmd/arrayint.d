@@ -15,6 +15,7 @@ private import util.cpuid;
 
 version (Unittest)
 {
+    private import core.stdc.stdio : printf;
     /* This is so unit tests will test every CPU variant
      */
     int cpuid;
