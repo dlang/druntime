@@ -23,7 +23,7 @@
 
 module rt.typeinfo.ti_Adouble;
 
-private import typeinfo.ti_double;
+private import rt.typeinfo.ti_double;
 
 // double[]
 

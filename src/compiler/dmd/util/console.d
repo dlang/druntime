@@ -18,7 +18,7 @@ private
     {
         import core.sys.posix.unistd;
     }
-    import util.string;
+    import rt.util.string;
 }
 
 

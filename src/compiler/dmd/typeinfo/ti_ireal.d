@@ -3,7 +3,7 @@
 
 module rt.typeinfo.ti_ireal;
 
-private import typeinfo.ti_real;
+private import rt.typeinfo.ti_real;
 
 class TypeInfo_j : TypeInfo_e
 {

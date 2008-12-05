@@ -23,7 +23,7 @@
 
 module rt.typeinfo.ti_Afloat;
 
-private import typeinfo.ti_float;
+private import rt.typeinfo.ti_float;
 
 // float[]
 

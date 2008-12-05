@@ -23,7 +23,7 @@
 
 module rt.typeinfo.ti_Areal;
 
-private import typeinfo.ti_real;
+private import rt.typeinfo.ti_real;
 
 // real[]
 
