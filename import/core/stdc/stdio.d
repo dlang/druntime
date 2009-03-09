@@ -19,13 +19,16 @@ extern (C):
 
 version( Windows )
 {
-    const int BUFSIZ         = 0x4000;
-    const int EOF            = -1;
-    const int FOPEN_MAX      = 20;
-    const int FILENAME_MAX   = 256; // 255 plus NULL
-    const int TMP_MAX        = 32767;
-    const int _SYS_OPEN      = 20;
-    const int SYS_OPEN       = _SYS_OPEN;
+    enum
+    {
+        BUFSIZ       = 0x4000,
+        EOF          = -1,
+        FOPEN_MAX    = 20,
+        FILENAME_MAX = 256, // 255 plus NULL
+        TMP_MAX      = 32767,
+        _SYS_OPEN    = 20,
+        SYS_OPEN     = _SYS_OPEN
+    }
 
     const int     _NFILE     = 60;
     const char[]  _P_tmpdir  = "\\";
@@ -34,20 +37,26 @@ version( Windows )
 }
 else version( linux )
 {
-    //const int BUFSIZ      = 0x4000;
-    const int EOF           = -1;
-    const int FOPEN_MAX     = 16;
-    const int FILENAME_MAX  = 4095;
-    const int TMP_MAX       = 238328;
-    const int L_tmpnam      = 20;
+    enum
+    {
+        //BUFSIZ     = 0x4000,
+        EOF          = -1,
+        FOPEN_MAX    = 16,
+        FILENAME_MAX = 4095,
+        TMP_MAX      = 238328,
+        L_tmpnam     = 20
+    }
 }
-else version( darwin )
+else version( OSX )
 {
-    const int EOF           = -1;
-    const int FOPEN_MAX     = 20;
-    const int FILENAME_MAX  = 1024;
-    const int TMP_MAX       = 308915776;
-    const int L_tmpnam      = 1024;
+    enum
+    {
+        EOF          = -1,
+        FOPEN_MAX    = 20,
+        FILENAME_MAX = 1024,
+        TMP_MAX      = 308915776,
+        L_tmpnam     = 1024,
+    }
 
     private
     {
@@ -65,11 +74,14 @@ else version( darwin )
 }
 else version ( freebsd )
 {
-    const int EOF           = -1;
-    const int FOPEN_MAX     = 20;
-    const int FILENAME_MAX  = 1024;
-    const int TMP_MAX       = 308915776;
-    const int L_tmpnam      = 1024;
+    enum
+    {
+        EOF          = -1,
+        FOPEN_MAX    = 20,
+        FILENAME_MAX = 1024,
+        TMP_MAX      = 308915776,
+        L_tmpnam     = 1024
+    }
 
     private
     {
@@ -132,7 +144,7 @@ struct _iobuf
         char[1] _shortbuf;
         void*   _lock;
     }
-    else version( darwin )
+    else version( OSX )
     {
         ubyte*    _p;
         int       _r;
@@ -230,35 +242,13 @@ version( Windows )
 
     extern void function() _fcloseallp;
 
-    version (GNU)
-    {
-        extern FILE[_NFILE]* _imp___iob;
+    extern FILE[_NFILE] _iob;
 
-        auto FILE* stdin;
-        auto FILE* stdout;
-        auto FILE* stderr;
-        auto FILE* stdaux;
-        auto FILE* stdprn;
-
-        static this()
-        {
-            stdin  = &(*_imp___iob)[0];
-            stdout = &(*_imp___iob)[1];
-            stderr = &(*_imp___iob)[2];
-            stdaux = &(*_imp___iob)[3];
-            stdprn = &(*_imp___iob)[4];
-        }
-    }
-    else
-    {
-        extern FILE[_NFILE] _iob;
-
-        auto FILE* stdin  = &_iob[0];
-        auto FILE* stdout = &_iob[1];
-        auto FILE* stderr = &_iob[2];
-        auto FILE* stdaux = &_iob[3];
-        auto FILE* stdprn = &_iob[4];
-    }
+    auto FILE* stdin  = &_iob[0];
+    auto FILE* stdout = &_iob[1];
+    auto FILE* stderr = &_iob[2];
+    auto FILE* stdaux = &_iob[3];
+    auto FILE* stdprn = &_iob[4];
 }
 else version( linux )
 {
@@ -273,22 +263,15 @@ else version( linux )
     extern FILE* stdout;
     extern FILE* stderr;
 }
-else version( darwin )
+else version( OSX )
 {
     extern FILE* __stdinp;
     extern FILE* __stdoutp;
     extern FILE* __stderrp;
 
-    auto FILE* stdin;
-    auto FILE* stdout;
-    auto FILE* stderr;
-
-    static this()
-    {
-        stdin  = __stdinp;
-        stdout = __stdoutp;
-        stderr = __stderrp;
-    }
+    alias __stdinp  stdin;
+    alias __stdoutp stdout;
+    alias __stderrp stderr;
 }
 else version( freebsd )
 {
@@ -385,7 +368,7 @@ else version( linux )
     int  snprintf(char* s, size_t n, in char* format, ...);
     int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
 }
-else version( darwin )
+else version( OSX )
 {
     void rewind(FILE*);
     void clearerr(FILE*);

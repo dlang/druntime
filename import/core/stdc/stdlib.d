@@ -94,8 +94,3 @@ version( DigitalMars )
 {
     void* alloca(size_t size);
 }
-else version( GNU )
-{
-    private import gcc.builtins;
-    alias gcc.builtins.__builtin_alloca alloca;
-}

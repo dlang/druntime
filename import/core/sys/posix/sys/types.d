@@ -59,7 +59,7 @@ version( linux )
     //time_t (defined in core.stdc.time)
     alias uint      uid_t;
 }
-else version( darwin )
+else version( OSX )
 {
     alias long      blkcnt_t;
     alias int       blksize_t;
@@ -124,7 +124,7 @@ version( linux )
     alias c_long    suseconds_t;
     alias uint      useconds_t;
 }
-else version( darwin )
+else version( OSX )
 {
     //clock_t
     alias uint  fsblkcnt_t;
@@ -247,36 +247,31 @@ version( linux )
 
     alias c_ulong pthread_t;
 }
-else version( darwin )
+else version( OSX )
 {
-    private
+    version( X86_64 )
     {
-        // #if defined(__LP64__)
-        // FIXME: what is LP64, is it important enough to be included?
-        version( LP64 )
-        {
-            const __PTHREAD_SIZE__              = 1168;
-            const __PTHREAD_ATTR_SIZE__         = 56;
-            const __PTHREAD_MUTEXATTR_SIZE__    = 8;
-            const __PTHREAD_MUTEX_SIZE__        = 56;
-            const __PTHREAD_CONDATTR_SIZE__     = 8;
-            const __PTHREAD_COND_SIZE__         = 40;
-            const __PTHREAD_ONCE_SIZE__         = 8;
-            const __PTHREAD_RWLOCK_SIZE__       = 192;
-            const __PTHREAD_RWLOCKATTR_SIZE__   = 16;
-        }
-        else
-        {
-            const __PTHREAD_SIZE__              = 596;
-            const __PTHREAD_ATTR_SIZE__         = 36;
-            const __PTHREAD_MUTEXATTR_SIZE__    = 8;
-            const __PTHREAD_MUTEX_SIZE__        = 40;
-            const __PTHREAD_CONDATTR_SIZE__     = 4;
-            const __PTHREAD_COND_SIZE__         = 24;
-            const __PTHREAD_ONCE_SIZE__         = 4;
-            const __PTHREAD_RWLOCK_SIZE__       = 124;
-            const __PTHREAD_RWLOCKATTR_SIZE__   = 12;
-        }
+        const __PTHREAD_SIZE__              = 1168;
+        const __PTHREAD_ATTR_SIZE__         = 56;
+        const __PTHREAD_MUTEXATTR_SIZE__    = 8;
+        const __PTHREAD_MUTEX_SIZE__        = 56;
+        const __PTHREAD_CONDATTR_SIZE__     = 8;
+        const __PTHREAD_COND_SIZE__         = 40;
+        const __PTHREAD_ONCE_SIZE__         = 8;
+        const __PTHREAD_RWLOCK_SIZE__       = 192;
+        const __PTHREAD_RWLOCKATTR_SIZE__   = 16;
+    }
+    else version( X86 )
+    {
+        const __PTHREAD_SIZE__              = 596;
+        const __PTHREAD_ATTR_SIZE__         = 36;
+        const __PTHREAD_MUTEXATTR_SIZE__    = 8;
+        const __PTHREAD_MUTEX_SIZE__        = 40;
+        const __PTHREAD_CONDATTR_SIZE__     = 4;
+        const __PTHREAD_COND_SIZE__         = 24;
+        const __PTHREAD_ONCE_SIZE__         = 4;
+        const __PTHREAD_RWLOCK_SIZE__       = 124;
+        const __PTHREAD_RWLOCKATTR_SIZE__   = 12;
     }
 
     struct pthread_handler_rec
@@ -332,7 +327,7 @@ else version( darwin )
 
     struct pthread_rwlockattr_t
     {
-        c_long                             __sig;
+        c_long                              __sig;
         byte[__PTHREAD_RWLOCKATTR_SIZE__]   __opaque;
     }
 
@@ -401,9 +396,9 @@ version( linux )
 {
     alias int pthread_spinlock_t; // volatile
 }
-else version( darwin )
+else version( OSX )
 {
-    struct pthread_spinlock_t;
+    //struct pthread_spinlock_t;
 }
 else version( freebsd )
 {

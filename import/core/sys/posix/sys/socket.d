@@ -282,7 +282,7 @@ version( linux )
     int     sockatmark(int);
     int     socketpair(int, int, int, int[2]);
 }
-else version( darwin )
+else version( OSX )
 {
     alias uint   socklen_t;
     alias ubyte  sa_family_t;
@@ -375,7 +375,7 @@ else version( darwin )
         SO_RCVBUF       = 0x1002,
         SO_RCVLOWAT     = 0x1004,
         SO_RCVTIMEO     = 0x1006,
-        SO_REUSEADDR    = 0x1006,
+        SO_REUSEADDR    = 0x0004,
         SO_SNDBUF       = 0x1001,
         SO_SNDLOWAT     = 0x1003,
         SO_SNDTIMEO     = 0x1005,
@@ -526,7 +526,7 @@ else version( freebsd )
         SO_RCVBUF       = 0x1002,
         SO_RCVLOWAT     = 0x1004,
         SO_RCVTIMEO     = 0x1006,
-        SO_REUSEADDR    = 0x1006,
+        SO_REUSEADDR    = 0x0004,
         SO_SNDBUF       = 0x1001,
         SO_SNDLOWAT     = 0x1003,
         SO_SNDTIMEO     = 0x1005,
@@ -597,7 +597,7 @@ version( linux )
         AF_INET6    = 10
     }
 }
-else version( darwin )
+else version( OSX )
 {
     enum
     {
@@ -626,7 +626,7 @@ version( linux )
         SOCK_RAW    = 3
     }
 }
-else version( darwin )
+else version( OSX )
 {
     enum
     {
