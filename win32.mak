@@ -121,11 +121,11 @@ MANIFEST= \
 	\
 	src\core\sys\windows\windows.d \
 	\
+	src\gc\bits.d \
+	src\gc\dynarray.d \
 	src\gc\gc.d \
-	src\gc\gcalloc.d \
-	src\gc\gcbits.d \
-	src\gc\gcstats.d \
-	src\gc\gcx.d \
+	src\gc\opts.d \
+	src\gc\stats.d \
 	\
 	src\gcstub\gc.d \
 	\
@@ -253,11 +253,11 @@ SRCS= \
 	src\core\sync\rwmutex.d \
 	src\core\sync\semaphore.d \
 	\
+	src\gc\bits.d \
+	src\gc\dynarray.d \
 	src\gc\gc.d \
-	src\gc\gcalloc.d \
-	src\gc\gcbits.d \
-	src\gc\gcstats.d \
-	src\gc\gcx.d \
+	src\gc\opts.d \
+	src\gc\stats.d \
 	\
 	src\rt\aaA.d \
 	src\rt\aApply.d \
