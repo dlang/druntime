@@ -3571,7 +3571,7 @@ private:
         else static if( __traits( compiles, ucontext_t ) )
         {
             getcontext( &m_utxt );
-            m_utxt.uc_stack.ss_sp   = m_ctxt.bstack;
+            m_utxt.uc_stack.ss_sp   = m_pmem;
             m_utxt.uc_stack.ss_size = m_size;
             makecontext( &m_utxt, &fiber_entryPoint, 0 );
             // NOTE: If ucontext is being used then the top of the stack will
@@ -3687,6 +3687,10 @@ private:
 
         // NOTE: As above, these operations must be performed in a strict order
         //       to prevent Bad Things from happening.
+        // NOTE: If use of this fiber is multiplexed across threads, the thread
+        //       executing here may be different from the one above, so get the
+        //       current thread handle before unlocking, etc.
+        tobj = Thread.getThis();
         volatile tobj.m_lock = false;
         tobj.m_curr.tstack = tobj.m_curr.bstack;
     }
@@ -3705,8 +3709,7 @@ version( OSX )
     {
         // NOTE: p is an address in the TLS static data emitted by the
         //       compiler.  If it isn't, something is disastrously wrong.
-        if( p < cast(void*) &_tls_beg || p >= cast(void*) &_tls_end )
-            assert( false );
+        assert( p >= cast(void*) &_tls_beg && p < cast(void*) &_tls_end );
         auto obj = Thread.getThis();
         return obj.m_tls.ptr + (p - cast(void*) &_tls_beg);
     }

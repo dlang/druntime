@@ -1,11 +1,12 @@
 /**
  * Contains main program entry point and support routines.
  *
- * Copyright: Copyright Digital Mars 2000 - 2009.
+ * Copyright: Copyright Digital Mars 2000 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
- *
- *          Copyright Digital Mars 2000 - 2009.
+ */
+ 
+/*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -211,10 +212,19 @@ extern (C)
 extern (C) void _d_hidden_func()
 {
     Object o;
-    asm
-    {
-        mov o, EAX;
-    }
+    version(X86)
+	asm
+	{
+	    mov o, EAX;
+	}
+    else version(X86_64)
+        asm
+        {
+            mov o, RAX;
+        }
+    else
+        static assert(0, "unknown os");
+
     onHiddenFuncError(o);
 }
 

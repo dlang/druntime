@@ -5,8 +5,9 @@
  * Copyright: Copyright Sean Kelly 2010 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Sean Kelly
- *
- *          Copyright Sean Kelly 2010 - 2010.
+ */
+
+/*          Copyright Sean Kelly 2010 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -198,7 +199,10 @@ struct Duration
     }
 
     
-    Duration opBinary(string op)( ref const(Duration) other )
+    Duration opBinary(string op)( Duration other )
+    // TODO: It would be nice if ref const could be used here, but it doesn't
+    //       work for rvalues.  Give this another look once auto ref works.
+    //Duration opBinary(string op)( ref const(Duration) other )
         if( op == "+" || op == "-" || op == "*" || op == "/" )
     {
         auto   x = this;
@@ -206,7 +210,10 @@ struct Duration
     }
     
     
-    Duration opOpAssign(string op)( ref const(Duration) other )
+    Duration opOpAssign(string op)( Duration other )
+    // TODO: It would be nice if ref const could be used here, but it doesn't
+    //       work for rvalues.  Give this another look once auto ref works.
+    //Duration opOpAssign(string op)( ref const(Duration) other )
         if( op == "+" || op == "-" || op == "*" || op == "/" )
     {
         static if( op == "+" )

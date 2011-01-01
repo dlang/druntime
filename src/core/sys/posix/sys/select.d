@@ -5,8 +5,9 @@
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
- *
- *          Copyright Sean Kelly 2005 - 2009.
+ */
+
+/*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -18,6 +19,9 @@ public import core.stdc.time;           // for timespec
 public import core.sys.posix.sys.time;  // for timeval
 public import core.sys.posix.sys.types; // for time_t
 public import core.sys.posix.signal;    // for sigset_t
+
+//debug=select;  // uncomment to turn on debugging printf's
+version(unittest) import core.stdc.stdio: printf;
 
 extern (C):
 
@@ -73,9 +77,9 @@ version( linux )
         fdset.fds_bits[__FDELT( fd )] &= ~__FDMASK( fd );
     }
 
-    extern (D) int FD_ISSET( int fd, fd_set* fdset )
+    extern (D) bool FD_ISSET( int fd, fd_set* fdset )
     {
-        return fdset.fds_bits[__FDELT( fd )] & __FDMASK( fd );
+        return (fdset.fds_bits[__FDELT( fd )] & __FDMASK( fd )) != 0;
     }
 
     extern (D) void FD_SET( int fd, fd_set* fdset )
@@ -146,9 +150,9 @@ else version( OSX )
         fdset.fds_bits[fd / __DARWIN_NFDBITS] &= ~(1 << (fd % __DARWIN_NFDBITS));
     }
 
-    extern (D) int  FD_ISSET( int fd, fd_set* fdset )
+    extern (D) bool FD_ISSET( int fd, fd_set* fdset )
     {
-        return fdset.fds_bits[fd / __DARWIN_NFDBITS] & (1 << (fd % __DARWIN_NFDBITS));
+        return (fdset.fds_bits[fd / __DARWIN_NFDBITS] & (1 << (fd % __DARWIN_NFDBITS))) != 0;
     }
 
     extern (D) void FD_SET( int fd, fd_set* fdset )
@@ -213,3 +217,53 @@ else version( FreeBSD )
     int pselect(int, fd_set*, fd_set*, fd_set*, in timespec*, in sigset_t*);
     int select(int, fd_set*, fd_set*, fd_set*, timeval*);
 }
+
+unittest
+{
+    debug(select) printf("core.sys.posix.sys.select unittest\n");
+
+    fd_set fd;
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        assert(!FD_ISSET(i, &fd));
+    }
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        if ((i & -i) == i)
+            FD_SET(i, &fd);
+    }
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        if ((i & -i) == i)
+            assert(FD_ISSET(i, &fd));
+        else
+            assert(!FD_ISSET(i, &fd));
+    }
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        if ((i & -i) == i)
+            FD_CLR(i, &fd);
+        else
+            FD_SET(i, &fd);
+    }
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        if ((i & -i) == i)
+            assert(!FD_ISSET(i, &fd));
+        else
+            assert(FD_ISSET(i, &fd));
+    }
+
+    FD_ZERO(&fd);
+
+    for (auto i = 0; i < FD_SETSIZE; i++)
+    {
+        assert(!FD_ISSET(i, &fd));
+    }
+}
+

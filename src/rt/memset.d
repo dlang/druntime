@@ -1,11 +1,12 @@
 /**
  * Contains a memset implementation used by compiler-generated code.
  *
- * Copyright: Copyright Digital Mars 2004 - 2009.
+ * Copyright: Copyright Digital Mars 2004 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright
- *
- *          Copyright Digital Mars 2004 - 2009.
+ */
+
+/*          Copyright Digital Mars 2004 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -107,3 +108,23 @@ void *_memsetn(void *p, void *value, int count, size_t sizelem)
     }
     return pstart;
 }
+
+float *_memsetFloat(float *p, float value, size_t count) 
+{ 
+    float *pstart = p; 
+    float *ptop; 
+ 
+    for (ptop = &p[count]; p < ptop; p++) 
+        *p = value; 
+    return pstart; 
+} 
+ 
+double *_memsetDouble(double *p, double value, size_t count) 
+{ 
+    double *pstart = p; 
+    double *ptop; 
+ 
+    for (ptop = &p[count]; p < ptop; p++) 
+        *p = value; 
+    return pstart; 
+} 

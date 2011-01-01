@@ -5,8 +5,9 @@
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
- *
- *          Copyright Sean Kelly 2005 - 2009.
+ */
+
+/*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -143,8 +144,8 @@ version( linux )
     alias int timer_t;
 
     int clock_getres(clockid_t, timespec*);
-    //int clock_gettime(clockid_t, timespec*);
-    //int clock_settime(clockid_t, in timespec*);
+    int clock_gettime(clockid_t, timespec*);
+    int clock_settime(clockid_t, in timespec*);
     int nanosleep(in timespec*, timespec*);
     int timer_create(clockid_t, sigevent*, timer_t*);
     int timer_delete(timer_t);

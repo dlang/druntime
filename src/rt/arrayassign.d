@@ -1,11 +1,12 @@
 /**
  * Implementation of array assignment support routines.
  *
- * Copyright: Copyright Digital Mars 2000 - 2009.
+ * Copyright: Copyright Digital Mars 2000 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright
- *
- *          Copyright Digital Mars 2000 - 2009.
+ */
+ 
+/*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -64,7 +65,7 @@ extern (C) void[] _d_arrayassign(TypeInfo ti, void[] from, void[] to)
     }
     else
     {
-        for (int i = to.length; i--; )
+        for (auto i = to.length; i--; )
         {
             void* pto   = to.ptr   + i * element_size;
             void* pfrom = from.ptr + i * element_size;

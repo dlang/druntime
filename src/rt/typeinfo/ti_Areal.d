@@ -4,8 +4,9 @@
  * Copyright: Copyright Digital Mars 2004 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright
- *
- *          Copyright Digital Mars 2004 - 2009.
+ */
+
+/*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -84,8 +85,9 @@ class TypeInfo_Ae : TypeInfo
     }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {   arg1 = typeid(size_t);
-        arg2 = typeid(void*);
+    {
+        //arg1 = typeid(size_t);
+        //arg2 = typeid(void*);
         return 0;
     }
 }

@@ -1,11 +1,12 @@
 /**
  * Contains support code for code profiling.
  *
- * Copyright: Copyright Digital Mars 1995 - 2009.
+ * Copyright: Copyright Digital Mars 1995 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
- *
- *          Copyright Digital Mars 1995 - 2009.
+ */
+
+/*          Copyright Digital Mars 1995 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -14,16 +15,15 @@ module rt.trace;
 
 private
 {
-    import rt.util.string;
+    import core.demangle;
     import core.stdc.ctype;
     import core.stdc.stdio;
-    import core.stdc.string;
     import core.stdc.stdlib;
+    import core.stdc.string;
+    import rt.util.string;
 }
 
 extern (C):
-
-char* unmangle_ident(char*);    // from DMC++ runtime library
 
 alias long timer_t;
 
@@ -317,57 +317,31 @@ static void trace_times(Symbol* root)
     fprintf(fplog,"  Num          Tree        Func        Per\n");
     fprintf(fplog,"  Calls        Time        Time        Call\n\n");
     for (u = 0; u < nsymbols; u++)
-    {   Symbol* s = psymbols[u];
+    {   
+        Symbol* s = psymbols[u];
         timer_t tl,tr;
         timer_t fl,fr;
         timer_t pl,pr;
         timer_t percall;
+        char[8192] buf;
         SymPair* sp;
         uint calls;
         char[] id;
 
-        version (Windows)
-        {
-            char* p = (s.Sident ~ '\0').ptr;
-            p = unmangle_ident(p);
-            if (p)
-                id = p[0 .. strlen(p)];
-        }
-        if (!id)
-            id = s.Sident;
         calls = 0;
+        id = demangle(s.Sident, buf);
         for (sp = s.Sfanin; sp; sp = sp.next)
             calls += sp.count;
         if (calls == 0)
             calls = 1;
 
-version (all)
-{
         tl = (s.totaltime * 1000000) / freq;
         fl = (s.functime  * 1000000) / freq;
         percall = s.functime / calls;
         pl = (s.functime * 1000000) / calls / freq;
 
         fprintf(fplog,"%7d%12lld%12lld%12lld     %.*s\n",
-            calls,tl,fl,pl,id);
-}
-else
-{
-        tl = s.totaltime / freq;
-        tr = ((s.totaltime - tl * freq) * 10000000) / freq;
-
-        fl = s.functime  / freq;
-        fr = ((s.functime  - fl * freq) * 10000000) / freq;
-
-        percall = s.functime / calls;
-        pl = percall  / freq;
-        pr = ((percall  - pl * freq) * 10000000) / freq;
-
-        fprintf(fplog,"%7d\t%3lld.%07lld\t%3lld.%07lld\t%3lld.%07lld\t%.*s\n",
-            calls,tl,tr,fl,fr,pl,pr,id);
-}
-        if (id !is s.Sident)
-            free(id.ptr);
+                      calls,tl,fl,pl,id);
     }
 }
 
@@ -713,7 +687,7 @@ static void trace_merge()
                     goto L1;
                 case ' ':
                 case '\t':              // fan in or fan out line
-                    count = strtoul(buf,&p,10);
+                    count = cast(int)strtoul(buf,&p,10);
                     if (p == buf)       // if invalid conversion
                         continue;
                     p = skipspace(p);
@@ -758,7 +732,7 @@ static void trace_merge()
                     {   timer_t t;
 
                         p++;
-                        count = strtoul(p,&p,10);
+                        count = cast(int)strtoul(p,&p,10);
                         t = cast(long)strtoull(p,&p,10);
                         s.totaltime += t;
                         t = cast(long)strtoull(p,&p,10);

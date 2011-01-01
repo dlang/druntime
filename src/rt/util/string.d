@@ -5,8 +5,9 @@
  * Copyright: Copyright Sean Kelly 2005 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Sean Kelly
- *
- *          Copyright Sean Kelly 2005 - 2009.
+ */
+
+/*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -29,7 +30,7 @@ char[] intToString( char[] buf, uint val )
     return buf[p - buf.ptr .. $];
 }
 
-char[] ulongToString( char[] buf, ulong val )
+char[] intToString( char[] buf, ulong val )
 {
     assert( buf.length >= 20 );
     auto p = buf.ptr + buf.length;

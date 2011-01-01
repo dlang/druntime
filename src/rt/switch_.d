@@ -1,11 +1,12 @@
 /**
  * Contains support code for switch blocks using string constants.
  *
- * Copyright: Copyright Digital Mars 2004 - 2009.
+ * Copyright: Copyright Digital Mars 2004 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
- *
- *          Copyright Digital Mars 2004 - 2009.
+ */
+
+/*          Copyright Digital Mars 2004 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -38,8 +39,8 @@ in
 
     for (j = 1; j < table.length; j++)
     {
-        int len1 = table[j - 1].length;
-        int len2 = table[j].length;
+        auto len1 = table[j - 1].length;
+        auto len2 = table[j].length;
 
         assert(len1 <= len2);
         if (len1 == len2)
@@ -88,24 +89,18 @@ out (result)
 }
 body
 {
-    //printf("body _d_switch_string(%.*s)\n", ca);
-    int low;
-    int high;
-    int mid;
-    int c;
-    char[] pca;
-
-    low = 0;
-    high = table.length;
+    //printf("body _d_switch_string(%.*s)\n", ca.length, ca.ptr);
+    size_t low  = 0;
+    size_t high = table.length;
 
     version (none)
     {
         // Print table
-        printf("ca[] = '%s'\n", cast(char *)ca);
-        for (mid = 0; mid < high; mid++)
+        printf("ca[] = '%s'\n", ca.length, ca.ptr);
+        for (auto i = 0; i < high; i++)
         {
-            pca = table[mid];
-            printf("table[%d] = %d, '%.*s'\n", mid, pca.length, pca);
+            auto pca = table[i];
+            printf("table[%d] = %d, '%.*s'\n", i, pca.length, pca.length, pca.ptr);
         }
     }
     if (high &&
@@ -121,9 +116,9 @@ body
         // Do binary search
         while (low < high)
         {
-            mid = (low + high) >> 1;
-            pca = table[mid];
-            c = ca.length - pca.length;
+            auto mid = (low + high) >> 1;
+            auto pca = table[mid];
+            auto c   = cast(sizediff_t)(ca.length - pca.length);
             if (c == 0)
             {
                 c = cast(ubyte)c1 - cast(ubyte)pca[0];
@@ -132,7 +127,7 @@ body
                     c = memcmp(ca.ptr, pca.ptr, ca.length);
                     if (c == 0)
                     {   //printf("found %d\n", mid);
-                        return mid;
+                        return cast(int)mid;
                     }
                 }
             }
@@ -159,6 +154,20 @@ unittest
          default:
              break;
     }
+
+    int bug5381(string s)
+    {
+        switch(s)
+        {
+            case "unittest":        return 1;
+            case "D_Version2":      return 2;
+            case "none":            return 3;
+            case "all":             return 4;
+            default:                return 5;
+        }
+    }
+    int rc = bug5381("none");
+    assert(rc == 3);
 }
 
 /**********************************
@@ -177,8 +186,8 @@ in
 
     for (j = 1; j < table.length; j++)
     {
-        int len1 = table[j - 1].length;
-        int len2 = table[j].length;
+        auto len1 = table[j - 1].length;
+        auto len2 = table[j].length;
 
         assert(len1 <= len2);
         if (len1 == len2)
@@ -195,7 +204,7 @@ out (result)
     int i;
     int c;
 
-    //printf("out _d_switch_string()\n");
+    //printf("out _d_switch_ustring()\n");
     if (result == -1)
     {
         // Not found
@@ -228,37 +237,32 @@ out (result)
 body
 {
     //printf("body _d_switch_ustring()\n");
-    int low;
-    int high;
-    int mid;
-    int c;
-    wchar[] pca;
+    size_t low = 0;
+    auto high = table.length;
 
-    low = 0;
-    high = table.length;
-
-/*
-    // Print table
-    wprintf("ca[] = '%.*s'\n", ca);
-    for (mid = 0; mid < high; mid++)
+    version(none)
     {
-        pca = table[mid];
-        wprintf("table[%d] = %d, '%.*s'\n", mid, pca.length, pca);
+        // Print table
+        wprintf("ca[] = '%.*s'\n", ca.length, ca.ptr);
+        for (auto i = 0; i < high; i++)
+        {
+            auto pca = table[i];
+            wprintf("table[%d] = %d, '%.*s'\n", i, pca.length, pca.length, pca.ptr);
+        }
     }
-*/
 
     // Do binary search
     while (low < high)
     {
-        mid = (low + high) >> 1;
-        pca = table[mid];
-        c = ca.length - pca.length;
+        auto mid = (low + high) >> 1;
+        auto pca = table[mid];
+        auto c = cast(sizediff_t)(ca.length - pca.length);
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * wchar.sizeof);
             if (c == 0)
             {   //printf("found %d\n", mid);
-                return mid;
+                return cast(int)mid;
             }
         }
         if (c < 0)
@@ -283,8 +287,21 @@ unittest
          default:
              break;
     }
-}
 
+    int bug5381(wstring ws)
+    {
+        switch(ws)
+        {
+            case "unittest":        return 1;
+            case "D_Version2":      return 2;
+            case "none":            return 3;
+            case "all":             return 4;
+            default:                return 5;
+        }
+    }
+    int rc = bug5381("none"w);
+    assert(rc == 3);
+}
 
 /**********************************
  * Same thing, but for wide chars.
@@ -298,36 +315,29 @@ in
     assert(ca.length >= 0);
 
     // Make sure table[] is sorted correctly
-    int j;
-
-    for (j = 1; j < table.length; j++)
+    for (auto j = 1; j < table.length; j++)
     {
-        int len1 = table[j - 1].length;
-        int len2 = table[j].length;
+        auto len1 = table[j - 1].length;
+        auto len2 = table[j].length;
 
         assert(len1 <= len2);
         if (len1 == len2)
         {
-            int c;
-
-            c = memcmp(table[j - 1].ptr, table[j].ptr, len1 * dchar.sizeof);
+            auto c = memcmp(table[j - 1].ptr, table[j].ptr, len1 * dchar.sizeof);
             assert(c < 0);  // c==0 means a duplicate
         }
     }
 }
 out (result)
 {
-    int i;
-    int c;
-
-    //printf("out _d_switch_string()\n");
+    //printf("out _d_switch_dstring()\n");
     if (result == -1)
     {
         // Not found
-        for (i = 0; i < table.length; i++)
+        for (auto i = 0; i < table.length; i++)
         {
             if (table[i].length == ca.length)
-            {   c = memcmp(table[i].ptr, ca.ptr, ca.length * dchar.sizeof);
+            {   auto c = memcmp(table[i].ptr, ca.ptr, ca.length * dchar.sizeof);
                 assert(c != 0);
             }
         }
@@ -335,12 +345,12 @@ out (result)
     else
     {
         assert(0 <= result && result < table.length);
-        for (i = 0; 1; i++)
+        for (auto i = 0; 1; i++)
         {
             assert(i < table.length);
             if (table[i].length == ca.length)
             {
-                c = memcmp(table[i].ptr, ca.ptr, ca.length * dchar.sizeof);
+                auto c = memcmp(table[i].ptr, ca.ptr, ca.length * dchar.sizeof);
                 if (c == 0)
                 {
                     assert(i == result);
@@ -352,38 +362,33 @@ out (result)
 }
 body
 {
-    //printf("body _d_switch_ustring()\n");
-    int low;
-    int high;
-    int mid;
-    int c;
-    dchar[] pca;
+    //printf("body _d_switch_dstring()\n");
+    size_t low = 0;
+    auto high = table.length;
 
-    low = 0;
-    high = table.length;
-
-/*
-    // Print table
-    wprintf("ca[] = '%.*s'\n", ca);
-    for (mid = 0; mid < high; mid++)
+    version(none)
     {
-        pca = table[mid];
-        wprintf("table[%d] = %d, '%.*s'\n", mid, pca.length, pca);
+        // Print table
+        wprintf("ca[] = '%.*s'\n", ca.length, ca.ptr);
+        for (auto i = 0; i < high; i++)
+        {
+            auto pca = table[i];
+            wprintf("table[%d] = %d, '%.*s'\n", i, pca.length, pca.length, pca.ptr);
+        }
     }
-*/
 
     // Do binary search
     while (low < high)
     {
-        mid = (low + high) >> 1;
-        pca = table[mid];
-        c = ca.length - pca.length;
+        auto mid = (low + high) >> 1;
+        auto pca = table[mid];
+        auto c = cast(sizediff_t)(ca.length - pca.length);
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * dchar.sizeof);
             if (c == 0)
             {   //printf("found %d\n", mid);
-                return mid;
+                return cast(int)mid;
             }
         }
         if (c < 0)
@@ -408,4 +413,18 @@ unittest
          default:
              break;
     }
+
+    int bug5381(dstring ds)
+    {
+        switch(ds)
+        {
+            case "unittest":        return 1;
+            case "D_Version2":      return 2;
+            case "none":            return 3;
+            case "all":             return 4;
+            default:                return 5;
+        }
+    }
+    int rc = bug5381("none"d);
+    assert(rc == 3);
 }

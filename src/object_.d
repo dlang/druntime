@@ -15,7 +15,6 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-
 module object;
 
 //debug=PRINTF;
@@ -476,8 +475,8 @@ class TypeInfo_Array : TypeInfo
     }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {   arg1 = typeid(size_t);
-        arg2 = typeid(void*);
+    {   //arg1 = typeid(size_t);
+        //arg2 = typeid(void*);
         return 0;
     }
 }
@@ -487,7 +486,7 @@ class TypeInfo_StaticArray : TypeInfo
     override string toString()
     {
         char[20] tmp = void;
-        return cast(string)(value.toString() ~ "[" ~ tmp.ulongToString(len) ~ "]");
+        return cast(string)(value.toString() ~ "[" ~ tmp.intToString(len) ~ "]");
     }
 
     override equals_t opEquals(Object o)
@@ -594,8 +593,8 @@ class TypeInfo_StaticArray : TypeInfo
     }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        return value.argTypes(arg1, arg2);
+    {   arg1 = typeid(void*);
+        return 0;
     }
 }
 
@@ -699,12 +698,17 @@ class TypeInfo_Delegate : TypeInfo
     }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {   arg1 = typeid(void*);
-        arg2 = typeid(void*);
+    {   //arg1 = typeid(void*);
+        //arg2 = typeid(void*);
         return 0;
     }
 }
 
+/**
+ * Runtime type information about a class.
+ * Can be retrieved from an object instance by using the
+ * $(LINK2 ../property.html#classinfo, .classinfo) property.
+ */
 class TypeInfo_Class : TypeInfo
 {
     override string toString() { return info.name; }
@@ -1250,7 +1254,7 @@ class Throwable : Object
         {
             if (e.file)
             {
-               buf ~= e.classinfo.name ~ "@" ~ e.file ~ "(" ~ tmp.ulongToString(e.line) ~ "): " ~ e.msg;
+               buf ~= e.classinfo.name ~ "@" ~ e.file ~ "(" ~ tmp.intToString(e.line) ~ "): " ~ e.msg;
             }
             else
             {
@@ -1673,9 +1677,13 @@ struct ModuleInfo
 
         foreach (m; _moduleinfo_array)
         {
-            ret = dg(m);
-            if (ret)
-                break;
+            // TODO: Should null ModuleInfo be allowed?
+            if (m !is null)
+            {
+                ret = dg(m);
+                if (ret)
+                    break;
+            }
         }
         return ret;
     }
@@ -1736,10 +1744,10 @@ version (OSX)
 }
 
 __gshared ModuleInfo*[] _moduleinfo_dtors;
-__gshared uint          _moduleinfo_dtors_i;
+__gshared size_t        _moduleinfo_dtors_i;
 
 __gshared ModuleInfo*[] _moduleinfo_tlsdtors;
-__gshared uint          _moduleinfo_tlsdtors_i;
+__gshared size_t        _moduleinfo_tlsdtors_i;
 
 // Register termination function pointers
 extern (C) int _fatexit(void*);
@@ -1810,8 +1818,10 @@ extern (C) void _moduleCtor()
 
          debug foreach (m; _moduleinfo_array)
          {
-             //printf("\t%p\n", m);
-             printf("\t%.*s\n", m.name);
+             // TODO: Should null ModuleInfo be allowed?
+             if (m !is null)
+                //printf("\t%p\n", m);
+                printf("\t%.*s\n", m.name);
          }
     }    
 
@@ -1846,6 +1856,7 @@ extern (C) void _moduleIndependentCtors()
     debug(PRINTF) printf("_moduleIndependentCtors()\n");
     foreach (m; _moduleinfo_array)
     {
+        // TODO: Should null ModuleInfo be allowed?
         if (m && m.ictor)
         {
             (*m.ictor)();
@@ -1946,7 +1957,7 @@ extern(C) void _checkModCtors()
         // check that.  First, determine what non-trivial elements are
         // reachable.
         reachable[] = 0;
-        uint nmodules = _findDependencies(current);
+        auto nmodules = _findDependencies(current);
 
         // allocate the dependencies on the stack
         ModuleInfo **p = cast(ModuleInfo **)alloca(nmodules * (ModuleInfo*).sizeof);
@@ -2026,6 +2037,8 @@ extern(C) void _checkModCtors()
     {
         foreach(m; _moduleinfo_array)
         {
+            // TODO: Should null ModuleInfo be allowed?
+            if (m is null) continue;
             auto flag = flags[m.index];
             if((flag & (MIctor | MIdtor)) && !(flag & MIctordone))
             {
@@ -2034,14 +2047,17 @@ extern(C) void _checkModCtors()
                     // no need to run a check on this one, but we do need to call its ctor/dtor
                     dtors[dtoridx++] = m;
                 }
-                _checkModCtors2(m);
+                else
+                    _checkModCtors2(m);
             }
         }
     }
 
     // ok, now we need to assign indexes, and also initialize the flags
-    foreach(i, m; _moduleinfo_array)
+    foreach(uint i, m; _moduleinfo_array)
     {
+        // TODO: Should null ModuleInfo be allowed?
+        if (m is null) continue;
         m.index = i;
         ubyte flag = m.flags & MIstandalone;
         if(m.dtor)
@@ -2062,6 +2078,8 @@ extern(C) void _checkModCtors()
     dtoridx = 0;
     foreach(i, m; _moduleinfo_array)
     {
+        // TODO: Should null ModuleInfo be allowed?
+        if (m is null) continue;
         ubyte flag = m.flags & MIstandalone;
         if(m.tlsdtor)
             flag |= MIdtor;
@@ -2107,11 +2125,11 @@ extern (C) void _moduleDtor()
 
     // NOTE: _moduleTlsDtor is now called manually by dmain2
     //_moduleTlsDtor();
-    for (uint i = _moduleinfo_dtors_i; i-- != 0;)
+    for (auto i = _moduleinfo_dtors_i; i-- != 0;)
     {
         ModuleInfo* m = _moduleinfo_dtors[i];
 
-        debug(PRINTF) printf("\tmodule[%d] = '%.*s', x%x\n", i, m.name, m);
+        debug(PRINTF) printf("\tmodule[%d] = '%.*s', x%x\n", i, m.name.length, m.name.ptr, m);
         if (m.dtor)
         {
             (*m.dtor)();
@@ -2130,11 +2148,11 @@ extern (C) void _moduleTlsDtor()
             printf("[%d] = %p\n", i, m);
     }
 
-    for (uint i = _moduleinfo_tlsdtors_i; i-- != 0;)
+    for (auto i = _moduleinfo_tlsdtors_i; i-- != 0;)
     {
         ModuleInfo* m = _moduleinfo_tlsdtors[i];
 
-        debug(PRINTF) printf("\tmodule[%d] = '%.*s', x%x\n", i, m.name, m);
+        debug(PRINTF) printf("\tmodule[%d] = '%.*s', x%x\n", i, m.name.length, m.name.ptr, m);
         if (m.tlsdtor)
         {
             (*m.tlsdtor)();
@@ -2442,9 +2460,9 @@ struct AssociativeArray(Key, Value)
     }
 }
 
-
 void clear(T)(T obj) if (is(T == class))
 {
+    if (!obj) return;
     auto ci = obj.classinfo;
     auto defaultCtor =
         cast(void function(Object)) ci.defaultConstructor;
@@ -2511,13 +2529,16 @@ version(unittest) unittest
 
 void clear(T)(ref T obj) if (is(T == struct))
 {
-   static if (is(typeof(obj.__dtor())))
-   {
-       obj.__dtor();
-   }
-   auto buf = (cast(void*) &obj)[0 .. T.sizeof];
-   auto init = (cast(void*) &T.init)[0 .. T.sizeof];
-   buf[] = init[];
+    static if (is(typeof(obj.__dtor())))
+    {
+        obj.__dtor();
+    }
+    auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
+    auto init = cast(ubyte[])typeid(T).init();
+    if(init.ptr is null) // null ptr means initialize to 0s
+        buf[] = 0;
+    else
+        buf[] = init[];
 }
 
 version(unittest) unittest

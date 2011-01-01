@@ -1,11 +1,12 @@
 /**
  * Implementation of code coverage analyzer.
  *
- * Copyright: Copyright Digital Mars 2000 - 2009.
+ * Copyright: Copyright Digital Mars 2000 - 2010.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
- *
- *          Copyright Digital Mars 2000 - 2009.
+ */
+
+/*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -28,7 +29,7 @@ private
     struct BitArray
     {
         size_t  len;
-        uint*   ptr;
+        size_t* ptr;
 
         bool opIndex( size_t i )
         in
@@ -358,13 +359,12 @@ bool readFile( string name, ref char[] buf )
             return false;
         scope( exit ) close( file );
 
-        int     num = 0;
-        uint    pos = 0;
+        uint pos = 0;
 
         buf.length = 4096;
         while( true )
         {
-            num = read( file, &buf[pos], cast(uint)( buf.length - pos ) );
+            auto num = read( file, &buf[pos], cast(uint)( buf.length - pos ) );
             if( num == -1 )
                 return false;
             if( !num )
@@ -433,7 +433,7 @@ char[] expandTabs( char[] str, int tabsize = 8 )
                     result[i .. i + nspaces] = ' ';
                 }
                 else
-                {   int j = result.length;
+                {   auto j = result.length;
                     result.length = j + nspaces;
                     result[j .. j + nspaces] = ' ';
                 }
