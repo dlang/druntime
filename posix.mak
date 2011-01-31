@@ -134,9 +134,6 @@ MANIFEST= \
 	\
 	src/gcstub/gc.d \
 	\
-	src/objc/runtime.d \
-	src/objc/types.d \
-	\
 	src/rt/aApply.d \
 	src/rt/aApplyR.d \
 	src/rt/aaA.d \
@@ -269,9 +266,6 @@ SRC_D_MODULES = \
 	gc/gcstats \
 	gc/gcx \
 	\
-	objc/runtime \
-	objc/types \
-	\
 	rt/aaA \
 	rt/aApply \
 	rt/aApplyR \
@@ -343,6 +337,7 @@ SRC_D_MODULES = \
 	rt/typeinfo/ti_ushort \
 	rt/typeinfo/ti_void \
 	rt/typeinfo/ti_wchar
+	
 
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
@@ -372,6 +367,7 @@ DOCS=\
 	$(DOCDIR)/core_sync_mutex.html \
 	$(DOCDIR)/core_sync_rwmutex.html \
 	$(DOCDIR)/core_sync_semaphore.html
+	
 
 IMPORTS=\
 	$(IMPDIR)/core/atomic.di \
@@ -459,10 +455,30 @@ IMPORTS=\
 	$(IMPDIR)/core/sys/posix/sys/uio.di \
 	$(IMPDIR)/core/sys/posix/sys/wait.di \
 	\
-	$(IMPDIR)/core/sys/windows/windows.di \
-	\
+	$(IMPDIR)/core/sys/windows/windows.di
+
+ifeq ($(D_OBJC),1)
+# Files to add for Objective-C support
+
+MANIFEST:=$(MANIFEST) \
+	src/objc/druntime.d \
+	src/objc/runtime.d \
+	src/objc/types.d
+
+SRC_D_MODULES:=$(SRC_D_MODULES) \
+	objc/druntime \
+	objc/runtime \
+	objc/types
+
+DOCS:=$(DOCS) \
+	$(DOCDIR)/objc_runtime.html \
+	$(DOCDIR)/objc_types.html
+
+IMPORTS:=$(IMPORTS) \
 	$(IMPDIR)/objc/runtime.di \
 	$(IMPDIR)/objc/types.di
+
+endif
 
 SRCS=$(addprefix src/,$(addsuffix .d,$(SRC_D_MODULES)))
 
@@ -477,6 +493,9 @@ $(DOCDIR)/core_%.html : src/core/%.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $<
 	
 $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
+	$(DMD) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $<
+	
+$(DOCDIR)/objc_%.html : src/objc/%.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $<
 
 ######################## Header .di file generation ##############################
