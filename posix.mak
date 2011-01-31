@@ -134,6 +134,9 @@ MANIFEST= \
 	\
 	src/gcstub/gc.d \
 	\
+	src/objc/runtime.d \
+	src/objc/types.d \
+	\
 	src/rt/aApply.d \
 	src/rt/aApplyR.d \
 	src/rt/aaA.d \
@@ -265,6 +268,9 @@ SRC_D_MODULES = \
 	gc/gcbits \
 	gc/gcstats \
 	gc/gcx \
+	\
+	objc/runtime \
+	objc/types \
 	\
 	rt/aaA \
 	rt/aApply \
@@ -453,7 +459,10 @@ IMPORTS=\
 	$(IMPDIR)/core/sys/posix/sys/uio.di \
 	$(IMPDIR)/core/sys/posix/sys/wait.di \
 	\
-	$(IMPDIR)/core/sys/windows/windows.di
+	$(IMPDIR)/core/sys/windows/windows.di \
+	\
+	$(IMPDIR)/objc/runtime.di \
+	$(IMPDIR)/objc/types.di
 
 SRCS=$(addprefix src/,$(addsuffix .d,$(SRC_D_MODULES)))
 
@@ -475,6 +484,9 @@ $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
 import: $(IMPORTS)
 	
 $(IMPDIR)/core/%.di : src/core/%.d
+	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $<
+	
+$(IMPDIR)/objc/%.di : src/objc/%.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $<
 
 ################### C/ASM Targets ############################
