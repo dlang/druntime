@@ -26,6 +26,7 @@ MANIFEST= \
 	win32.mak \
 	\
 	import\object.di \
+	import\std\intrinsic.di \
 	\
 	src\object_.d \
 	\
