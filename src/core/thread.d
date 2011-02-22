@@ -33,9 +33,14 @@ version = StackGrowsDown;
  */
 class ThreadException : Exception
 {
-    this( string msg )
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
-        super( msg );
+        super(msg, file, line, next);
+    }
+
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
     }
 }
 
@@ -45,15 +50,22 @@ class ThreadException : Exception
  */
 class FiberException : Exception
 {
-    this( string msg )
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
-        super( msg );
+        super(msg, file, line, next);
+    }
+
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
     }
 }
 
 
 private
 {
+    import core.sync.mutex;
+
     //
     // from core.memory
     //
@@ -84,19 +96,7 @@ private
 
     void* getStackTop()
     {
-        version( D_InlineAsm_X86 )
-        {
-            asm
-            {
-                naked;
-                mov EAX, ESP;
-                ret;
-            }
-        }
-        else
-        {
-            return rt_stackTop();
-        }
+        return rt_stackTop();
     }
 
 
@@ -115,8 +115,9 @@ version( Windows )
     private
     {
         import core.stdc.stdint : uintptr_t; // for _beginthreadex decl below
+        import core.stdc.stdlib;             // for malloc
         import core.sys.windows.windows;
-        import core.thread_helper; // for OpenThreadHandle
+        import core.thread_helper;           // for OpenThreadHandle
 
         const DWORD TLS_OUT_OF_INDEXES  = 0xFFFFFFFF;
 
@@ -130,8 +131,8 @@ version( Windows )
             //       these are defined in dm\src\win32\tlsseg.asm by DMC.
             extern (C)
             {
-                extern __thread int _tlsstart;
-                extern __thread int _tlsend;
+                extern int _tlsstart;
+                extern int _tlsend;
             }
         }
         else
@@ -226,11 +227,12 @@ else version( Posix )
 {
     private
     {
+        import core.stdc.errno;
         import core.sys.posix.semaphore;
+        import core.sys.posix.stdlib; // for malloc, valloc, free
         import core.sys.posix.pthread;
         import core.sys.posix.signal;
         import core.sys.posix.time;
-        import core.stdc.errno;
 
         extern (C) int getErrno();
 
@@ -251,8 +253,8 @@ else version( Posix )
             {
                 extern (C)
                 {
-                    extern __thread int _tlsstart;
-                    extern __thread int _tlsend;
+                    extern int _tlsstart;
+                    extern int _tlsend;
                 }
             }
             else version( OSX )
@@ -674,6 +676,7 @@ class Thread
     }
     body
     {
+        this();                 // set m_tls
         m_fn   = fn;
         m_sz   = sz;
         m_call = Call.FN;
@@ -699,6 +702,7 @@ class Thread
     }
     body
     {
+        this();                 // set m_tls
         m_dg   = dg;
         m_sz   = sz;
         m_call = Call.DG;
@@ -1577,9 +1581,21 @@ private:
     //
     // All use of the global lists should synchronize on this lock.
     //
-    static Object slock()
+    static Mutex slock()
     {
-        return Thread.classinfo;
+        static Mutex m = null;
+
+        if( m !is null )
+            return m;
+        else
+        {
+            auto ci = Mutex.classinfo;
+            auto p  = malloc( ci.init.length );
+            (cast(byte*) p)[0 .. ci.init.length] = ci.init[];
+            m = cast(Mutex) p;
+            m.__ctor();
+            return m;
+        }
     }
 
 
@@ -2105,6 +2121,11 @@ extern (C) void thread_joinAll()
 
         foreach( t; Thread )
         {
+            if( !t.isRunning )
+            {
+                Thread.remove( t );
+                continue;
+            }
             if( !t.isDaemon )
             {
                 nonDaemon = t;
@@ -2338,7 +2359,8 @@ extern (C) void thread_suspendAll()
             suspend( Thread.getThis() );
         return;
     }
-    synchronized( Thread.slock )
+
+    Thread.slock.lock();
     {
         if( ++suspendDepth > 1 )
             return;
@@ -2462,7 +2484,8 @@ body
             resume( Thread.getThis() );
         return;
     }
-    synchronized( Thread.slock )
+
+    scope(exit) Thread.slock.unlock();
     {
         if( --suspendDepth > 0 )
             return;
@@ -2774,7 +2797,6 @@ private
     {
         import core.sys.posix.unistd;   // for sysconf
         import core.sys.posix.sys.mman; // for mmap
-        import core.sys.posix.stdlib;   // for malloc, valloc, free
 
         version( AsmX86_Win32 ) {} else
         version( AsmX86_Posix ) {} else
