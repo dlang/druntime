@@ -23,6 +23,7 @@ import core.stdc.stdint; // uintptr_t
 
 version (OSX)
 {
+    pragma(lib, "objc");
 
     // Version identifiers for OS X
     //
