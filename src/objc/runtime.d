@@ -517,10 +517,8 @@ alias void* marg_list;
  * Method selector type. Selectors are indexed pointers to a C string 
  * representing the name of the method to be called.
  */
-version (LegacyRuntime)
-    typedef immutable(char)* SEL;
-else
-    typedef objc_selector* SEL;
+typedef objc_selector* SEL;
+// Using struct even in legacy runtime to enable automatic conversions
 
 struct objc_method_description
 {
@@ -566,6 +564,7 @@ version (LegacyRuntime)
 {
     
     /** Objective-C class definition. */
+    pragma (objc_selectortarget)
     struct objc_class
     {
         
@@ -714,6 +713,7 @@ version (LegacyRuntime)
     struct objc_property;
     
     /** Definition of the base Objective-C object instance. */
+    pragma (objc_selectortarget)
     struct objc_object
     {
         
@@ -789,15 +789,21 @@ else
     
     // Modern runtime uses opaque types
     
+    pragma (objc_selectortarget)
     struct objc_class;
+    
     struct objc_method;
     struct objc_ivar;
     struct objc_category;
     struct objc_property;
+    
+    pragma (objc_selectortarget)
     struct objc_object;
-    struct objc_selector;
     
 }
+
+pragma (objc_isselector)
+struct objc_selector {}
 
 // MARK: Implementation of some part of the modern API on the Legacy Runtime
 
