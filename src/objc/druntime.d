@@ -60,3 +60,19 @@ id _dobjc_interface_cast(id obj, Protocol p)
         return obj;
     return null;
 }
+
+// Assertion check with invariant
+
+extern (C) void _dobjc_invariant(id obj)
+{
+    // BUG: needs to be filename/line of caller, not library routine
+    assert(obj !is null); // just do null check, not invariant check
+    
+    auto respondsToSelector = cast(bool __selector(SEL))"respondsToSelector:";
+    auto d_invariant = cast(void __selector())"_dobjc_invariant";
+
+    // only call invariant if object responds to selector
+    if (respondsToSelector(obj, cast(SEL)d_invariant))
+        d_invariant(obj);
+}
+
