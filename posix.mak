@@ -22,19 +22,40 @@ endif
 
 DMD=dmd
 
+MKDIR=mkdir
+
 DOCDIR=doc
 IMPDIR=import
 
 MODEL=32
 
-DFLAGS=-m$(MODEL) -O -release -inline -nofloat -w -d -Isrc -Iimport
-UDFLAGS=-m$(MODEL) -O -release -nofloat -w -d -Isrc -Iimport
+ifeq ($(BUILD),debug)
+	OPTFLAGS=-g
+	CFLAGS += -g
+else
+	OPTFLAGS=-O -release -inline
+endif
 
-CFLAGS=-m$(MODEL) -O
+DFLAGS=-m$(MODEL) $(OPTFLAGS) -nofloat -w -d -Isrc -Iimport
+UDFLAGS=-m$(MODEL) $(OPTFLAGS) -nofloat -w -d -Isrc -Iimport
+
+# Set CFLAGS 
+ifeq ($(CC),cc)
+	CFLAGS += -m$(MODEL)
+	ifneq ($(BUILD),debug)
+		CFLAGS += -O
+	endif
+endif
 
 OBJDIR=obj
+LIBDIR=lib
+JSONDIR=.
 DRUNTIME_BASE=druntime
-DRUNTIME=lib/lib$(DRUNTIME_BASE).a
+ifeq (Windows_NT,$(OS))
+	DRUNTIME=$(LIBDIR)/$(DRUNTIME_BASE).lib
+else
+	DRUNTIME=$(LIBDIR)/lib$(DRUNTIME_BASE).a
+endif
 
 DOCFMT=
 
@@ -263,12 +284,6 @@ SRC_D_MODULES = \
 	core/stdc/time \
 	core/stdc/wchar_ \
 	\
-	core/sys/posix/sys/select \
-	core/sys/posix/sys/socket \
-	core/sys/posix/sys/stat \
-	core/sys/posix/sys/wait \
-	core/sys/posix/netinet/in_ \
-	\
 	core/sync/barrier \
 	core/sync/condition \
 	core/sync/config \
@@ -287,7 +302,6 @@ SRC_D_MODULES = \
 	rt/aApply \
 	rt/aApplyR \
 	rt/adi \
-	rt/alloca \
 	rt/arrayassign \
 	rt/arraybyte \
 	rt/arraycast \
@@ -298,10 +312,7 @@ SRC_D_MODULES = \
 	rt/arrayreal \
 	rt/arrayshort \
 	rt/cast_ \
-	rt/cmath2 \
 	rt/cover \
-	rt/critical_ \
-	rt/deh2 \
 	rt/dmain2 \
 	rt/invariant \
 	rt/invariant_ \
@@ -309,7 +320,6 @@ SRC_D_MODULES = \
 	rt/llmath \
 	rt/memory \
 	rt/memset \
-	rt/monitor_ \
 	rt/obj \
 	rt/qsort \
 	rt/switch_ \
@@ -357,12 +367,43 @@ SRC_D_MODULES = \
 	rt/typeinfo/ti_void \
 	rt/typeinfo/ti_wchar
 
+SRC_D_MODULES_POSIX = \
+	core/sys/posix/sys/select \
+	core/sys/posix/sys/socket \
+	core/sys/posix/sys/stat \
+	core/sys/posix/sys/wait \
+	core/sys/posix/netinet/in_ \
+	\
+	rt/alloca \
+	rt/cmath2 \
+	rt/critical_ \
+	rt/deh2 \
+	rt/monitor_ \
+
+SRC_D_MODULES_WIN = \
+	core/sys/windows/_dll \
+	core/sys/windows/_thread \
+	core/sys/windows/dbghelp \
+	core/sys/windows/stacktrace \
+	core/sys/windows/windows \
+	\
+	rt/deh \
+
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o $(OBJDIR)/complex.o $(OBJDIR)/memory_osx.o
+ifeq (Windows_NT,$(OS))
+    SRC_D_MODULES += $(SRC_D_MODULES_WIN)
+    O = obj
+    OBJS= $(OBJDIR)/errno_c.obj $(OBJDIR)/monitor.obj $(OBJDIR)/complex.obj $(OBJDIR)/critical.obj \
+          src\rt\minit.obj
+else
+    SRC_D_MODULES += $(SRC_D_MODULES_POSIX)
+    O = o
+    OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o $(OBJDIR)/complex.o $(OBJDIR)/memory_osx.o
+endif
 
 DOCS=\
 	$(DOCDIR)/object.html \
@@ -499,22 +540,22 @@ $(IMPDIR)/core/%.di : src/core/%.d
 
 ################### C/ASM Targets ############################
 
-$(OBJDIR)/%.o : src/rt/%.c
-	@mkdir -p $(OBJDIR)
+$(OBJDIR)/%.$O : src/rt/%.c
+	@$(MKDIR) -p $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o$@
 
-$(OBJDIR)/errno_c.o : src/core/stdc/errno.c
-	@mkdir -p $(OBJDIR)
+$(OBJDIR)/errno_c.$O : src/core/stdc/errno.c
+	@$(MKDIR) -p $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o$@
 
-$(OBJDIR)/threadasm.o : src/core/threadasm.S
-	@mkdir -p $(OBJDIR)
+$(OBJDIR)/threadasm.$O : src/core/threadasm.S
+	@$(MKDIR) -p $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o$@
 
 ################### Library generation #########################
 
-$(DRUNTIME): $(OBJS) $(SRCS) win32.mak
-	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
+$(DRUNTIME): $(OBJS) $(SRCS) posix.mak
+	$(DMD) -lib -of$(DRUNTIME) -Xf$(JSONDIR)\druntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
 unittest : $(addprefix $(OBJDIR)/,$(SRC_D_MODULES)) $(DRUNTIME) $(OBJDIR)/emptymain.d
 	@echo done
@@ -539,7 +580,7 @@ $(OBJDIR)/% : src/%.d $(DRUNTIME) $(OBJDIR)/emptymain.d
 	@touch $@
 
 $(OBJDIR)/emptymain.d :
-	@mkdir -p $(OBJDIR)
+	@$(MKDIR) -p $(OBJDIR)
 	@echo 'void main(){}' >$@
 
 detab:
