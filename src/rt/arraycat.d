@@ -23,8 +23,8 @@ extern (C):
 
 byte[] _d_arraycopy(size_t size, byte[] from, byte[] to)
 {
-    debug printf("f = %p,%d, t = %p,%d, size = %d\n",
-                 from.ptr, from.length, to.ptr, to.length, size);
+    debug(PRINTF) printf("f = %p,%d, t = %p,%d, size = %d\n",
+                         from.ptr, from.length, to.ptr, to.length, size);
 
     if (to.length != from.length)
     {

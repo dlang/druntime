@@ -424,12 +424,13 @@ EXCEPTION_DISPOSITION _d_framehandler(
         ClassInfo masterClassInfo;       // Class info of the Master exception.
 
         masterClassInfo = null;           // only compute it if we need it
+        DHandlerInfo *phinfo = &handlerTable.handler_info[0]; // avoid bounds check
 
         // walk through handler table, checking each handler
         // with an index smaller than the current table_index
         for (ndx = frame.table_index; ndx != -1; ndx = prev_ndx)
         {
-            phi = &handlerTable.handler_info[ndx];
+            phi = phinfo + ndx;
             prev_ndx = phi.prev_index;
             if (phi.cioffset)
             {
@@ -794,9 +795,10 @@ void _d_local_unwind(DHandlerTable *handler_table,
         push    dword ptr FS:_except_list;
         mov     FS:_except_list,ESP;
     }
+    DHandlerInfo *phinfo = &handler_table.handler_info[0]; // avoid bounds check
     for (i = frame.table_index; i != -1 && i != stop_index; i = phi.prev_index)
     {
-        phi = &handler_table.handler_info[i];
+        phi = phinfo + i;
         if (phi.finally_code)
         {
             // Note that it is unnecessary to adjust the ESP, as the finally block

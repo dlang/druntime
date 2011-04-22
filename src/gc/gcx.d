@@ -25,6 +25,7 @@ module gc.gcx;
 //debug = SENTINEL;             // add underrun/overrrun protection
 //debug = PTRCHECK;             // more pointer checking
 //debug = PTRCHECK2;            // thorough but slow pointer checking
+//debug = GCXINVARIANT;         // more invariants (seem not thread safe)
 
 /*************** Configuration *********************/
 
@@ -1549,6 +1550,7 @@ struct Gcx
     void Invariant() { }
 
 
+    debug(GCXINVARIANT)
     invariant()
     {
         if (inited)
