@@ -571,6 +571,10 @@ $(addprefix $(OBJDIR)/,$(DISABLED_TESTS)) :
 
 $(OBJDIR)/% : src/%.d $(DRUNTIME) $(OBJDIR)/emptymain.d
 	@echo Testing $@
+ifeq (Windows_NT,$(OS))
+	@$(DMD) $(UDFLAGS) -unittest $(subst /,\,-of$@ -map $@.map $(OBJDIR)/emptymain.d) $< -debuglib=$(DRUNTIME_BASE) -defaultlib=$(DRUNTIME_BASE)
+	@$(RUN) $@
+else
 	@$(DMD) $(UDFLAGS) -unittest -of$@ $(OBJDIR)/emptymain.d $< -L-Llib -debuglib=$(DRUNTIME_BASE) -defaultlib=$(DRUNTIME_BASE)
 # make the file very old so it builds and runs again if it fails
 	@touch -t 197001230123 $@
@@ -578,10 +582,15 @@ $(OBJDIR)/% : src/%.d $(DRUNTIME) $(OBJDIR)/emptymain.d
 	@$(RUN) $@
 # succeeded, render the file new again
 	@touch $@
+endif	
 
 $(OBJDIR)/emptymain.d :
 	@$(MKDIR) -p $(OBJDIR)
+ifeq (Windows_NT,$(OS))
+	@echo void main(){} >$@
+else
 	@echo 'void main(){}' >$@
+endif
 
 detab:
 	detab $(MANIFEST)

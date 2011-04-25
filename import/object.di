@@ -355,6 +355,9 @@ extern (C)
     void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...);
 }
 
+extern (C) void _d_monitorenter(Object h);
+extern (C) void _d_monitorexit(Object h);
+
 struct AssociativeArray(Key, Value)
 {
     void* p;
