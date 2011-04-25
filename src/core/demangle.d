@@ -1342,6 +1342,11 @@ char[] demangle( const(char)[] buf, char[] dst = null )
     return d();
 }
 
+char[] demangle( const(char)[] buf, bool addType_, char[] dst = null )
+{
+    auto d = Demangle(buf, addType_ ? Demangle.AddType.yes : Demangle.AddType.no, dst);
+    return d();
+} 
 
 unittest
 {
