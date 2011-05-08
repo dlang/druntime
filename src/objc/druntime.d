@@ -90,3 +90,152 @@ extern (C) void _dobjc_invariant(id obj)
         d_invariant(obj);
 }
 
+// Exception wrapping
+
+private
+{
+    extern (Objective-C)
+    class NSObject
+    {
+        static NSObject alloc() [alloc];
+        this() [init];
+        NSString description() [description];
+    }
+    
+    extern (Objective-C)
+    class NSDictionary
+    {
+        static NSObject alloc() [alloc];
+        this() [init];
+        NSString description() [description];
+    }
+
+    extern (Objective-C)
+    pragma (objc_takestringliteral) 
+    class NSString : NSObject
+    {
+        enum Encoding { UTF8 = 4 }
+        this(const(char)*, size_t, Encoding) [initWithBytes:length:encoding:];
+    }
+    
+    extern (Objective-C)
+    class NSException : NSObject
+    {
+        this(NSString name, NSString reason, NSDictionary userInfo) [initWithName:reason:userInfo:];
+        NSString name() @property [name];
+        NSString reason() @property [reason];
+    }
+
+    // D throwable wrapped in an Objective-C exception
+    final class D_ThrowableWrapper : NSException
+    {
+        Throwable throwable;
+        
+        this(Throwable t)
+        {
+            throwable = t;
+            super(null, null, null);
+        }
+        
+        override NSString name() @property
+        {
+            string s = throwable.classinfo.name;
+            return new NSString(s.ptr, s.length, NSString.Encoding.UTF8);
+        }
+        
+        override NSString reason() @property
+        {
+            string s = throwable.toString();
+            return new NSString(s.ptr, s.length, NSString.Encoding.UTF8);
+        }
+    }
+
+    extern (C) void objc_exception_throw(id obj);
+}
+
+/**
+ * Throw D exception in the Objective-C exception mechanism
+ */
+ private extern(C) void printf(const char *);
+extern (C) void _dobjc_throwAs_objc(Throwable throwable)
+{
+    printf("x \n");
+    // check if this is a wrapped Objective-C exception
+    // using direct classinfo comparison because wrapper class is final
+    if (throwable.classinfo is ObjcExceptionWrapper.classinfo)
+    {
+    printf("y \n");
+        auto wrapper = cast(ObjcExceptionWrapper)cast(void*)throwable;
+        objc_exception_throw(wrapper.except); // unwrap!
+    }
+    
+//    printf("z \n");
+//    if (throwable) printf("throwable \n");
+    auto e = new D_ThrowableWrapper(throwable);
+//    if (e) printf("ex");
+    auto i = cast(id)e;
+//    if (i) printf("i");
+    objc_exception_throw(i);
+}
+
+private
+{
+    // Objective-C exception wrapped in an D throwable
+    final class ObjcExceptionWrapper : ObjcThrowable
+    {
+        id except;
+        
+        this(id except, Throwable next = null)
+        {
+            this.except = except;
+            super("Objective-C wrapped exception", next);
+        }
+        
+        override string toString()
+        {
+            auto description = cast(NSString __selector())"description";
+            auto utf8String = cast(const(char)* __selector())"UTF8String";
+            auto length = cast(size_t __selector())"length";
+            auto desc = description(except);
+            auto str = utf8String(desc);
+            return str[0..length(desc)].idup;
+        }
+    }
+}
+
+/**
+ * Throw Objective-C exception in the D exception mechanism
+ */
+extern (C) void _dobjc_throwAs_d(NSObject except) {
+    // check if this is a wrapped D exception
+    if (except.class is D_ThrowableWrapper.class)
+    {
+        auto wrapper = cast(D_ThrowableWrapper)cast(void*)except;
+        throw wrapper.throwable; // unwrap!
+    }
+    
+    throw new ObjcExceptionWrapper(cast(id)except);
+}
+
+/**
+ * Extract Objective-C exception from wrapper.
+ */
+extern (C) id _dobjc_exception_extract(ObjcExceptionWrapper wrapper) {
+    return wrapper.except;
+}
+
+// Legacy Objective-C runtime. Note: can throw Objective-C exceptions, which is
+// why it is marked as extern(Objective-C) instead of extern(C).
+version (X86)
+private extern(Objective-C) int objc_exception_match(Class, id);
+
+/**
+ * Determine which catch handler class matches a specific Objective-C object,
+ * return -1 if no match.
+ */
+extern (C) size_t _dobjc_exception_select(id ex, Class[] clist) {
+    foreach (i, c; clist)
+        if (objc_exception_match(c, ex))
+            return i;
+    return -1;
+}

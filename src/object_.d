@@ -1413,6 +1413,18 @@ unittest
 }
 
 
+version (D_ObjC)
+{
+    abstract class ObjcThrowable : Throwable 
+    {
+        protected this(string msg, Throwable next = null)
+        {
+            super(msg, null, 0, next);
+        }
+    }
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // ModuleInfo
 ///////////////////////////////////////////////////////////////////////////////
