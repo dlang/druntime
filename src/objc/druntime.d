@@ -114,6 +114,8 @@ private
     pragma (objc_takestringliteral) 
     class NSString : NSObject
     {
+        private Class _isa;
+        
         enum Encoding { UTF8 = 4 }
         this(const(char)*, size_t, Encoding) [initWithBytes:length:encoding:];
     }
@@ -121,9 +123,18 @@ private
     extern (Objective-C)
     class NSException : NSObject
     {
+        private {
+            NSString _name;
+            NSString _reason;
+            NSDictionary _userInfo;
+            id _reserved;
+        }
+    
         this(NSString name, NSString reason, NSDictionary userInfo) [initWithName:reason:userInfo:];
         NSString name() @property [name];
         NSString reason() @property [reason];
+        
+        void raise() [raise];
     }
 
     // D throwable wrapped in an Objective-C exception
@@ -150,32 +161,20 @@ private
         }
     }
 
-    extern (C) void objc_exception_throw(id obj);
+    extern (Objective-C) void objc_exception_throw(id obj);
 }
 
 /**
  * Throw D exception in the Objective-C exception mechanism
  */
- private extern(C) void printf(const char *);
-extern (C) void _dobjc_throwAs_objc(Throwable throwable)
+extern (Objective-C) void _dobjc_throwAs_objc(Throwable throwable)
 {
-    printf("x \n");
     // check if this is a wrapped Objective-C exception
-    // using direct classinfo comparison because wrapper class is final
-    if (throwable.classinfo is ObjcExceptionWrapper.classinfo)
-    {
-    printf("y \n");
-        auto wrapper = cast(ObjcExceptionWrapper)cast(void*)throwable;
+    auto wrapper = cast(ObjcExceptionWrapper)throwable;
+    if (wrapper)
         objc_exception_throw(wrapper.except); // unwrap!
-    }
     
-//    printf("z \n");
-//    if (throwable) printf("throwable \n");
-    auto e = new D_ThrowableWrapper(throwable);
-//    if (e) printf("ex");
-    auto i = cast(id)e;
-//    if (i) printf("i");
-    objc_exception_throw(i);
+    objc_exception_throw(cast(id)new D_ThrowableWrapper(throwable));
 }
 
 private
@@ -206,13 +205,12 @@ private
 /**
  * Throw Objective-C exception in the D exception mechanism
  */
-extern (C) void _dobjc_throwAs_d(NSObject except) {
+extern (C) void _dobjc_throwAs_d(NSObject except)
+{
     // check if this is a wrapped D exception
-    if (except.class is D_ThrowableWrapper.class)
-    {
-        auto wrapper = cast(D_ThrowableWrapper)cast(void*)except;
+    auto wrapper = cast(D_ThrowableWrapper)except;
+    if (wrapper)
         throw wrapper.throwable; // unwrap!
-    }
     
     throw new ObjcExceptionWrapper(cast(id)except);
 }
