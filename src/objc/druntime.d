@@ -94,49 +94,6 @@ extern (C) void _dobjc_invariant(id obj)
 
 private
 {
-    extern (Objective-C)
-    class NSObject
-    {
-        static NSObject alloc() [alloc];
-        this() [init];
-        NSString description() [description];
-    }
-    
-    extern (Objective-C)
-    class NSDictionary
-    {
-        static NSObject alloc() [alloc];
-        this() [init];
-        NSString description() [description];
-    }
-
-    extern (Objective-C)
-    pragma (objc_takestringliteral) 
-    class NSString : NSObject
-    {
-        private Class _isa;
-        
-        enum Encoding { UTF8 = 4 }
-        this(const(char)*, size_t, Encoding) [initWithBytes:length:encoding:];
-    }
-    
-    extern (Objective-C)
-    class NSException : NSObject
-    {
-        private {
-            NSString _name;
-            NSString _reason;
-            NSDictionary _userInfo;
-            id _reserved;
-        }
-    
-        this(NSString name, NSString reason, NSDictionary userInfo) [initWithName:reason:userInfo:];
-        NSString name() @property [name];
-        NSString reason() @property [reason];
-        
-        void raise() [raise];
-    }
-
     // D throwable wrapped in an Objective-C exception
     final class D_ThrowableWrapper : NSException
     {
@@ -161,7 +118,7 @@ private
         }
     }
 
-    extern (Objective-C) void objc_exception_throw(id obj);
+    extern (Objective-C) void objc_exception_throw(NSObject obj);
 }
 
 /**
@@ -174,7 +131,7 @@ extern (Objective-C) void _dobjc_throwAs_objc(Throwable throwable)
     if (wrapper)
         objc_exception_throw(wrapper.except); // unwrap!
     
-    objc_exception_throw(cast(id)new D_ThrowableWrapper(throwable));
+    objc_exception_throw(new D_ThrowableWrapper(throwable));
 }
 
 private
@@ -182,9 +139,9 @@ private
     // Objective-C exception wrapped in an D throwable
     final class ObjcExceptionWrapper : ObjcThrowable
     {
-        id except;
+        NSException except;
         
-        this(id except, Throwable next = null)
+        this(NSException except, Throwable next = null)
         {
             this.except = except;
             super("Objective-C wrapped exception", next);
@@ -192,12 +149,8 @@ private
         
         override string toString()
         {
-            auto description = cast(NSString __selector())"description";
-            auto utf8String = cast(const(char)* __selector())"UTF8String";
-            auto length = cast(size_t __selector())"length";
-            auto desc = description(except);
-            auto str = utf8String(desc);
-            return str[0..length(desc)].idup;
+            auto desc = except.description;
+            return desc.utf8String[0..desc.length].idup;
         }
     }
 }
@@ -205,20 +158,21 @@ private
 /**
  * Throw Objective-C exception in the D exception mechanism
  */
-extern (C) void _dobjc_throwAs_d(NSObject except)
+extern (C) void _dobjc_throwAs_d(NSException except)
 {
     // check if this is a wrapped D exception
     auto wrapper = cast(D_ThrowableWrapper)except;
     if (wrapper)
         throw wrapper.throwable; // unwrap!
     
-    throw new ObjcExceptionWrapper(cast(id)except);
+    throw new ObjcExceptionWrapper(except);
 }
 
 /**
  * Extract Objective-C exception from wrapper.
  */
-extern (C) id _dobjc_exception_extract(ObjcExceptionWrapper wrapper) {
+extern (C) NSException _dobjc_exception_extract(ObjcExceptionWrapper wrapper)
+{
     return wrapper.except;
 }
 
@@ -231,9 +185,59 @@ private extern(Objective-C) int objc_exception_match(Class, id);
  * Determine which catch handler class matches a specific Objective-C object,
  * return -1 if no match.
  */
-extern (C) size_t _dobjc_exception_select(id ex, Class[] clist) {
+extern (C) size_t _dobjc_exception_select(id ex, Class[] clist)
+{
     foreach (i, c; clist)
         if (objc_exception_match(c, ex))
             return i;
     return -1;
+}
+
+private:
+
+// Minimal declarations of some Foundation classes necessary for the 
+// implementtion of this module.
+
+extern (Objective-C)
+class NSObject
+{
+    static NSObject alloc() [alloc];
+    this() [init];
+    NSString description() [description];
+}
+
+extern (Objective-C)
+pragma (objc_takestringliteral) 
+class NSString : NSObject
+{
+    private Class _isa;
+    
+    enum Encoding { UTF8 = 4 }
+    this(const(char)*, size_t, Encoding) [initWithBytes:length:encoding:];
+    size_t length() @property [length];
+    const(char)* utf8String() @property [UTF8String];
+}
+
+extern (Objective-C)
+class NSDictionary
+{
+    static NSObject alloc() [alloc];
+    this() [init];
+    NSString description() [description];
+}
+
+extern (Objective-C)
+class NSException : NSObject
+{
+    private
+    {
+        NSString _name;
+        NSString _reason;
+        NSDictionary _userInfo;
+        id _reserved;
+    }
+
+    this(NSString name, NSString reason, NSDictionary userInfo) [initWithName:reason:userInfo:];
+    NSString name() @property [name];
+    NSString reason() @property [reason];
 }
