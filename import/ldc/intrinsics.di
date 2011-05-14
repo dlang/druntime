@@ -267,7 +267,7 @@ pragma(intrinsic, "llvm.atomic.swap.i#.p0i#")
 // the original value at ptr.
 
 pragma(intrinsic, "llvm.atomic.load.add.i#.p0i#")
-    T llvm_atomic_load_add(T)(shared const T* ptr, T val);
+    T llvm_atomic_load_add(T)(T* ptr, T val);
 
 // This intrinsic subtracts delta to the value stored in memory at ptr. It
 // yields the original value at ptr.
