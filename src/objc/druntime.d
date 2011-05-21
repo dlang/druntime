@@ -94,6 +94,7 @@ extern (C) void _dobjc_invariant(id obj)
 
 private
 {
+    extern (C)void printf(const(char)*);
     // D throwable wrapped in an Objective-C exception
     final class D_ThrowableWrapper : NSException
     {
@@ -101,20 +102,22 @@ private
         
         this(Throwable t)
         {
+            printf("D_ThrowableWrapper.this(Throwable t) \n");
             throwable = t;
-            super(null, null, null);
+            
+            auto dname = throwable.classinfo.name;
+            auto name = new NSString(dname.ptr, dname.length, NSString.Encoding.UTF8);
+            
+            auto ddesc = throwable.toString();
+            auto reason = new NSString(ddesc.ptr, ddesc.length, NSString.Encoding.UTF8);
+            
+            super("D exception", "D reaseon", null);
         }
         
-        override NSString name() @property
+        override NSString description() @property [description]
         {
-            string s = throwable.classinfo.name;
-            return new NSString(s.ptr, s.length, NSString.Encoding.UTF8);
-        }
-        
-        override NSString reason() @property
-        {
-            string s = throwable.toString();
-            return new NSString(s.ptr, s.length, NSString.Encoding.UTF8);
+            printf("NSString D_ThrowableWrapper.description() \n");
+            return new NSString("hello", 5, NSString.Encoding.UTF8);
         }
     }
 
@@ -203,7 +206,7 @@ class NSObject
 {
     static NSObject alloc() [alloc];
     this() [init];
-    NSString description() [description];
+    NSString description() @property [description];
 }
 
 extern (Objective-C)
@@ -213,7 +216,7 @@ class NSString : NSObject
     private Class _isa;
     
     enum Encoding { UTF8 = 4 }
-    this(const(char)*, size_t, Encoding) [initWithBytes:length:encoding:];
+    this(const(char)*, size_t, Encoding) [initWithBytes:length:encodingx:];
     size_t length() @property [length];
     const(char)* utf8String() @property [UTF8String];
 }
@@ -223,7 +226,6 @@ class NSDictionary
 {
     static NSObject alloc() [alloc];
     this() [init];
-    NSString description() [description];
 }
 
 extern (Objective-C)
@@ -238,6 +240,4 @@ class NSException : NSObject
     }
 
     this(NSString name, NSString reason, NSDictionary userInfo) [initWithName:reason:userInfo:];
-    NSString name() @property [name];
-    NSString reason() @property [reason];
 }
