@@ -13,7 +13,7 @@
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-module objc.druntime;
+module objc.dobjc;
 
 version (D_ObjC) {}
 else static assert(0, "Compiler does not support the Objective-C object model");
@@ -94,7 +94,6 @@ extern (C) void _dobjc_invariant(id obj)
 
 private
 {
-    extern (C)void printf(const(char)*);
     // D throwable wrapped in an Objective-C exception
     final class D_ThrowableWrapper : NSException
     {
@@ -102,7 +101,6 @@ private
         
         this(Throwable t)
         {
-            printf("D_ThrowableWrapper.this(Throwable t) \n");
             throwable = t;
             
             auto dname = throwable.classinfo.name;
@@ -116,7 +114,6 @@ private
         
         override NSString description() @property [description]
         {
-            printf("NSString D_ThrowableWrapper.description() \n");
             return new NSString("hello", 5, NSString.Encoding.UTF8);
         }
     }
@@ -216,7 +213,7 @@ class NSString : NSObject
     private Class _isa;
     
     enum Encoding { UTF8 = 4 }
-    this(const(char)*, size_t, Encoding) [initWithBytes:length:encodingx:];
+    this(const(char)*, size_t, Encoding) [initWithBytes:length:encoding:];
     size_t length() @property [length];
     const(char)* utf8String() @property [UTF8String];
 }

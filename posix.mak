@@ -486,12 +486,12 @@ ifeq ($(D_OBJC),1)
 # Files to add for Objective-C support
 
 MANIFEST:=$(MANIFEST) \
-	src/objc/druntime.d \
+	src/objc/dobjc.d \
 	src/objc/runtime.d \
 	src/objc/types.d
 
 SRC_D_MODULES:=$(SRC_D_MODULES) \
-	objc/druntime \
+	objc/dobjc \
 	objc/runtime \
 	objc/types
 
