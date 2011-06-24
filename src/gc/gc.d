@@ -19,6 +19,8 @@ private
     import gc.gcstats;
     import core.stdc.stdlib;
 
+    alias core.stdc.stdlib.malloc malloc;
+
     version = GCCLASS;
 
     version( GCCLASS )

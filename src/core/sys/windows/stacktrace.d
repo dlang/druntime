@@ -23,6 +23,9 @@ import core.sys.windows.dbghelp;
 import core.sys.windows.windows;
 import core.stdc.stdio;
 
+alias core.stdc.string.strlen strlen;
+alias core.stdc.stdlib.free free;
+
 
 extern(Windows)
 {
