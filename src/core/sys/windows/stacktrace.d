@@ -23,10 +23,6 @@ import core.sys.windows.dbghelp;
 import core.sys.windows.windows;
 import core.stdc.stdio;
 
-alias core.stdc.string.strlen strlen;
-alias core.stdc.stdlib.free free;
-
-
 extern(Windows)
 {
     DWORD GetEnvironmentVariableA(LPCSTR lpName, LPSTR pBuffer, DWORD nSize);
@@ -351,10 +347,10 @@ private:
                     if( dbghelp.SymGetLineFromAddr64( hProcess, stackframe.AddrPC.Offset, &displacement, &line ) == TRUE )
                     {
                         char[2048] demangleBuf;
-                        auto       symbolName = (cast(char*) symbol.Name.ptr)[0 .. strlen(symbol.Name.ptr)];
+                        auto       symbolName = (cast(char*) symbol.Name.ptr)[0 .. core.stdc.string.strlen(symbol.Name.ptr)];
 
                         // displacement bytes from beginning of line
-                        trace ~= line.FileName[0 .. strlen( line.FileName )] ~
+                        trace ~= line.FileName[0 .. core.stdc.string.strlen( line.FileName )] ~
                                  "(" ~ format( temp[], line.LineNumber ) ~ "): " ~
                                  demangle( symbolName, demangleBuf );
                     }
@@ -367,7 +363,7 @@ private:
                 }
             }
         }
-        free( symbol );
+        core.stdc.stdlib.free( symbol );
         return trace;
     }
 
