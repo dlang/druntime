@@ -23,6 +23,7 @@ import core.sys.windows.dbghelp;
 import core.sys.windows.windows;
 import core.stdc.stdio;
 
+
 extern(Windows)
 {
     DWORD GetEnvironmentVariableA(LPCSTR lpName, LPSTR pBuffer, DWORD nSize);
