@@ -108,6 +108,7 @@ MANIFEST= \
 	src/core/sys/posix/fcntl.d \
 	src/core/sys/posix/inttypes.d \
 	src/core/sys/posix/net/if_.d \
+	src/core/sys/posix/netdb.d \
 	src/core/sys/posix/poll.d \
 	src/core/sys/posix/pthread.d \
 	src/core/sys/posix/pwd.d \
@@ -237,6 +238,8 @@ MANIFEST= \
 	src/rt/util/string.d \
 	src/rt/util/utf.d
 
+GC_MODULES = gc/gc gc/gcalloc gc/gcbits gc/gcstats gc/gcx
+
 SRC_D_MODULES = \
 	object_ \
 	\
@@ -270,6 +273,7 @@ SRC_D_MODULES = \
 	core/sys/posix/sys/socket \
 	core/sys/posix/sys/stat \
 	core/sys/posix/sys/wait \
+	core/sys/posix/netdb \
 	core/sys/posix/netinet/in_ \
 	\
 	core/sync/barrier \
@@ -280,11 +284,7 @@ SRC_D_MODULES = \
 	core/sync/rwmutex \
 	core/sync/semaphore \
 	\
-	gc/gc \
-	gc/gcalloc \
-	gc/gcbits \
-	gc/gcstats \
-	gc/gcx \
+	$(GC_MODULES) \
 	\
 	rt/aaA \
 	rt/aApply \
@@ -443,6 +443,7 @@ IMPORTS=\
 	$(IMPDIR)/core/sys/posix/dlfcn.di \
 	$(IMPDIR)/core/sys/posix/fcntl.di \
 	$(IMPDIR)/core/sys/posix/inttypes.di \
+	$(IMPDIR)/core/sys/posix/netdb.di \
 	$(IMPDIR)/core/sys/posix/poll.di \
 	$(IMPDIR)/core/sys/posix/pthread.di \
 	$(IMPDIR)/core/sys/posix/pwd.di \
