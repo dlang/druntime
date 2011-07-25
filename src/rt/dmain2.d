@@ -43,7 +43,7 @@ version (all)
 {
     extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null);
 
-    extern (C) void _d_createTrace(Object *o)
+    extern (C) void _d_createTrace(Object o)
     {
         auto t = cast(Throwable) o;
 

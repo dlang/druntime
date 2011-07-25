@@ -307,8 +307,8 @@ extern (C) bool runModuleUnitTests()
             void*[MAXFRAMES]  callstack;
             int               numframes;
 
-            numframes = backtrace( callstack, MAXFRAMES );
-            backtrace_symbols_fd( callstack, numframes, 2 );
+            numframes = backtrace( callstack.ptr, MAXFRAMES );
+            backtrace_symbols_fd( callstack.ptr, numframes, 2 );
         }
 
         sigaction_t action = void;
@@ -388,15 +388,15 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
     static if( __traits( compiles, backtrace ) )
     {
-        class DefaultTraceInfo : Throwable.TraceInfo
+        static class DefaultTraceInfo : Throwable.TraceInfo
         {
             this()
             {
                 static enum MAXFRAMES = 128;
                 void*[MAXFRAMES]  callstack;
 
-                numframes = backtrace( callstack, MAXFRAMES );
-                framelist = backtrace_symbols( callstack, numframes );
+                numframes = backtrace( callstack.ptr, MAXFRAMES );
+                framelist = backtrace_symbols( callstack.ptr, numframes );
             }
 
             ~this()
@@ -458,7 +458,10 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
             char**  framelist;
 
         private:
-            char[4096] fixbuf;
+            version( OSX )
+                char[2028] fixbuf;
+            else
+                char[4096] fixbuf;
             char[] fixline( char[] buf )
             {
                 version( OSX )
