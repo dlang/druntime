@@ -388,7 +388,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
     static if( __traits( compiles, backtrace ) )
     {
-        class DefaultTraceInfo : Throwable.TraceInfo
+        static class DefaultTraceInfo : Throwable.TraceInfo
         {
             this()
             {
@@ -458,7 +458,10 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
             char**  framelist;
 
         private:
-            char[4096] fixbuf;
+            version( OSX )
+                char[2028] fixbuf;
+            else
+                char[4096] fixbuf;
             char[] fixline( char[] buf )
             {
                 version( OSX )
