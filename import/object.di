@@ -359,6 +359,10 @@ struct AssociativeArray(Key, Value)
 {
     void* p;
 
+    enum Value[Key] init = null;
+
+    enum stringof = Value.stringof ~ "[" ~ Key.stringof ~ "]";
+
     size_t length() @property { return _aaLen(p); }
 
     Value[Key] rehash() @property

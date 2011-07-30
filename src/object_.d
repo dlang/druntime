@@ -2465,6 +2465,10 @@ struct AssociativeArray(Key, Value)
 {
     void* p;
 
+    enum Value[Key] init = null;
+
+    enum stringof = Value.stringof ~ "[" ~ Key.stringof ~ "]";
+
     size_t length() @property { return _aaLen(p); }
 
     Value[Key] rehash() @property
@@ -2546,6 +2550,13 @@ unittest
     const a = [4:0];
     const b = [4:0];
     assert(a == b);
+}
+
+unittest
+{
+    string[string] aa;
+    static assert(is(typeof(aa.init) == string[string]));   // 4723
+    static assert(aa.stringof == "string[string]");         // 5029
 }
 
 void clear(T)(T obj) if (is(T == class))
