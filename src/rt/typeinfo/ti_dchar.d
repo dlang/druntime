@@ -34,7 +34,7 @@ class TypeInfo_w : TypeInfo
         return *cast(dchar *)p1 - *cast(dchar *)p2;
     }
 
-    override size_t tsize()
+    @property override size_t tsize() nothrow pure
     {
         return dchar.sizeof;
     }
@@ -48,7 +48,7 @@ class TypeInfo_w : TypeInfo
         *cast(dchar *)p2 = t;
     }
 
-    override void[] init()
+    nothrow pure override void[] init()
     {   static immutable dchar c;
 
         return (cast(dchar *)&c)[0 .. 1];
