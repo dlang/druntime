@@ -354,7 +354,7 @@ extern (C) int main(int argc, char** argv)
     version (Windows)
     {
         wchar_t*  wcbuf = GetCommandLineW();
-        size_t    wclen = wcslen(wcbuf);
+        int 	  wclen = cast(int) wcslen(wcbuf);
         int       wargc = 0;
         wchar_t** wargs = CommandLineToArgvW(wcbuf, &wargc);
         assert(wargc == argc);
@@ -367,7 +367,7 @@ extern (C) int main(int argc, char** argv)
 
         for (size_t i = 0, p = 0; i < wargc; i++)
         {
-            int wlen = wcslen(wargs[i]);
+            int wlen = cast(int) wcslen(wargs[i]);
             int clen = WideCharToMultiByte(65001, 0, &wargs[i][0], wlen, null, 0, null, 0);
             args[i]  = cargp[p .. p+clen];
             p += clen; assert(p <= cargl);

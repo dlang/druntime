@@ -334,8 +334,8 @@ extern (C) bool runModuleUnitTests()
         {
             version( Windows )
             {
-                uint count = void;
-                WriteFile( GetStdHandle( 0xfffffff5 ), val.ptr, val.length, &count, null );
+                DWORD count = void;
+                WriteFile( GetStdHandle( 0xfffffff5 ), val.ptr, cast(uint)val.length, &count, null );
             }
             else version( Posix )
             {
