@@ -70,6 +70,8 @@ extern (C) void _minit();
 extern (C) void _moduleCtor();
 extern (C) void _moduleDtor();
 extern (C) void thread_joinAll();
+extern (C) void rt_lifetimeInit();
+extern (C) void rt_lifetimeTerm();
 
 version (OSX)
 {
@@ -256,6 +258,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         initStaticDataGC();
         version (Windows)
             _minit();
+        rt_lifetimeInit();
         _moduleCtor();
         _moduleTlsCtor();
         runModuleUnitTests();
@@ -289,6 +292,7 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
         thread_joinAll();
         _d_isHalting = true;
         _moduleDtor();
+        rt_lifetimeTerm();
         gc_term();
         return true;
     }
@@ -502,6 +506,7 @@ extern (C) int main(int argc, char** argv)
         initStaticDataGC();
         version (Windows)
             _minit();
+        rt_lifetimeInit();
         _moduleCtor();
         _moduleTlsCtor();
         if (runModuleUnitTests())
@@ -512,6 +517,7 @@ extern (C) int main(int argc, char** argv)
         thread_joinAll();
         _d_isHalting = true;
         _moduleDtor();
+        rt_lifetimeTerm();
         gc_term();
     }
 
