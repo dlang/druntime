@@ -392,14 +392,14 @@ else
 }
 
 static __gshared size_t __blkcache_offset;
-shared static this()
+extern(C) void rt_lifetimeInit()
 {
     void[] tls = thread_getTLSBlock();
     __blkcache_offset = (cast(void *)&__blkcache_storage) - tls.ptr;
 }
 
 // called when thread is exiting.
-static ~this()
+extern(C) void rt_lifetimeTerm()
 {
     // free the blkcache
     if(__blkcache_storage)
