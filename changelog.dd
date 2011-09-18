@@ -1,7 +1,18 @@
+$(VERSION 055, mmm dd, 2011, =================================================,
+
+    $(RUNTIMEBUGSFIXED
+$(LI $(BUGZILLA 5967): Mangling of ArgClose for variadic function is swapped)
+$(LI $(BUGZILLA 6493): Source code for the doc of core.time points to std.datetime.)
+$(LI $(BUGZILLA 6466): core.demangle incorrect demangling of variables)
+    )
+)
 $(VERSION 054, mmm dd, 2011, =================================================,
 
     $(WHATSNEW
 $(LI Added core.sys.posix.netdb)
+$(LI For functions which have a version which takes a core.time.Duration
+     and another version which takes an integral value, the version which
+     takes an integral value is now scheduled for deprecation.)
     )
     $(RUNTIMEBUGSFIXED
 $(LI $(BUGZILLA 4323): std.demangle incorrectly handles template floating point numbers)

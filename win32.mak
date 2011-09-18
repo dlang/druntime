@@ -73,6 +73,7 @@ MANIFEST= \
 	src\core\sync\rwmutex.d \
 	src\core\sync\semaphore.d \
 	\
+	src\core\sys\osx\pthread.d \
 	src\core\sys\osx\mach\dyld.d \
 	src\core\sys\osx\mach\getsect.d \
 	src\core\sys\osx\mach\kern_return.d \
@@ -87,6 +88,7 @@ MANIFEST= \
 	src\core\sys\posix\fcntl.d \
 	src\core\sys\posix\inttypes.d \
 	src\core\sys\posix\net\if_.d \
+	src\core\sys\posix\netdb.d \
 	src\core\sys\posix\poll.d \
 	src\core\sys\posix\pthread.d \
 	src\core\sys\posix\pwd.d \
@@ -116,6 +118,7 @@ MANIFEST= \
 	src\core\sys\posix\sys\time.d \
 	src\core\sys\posix\sys\types.d \
 	src\core\sys\posix\sys\uio.d \
+	src\core\sys\posix\sys\un.d \
 	src\core\sys\posix\sys\wait.d \
 	\
 	src\core\sys\windows\dbghelp.d \
@@ -213,7 +216,6 @@ MANIFEST= \
 	src\rt\typeinfo\ti_wchar.d \
 	\
 	src\rt\util\console.d \
-	src\rt\util\ctype.d \
 	src\rt\util\hash.d \
 	src\rt\util\string.d \
 	src\rt\util\utf.d
@@ -296,7 +298,6 @@ SRCS= \
 	src\rt\trace.d \
 	\
 	src\rt\util\console.d \
-	src\rt\util\ctype.d \
 	src\rt\util\hash.d \
 	src\rt\util\string.d \
 	src\rt\util\utf.d \
@@ -421,6 +422,7 @@ IMPORTS=\
 	$(IMPDIR)\core\sys\posix\dlfcn.di \
 	$(IMPDIR)\core\sys\posix\fcntl.di \
 	$(IMPDIR)\core\sys\posix\inttypes.di \
+	$(IMPDIR)\core\sys\posix\netdb.di \
 	$(IMPDIR)\core\sys\posix\poll.di \
 	$(IMPDIR)\core\sys\posix\pthread.di \
 	$(IMPDIR)\core\sys\posix\pwd.di \
@@ -668,6 +670,9 @@ $(IMPDIR)\core\sys\posix\fcntl.di : src\core\sys\posix\fcntl.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\sys\posix\inttypes.di : src\core\sys\posix\inttypes.d
+	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+
+$(IMPDIR)\core\sys\posix\netdb.di : src\core\sys\posix\netdb.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\sys\posix\net\if_.di : src\core\sys\posix\net\if_.d

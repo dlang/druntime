@@ -138,6 +138,7 @@ MANIFEST= \
 	src/core/sys/posix/sys/time.d \
 	src/core/sys/posix/sys/types.d \
 	src/core/sys/posix/sys/uio.d \
+	src/core/sys/posix/sys/un.d \
 	src/core/sys/posix/sys/wait.d \
 	\
 	src/core/sys/windows/dbghelp.d \
@@ -233,7 +234,6 @@ MANIFEST= \
 	src/rt/typeinfo/ti_wchar.d \
 	\
 	src/rt/util/console.d \
-	src/rt/util/ctype.d \
 	src/rt/util/hash.d \
 	src/rt/util/string.d \
 	src/rt/util/utf.d
@@ -319,7 +319,6 @@ SRC_D_MODULES = \
 	rt/trace \
 	\
 	rt/util/console \
-	rt/util/ctype \
 	rt/util/hash \
 	rt/util/string \
 	rt/util/utf \
@@ -473,6 +472,7 @@ IMPORTS=\
 	$(IMPDIR)/core/sys/posix/sys/time.di \
 	$(IMPDIR)/core/sys/posix/sys/types.di \
 	$(IMPDIR)/core/sys/posix/sys/uio.di \
+	$(IMPDIR)/core/sys/posix/sys/un.di \
 	$(IMPDIR)/core/sys/posix/sys/wait.di \
 	\
 	$(IMPDIR)/core/sys/windows/dbghelp.di \
@@ -518,7 +518,7 @@ $(OBJDIR)/errno_c.o : src/core/stdc/errno.c
 
 $(OBJDIR)/threadasm.o : src/core/threadasm.S
 	@mkdir -p $(OBJDIR)
-	$(CC) -c $(CFLAGS) $< -o$@
+	$(CC) -Wa,-noexecstack -c $(CFLAGS) $< -o$@
 
 ################### Library generation #########################
 

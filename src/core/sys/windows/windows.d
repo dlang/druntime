@@ -68,6 +68,8 @@ extern (Windows)
     alias int INT;
     alias uint UINT;
     alias uint *PUINT;
+    
+    alias size_t SIZE_T;
 
 // ULONG_PTR must be able to store a pointer as an integral type
 version (Win64)
@@ -93,7 +95,7 @@ else // Win32
     alias uint * PULONG_PTR;
 }
 
-    typedef void *HANDLE;
+    alias void *HANDLE;
     alias void *PVOID;
     alias HANDLE HGLOBAL;
     alias HANDLE HLOCAL;
@@ -639,49 +641,49 @@ enum
     REG_LEGAL_OPTION = (REG_OPTION_RESERVED | REG_OPTION_NON_VOLATILE | REG_OPTION_VOLATILE | REG_OPTION_CREATE_LINK | REG_OPTION_BACKUP_RESTORE | REG_OPTION_OPEN_LINK),
 }
 
-export LONG RegDeleteKeyA(HKEY hKey, LPCSTR lpSubKey);
-export LONG RegDeleteKeyW(HKEY hKey, LPCWSTR lpSubKey);
-export LONG RegDeleteValueA(HKEY hKey, LPCSTR lpValueName);
-export LONG RegDeleteValueW(HKEY hKey, LPCWSTR lpValueName);
+export LONG RegDeleteKeyA(in HKEY hKey, LPCSTR lpSubKey);
+export LONG RegDeleteKeyW(in HKEY hKey, LPCWSTR lpSubKey);
+export LONG RegDeleteValueA(in HKEY hKey, LPCSTR lpValueName);
+export LONG RegDeleteValueW(in HKEY hKey, LPCWSTR lpValueName);
 
-export LONG  RegEnumKeyExA(HKEY hKey, DWORD dwIndex, LPSTR lpName, LPDWORD lpcbName, LPDWORD lpReserved, LPSTR lpClass, LPDWORD lpcbClass, FILETIME* lpftLastWriteTime);
-export LONG  RegEnumKeyExW(HKEY hKey, DWORD dwIndex, LPWSTR lpName, LPDWORD lpcbName, LPDWORD lpReserved, LPWSTR lpClass, LPDWORD lpcbClass, FILETIME* lpftLastWriteTime);
-export LONG RegEnumValueA(HKEY hKey, DWORD dwIndex, LPSTR lpValueName, LPDWORD lpcbValueName, LPDWORD lpReserved,
+export LONG  RegEnumKeyExA(in HKEY hKey, DWORD dwIndex, LPSTR lpName, LPDWORD lpcbName, LPDWORD lpReserved, LPSTR lpClass, LPDWORD lpcbClass, FILETIME* lpftLastWriteTime);
+export LONG  RegEnumKeyExW(in HKEY hKey, DWORD dwIndex, LPWSTR lpName, LPDWORD lpcbName, LPDWORD lpReserved, LPWSTR lpClass, LPDWORD lpcbClass, FILETIME* lpftLastWriteTime);
+export LONG RegEnumValueA(in HKEY hKey, DWORD dwIndex, LPSTR lpValueName, LPDWORD lpcbValueName, LPDWORD lpReserved,
     LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
-export LONG RegEnumValueW(HKEY hKey, DWORD dwIndex, LPWSTR lpValueName, LPDWORD lpcbValueName, LPDWORD lpReserved,
+export LONG RegEnumValueW(in HKEY hKey, DWORD dwIndex, LPWSTR lpValueName, LPDWORD lpcbValueName, LPDWORD lpReserved,
     LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
 
-export LONG RegCloseKey(HKEY hKey);
-export LONG RegFlushKey(HKEY hKey);
+export LONG RegCloseKey(in HKEY hKey);
+export LONG RegFlushKey(in HKEY hKey);
 
-export LONG RegOpenKeyA(HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult);
-export LONG RegOpenKeyW(HKEY hKey, LPCWSTR lpSubKey, PHKEY phkResult);
-export LONG RegOpenKeyExA(HKEY hKey, LPCSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
-export LONG RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
+export LONG RegOpenKeyA(in HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult);
+export LONG RegOpenKeyW(in HKEY hKey, LPCWSTR lpSubKey, PHKEY phkResult);
+export LONG RegOpenKeyExA(in HKEY hKey, LPCSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
+export LONG RegOpenKeyExW(in HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
 
-export LONG RegQueryInfoKeyA(HKEY hKey, LPSTR lpClass, LPDWORD lpcbClass,
+export LONG RegQueryInfoKeyA(in HKEY hKey, LPSTR lpClass, LPDWORD lpcbClass,
     LPDWORD lpReserved, LPDWORD lpcSubKeys, LPDWORD lpcbMaxSubKeyLen, LPDWORD lpcbMaxClassLen,
     LPDWORD lpcValues, LPDWORD lpcbMaxValueNameLen, LPDWORD lpcbMaxValueLen, LPDWORD lpcbSecurityDescriptor,
     PFILETIME lpftLastWriteTime);
-export LONG RegQueryInfoKeyW(HKEY hKey, LPWSTR lpClass, LPDWORD lpcbClass,
+export LONG RegQueryInfoKeyW(in HKEY hKey, LPWSTR lpClass, LPDWORD lpcbClass,
     LPDWORD lpReserved, LPDWORD lpcSubKeys, LPDWORD lpcbMaxSubKeyLen, LPDWORD lpcbMaxClassLen,
     LPDWORD lpcValues, LPDWORD lpcbMaxValueNameLen, LPDWORD lpcbMaxValueLen, LPDWORD lpcbSecurityDescriptor,
     PFILETIME lpftLastWriteTime);
 
-export LONG RegQueryValueA(HKEY hKey, LPCSTR lpSubKey, LPSTR lpValue, LPLONG lpcbValue);
-export LONG RegQueryValueW(HKEY hKey, LPCWSTR lpSubKey, LPWSTR lpValue, LPLONG lpcbValue);
-export LONG RegQueryValueExA(HKEY hKey, LPCSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPVOID lpData, LPDWORD lpcbData);
-export LONG RegQueryValueExW(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPVOID lpData, LPDWORD lpcbData);
+export LONG RegQueryValueA(in HKEY hKey, LPCSTR lpSubKey, LPSTR lpValue, LPLONG lpcbValue);
+export LONG RegQueryValueW(in HKEY hKey, LPCWSTR lpSubKey, LPWSTR lpValue, LPLONG lpcbValue);
+export LONG RegQueryValueExA(in HKEY hKey, LPCSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPVOID lpData, LPDWORD lpcbData);
+export LONG RegQueryValueExW(in HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPVOID lpData, LPDWORD lpcbData);
 
-export LONG RegCreateKeyExA(HKEY hKey, LPCSTR lpSubKey, DWORD Reserved, LPSTR lpClass,
+export LONG RegCreateKeyExA(in HKEY hKey, LPCSTR lpSubKey, DWORD Reserved, LPSTR lpClass,
    DWORD dwOptions, REGSAM samDesired, SECURITY_ATTRIBUTES* lpSecurityAttributes,
     PHKEY phkResult, LPDWORD lpdwDisposition);
-export LONG RegCreateKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD Reserved, LPWSTR lpClass,
+export LONG RegCreateKeyExW(in HKEY hKey, LPCWSTR lpSubKey, DWORD Reserved, LPWSTR lpClass,
    DWORD dwOptions, REGSAM samDesired, SECURITY_ATTRIBUTES* lpSecurityAttributes,
     PHKEY phkResult, LPDWORD lpdwDisposition);
 
-export LONG RegSetValueExA(HKEY hKey, LPCSTR lpValueName, DWORD Reserved, DWORD dwType, BYTE* lpData, DWORD cbData);
-export LONG RegSetValueExW(HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, BYTE* lpData, DWORD cbData);
+export LONG RegSetValueExA(in HKEY hKey, LPCSTR lpValueName, DWORD Reserved, DWORD dwType, BYTE* lpData, DWORD cbData);
+export LONG RegSetValueExW(in HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, BYTE* lpData, DWORD cbData);
 
 export LONG RegOpenCurrentUser(REGSAM samDesired, PHKEY phkResult);
 
@@ -813,14 +815,14 @@ export
  UINT LocalShrink(HLOCAL hMem, UINT cbNewSize);
  UINT LocalCompact(UINT uMinFree);
  BOOL FlushInstructionCache(HANDLE hProcess, LPCVOID lpBaseAddress, DWORD dwSize);
- LPVOID VirtualAlloc(LPVOID lpAddress, DWORD dwSize, DWORD flAllocationType, DWORD flProtect);
- BOOL VirtualFree(LPVOID lpAddress, DWORD dwSize, DWORD dwFreeType);
- BOOL VirtualProtect(LPVOID lpAddress, DWORD dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
- DWORD VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, DWORD dwLength);
- LPVOID VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, DWORD dwSize, DWORD flAllocationType, DWORD flProtect);
- BOOL VirtualFreeEx(HANDLE hProcess, LPVOID lpAddress, DWORD dwSize, DWORD dwFreeType);
- BOOL VirtualProtectEx(HANDLE hProcess, LPVOID lpAddress, DWORD dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
- DWORD VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, DWORD dwLength);
+ LPVOID VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+ BOOL VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+ BOOL VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
+ SIZE_T VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
+ LPVOID VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+ BOOL VirtualFreeEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+ BOOL VirtualProtectEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
+ SIZE_T VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
 }
 
 struct SYSTEMTIME
@@ -845,6 +847,15 @@ struct TIME_ZONE_INFORMATION {
     LONG DaylightBias;
 }
 
+struct REG_TZI_FORMAT
+{
+    LONG Bias;
+    LONG StandardBias;
+    LONG DaylightBias;
+    SYSTEMTIME StandardDate;
+    SYSTEMTIME DaylightDate;
+}
+
 enum
 {
     TIME_ZONE_ID_UNKNOWN =  0,
@@ -860,6 +871,7 @@ export BOOL SetFileTime(HANDLE hFile, in FILETIME *lpCreationTime, in FILETIME *
 export void GetLocalTime(SYSTEMTIME* lpSystemTime);
 export BOOL SetLocalTime(SYSTEMTIME* lpSystemTime);
 export BOOL SystemTimeToTzSpecificLocalTime(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpUniversalTime, SYSTEMTIME* lpLocalTime);
+export BOOL TzSpecificLocalTimeToSystemTime(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpLocalTime, SYSTEMTIME* lpUniversalTime);
 export DWORD GetTimeZoneInformation(TIME_ZONE_INFORMATION* lpTimeZoneInformation);
 export BOOL SetTimeZoneInformation(TIME_ZONE_INFORMATION* lpTimeZoneInformation);
 
@@ -2402,9 +2414,9 @@ export HANDLE CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpFileMappi
 
 export BOOL GetMailslotInfo(HANDLE hMailslot, LPDWORD lpMaxMessageSize, LPDWORD lpNextSize, LPDWORD lpMessageCount, LPDWORD lpReadTimeout);
 export BOOL SetMailslotInfo(HANDLE hMailslot, DWORD lReadTimeout);
-export LPVOID MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, DWORD dwNumberOfBytesToMap);
-export LPVOID MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, DWORD dwNumberOfBytesToMap, LPVOID lpBaseAddress);
-export BOOL FlushViewOfFile(LPCVOID lpBaseAddress, DWORD dwNumberOfBytesToFlush);
+export LPVOID MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap);
+export LPVOID MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap, LPVOID lpBaseAddress);
+export BOOL FlushViewOfFile(LPCVOID lpBaseAddress, SIZE_T dwNumberOfBytesToFlush);
 export BOOL UnmapViewOfFile(LPCVOID lpBaseAddress);
 
 export  HGDIOBJ   GetStockObject(int);
@@ -3293,4 +3305,7 @@ LPVOID TlsGetValue(DWORD);
 BOOL TlsSetValue(DWORD, LPVOID);
 BOOL TlsFree(DWORD);
 
+// shellapi.h
+HINSTANCE ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
+HINSTANCE ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
 }

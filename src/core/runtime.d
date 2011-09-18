@@ -21,7 +21,7 @@ private
 
     alias bool function() ModuleUnitTester;
     alias bool function(Object) CollectHandler;
-    alias Throwable.TraceInfo function( void* ptr = null ) TraceHandler;
+    alias Throwable.TraceInfo function( void* ptr ) TraceHandler;
 
     extern (C) void rt_setCollectHandler( CollectHandler h );
     extern (C) CollectHandler rt_getCollectHandler();
@@ -43,9 +43,9 @@ private
         import core.demangle;
         import core.stdc.stdlib : free;
         import core.stdc.string : strlen, memchr;
-        extern (C) int    backtrace(void**, size_t);
+        extern (C) int    backtrace(void**, int);
         extern (C) char** backtrace_symbols(void**, int);
-        extern (C) void   backtrace_symbols_fd(void**,int,int);
+        extern (C) void   backtrace_symbols_fd(void**, int, int);
         import core.sys.posix.signal; // segv handler
     }
     else version( OSX )
@@ -53,9 +53,9 @@ private
         import core.demangle;
         import core.stdc.stdlib : free;
         import core.stdc.string : strlen;
-        extern (C) int    backtrace(void**, size_t);
+        extern (C) int    backtrace(void**, int);
         extern (C) char** backtrace_symbols(void**, int);
-        extern (C) void   backtrace_symbols_fd(void**,int,int);
+        extern (C) void   backtrace_symbols_fd(void**, int, int);
         import core.sys.posix.signal; // segv handler
     }
     else version( Windows )
@@ -334,8 +334,9 @@ extern (C) bool runModuleUnitTests()
         {
             version( Windows )
             {
-                uint count = void;
-                WriteFile( GetStdHandle( 0xfffffff5 ), val.ptr, val.length, &count, null );
+                DWORD count = void;
+                assert(val.length <= uint.max, "val must be less than or equal to uint.max");
+                WriteFile( GetStdHandle( 0xfffffff5 ), val.ptr, cast(uint)val.length, &count, null );
             }
             else version( Posix )
             {
@@ -364,7 +365,7 @@ extern (C) bool runModuleUnitTests()
                     }
                     catch( Throwable e )
                     {
-                        console( e.toString )( "\n" );
+                        console( e.toString() )( "\n" );
                         failed++;
                     }
                 }

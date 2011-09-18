@@ -42,12 +42,12 @@ private struct Demangle
     //       faster than assembling the result piecemeal.
 
 
-    enum AddType { yes, no }
+    enum AddType { no, yes }
 
 
     this( const(char)[] buf_, char[] dst_ = null )
     {
-        this( buf_, AddType.no, dst_ );
+        this( buf_, AddType.yes, dst_ );
     }
 
 
@@ -66,7 +66,7 @@ private struct Demangle
     char[]          dst     = null;
     size_t          pos     = 0;
     size_t          len     = 0;
-    AddType         addType = AddType.no;
+    AddType         addType = AddType.yes;
 
 
     static class ParseException : Exception
@@ -229,6 +229,26 @@ private struct Demangle
     }
 
 
+    char[] putAsHex( size_t val, int width = 0 )
+    {
+        char tmp[20];
+        int  pos = tmp.length;
+
+        while( val )
+        {
+            int  digit = val % 16;
+
+            tmp[--pos] = digit < 10 ? cast(char)(digit + '0') :
+                                      cast(char)((digit - 10) + 'a');
+            val /= 16;
+            width--;
+        }
+        for( ; width > 0; width-- )
+            tmp[--pos] = '0';
+        return put( tmp[pos .. $] );
+    }
+
+
     void pad( const(char)[] val )
     {
         if( val.length )
@@ -334,7 +354,15 @@ private struct Demangle
         debug(trace) printf( "decodeNumber+\n" );
         debug(trace) scope(success) printf( "decodeNumber-\n" );
 
-        auto   num = sliceNumber();
+        return decodeNumber( sliceNumber() );
+    }
+
+
+    size_t decodeNumber( const(char)[] num )
+    {
+        debug(trace) printf( "decodeNumber+\n" );
+        debug(trace) scope(success) printf( "decodeNumber-\n" );
+
         size_t val = 0;
 
         foreach( i, e; num )
@@ -629,222 +657,7 @@ private struct Demangle
     {
         debug(trace) printf( "parseType+\n" );
         debug(trace) scope(success) printf( "parseType-\n" );
-
-        enum IsDelegate { yes, no }
-
         auto beg = len;
-
-        /*
-        TypeFunction:
-            CallConvention FuncAttrs Arguments ArgClose Type
-
-        CallConvention:
-            F       // D
-            U       // C
-            W       // Windows
-            V       // Pascal
-            R       // C++
-
-        FuncAttrs:
-            FuncAttr
-            FuncAttr FuncAttrs
-
-        FuncAttr:
-            empty
-            FuncAttrPure
-            FuncAttrNothrow
-            FuncAttrProperty
-            FuncAttrRef
-            FuncAttrTrusted
-            FuncAttrSafe
-
-        FuncAttrPure:
-            Na
-
-        FuncAttrNothrow:
-            Nb
-
-        FuncAttrRef:
-            Nc
-
-        FuncAttrProperty:
-            Nd
-
-        FuncAttrTrusted:
-            Ne
-
-        FuncAttrSafe:
-            Nf
-
-        Arguments:
-            Argument
-            Argument Arguments
-
-        Argument:
-            Argument2
-            M Argument2     // scope
-
-        Argument2:
-            Type
-            J Type     // out
-            K Type     // ref
-            L Type     // lazy
-
-        ArgClose
-            X     // variadic T t,...) style
-            Y     // variadic T t...) style
-            Z     // not variadic
-        */
-        void parseTypeFunction( IsDelegate isdg = IsDelegate.no )
-        {
-            debug(trace) printf( "parseTypeFunction+\n" );
-            debug(trace) scope(success) printf( "parseTypeFunction-\n" );
-
-            // CallConvention
-            switch( tok() )
-            {
-            case 'F': // D
-                next();
-                break;
-            case 'U': // C
-                next();
-                put( "extern (C) " );
-                break;
-            case 'W': // Windows
-                next();
-                put( "extern (Windows) " );
-                break;
-            case 'V': // Pascal
-                next();
-                put( "extern (Pascal) " );
-                break;
-            case 'R': // C++
-                next();
-                put( "extern (C++) " );
-                break;
-            default:
-                error();
-            }
-
-            // FuncAttrs
-            breakFuncAttrs:
-            while( 'N' == tok() )
-            {
-                next();
-                switch( tok() )
-                {
-                case 'a': // FuncAttrPure
-                    next();
-                    put( "pure " );
-                    continue;
-                case 'b': // FuncAttrNoThrow
-                    next();
-                    put( "nothrow " );
-                    continue;
-                case 'c': // FuncAttrRef
-                    next();
-                    put( "ref " );
-                    continue;
-                case 'd': // FuncAttrProperty
-                    next();
-                    put( "@property " );
-                    continue;
-                case 'e': // FuncAttrTrusted
-                    next();
-                    put( "@trusted " );
-                    continue;
-                case 'f': // FuncAttrSafe
-                    next();
-                    put( "@safe " );
-                    continue;
-                case 'g':
-                    // NOTE: The inout parameter type is represented as "Ng",
-                    //       which makes it look like a FuncAttr.  So if we
-                    //       see an "Ng" FuncAttr we know we're really in
-                    //       the parameter list.  Rewind and break.
-                    pos--;
-                    break breakFuncAttrs;
-                default:
-                    error();
-                }
-            }
-
-            beg = len;
-            put( "(" );
-            scope(success)
-            {
-                put( ")" );
-                auto t = len;
-                parseType();
-                put( " " );
-                if( name.length )
-                {
-                    if( !contains( dst[0 .. len], name ) )
-                        put( name );
-                    else if( shift( name ).ptr != name.ptr )
-                    {
-                        beg -= name.length;
-                        t -= name.length;
-                    }
-                }
-                else if( IsDelegate.yes == isdg )
-                    put( "delegate" );
-                else
-                    put( "function" );
-                shift( dst[beg .. t] );
-            }
-
-            // Arguments
-            for( size_t n = 0; true; n++ )
-            {
-                debug(info) printf( "tok (%c)\n", tok() );
-                switch( tok() )
-                {
-                case 'X': // ArgClose (variadic T t,...) style)
-                    next();
-                    put( ", ..." );
-                    return;
-                case 'Y': // ArgClose (variadic T t...) style)
-                    next();
-                    put( "..." );
-                    return;
-                case 'Z': // ArgClose (not variadic)
-                    next();
-                    return;
-                default:
-                    break;
-                }
-                if( n )
-                {
-                    put( ", " );
-                }
-                if( 'M' == tok() )
-                {
-                    next();
-                    put( "scope " );
-                }
-                switch( tok() )
-                {
-                case 'J': // out (J Type)
-                    next();
-                    put( "out " );
-                    parseType();
-                    continue;
-                case 'K': // ref (K Type)
-                    next();
-                    put( "ref " );
-                    parseType();
-                    continue;
-                case 'L': // lazy (L Type)
-                    next();
-                    put( "lazy " );
-                    parseType();
-                    continue;
-                default:
-                    parseType();
-                }
-            }
-        }
 
         switch( tok() )
         {
@@ -887,7 +700,7 @@ private struct Demangle
                 return dst[beg .. len];
             default:
                 error();
-                assert(0);
+                assert( 0 );
             }
         case 'A': // TypeArray (A Type)
             next();
@@ -921,8 +734,7 @@ private struct Demangle
             pad( name );
             return dst[beg .. len];
         case 'F': case 'U': case 'W': case 'V': case 'R': // TypeFunction
-            parseTypeFunction();
-            return dst[beg .. len];
+            return parseTypeFunction( name );
         case 'I': // TypeIdent (I LName)
         case 'C': // TypeClass (C LName)
         case 'S': // TypeStruct (S LName)
@@ -930,10 +742,11 @@ private struct Demangle
         case 'T': // TypeTypedef (T LName)
             next();
             parseQualifiedName();
+            pad( name );
             return dst[beg .. len];
         case 'D': // TypeDelegate (D TypeFunction)
             next();
-            parseTypeFunction( IsDelegate.yes );
+            parseTypeFunction( name, IsDelegate.yes );
             return dst[beg .. len];
         case 'n': // TypeNone (n)
             next();
@@ -942,6 +755,7 @@ private struct Demangle
         case 'v': // TypeVoid (v)
             next();
             put( "void" );
+            pad( name );
             return dst[beg .. len];
         case 'g': // TypeByte (g)
             next();
@@ -1059,6 +873,221 @@ private struct Demangle
 
 
     /*
+    TypeFunction:
+        CallConvention FuncAttrs Arguments ArgClose Type
+
+    CallConvention:
+        F       // D
+        U       // C
+        W       // Windows
+        V       // Pascal
+        R       // C++
+
+    FuncAttrs:
+        FuncAttr
+        FuncAttr FuncAttrs
+
+    FuncAttr:
+        empty
+        FuncAttrPure
+        FuncAttrNothrow
+        FuncAttrProperty
+        FuncAttrRef
+        FuncAttrTrusted
+        FuncAttrSafe
+
+    FuncAttrPure:
+        Na
+
+    FuncAttrNothrow:
+        Nb
+
+    FuncAttrRef:
+        Nc
+
+    FuncAttrProperty:
+        Nd
+
+    FuncAttrTrusted:
+        Ne
+
+    FuncAttrSafe:
+        Nf
+
+    Arguments:
+        Argument
+        Argument Arguments
+
+    Argument:
+        Argument2
+        M Argument2     // scope
+
+    Argument2:
+        Type
+        J Type     // out
+        K Type     // ref
+        L Type     // lazy
+
+    ArgClose
+        X     // variadic T t,...) style
+        Y     // variadic T t...) style
+        Z     // not variadic
+    */
+    enum IsDelegate { no, yes }
+    char[] parseTypeFunction( char[] name = null, IsDelegate isdg = IsDelegate.no )
+    {
+        debug(trace) printf( "parseTypeFunction+\n" );
+        debug(trace) scope(success) printf( "parseTypeFunction-\n" );
+        auto beg = len;
+
+        // CallConvention
+        switch( tok() )
+        {
+        case 'F': // D
+            next();
+            break;
+        case 'U': // C
+            next();
+            put( "extern (C) " );
+            break;
+        case 'W': // Windows
+            next();
+            put( "extern (Windows) " );
+            break;
+        case 'V': // Pascal
+            next();
+            put( "extern (Pascal) " );
+            break;
+        case 'R': // C++
+            next();
+            put( "extern (C++) " );
+            break;
+        default:
+            error();
+        }
+
+        // FuncAttrs
+        breakFuncAttrs:
+        while( 'N' == tok() )
+        {
+            next();
+            switch( tok() )
+            {
+            case 'a': // FuncAttrPure
+                next();
+                put( "pure " );
+                continue;
+            case 'b': // FuncAttrNoThrow
+                next();
+                put( "nothrow " );
+                continue;
+            case 'c': // FuncAttrRef
+                next();
+                put( "ref " );
+                continue;
+            case 'd': // FuncAttrProperty
+                next();
+                put( "@property " );
+                continue;
+            case 'e': // FuncAttrTrusted
+                next();
+                put( "@trusted " );
+                continue;
+            case 'f': // FuncAttrSafe
+                next();
+                put( "@safe " );
+                continue;
+            case 'g':
+                // NOTE: The inout parameter type is represented as "Ng",
+                //       which makes it look like a FuncAttr.  So if we
+                //       see an "Ng" FuncAttr we know we're really in
+                //       the parameter list.  Rewind and break.
+                pos--;
+                break breakFuncAttrs;
+            default:
+                error();
+            }
+        }
+
+        beg = len;
+        put( "(" );
+        scope(success)
+        {
+            put( ")" );
+            auto t = len;
+            parseType();
+            put( " " );
+            if( name.length )
+            {
+                if( !contains( dst[0 .. len], name ) )
+                    put( name );
+                else if( shift( name ).ptr != name.ptr )
+                {
+                    beg -= name.length;
+                    t -= name.length;
+                }
+            }
+            else if( IsDelegate.yes == isdg )
+                put( "delegate" );
+            else
+                put( "function" );
+            shift( dst[beg .. t] );
+        }
+
+        // Arguments
+        for( size_t n = 0; true; n++ )
+        {
+            debug(info) printf( "tok (%c)\n", tok() );
+            switch( tok() )
+            {
+            case 'X': // ArgClose (variadic T t...) style)
+                next();
+                put( "..." );
+                return dst[beg .. len];
+            case 'Y': // ArgClose (variadic T t,...) style)
+                next();
+                put( ", ..." );
+                return dst[beg .. len];
+            case 'Z': // ArgClose (not variadic)
+                next();
+                return dst[beg .. len];
+            default:
+                break;
+            }
+            if( n )
+            {
+                put( ", " );
+            }
+            if( 'M' == tok() )
+            {
+                next();
+                put( "scope " );
+            }
+            switch( tok() )
+            {
+            case 'J': // out (J Type)
+                next();
+                put( "out " );
+                parseType();
+                continue;
+            case 'K': // ref (K Type)
+                next();
+                put( "ref " );
+                parseType();
+                continue;
+            case 'L': // lazy (L Type)
+                next();
+                put( "lazy " );
+                parseType();
+                continue;
+            default:
+                parseType();
+            }
+        }
+    }
+
+
+    /*
     Value:
         n
         Number
@@ -1097,6 +1126,7 @@ private struct Demangle
         debug(trace) printf( "parseValue+\n" );
         debug(trace) scope(success) printf( "parseValue-\n" );
 
+//        printf( "*** %c\n", tok() );
         switch( tok() )
         {
         case 'n':
@@ -1109,12 +1139,12 @@ private struct Demangle
                 error( "Number expected" );
             // fall-through intentional
         case '0': .. case '9':
-            put( sliceNumber() );
+            parseIntegerValue( name, type );
             return;
         case 'N':
             next();
             put( "-" );
-            put( sliceNumber() );
+            parseIntegerValue( name, type );
             return;
         case 'e':
             next();
@@ -1124,6 +1154,7 @@ private struct Demangle
             next();
             parseReal();
             put( "+" );
+            match( 'c' );
             parseReal();
             put( "i" );
             return;
@@ -1202,6 +1233,101 @@ private struct Demangle
             return;
         default:
             error();
+        }
+    }
+
+
+    void parseIntegerValue( char[] name = null, char type = '\0' )
+    {
+        debug(trace) printf( "parseIntegerValue+\n" );
+        debug(trace) scope(success) printf( "parseIntegerValue-\n" );
+
+        switch( type )
+        {
+        case 'a': // char
+        case 'u': // wchar
+        case 'w': // dchar
+        {
+            auto val = sliceNumber();
+            auto num = decodeNumber( val );
+
+            switch( num )
+            {
+            case '\'':
+                put( "'\\''" );
+                return;
+            // \", \?
+            case '\\':
+                put( "'\\\\'" );
+                return;
+            case '\a':
+                put( "'\\a'" );
+                return;
+            case '\b':
+                put( "'\\b'" );
+                return;
+            case '\f':
+                put( "'\\f'" );
+                return;
+            case '\n':
+                put( "'\\n'" );
+                return;
+            case '\r':
+                put( "'\\r'" );
+                return;
+            case '\t':
+                put( "'\\t'" );
+                return;
+            case '\v':
+                put( "'\\v'" );
+                return;
+            default:
+                switch( type )
+                {
+                case 'a':
+                    if( num >= 0x20 && num < 0x7F )
+                    {
+                        put( "'" );
+                        put( (cast(char*) &num)[0 .. 1] );
+                        put( "'" );
+                        return;
+                    }
+                    put( "\\x" );
+                    putAsHex( num, 2 );
+                    return;
+                case 'u':
+                    put( "'\\u" );
+                    putAsHex( num, 4 );
+                    put( "'" );
+                    return;
+                case 'w':
+                    put( "'\\U" );
+                    putAsHex( num, 8 );
+                    put( "'" );
+                    return;
+                default:
+                    assert( 0 );
+                }
+            }
+        }
+        case 'b': // bool
+            put( decodeNumber() ? "true" : "false" );
+            return;
+        case 'h', 't', 'k': // ubyte, ushort, uint
+            put( sliceNumber() );
+            put( "u" );
+            return;
+        case 'l': // long
+            put( sliceNumber() );
+            put( "L" );
+            return;
+        case 'm': // ulong
+            put( sliceNumber() );
+            put( "uL" );
+            return;
+        default:
+            put( sliceNumber() );
+            return;
         }
     }
 
@@ -1372,7 +1498,7 @@ private struct Demangle
             debug(info) printf( "name (%.*s)\n", cast(int) name.length, name.ptr );
             if( 'M' == tok() )
                 next(); // has 'this' pointer
-            if( addType )
+            if( AddType.yes == addType )
                 parseType( name );
             if( pos >= buf.length )
                 return;
@@ -1449,13 +1575,15 @@ unittest
         ["_D4test3fooAa", "char[] test.foo"],
         ["_D8demangle8demangleFAaZAa", "char[] demangle.demangle(char[])"],
         ["_D6object6Object8opEqualsFC6ObjectZi", "int object.Object.opEquals(Object)"],
-        ["_D4test2dgDFiYd", "double test.dg(int...)"],
+        ["_D4test2dgDFiYd", "double test.dg(int, ...)"],
         //["_D4test58__T9factorialVde67666666666666860140VG5aa5_68656c6c6fVPvnZ9factorialf", ""],
         //["_D4test101__T9factorialVde67666666666666860140Vrc9a999999999999d9014000000000000000c00040VG5aa5_68656c6c6fVPvnZ9factorialf", ""],
         ["_D4test34__T3barVG3uw3_616263VG3wd3_646566Z1xi", "int test.bar!(\"abc\"w, \"def\"d).x"],
         ["_D8demangle4testFLC6ObjectLDFLiZiZi", "int demangle.test(lazy Object, lazy int delegate(lazy int))"],
-        ["_D8demangle4testFAiXi", "int demangle.test(int[], ...)"],
-        ["_D8demangle4testFLAiXi", "int demangle.test(lazy int[], ...)"],
+        ["_D8demangle4testFAiXi", "int demangle.test(int[]...)"],
+        ["_D8demangle4testFAiYi", "int demangle.test(int[], ...)"],
+        ["_D8demangle4testFLAiXi", "int demangle.test(lazy int[]...)"],
+        ["_D8demangle4testFLAiYi", "int demangle.test(lazy int[], ...)"],
         ["_D6plugin8generateFiiZAya", "immutable(char)[] plugin.generate(int, int)"],
         ["_D6plugin8generateFiiZAxa", "const(char)[] plugin.generate(int, int)"],
         ["_D6plugin8generateFiiZAOa", "shared(char)[] plugin.generate(int, int)"],
@@ -1469,7 +1597,8 @@ unittest
         ["_D8demangle14__T2fnVeeNINFZ2fnFZv", "void demangle.fn!(-real.infinity).fn()"],
         ["_D8demangle13__T2fnVeeINFZ2fnFZv", "void demangle.fn!(real.infinity).fn()"],
         ["_D8demangle21__T2fnVHiiA2i1i2i3i4Z2fnFZv", "void demangle.fn!([1:2, 3:4]).fn()"],
-        ["_D8demangle2fnFNgiZNgi", "inout(int) demangle.fn(inout(int))"]
+        ["_D8demangle2fnFNgiZNgi", "inout(int) demangle.fn(inout(int))"],
+        ["_D8demangle29__T2fnVa97Va9Va0Vu257Vw65537Z2fnFZv", "void demangle.fn!('a', '\\t', \\x00, '\\u0101', '\\U00010001').fn()"]
     ];
 
     foreach( i, name; table )
