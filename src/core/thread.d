@@ -22,6 +22,24 @@ public import core.time; // for Duration
 // this should be true for most architectures
 version = StackGrowsDown;
 
+/**
+ * Returns the process ID of the calling process, which is guaranteed to be
+ * unique on the system. This call is always successful.
+ *
+ * Example:
+ * ---
+ * writefln("Current process id: %s", getpid());
+ * ---
+ */
+version(Posix)
+{
+    alias core.sys.posix.unistd.getpid getpid;
+}
+else version (Windows)
+{
+    alias core.sys.windows.windows.GetCurrentProcessId getpid;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread and Fiber Exceptions
@@ -294,14 +312,6 @@ else version( Posix )
         }
 
 
-        // NOTE: On x86_64, if fiber throws an exception, backtrace() fails
-        //       inside pthread_once() if pthread_once() has never been called
-        //       for the thread.  thread_initOnce() exists to fix this issue.
-        extern (C) void thread_initOnce()
-        {
-        }
-
-
         //
         // Entry point for POSIX threads
         //
@@ -366,8 +376,6 @@ else version( Posix )
                 obj.m_tls = pstart[0 .. pend - pstart];
             }
 
-            pthread_once_t once;
-            pthread_once( &once, &thread_initOnce );
             obj.m_isRunning = true;
             Thread.setThis( obj );
             //Thread.add( obj );
@@ -806,8 +814,7 @@ class Thread
         {
             version( Windows )
             {
-                assert(m_sz <= uint.max, "m_sz should not exceed uint.max");
-                m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint)m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
+                m_hndl = cast(HANDLE) _beginthreadex( null, m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
                 if( cast(size_t) m_hndl == 0 )
                     throw new ThreadException( "Error creating thread" );
             }
@@ -1932,8 +1939,6 @@ extern (C) Thread thread_attachThis()
         thisContext.bstack = getStackBottom();
         thisContext.tstack = thisContext.bstack;
 
-        pthread_once_t once;
-        pthread_once( &once, &thread_initOnce );
         thisThread.m_isRunning = true;
     }
     thisThread.m_isDaemon = true;
@@ -2623,6 +2628,9 @@ extern(C) void thread_processGCMarks()
 }
 
 
+/**
+ *
+ */
 void[] thread_getTLSBlock()
 {
     version(OSX)
@@ -2640,6 +2648,17 @@ void[] thread_getTLSBlock()
 
         return (cast(void*)&_tlsstart)[0..(&_tlsend)-(&_tlsstart)];
     }
+}
+
+
+/**
+ *
+ */
+extern (C) void* thread_stackBottom()
+{
+    if( auto t = Thread.getThis() )
+        return t.topContext().bstack;
+    return rt_stackBottom();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -3161,7 +3180,7 @@ class Fiber
      * In:
      *  fn must not be null.
      */
-    this( void function() fn, size_t sz = PAGESIZE )
+    this( void function() fn, size_t sz = PAGESIZE*4 )
     in
     {
         assert( fn );
@@ -3187,7 +3206,7 @@ class Fiber
      * In:
      *  dg must not be null.
      */
-    this( void delegate() dg, size_t sz = PAGESIZE )
+    this( void delegate() dg, size_t sz = PAGESIZE*4 )
     in
     {
         assert( dg );
