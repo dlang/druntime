@@ -245,65 +245,85 @@ pragma(intrinsic, "llvm.part.select.i#")
 // ATOMIC OPERATIONS AND SYNCHRONIZATION INTRINSICS
 //
 
-// The llvm.memory.barrier intrinsic guarantees ordering between specific
-// pairs of memory access types.
+enum AtomicOrdering {
+  NotAtomic = 0,
+  Unordered = 1,
+  Monotonic = 2,
+  Consume = 3,
+  Acquire = 4,
+  Release = 5,
+  AcquireRelease = 6,
+  SequentiallyConsistent = 7
+};
+alias AtomicOrdering.SequentiallyConsistent DefaultOrdering;
 
-pragma(intrinsic, "llvm.memory.barrier")
-    void llvm_memory_barrier(bool ll, bool ls, bool sl, bool ss, bool device);
+// The 'fence' intrinsic is used to introduce happens-before edges between operations.
+pragma(fence)
+    void llvm_memory_fence(AtomicOrdering ordering = DefaultOrdering);
+
+// This intrinsic loads a value stored in memory at ptr.
+pragma(atomic_load)
+    T llvm_atomic_load(T)(T *ptr, AtomicOrdering ordering = DefaultOrdering);
+
+// This intrinsic stores a value in val in the memory at ptr.
+pragma(atomic_store)
+    void llvm_atomic_store(T)(T val, T *ptr, AtomicOrdering ordering = DefaultOrdering);
+
 
 // This loads a value in memory and compares it to a given value. If they are
 // equal, it stores a new value into the memory.
 
-pragma(intrinsic, "llvm.atomic.cmp.swap.i#.p0i#")
-    T llvm_atomic_cmp_swap(T)(shared T* ptr, T cmp, T val);
+pragma(atomic_cmp_xchg)
+    T llvm_atomic_cmp_swap(T)(shared T* ptr, T cmp, T val, AtomicOrdering ordering = DefaultOrdering);
+
 
 // This intrinsic loads the value stored in memory at ptr and yields the value
 // from memory. It then stores the value in val in the memory at ptr.
 
-pragma(intrinsic, "llvm.atomic.swap.i#.p0i#")
-    T llvm_atomic_swap(T)(T* ptr, T val);
+pragma(atomic_rmw, "xchg")
+    T llvm_atomic_swap(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // This intrinsic adds delta to the value stored in memory at ptr. It yields
 // the original value at ptr.
 
-pragma(intrinsic, "llvm.atomic.load.add.i#.p0i#")
-    T llvm_atomic_load_add(T)(T* ptr, T val);
+pragma(atomic_rmw, "add")
+    T llvm_atomic_load_add(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // This intrinsic subtracts delta to the value stored in memory at ptr. It
 // yields the original value at ptr.
 
-pragma(intrinsic, "llvm.atomic.load.sub.i#.p0i#")
-    T llvm_atomic_load_sub(T)(T* ptr, T val);
+pragma(atomic_rmw, "sub")
+    T llvm_atomic_load_sub(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // These intrinsics bitwise the operation (and, nand, or, xor) delta to the
 // value stored in memory at ptr. It yields the original value at ptr.
 
-pragma(intrinsic, "llvm.atomic.load.and.i#.p0i#")
-    T llvm_atomic_load_and(T)(T* ptr, T val);
+pragma(atomic_rmw, "and")
+    T llvm_atomic_load_and(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
-pragma(intrinsic, "llvm.atomic.load.nand.i#.p0i#")
-    T llvm_atomic_load_nand(T)(T* ptr, T val);
+pragma(atomic_rmw, "nand")
+    T llvm_atomic_load_nand(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
-pragma(intrinsic, "llvm.atomic.load.or.i#.p0i#")
-    T llvm_atomic_load_or(T)(T* ptr, T val);
+pragma(atomic_rmw, "or")
+    T llvm_atomic_load_or(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
-pragma(intrinsic, "llvm.atomic.load.xor.i#.p0i#")
-    T llvm_atomic_load_xor(T)(T* ptr, T val);
+pragma(atomic_rmw, "xor")
+    T llvm_atomic_load_xor(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // These intrinsics takes the signed or unsigned minimum or maximum of delta
 // and the value stored in memory at ptr. It yields the original value at ptr.
 
-pragma(intrinsic, "llvm.atomic.load.max.i#.p0i#")
-    T llvm_atomic_load_max(T)(T* ptr, T val);
+pragma(atomic_rmw, "max")
+    T llvm_atomic_load_max(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
-pragma(intrinsic, "llvm.atomic.load.min.i#.p0i#")
-    T llvm_atomic_load_min(T)(T* ptr, T val);
+pragma(atomic_rmw, "min")
+    T llvm_atomic_load_min(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
-pragma(intrinsic, "llvm.atomic.load.umax.i#.p0i#")
-    T llvm_atomic_load_umax(T)(T* ptr, T val);
+pragma(atomic_rmw, "umax")
+    T llvm_atomic_load_umax(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
-pragma(intrinsic, "llvm.atomic.load.umin.i#.p0i#")
-    T llvm_atomic_load_umin(T)(T* ptr, T val);
+pragma(atomic_rmw, "umin")
+    T llvm_atomic_load_umin(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 
 //
