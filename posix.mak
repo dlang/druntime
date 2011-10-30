@@ -52,6 +52,7 @@ MANIFEST= \
 	\
 	src/core/atomic.d \
 	src/core/bitop.d \
+	src/core/compiler.d \
 	src/core/cpuid.d \
 	src/core/demangle.d \
 	src/core/exception.d \
@@ -171,7 +172,6 @@ MANIFEST= \
 	src/rt/arrayshort.d \
 	src/rt/cast_.d \
 	src/rt/cmath2.d \
-	src/rt/compiler.d \
 	src/rt/complex.c \
 	src/rt/cover.d \
 	src/rt/critical_.d \
@@ -245,6 +245,7 @@ SRC_D_MODULES = \
 	\
 	core/atomic \
 	core/bitop \
+	core/compiler \
 	core/cpuid \
 	core/demangle \
 	core/exception \
@@ -370,6 +371,7 @@ DOCS=\
 	$(DOCDIR)/object.html \
 	$(DOCDIR)/core_atomic.html \
 	$(DOCDIR)/core_bitop.html \
+	$(DOCDIR)/core_compiler.html \
 	$(DOCDIR)/core_cpuid.html \
 	$(DOCDIR)/core_demangle.html \
 	$(DOCDIR)/core_exception.html \
@@ -391,6 +393,7 @@ DOCS=\
 IMPORTS=\
 	$(IMPDIR)/core/atomic.di \
 	$(IMPDIR)/core/bitop.di \
+	$(IMPDIR)/core/compiler.di \
 	$(IMPDIR)/core/cpuid.di \
 	$(IMPDIR)/core/demangle.di \
 	$(IMPDIR)/core/exception.di \
