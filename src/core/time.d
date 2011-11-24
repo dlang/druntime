@@ -1371,7 +1371,15 @@ struct TickDuration
                 if(clock_getres(CLOCK_MONOTONIC, &ts) != 0)
                     ticksPerSec = 0;
                 else
-                    ticksPerSec = 1_000_000_000 / ts.tv_nsec;
+                {
+                    if (ts.tv_nsec < 1_000_000) {
+                        _use_clock_gettime = false; // use gettimeofday instead
+                        ticksPerSec = 1_000_000;
+                    } else {
+                        _use_clock_gettime = true;
+                        ticksPerSec = 1_000_000_000 / ts.tv_nsec;
+                    }
+                }
             }
             else
                 ticksPerSec = 1_000_000;
@@ -1427,7 +1435,7 @@ struct TickDuration
         else static if(__traits(isFloating, T))
         {
             static if(units == "seconds")
-                return length / cast(T)ticksPerSec;
+                return cast(T)(cast(double)length / ticksPerSec);
             else
             {
                 enum unitsPerSec = convert!("seconds", units)(1);
@@ -1917,7 +1925,8 @@ struct TickDuration
         On Windows, $(D QueryPerformanceCounter) is used. On Mac OS X,
         $(D mach_absolute_time) is used, while on other Posix systems,
         $(D clock_gettime) is used. If $(D mach_absolute_time) or
-        $(D clock_gettime) is unavailable, then Posix systems use
+        $(D clock_gettime) is unavailable (or clock_gettime's resolution is
+        worse than microsecond), then Posix systems use
         $(D gettimeofday) (the decision is made when $(D TickDuration) is
         compiled), which unfortunately, is not monotonic, but if
         $(D mach_absolute_time) and $(D clock_gettime() aren't available, then
@@ -1961,7 +1970,7 @@ struct TickDuration
         }
         else version(Posix)
         {
-            static if(is(typeof(clock_gettime)))
+            if(_use_clock_gettime)
             {
                 timespec ts;
 
@@ -1987,6 +1996,8 @@ struct TickDuration
     {
         assert(TickDuration.currSystemTick.length > 0);
     }
+
+    __gshared static bool _use_clock_gettime;
 }
 
 
