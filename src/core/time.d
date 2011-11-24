@@ -1370,15 +1370,13 @@ struct TickDuration
 
                 if(clock_getres(CLOCK_MONOTONIC, &ts) != 0)
                     ticksPerSec = 0;
-                else
-                {
-                    if (ts.tv_nsec < 1_000_000) {
-                        _use_clock_gettime = false; // use gettimeofday instead
-                        ticksPerSec = 1_000_000;
-                    } else {
-                        _use_clock_gettime = true;
-                        ticksPerSec = 1_000_000_000 / ts.tv_nsec;
-                    }
+
+                if (ticksPerSec < 1_000_000) {
+                    _use_clock_gettime = false; // use gettimeofday instead
+                    ticksPerSec = 1_000_000;
+                } else {
+                    _use_clock_gettime = true;
+                    ticksPerSec = 1_000_000_000 / ts.tv_nsec;
                 }
             }
             else
@@ -1970,25 +1968,26 @@ struct TickDuration
         }
         else version(Posix)
         {
-            if(_use_clock_gettime)
+            static if(is(typeof(clock_gettime)))
             {
-                timespec ts;
+                if (_use_clock_gettime) {
+                    timespec ts;
 
-                if(clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
-                    throw new TimeException("Failed in clock_gettime().");
+                    if(clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+                        throw new TimeException("Failed in clock_gettime().");
 
-                return TickDuration(ts.tv_sec * TickDuration.ticksPerSec +
-                                    ts.tv_nsec * TickDuration.ticksPerSec / 1000 / 1000 / 1000);
+                    return TickDuration(ts.tv_sec * TickDuration.ticksPerSec +
+                            ts.tv_nsec * TickDuration.ticksPerSec / 1000 / 1000 / 1000);
+                }
             }
-            else
-            {
-                timeval tv;
-                if(gettimeofday(&tv, null) != 0)
-                    throw new TimeException("Failed in gettimeofday().");
 
-                return TickDuration(tv.tv_sec * TickDuration.ticksPerSec +
-                                    tv.tv_usec * TickDuration.ticksPerSec / 1000 / 1000);
-            }
+            // no clock_gettime, or it sucks. use gettimeofday
+            timeval tv;
+            if(gettimeofday(&tv, null) != 0)
+                throw new TimeException("Failed in gettimeofday().");
+
+            return TickDuration(tv.tv_sec * TickDuration.ticksPerSec +
+                    tv.tv_usec * TickDuration.ticksPerSec / 1000 / 1000);
         }
     }
 
