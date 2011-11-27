@@ -1370,13 +1370,15 @@ struct TickDuration
 
                 if(clock_getres(CLOCK_MONOTONIC, &ts) != 0)
                     ticksPerSec = 0;
-
-                if (ticksPerSec < 1_000_000) {
-                    _use_clock_gettime = false; // use gettimeofday instead
-                    ticksPerSec = 1_000_000;
-                } else {
-                    _use_clock_gettime = true;
-                    ticksPerSec = 1_000_000_000 / ts.tv_nsec;
+                else
+                {
+                    if (ts.tv_nsec > 1_000) {
+                        // sometimes clock_getres() is messed up, if it returns
+                        // a bogus value then just use nanoseconds as the time
+                        // base.
+                        ticksPerSec = 1_000_000_000;
+                    } else
+                        ticksPerSec = 1_000_000_000 / ts.tv_nsec;
                 }
             }
             else
@@ -1433,7 +1435,7 @@ struct TickDuration
         else static if(__traits(isFloating, T))
         {
             static if(units == "seconds")
-                return cast(T)(cast(double)length / ticksPerSec);
+                return length / cast(T)ticksPerSec;
             else
             {
                 enum unitsPerSec = convert!("seconds", units)(1);
@@ -1923,8 +1925,7 @@ struct TickDuration
         On Windows, $(D QueryPerformanceCounter) is used. On Mac OS X,
         $(D mach_absolute_time) is used, while on other Posix systems,
         $(D clock_gettime) is used. If $(D mach_absolute_time) or
-        $(D clock_gettime) is unavailable (or clock_gettime's resolution is
-        worse than microsecond), then Posix systems use
+        $(D clock_gettime) is unavailable, then Posix systems use
         $(D gettimeofday) (the decision is made when $(D TickDuration) is
         compiled), which unfortunately, is not monotonic, but if
         $(D mach_absolute_time) and $(D clock_gettime() aren't available, then
@@ -1970,24 +1971,23 @@ struct TickDuration
         {
             static if(is(typeof(clock_gettime)))
             {
-                if (_use_clock_gettime) {
-                    timespec ts;
+                timespec ts;
 
-                    if(clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
-                        throw new TimeException("Failed in clock_gettime().");
+                if(clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+                    throw new TimeException("Failed in clock_gettime().");
 
-                    return TickDuration(ts.tv_sec * TickDuration.ticksPerSec +
-                            ts.tv_nsec * TickDuration.ticksPerSec / 1000 / 1000 / 1000);
-                }
+                return TickDuration(ts.tv_sec * TickDuration.ticksPerSec +
+                                    ts.tv_nsec * TickDuration.ticksPerSec / 1000 / 1000 / 1000);
             }
+            else
+            {
+                timeval tv;
+                if(gettimeofday(&tv, null) != 0)
+                    throw new TimeException("Failed in gettimeofday().");
 
-            // no clock_gettime, or it sucks. use gettimeofday
-            timeval tv;
-            if(gettimeofday(&tv, null) != 0)
-                throw new TimeException("Failed in gettimeofday().");
-
-            return TickDuration(tv.tv_sec * TickDuration.ticksPerSec +
-                    tv.tv_usec * TickDuration.ticksPerSec / 1000 / 1000);
+                return TickDuration(tv.tv_sec * TickDuration.ticksPerSec +
+                                    tv.tv_usec * TickDuration.ticksPerSec / 1000 / 1000);
+            }
         }
     }
 
@@ -1995,8 +1995,6 @@ struct TickDuration
     {
         assert(TickDuration.currSystemTick.length > 0);
     }
-
-    __gshared static bool _use_clock_gettime;
 }
 
 
