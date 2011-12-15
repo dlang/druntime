@@ -321,15 +321,31 @@ class Throwable : Object
 
 class Exception : Throwable
 {
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null);
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__);
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    {
+        super(msg, file, line, next);
+    }
+
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
+    }
 }
 
 
 class Error : Throwable
 {
-    this(string msg, Throwable next = null);
-    this(string msg, string file, size_t line, Throwable next = null);
+    this(string msg, Throwable next = null)
+    {
+        super(msg, next);
+        bypassedException = null;
+    }
+
+    this(string msg, string file, size_t line, Throwable next = null)
+    {
+        super(msg, file, line, next);
+        bypassedException = null;
+    }
     Throwable   bypassedException;
 }
 
@@ -443,7 +459,7 @@ void clear(T)(ref T obj) if (is(T == struct))
 {
     typeid(T).destroy(&obj);
     auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
-    auto init = cast(ubyte[])typeid(T).init;
+    auto init = cast(ubyte[])typeid(T).init();
     if(init.ptr is null) // null ptr means initialize to 0s
         buf[] = 0;
     else
