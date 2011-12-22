@@ -39,6 +39,7 @@ static if (USE_DSO)
 
 import rt.minfo;
 import rt.deh2;
+import rt.util.console;
 import rt.util.container;
 import core.stdc.stdlib;
 import core.stdc.string;
@@ -124,6 +125,7 @@ private:
 
     const(char)*        _name;
     FuncTable[]     _ehtables;
+    void[]          _modRange;
     union
     {
            void[][] _gcRanges; // this one is allocated
@@ -273,23 +275,6 @@ extern(C) int digestPhdr(dl_phdr_info *info, size_t size, void* data)
     if (addr < cast(void*)info.dlpi_addr)
         return 0;
 
-    size_t i;
-    for (i = 0; i < info.dlpi_phnum; ++i)
-    {
-        auto seg_beg = cast(void*)(info.dlpi_addr + info.dlpi_phdr[i].p_vaddr);
-        auto seg_end = seg_beg + info.dlpi_phdr[i].p_memsz;
-        if (addr >= seg_beg && addr <= seg_end)
-            break;
-    }
-    // wrong dl
-    if (i == info.dlpi_phnum)
-        return 0;
-
-    // name
-    pdso._name = cast(char*).strdup(info.dlpi_name);
-
-    // get loaded, writeable segments
-
     static void[] addrRange(dl_phdr_info *info, size_t idx)
     {
         assert(idx < info.dlpi_phnum);
@@ -297,6 +282,73 @@ extern(C) int digestPhdr(dl_phdr_info *info, size_t size, void* data)
         immutable sz  = info.dlpi_phdr[idx].p_memsz;
         return seg_beg[0 .. sz];
     }
+
+    size_t i;
+    for (i = 0; i < info.dlpi_phnum; ++i)
+    {
+        auto r = addrRange(info, i);
+        if (r.ptr <= addr && addr < r.ptr + r.length)
+            break;
+    }
+    // wrong dl
+    if (i == info.dlpi_phnum)
+        return 0;
+
+    if (pdso.modules.length)
+    {
+        void[] modRange;
+        {
+            auto m = pdso.modules[0];
+            for (i = 0; i < info.dlpi_phnum; ++i)
+            {
+                modRange = addrRange(info, i);
+                if (modRange.ptr <= m && m < modRange.ptr + modRange.length)
+                    break;
+            }
+            if (i == info.dlpi_phnum)
+                modRange = null;
+        }
+        // Check whether the .minfo section contains pointers to modules
+        // not located within this library. This would mean that a module
+        // got overridden by the executable or another library loaded with
+        // the RTLD_GLOBAL flag. If so abort the program with a decent
+        // error message.
+        foreach(m; pdso.modules)
+        {
+            if (!(modRange.ptr <= m && m < modRange.ptr + modRange.length))
+            {
+                console("Fatal Error: Conflicting module '")(m.name)("'.\n");
+                console("\tDefinition in '");
+
+                extern(C) static int findOther(dl_phdr_info *info, size_t, void* p)
+                {
+                    for (size_t i = 0; i < info.dlpi_phnum; ++i)
+                    {
+                        auto r = addrRange(info, i);
+                        if (r.ptr <= p && p < r.ptr + r.length)
+                        {
+                            console(info.dlpi_name[0 .. .strlen(info.dlpi_name)]);
+                            return 1;
+                        }
+                    }
+                    return 0;
+                }
+                dl_iterate_phdr(&findOther, m);
+
+                console("'\n\toverrides the one '");
+                console(info.dlpi_name[0 .. .strlen(info.dlpi_name)]);
+                console("'.\n");
+                .exit(EXIT_FAILURE);
+            }
+        }
+        // We can use this to uniquely identify libraries by modules.
+        pdso._modRange = modRange;
+    }
+
+    // name
+    pdso._name = cast(char*).strdup(info.dlpi_name);
+
+    // get loaded, writeable segments
 
     size_t nranges;
     for (i = 0; i < info.dlpi_phnum; ++i)
