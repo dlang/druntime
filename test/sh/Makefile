@@ -3,7 +3,7 @@ LIB_DIR:=lib
 SRC_DIR:=src
 TEST_DIR:=test
 DMD:=dmd
-TESTS:=deh
+TESTS:=deh gc init
 TESTS:=$(addprefix $(TEST_DIR)/, $(TESTS))
 
 LDFLAGS:=-L-L$(LIB_DIR) -L-rpath=$(LIB_DIR)
