@@ -1371,7 +1371,15 @@ struct TickDuration
                 if(clock_getres(CLOCK_MONOTONIC, &ts) != 0)
                     ticksPerSec = 0;
                 else
-                    ticksPerSec = 1_000_000_000 / ts.tv_nsec;
+                {
+                    if (ts.tv_nsec > 1_000) {
+                        // sometimes clock_getres() is messed up, if it returns
+                        // a bogus value then just use nanoseconds as the time
+                        // base.
+                        ticksPerSec = 1_000_000_000;
+                    } else
+                        ticksPerSec = 1_000_000_000 / ts.tv_nsec;
+                }
             }
             else
                 ticksPerSec = 1_000_000;
