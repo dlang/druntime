@@ -48,6 +48,7 @@ MANIFEST= \
 	src\core\internal\thread.di \
 	src\core\internal\_thread\thread.d \
 	src\core\internal\_thread\ppc_fiber.S \
+	src\core\internal\_thread\win_thread_aux.d \
 	\
 	src\core\stdc\complex.d \
 	src\core\stdc\config.d \
@@ -131,7 +132,7 @@ MANIFEST= \
 	src\core\sys\windows\dbghelp.d \
 	src\core\sys\windows\dll.d \
 	src\core\sys\windows\stacktrace.d \
-	src\core\sys\windows\threadaux.d \
+	src\core\sys\windows\threadaux.di \
 	src\core\sys\windows\windows.d \
 	\
 	src\gc\gc.d \
@@ -261,7 +262,6 @@ SRCS= \
 	src\core\sys\windows\dbghelp.d \
 	src\core\sys\windows\dll.d \
 	src\core\sys\windows\stacktrace.d \
-	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\windows.d \
 	\
 	src\core\sync\barrier.d \
@@ -349,7 +349,8 @@ SRCS= \
 	src\rt\typeinfo\ti_wchar.d
 
 THREAD_SRCS = \
-	src\core\internal\_thread\thread.d
+	src\core\internal\_thread\thread.d \
+	src\core\internal\_thread\win_thread_aux.d
 
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
@@ -795,7 +796,7 @@ $(IMPDIR)\core\sys\windows\dll.di : src\core\sys\windows\dll.d
 $(IMPDIR)\core\sys\windows\stacktrace.di : src\core\sys\windows\stacktrace.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
-$(IMPDIR)\core\sys\windows\threadaux.di : src\core\sys\windows\threadaux.d
+$(IMPDIR)\core\sys\windows\threadaux.di : src\core\sys\windows\threadaux.di
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\sys\windows\windows.di : src\core\sys\windows\windows.d

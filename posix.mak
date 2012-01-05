@@ -68,6 +68,7 @@ MANIFEST= \
 	src/core/internal/thread.di \
 	src/core/internal/_thread/thread.d \
 	src/core/internal/_thread/ppc_fiber.S \
+	src/core/internal/_thread/win_thread_aux.d \
 	\
 	src/core/stdc/complex.d \
 	src/core/stdc/config.d \
@@ -150,7 +151,7 @@ MANIFEST= \
 	src/core/sys/windows/dbghelp.d \
 	src/core/sys/windows/dll.d \
 	src/core/sys/windows/stacktrace.d \
-	src/core/sys/windows/threadaux.d \
+	src/core/sys/windows/threadaux.di \
 	src/core/sys/windows/windows.d \
 	\
 	src/gc/gc.d \
