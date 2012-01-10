@@ -13,6 +13,8 @@ CFLAGS=
 
 DRUNTIME_BASE=druntime
 DRUNTIME=lib\$(DRUNTIME_BASE).lib
+THREAD_BASE=dthread
+THREAD_LIB=lib\$(THREAD_BASE).lib
 GCSTUB=lib\gcstub.obj
 
 DOCFMT=
@@ -39,9 +41,13 @@ MANIFEST= \
 	src\core\runtime.d \
 	src\core\simd.d \
 	src\core\thread.d \
-	src\core\threadasm.S \
+	src\core\_thread\thread.di \
 	src\core\time.d \
 	src\core\vararg.d \
+	\
+	src\core\internal\thread.di \
+	src\core\internal\_thread\thread.d \
+	src\core\internal\_thread\ppc_fiber.S \
 	\
 	src\core\stdc\complex.d \
 	src\core\stdc\config.d \
@@ -342,6 +348,9 @@ SRCS= \
 	src\rt\typeinfo\ti_void.d \
 	src\rt\typeinfo\ti_wchar.d
 
+THREAD_SRCS = \
+	src\core\internal\_thread\thread.d
+
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
@@ -386,6 +395,8 @@ IMPORTS=\
 	$(IMPDIR)\core\thread.di \
 	$(IMPDIR)\core\time.di \
 	$(IMPDIR)\core\vararg.di \
+	\
+	$(IMPDIR)\core\internal\thread.di \
 	\
 	$(IMPDIR)\core\stdc\complex.di \
 	$(IMPDIR)\core\stdc\config.di \
@@ -569,6 +580,9 @@ $(IMPDIR)\core\time.di : src\core\time.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\vararg.di : src\core\vararg.d
+	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+
+$(IMPDIR)\core\internal\thread.di : src\core\internal\thread.di
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\stdc\complex.di : src\core\stdc\complex.d
@@ -811,8 +825,11 @@ $(GCSTUB) : src\gcstub\gc.d win32.mak
 
 ################### Library generation #########################
 
-$(DRUNTIME): $(OBJS) $(SRCS) win32.mak
-	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
+$(THREAD_LIB): $(THREAD_SRCS) win32.mak
+	$(DMD) -lib -of$@ $(DFLAGS) $(THREAD_SRCS)
+
+$(DRUNTIME): $(OBJS) $(THREAD_LIB) $(SRCS) win32.mak
+	$(DMD) -lib -of$@ -Xfdruntime.json $(DFLAGS) $(SRCS) $(THREAD_LIB) $(OBJS)
 
 unittest : $(SRCS) $(DRUNTIME) src\unittest.d
 	$(DMD) $(UDFLAGS) -L/co -unittest src\unittest.d $(SRCS) $(DRUNTIME) -debuglib=$(DRUNTIME) -defaultlib=$(DRUNTIME)
@@ -827,4 +844,4 @@ install: druntime.zip
 	unzip -o druntime.zip -d \dmd2\src\druntime
 
 clean:
-	del $(DOCS) $(IMPORTS) $(DRUNTIME) $(OBJS_TO_DELETE) $(GCSTUB)
+	del $(DOCS) $(IMPORTS) $(DRUNTIME) $(THREAD_LIB) $(OBJS_TO_DELETE) $(GCSTUB)

@@ -35,6 +35,8 @@ CFLAGS=-m$(MODEL) -O
 OBJDIR=obj
 DRUNTIME_BASE=druntime
 DRUNTIME=lib/lib$(DRUNTIME_BASE).a
+THREAD_BASE=dthread
+THREAD_LIB=lib/lib$(THREAD_BASE).a
 
 DOCFMT=
 
@@ -60,9 +62,12 @@ MANIFEST= \
 	src/core/runtime.d \
 	src/core/simd.d \
 	src/core/thread.d \
-	src/core/threadasm.S \
 	src/core/time.d \
 	src/core/vararg.d \
+	\
+	src/core/internal/thread.di \
+	src/core/internal/_thread/thread.d \
+	src/core/internal/_thread/ppc_fiber.S \
 	\
 	src/core/stdc/complex.d \
 	src/core/stdc/config.d \
@@ -364,12 +369,16 @@ SRC_D_MODULES = \
 	rt/typeinfo/ti_void \
 	rt/typeinfo/ti_wchar
 
+THREAD_MODULES = \
+	core/internal/_thread/thread
+
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o $(OBJDIR)/complex.o
+OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/complex.o
+THREAD_OBJS= $(OBJDIR)/ppc_fiber.o
 
 DOCS=\
 	$(DOCDIR)/object.html \
@@ -407,6 +416,8 @@ IMPORTS=\
 	$(IMPDIR)/core/thread.di \
 	$(IMPDIR)/core/time.di \
 	$(IMPDIR)/core/vararg.di \
+	\
+	$(IMPDIR)/core/internal/thread.di \
 	\
 	$(IMPDIR)/core/stdc/complex.di \
 	$(IMPDIR)/core/stdc/config.di \
@@ -489,6 +500,7 @@ IMPORTS=\
 	$(IMPDIR)/core/sys/windows/windows.di
 
 SRCS=$(addprefix src/,$(addsuffix .d,$(SRC_D_MODULES)))
+THREAD_SRCS=$(addprefix src/,$(addsuffix .d,$(THREAD_MODULES)))
 
 ######################## Doc .html file generation ##############################
 
@@ -513,6 +525,9 @@ $(IMPDIR)/core/sys/windows/%.di : src/core/sys/windows/%.d
 $(IMPDIR)/core/%.di : src/core/%.d
 	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Hf$@ $<
 
+$(IMPDIR)/core/%.di : src/core/%.di
+	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Hf$@ $<
+
 ################### C/ASM Targets ############################
 
 $(OBJDIR)/%.o : src/rt/%.c
@@ -523,14 +538,17 @@ $(OBJDIR)/errno_c.o : src/core/stdc/errno.c
 	@mkdir -p $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o$@
 
-$(OBJDIR)/threadasm.o : src/core/threadasm.S
+$(OBJDIR)/ppc_fiber.o : src/core/internal/_thread/ppc_fiber.S
 	@mkdir -p $(OBJDIR)
 	$(CC) -Wa,-noexecstack -c $(CFLAGS) $< -o$@
 
 ################### Library generation #########################
 
-$(DRUNTIME): $(OBJS) $(SRCS) win32.mak
-	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
+$(THREAD_LIB): $(THREAD_OBJS) $(THREAD_SRCS) posix.mak
+	$(DMD) -lib -of$@ $(DFLAGS) $(THREAD_OBJS) $(THREAD_SRCS)
+
+$(DRUNTIME): $(OBJS) $(THREAD_LIB) $(SRCS) posix.mak
+	$(DMD) -lib -of$@ -Xfdruntime.json $(DFLAGS) $(SRCS) $(THREAD_LIB) $(OBJS)
 
 unittest : $(addprefix $(OBJDIR)/,$(SRC_D_MODULES)) $(DRUNTIME) $(OBJDIR)/emptymain.d
 	@echo done
@@ -572,6 +590,6 @@ install: druntime.zip
 	unzip -o druntime.zip -d /dmd2/src/druntime
 
 clean:
-	rm -f $(DOCS) $(DRUNTIME)
+	rm -f $(DOCS) $(DRUNTIME) $(THREAD_LIB)
 	rm -rf $(OBJDIR) import/core
 
