@@ -36,6 +36,7 @@ else version (Windows)
     alias core.sys.windows.windows.GetCurrentProcessId getpid;
 }
 
+static import rt.dso;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread and Fiber Exceptions
@@ -269,13 +270,8 @@ else version( Posix )
 
         version( DigitalMars )
         {
-            version( linux )
+            static if ( rt.dso.USE_DSO )
             {
-                extern (C)
-                {
-                    extern int _tlsstart;
-                    extern int _tlsend;
-                }
             }
             else version( OSX )
             {
@@ -284,12 +280,12 @@ else version( Posix )
                     __gshared void[][2] _tls_data_array;
                 }
             }
-            else version( FreeBSD )
+            else version( Posix )
             {
                 extern (C)
                 {
-                    extern void* _tlsstart;
-                    extern void* _tlsend;
+                    extern int _tlsstart;
+                    extern int _tlsend;
                 }
             }
             else
@@ -317,7 +313,10 @@ else version( Posix )
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
 
-            version (OSX)
+            static if ( rt.dso.USE_DSO )
+            {
+            }
+            else version( OSX )
             {
                 // NOTE: OSX does not support TLS, so we do it ourselves.  The TLS
                 //       data output by the compiler is bracketed by _tls_data_array[2],
@@ -467,9 +466,12 @@ else version( Posix )
                 //       this case it is safe to simply suspend and not worry
                 //       about the stack pointers as the thread will not have
                 //       any references to GC-managed data.
-                if( obj && !obj.m_lock )
+                if( obj )
                 {
-                    obj.m_curr.tstack = getStackTop();
+                    if (!obj.m_lock)
+                        obj.m_curr.tstack = getStackTop();
+                    static if ( rt.dso.USE_DSO )
+                        obj.m_tls.updateRanges();
                 }
 
                 sigset_t    sigres = void;
@@ -626,28 +628,28 @@ class Thread
      */
     ~this()
     {
-        if( m_addr == m_addr.init )
+        if( m_addr != m_addr.init )
         {
-            return;
-        }
-
-        version( Windows )
-        {
-            m_addr = m_addr.init;
-            CloseHandle( m_hndl );
-            m_hndl = m_hndl.init;
-        }
-        else version( Posix )
-        {
-            pthread_detach( m_addr );
-            m_addr = m_addr.init;
-        }
-        version( OSX )
-        {
-            m_tmach = m_tmach.init;
+            version( Windows )
+            {
+                m_addr = m_addr.init;
+                CloseHandle( m_hndl );
+                m_hndl = m_hndl.init;
+            }
+            else version( Posix )
+            {
+                pthread_detach( m_addr );
+                m_addr = m_addr.init;
+            }
+            version( OSX )
+            {
+                m_tmach = m_tmach.init;
+            }
         }
         rt.tlsgc.destroy( m_tlsgcdata );
         m_tlsgcdata = null;
+        static if ( rt.dso.USE_DSO )
+            m_tls.free();
     }
 
 
@@ -1256,7 +1258,10 @@ private:
         m_call = Call.NO;
         m_curr = &m_main;
 
-        version (OSX)
+        static if ( rt.dso.USE_DSO )
+        {
+        }
+        else version( OSX )
         {
             //printf("test2 %p %p\n", _tls_data_array[0].ptr, &_tls_data_array[1][length]);
             //printf("test2 %p %p\n", &_tls_beg, &_tls_end);
@@ -1446,7 +1451,15 @@ private:
     Context             m_main;
     Context*            m_curr;
     bool                m_lock;
-    void[]              m_tls;  // spans implicit thread local storage
+    // memory ranges for thread local storage
+    static if ( rt.dso.USE_DSO )
+    {
+        rt.dso.TLS       m_tls;
+    }
+    else
+    {
+        void[]           m_tls;
+    }
     rt.tlsgc.Data*      m_tlsgcdata;
 
     version( Windows )
@@ -1923,7 +1936,11 @@ extern (C) Thread thread_attachThis()
         assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    version (OSX)
+
+    static if ( rt.dso.USE_DSO )
+    {
+    }
+    else version( OSX )
     {
         //printf("test3 %p %p\n", _tls_data_array[0].ptr, &_tls_data_array[1][length]);
         //printf("test3 %p %p\n", &_tls_beg, &_tls_end);
@@ -2656,6 +2673,8 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
             oldStackTop = thisThread.m_curr.tstack;
             thisThread.m_curr.tstack = curStackTop;
         }
+        static if ( rt.dso.USE_DSO )
+            thisThread.m_tls.updateRanges();
     }
 
     scope( exit )
@@ -2690,7 +2709,15 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
 
     for( Thread t = Thread.sm_tbeg; t; t = t.next )
     {
-        scan( ScanType.tls, t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
+        static if ( rt.dso.USE_DSO )
+        {
+            foreach( range; t.m_tls )
+                scan( ScanType.tls, range.ptr, range.ptr + range.length );
+        }
+        else
+        {
+            scan( ScanType.tls, t.m_tls.ptr, t.m_tls.ptr + t.m_tls.length );
+        }
 
         version( Windows )
         {

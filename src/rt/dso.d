@@ -125,6 +125,42 @@ private:
     Flags              _flags;
 }
 
+struct TLS
+{
+    void updateRanges()
+    {
+        if (_ranges.length)
+            return;
+
+        _ranges.length = _static_dsos.length;
+        size_t idx;
+        foreach(dso; _static_dsos[])
+        {
+            if (auto r = dso.tlsRange)
+                _ranges[idx++] = r;
+        }
+        _ranges.length = idx;
+    }
+
+    void free()
+    {
+        _ranges.clear();
+    }
+
+    int opApply(scope int delegate(ref void[]) dg)
+    {
+        foreach(r; _ranges[])
+        {
+            if (auto res = dg(r))
+                return res;
+        }
+        return 0;
+    }
+
+private:
+    Array!(void[]) _ranges;
+}
+
 /*
  * Static DSOs loaded by the runtime linker. These can't be unloaded.
  */
