@@ -77,7 +77,7 @@ int pthread_mutexattr_destroy(pthread_mutexattr_t*);
 int pthread_mutexattr_init(pthread_mutexattr_t*);
 int pthread_once(pthread_once_t*, void function());
 int pthread_rwlock_destroy(pthread_rwlock_t*);
-int pthread_rwlock_init(in pthread_rwlock_t*, pthread_rwlockattr_t*);
+int pthread_rwlock_init(pthread_rwlock_t*, in pthread_rwlockattr_t*);
 int pthread_rwlock_rdlock(pthread_rwlock_t*);
 int pthread_rwlock_tryrdlock(pthread_rwlock_t*);
 int pthread_rwlock_trywrlock(pthread_rwlock_t*);
@@ -123,7 +123,7 @@ version( linux )
 
     //enum pthread_mutex_t PTHREAD_MUTEX_INITIALIZER = { 0, 0, null, PTHREAD_MUTEX_NORMAL, { 0, 0 } };
 
-    enum PTHREAD_ONCE_INIT = 0;
+    enum PTHREAD_ONCE_INIT = pthread_once_t.init;
 
     enum
     {
@@ -163,7 +163,7 @@ else version( OSX )
 
     //enum pthread_mutex_t PTHREAD_MUTEX_INITIALIZER = { 0, 0, null, PTHREAD_MUTEX_NORMAL, { 0, 0 } };
 
-    enum PTHREAD_ONCE_INIT = 0;
+    enum PTHREAD_ONCE_INIT = pthread_once_t.init;
 
     enum
     {
@@ -203,7 +203,7 @@ else version( FreeBSD )
     enum PTHREAD_NEEDS_INIT = 0;
     enum PTHREAD_DONE_INIT  = 1;
 
-    //enum PTHREAD_ONCE_INIT = { PTHREAD_NEEDS_INIT, null };
+    //enum pthread_once_t PTHREAD_ONCE_INIT = { PTHREAD_NEEDS_INIT, null };
 
     enum PTHREAD_MUTEX_INITIALIZER              = null;
     enum PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP  = null;
@@ -348,7 +348,7 @@ version( Posix )
     int pthread_mutexattr_init(pthread_mutexattr_t*);
     int pthread_once(pthread_once_t*, void function());
     int pthread_rwlock_destroy(pthread_rwlock_t*);
-    int pthread_rwlock_init(in pthread_rwlock_t*, pthread_rwlockattr_t*);
+    int pthread_rwlock_init(pthread_rwlock_t*, in pthread_rwlockattr_t*);
     int pthread_rwlock_rdlock(pthread_rwlock_t*);
     int pthread_rwlock_tryrdlock(pthread_rwlock_t*);
     int pthread_rwlock_trywrlock(pthread_rwlock_t*);

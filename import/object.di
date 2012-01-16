@@ -103,6 +103,11 @@ class TypeInfo_Array : TypeInfo
     TypeInfo value;
 }
 
+class TypeInfo_Vector : TypeInfo
+{
+    TypeInfo base;
+}
+
 class TypeInfo_StaticArray : TypeInfo
 {
     TypeInfo value;
@@ -292,12 +297,6 @@ struct ModuleInfo
     static int opApply(scope int delegate(ref ModuleInfo*) dg);
 }
 
-ModuleInfo*[] _moduleinfo_tlsdtors;
-uint          _moduleinfo_tlsdtors_i;
-
-extern (C) void _moduleTlsCtor();
-extern (C) void _moduleTlsDtor();
-
 class Throwable : Object
 {
     interface TraceInfo
@@ -321,15 +320,31 @@ class Throwable : Object
 
 class Exception : Throwable
 {
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null);
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__);
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    {
+        super(msg, file, line, next);
+    }
+
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line, next);
+    }
 }
 
 
 class Error : Throwable
 {
-    this(string msg, Throwable next = null);
-    this(string msg, string file, size_t line, Throwable next = null);
+    this(string msg, Throwable next = null)
+    {
+        super(msg, next);
+        bypassedException = null;
+    }
+
+    this(string msg, string file, size_t line, Throwable next = null)
+    {
+        super(msg, file, line, next);
+        bypassedException = null;
+    }
     Throwable   bypassedException;
 }
 
@@ -443,7 +458,7 @@ void clear(T)(ref T obj) if (is(T == struct))
 {
     typeid(T).destroy(&obj);
     auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
-    auto init = cast(ubyte[])typeid(T).init;
+    auto init = cast(ubyte[])typeid(T).init();
     if(init.ptr is null) // null ptr means initialize to 0s
         buf[] = 0;
     else
@@ -502,6 +517,8 @@ bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
     }
     return true;
 }
+
+bool _xopEquals(in void* ptr, in void* ptr);
 
 void __ctfeWriteln(T...)(auto ref T) {}
 

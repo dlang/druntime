@@ -77,11 +77,33 @@ extern (C) void _STI_critical_init();
 extern (C) void _STD_critical_term();
 extern (C) void gc_init();
 extern (C) void gc_term();
-extern (C) void _minit();
-extern (C) void _moduleCtor();
-extern (C) void _moduleDtor();
+extern (C) void rt_moduleCtor();
+extern (C) void rt_moduleTlsCtor();
+extern (C) void rt_moduleDtor();
+extern (C) void rt_moduleTlsDtor();
 extern (C) void thread_joinAll();
 extern (C) void rt_lifetimeInit();
+
+// NOTE: This is to preserve compatibility with old Windows DLLs.
+extern (C) void _moduleCtor()
+{
+    rt_moduleCtor();
+}
+
+extern (C) void _moduleDtor()
+{
+    rt_moduleDtor();
+}
+
+extern (C) void _moduleTlsCtor()
+{
+    rt_moduleTlsCtor();
+}
+
+extern (C) void _moduleTlsDtor()
+{
+    rt_moduleTlsDtor();
+}
 
 version (OSX)
 {
@@ -207,18 +229,17 @@ extern (C)
     {
         onSwitchError(m.name, line);
     }
-
 }
 
 extern (C) void _d_hidden_func()
 {
     Object o;
-    version(X86)
+    version(D_InlineAsm_X86)
         asm
         {
             mov o, EAX;
         }
-    else version(X86_64)
+    else version(D_InlineAsm_X86_64)
         asm
         {
             mov o, RDI;
@@ -266,11 +287,9 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
     {
         gc_init();
         initStaticDataGC();
-        version (Windows)
-            _minit();
         rt_lifetimeInit();
-        _moduleCtor();
-        _moduleTlsCtor();
+        rt_moduleCtor();
+        rt_moduleTlsCtor();
         runModuleUnitTests();
         return true;
     }
@@ -298,10 +317,10 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
 {
     try
     {
-        _moduleTlsDtor();
+        rt_moduleTlsDtor();
         thread_joinAll();
         _d_isHalting = true;
-        _moduleDtor();
+        rt_moduleDtor();
         gc_term();
         return true;
     }
@@ -367,24 +386,28 @@ extern (C) int main(int argc, char** argv)
     version (Windows)
     {
         wchar_t*  wcbuf = GetCommandLineW();
-        size_t    wclen = wcslen(wcbuf);
+        size_t 	  wclen = wcslen(wcbuf);
         int       wargc = 0;
         wchar_t** wargs = CommandLineToArgvW(wcbuf, &wargc);
         assert(wargc == argc);
 
+        // This is required because WideCharToMultiByte requires int as input.
+        assert(wclen <= int.max, "wclen must not exceed int.max");
+
         char*     cargp = null;
-        size_t    cargl = WideCharToMultiByte(65001, 0, wcbuf, wclen, null, 0, null, 0);
+        size_t    cargl = WideCharToMultiByte(65001, 0, wcbuf, cast(int)wclen, null, 0, null, 0);
 
         cargp = cast(char*) alloca(cargl);
         args  = ((cast(char[]*) alloca(wargc * (char[]).sizeof)))[0 .. wargc];
 
         for (size_t i = 0, p = 0; i < wargc; i++)
         {
-            int wlen = wcslen(wargs[i]);
-            int clen = WideCharToMultiByte(65001, 0, &wargs[i][0], wlen, null, 0, null, 0);
+            size_t wlen = wcslen(wargs[i]);
+            assert(wlen <= int.max, "wlen cannot exceed int.max");
+            int clen = WideCharToMultiByte(65001, 0, &wargs[i][0], cast(int)wlen, null, 0, null, 0);
             args[i]  = cargp[p .. p+clen];
             p += clen; assert(p <= cargl);
-            WideCharToMultiByte(65001, 0, &wargs[i][0], wlen, &args[i][0], clen, null, 0);
+            WideCharToMultiByte(65001, 0, &wargs[i][0], cast(int)wlen, &args[i][0], clen, null, 0);
         }
         LocalFree(wargs);
         wargs = null;
@@ -513,19 +536,17 @@ extern (C) int main(int argc, char** argv)
     {
         gc_init();
         initStaticDataGC();
-        version (Windows)
-            _minit();
         rt_lifetimeInit();
-        _moduleCtor();
-        _moduleTlsCtor();
+        rt_moduleCtor();
+        rt_moduleTlsCtor();
         if (runModuleUnitTests())
             tryExec(&runMain);
         else
             result = EXIT_FAILURE;
-        _moduleTlsDtor();
+        rt_moduleTlsDtor();
         thread_joinAll();
         _d_isHalting = true;
-        _moduleDtor();
+        rt_moduleDtor();
         gc_term();
     }
 

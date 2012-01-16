@@ -22,6 +22,24 @@ public import core.time; // for Duration
 // this should be true for most architectures
 version = StackGrowsDown;
 
+/**
+ * Returns the process ID of the calling process, which is guaranteed to be
+ * unique on the system. This call is always successful.
+ *
+ * Example:
+ * ---
+ * writefln("Current process id: %s", getpid());
+ * ---
+ */
+version(Posix)
+{
+    alias core.sys.posix.unistd.getpid getpid;
+}
+else version (Windows)
+{
+    alias core.sys.windows.windows.GetCurrentProcessId getpid;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread and Fiber Exceptions
@@ -238,8 +256,6 @@ else version( Posix )
         import core.sys.posix.pthread;
         import core.sys.posix.signal;
         import core.sys.posix.time;
-
-        extern (C) int getErrno();
 
         version( OSX )
         {
@@ -796,8 +812,8 @@ class Thread
         {
             version( Windows )
             {
-                assert(m_sz <= uint.max, "m_sz should not exceed uint.max");
-                m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint)m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
+                assert(m_sz <= uint.max, "m_sz must be less than or equal to uint.max");
+                m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint) m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
                 if( cast(size_t) m_hndl == 0 )
                     throw new ThreadException( "Error creating thread" );
             }
@@ -2634,6 +2650,9 @@ extern(C) void thread_processGCMarks()
 }
 
 
+/**
+ *
+ */
 void[] thread_getTLSBlock()
 {
     version(OSX)
@@ -2651,6 +2670,17 @@ void[] thread_getTLSBlock()
 
         return (cast(void*)&_tlsstart)[0..(&_tlsend)-(&_tlsstart)];
     }
+}
+
+
+/**
+ *
+ */
+extern (C) void* thread_stackBottom()
+{
+    if( auto t = Thread.getThis() )
+        return t.topContext().bstack;
+    return rt_stackBottom();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2818,7 +2848,7 @@ private
     version( D_InlineAsm_X86 )
     {
         version( Windows )
-            version = AsmX86_Win32;
+            version = AsmX86_Windows;
         else version( Posix )
             version = AsmX86_Posix;
 
@@ -2827,7 +2857,12 @@ private
     }
     else version( D_InlineAsm_X86_64 )
     {
-        version( Posix )
+        version( Windows )
+        {
+            version = AsmX86_64_Windows;
+            version = AlignFiberStackTo16Byte;
+        }
+        else version( Posix )
         {
             version = AsmX86_64_Posix;
             version = AlignFiberStackTo16Byte;
@@ -2845,10 +2880,11 @@ private
         import core.sys.posix.unistd;   // for sysconf
         import core.sys.posix.sys.mman; // for mmap
 
-        version( AsmX86_Win32 ) {} else
-        version( AsmX86_Posix ) {} else
-        version( AsmPPC_Posix ) {} else
-        version( AsmX86_64_Posix ) {} else
+        version( AsmX86_Windows )    {} else
+        version( AsmX86_Posix )      {} else
+        version( AsmX86_64_Windows ) {} else
+        version( AsmX86_64_Posix )   {} else
+        version( AsmPPC_Posix )      {} else
         {
             // NOTE: The ucontext implementation requires architecture specific
             //       data definitions to operate so testing for it must be done
@@ -2935,7 +2971,7 @@ private
         //       default stack created by Fiber.initStack or the initial
         //       switch into a new context will fail.
 
-        version( AsmX86_Win32 )
+        version( AsmX86_Windows )
         {
             asm
             {
@@ -2944,13 +2980,13 @@ private
                 // save current stack state
                 push EBP;
                 mov  EBP, ESP;
-                push EAX;
+                push EDI;
+                push ESI;
+                push EBX;
                 push dword ptr FS:[0];
                 push dword ptr FS:[4];
                 push dword ptr FS:[8];
-                push EBX;
-                push ESI;
-                push EDI;
+                push EAX;
 
                 // store oldp again with more accurate address
                 mov EAX, dword ptr 8[EBP];
@@ -2959,17 +2995,56 @@ private
                 mov ESP, dword ptr 12[EBP];
 
                 // load saved state from new stack
-                pop EDI;
-                pop ESI;
-                pop EBX;
+                pop EAX;
                 pop dword ptr FS:[8];
                 pop dword ptr FS:[4];
                 pop dword ptr FS:[0];
-                pop EAX;
+                pop EBX;
+                pop ESI;
+                pop EDI;
                 pop EBP;
 
                 // 'return' to complete switch
                 ret;
+            }
+        }
+        else version( AsmX86_64_Windows )
+        {
+            asm
+            {
+                naked;
+
+                // save current stack state
+                push RBP;
+                mov  RBP, RSP;
+                push RBX;
+                push R12;
+                push R13;
+                push R14;
+                push R15;
+                push qword ptr GS:[0];
+                push qword ptr GS:[8];
+                push qword ptr GS:[16];
+
+                // store oldp
+                mov [RDI], RSP;
+                // load newp to begin context switch
+                mov RSP, RSI;
+
+                // load saved state from new stack
+                pop qword ptr GS:[16];
+                pop qword ptr GS:[8];
+                pop qword ptr GS:[0];
+                pop R15;
+                pop R14;
+                pop R13;
+                pop R12;
+                pop RBX;
+                pop RBP;
+
+                // 'return' to complete switch
+                pop RCX;
+                jmp RCX;
             }
         }
         else version( AsmX86_Posix )
@@ -2981,10 +3056,10 @@ private
                 // save current stack state
                 push EBP;
                 mov  EBP, ESP;
-                push EAX;
-                push EBX;
-                push ESI;
                 push EDI;
+                push ESI;
+                push EBX;
+                push EAX;
 
                 // store oldp again with more accurate address
                 mov EAX, dword ptr 8[EBP];
@@ -2993,10 +3068,10 @@ private
                 mov ESP, dword ptr 12[EBP];
 
                 // load saved state from new stack
-                pop EDI;
-                pop ESI;
-                pop EBX;
                 pop EAX;
+                pop EBX;
+                pop ESI;
+                pop EDI;
                 pop EBP;
 
                 // 'return' to complete switch
@@ -3009,9 +3084,11 @@ private
             asm
             {
                 naked;
+
                 // save current stack state
-                push RBX;
                 push RBP;
+                mov  RBP, RSP;
+                push RBX;
                 push R12;
                 push R13;
                 push R14;
@@ -3027,8 +3104,8 @@ private
                 pop R14;
                 pop R13;
                 pop R12;
-                pop RBP;
                 pop RBX;
+                pop RBP;
 
                 // 'return' to complete switch
                 pop RCX;
@@ -3125,7 +3202,7 @@ class Fiber
      * In:
      *  fn must not be null.
      */
-    this( void function() fn, size_t sz = PAGESIZE )
+    this( void function() fn, size_t sz = PAGESIZE*4 )
     in
     {
         assert( fn );
@@ -3151,7 +3228,7 @@ class Fiber
      * In:
      *  dg must not be null.
      */
-    this( void delegate() dg, size_t sz = PAGESIZE )
+    this( void delegate() dg, size_t sz = PAGESIZE*4 )
     in
     {
         assert( dg );
@@ -3659,11 +3736,13 @@ private:
             }
         }
 
-        version( AsmX86_Win32 )
+        version( AsmX86_Windows )
         {
             push( cast(size_t) &fiber_entryPoint );                 // EIP
-            push( 0xFFFFFFFF );                                     // EBP
-            push( 0x00000000 );                                     // EAX
+            push( cast(size_t) m_ctxt.bstack );                     // EBP
+            push( 0x00000000 );                                     // EDI
+            push( 0x00000000 );                                     // ESI
+            push( 0x00000000 );                                     // EBX
             push( 0xFFFFFFFF );                                     // FS:[0]
             version( StackGrowsDown )
             {
@@ -3675,30 +3754,50 @@ private:
                 push( cast(size_t) m_ctxt.bstack );                 // FS:[4]
                 push( cast(size_t) m_ctxt.bstack + m_size );        // FS:[8]
             }
-            push( 0x00000000 );                                     // EBX
-            push( 0x00000000 );                                     // ESI
-            push( 0x00000000 );                                     // EDI
+            push( 0x00000000 );                                     // EAX
+        }
+        else version( AsmX86_64_Windows )
+        {
+            push( 0x00000000_00000000 );                            // Return address of fiber_entryPoint call
+            push( cast(size_t) &fiber_entryPoint );                 // RIP
+            push( 0x00000000_00000000 );                            // RBP
+            push( 0x00000000_00000000 );                            // RBX
+            push( 0x00000000_00000000 );                            // R12
+            push( 0x00000000_00000000 );                            // R13
+            push( 0x00000000_00000000 );                            // R14
+            push( 0x00000000_00000000 );                            // R15
+            push( 0xFFFFFFFF_FFFFFFFF );                            // GS:[0]
+            version( StackGrowsDown )
+            {
+                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]
+                push( cast(size_t) m_ctxt.bstack - m_size );        // GS:[16]
+            }
+            else
+            {
+                push( cast(size_t) m_ctxt.bstack );                 // GS:[8]
+                push( cast(size_t) m_ctxt.bstack + m_size );        // GS:[16]
+            }
         }
         else version( AsmX86_Posix )
         {
             push( 0x00000000 );                                     // Return address of fiber_entryPoint call
             push( cast(size_t) &fiber_entryPoint );                 // EIP
-            push( 0x00000000 );                                     // EBP
-            push( 0x00000000 );                                     // EAX
-            push( 0x00000000 );                                     // EBX
-            push( 0x00000000 );                                     // ESI
+            push( cast(size_t) m_ctxt.bstack );                     // EBP
             push( 0x00000000 );                                     // EDI
+            push( 0x00000000 );                                     // ESI
+            push( 0x00000000 );                                     // EBX
+            push( 0x00000000 );                                     // EAX
         }
         else version( AsmX86_64_Posix )
         {
-            push(0);                                                // Return address of fiber_entryPoint call
+            push( 0x00000000_00000000 );                            // Return address of fiber_entryPoint call
             push( cast(size_t) &fiber_entryPoint );                 // RIP
-            push(0);                                                // RBX
-            push(0);                                                // RBP
-            push(0);                                                // R12
-            push(0);                                                // R13
-            push(0);                                                // R14
-            push(0);                                                // R15
+            push( cast(size_t) m_ctxt.bstack );                     // RBP
+            push( 0x00000000_00000000 );                            // RBX
+            push( 0x00000000_00000000 );                            // R12
+            push( 0x00000000_00000000 );                            // R13
+            push( 0x00000000_00000000 );                            // R14
+            push( 0x00000000_00000000 );                            // R15
         }
         else version( AsmPPC_Posix )
         {

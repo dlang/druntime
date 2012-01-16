@@ -6,8 +6,8 @@ CC=dmc
 DOCDIR=doc
 IMPDIR=import
 
-DFLAGS=-O -release -inline -nofloat -w -d -Isrc -Iimport
-UDFLAGS=-O -release -nofloat -w -d -Isrc -Iimport
+DFLAGS=-O -release -inline -nofloat -w -d -Isrc -Iimport -property
+UDFLAGS=-O -release -nofloat -w -d -Isrc -Iimport -property
 
 CFLAGS=
 
@@ -37,6 +37,7 @@ MANIFEST= \
 	src\core\math.d \
 	src\core\memory.d \
 	src\core\runtime.d \
+	src\core\simd.d \
 	src\core\thread.d \
 	src\core\threadasm.S \
 	src\core\time.d \
@@ -167,8 +168,9 @@ MANIFEST= \
 	src\rt\llmath.d \
 	src\rt\mars.h \
 	src\rt\memory.d \
-	src\rt\memory_osx.c \
+	src\rt\memory_osx.d \
 	src\rt\memset.d \
+	src\rt\minfo.d \
 	src\rt\minit.asm \
 	src\rt\monitor.c \
 	src\rt\monitor_.d \
@@ -231,6 +233,7 @@ SRCS= \
 	src\core\math.d \
 	src\core\memory.d \
 	src\core\runtime.d \
+	src\core\simd.d \
 	src\core\thread.d \
 	src\core\time.d \
 	src\core\vararg.d \
@@ -292,6 +295,7 @@ SRCS= \
 	src\rt\llmath.d \
 	src\rt\memory.d \
 	src\rt\memset.d \
+	src\rt\minfo.d \
 	src\rt\obj.d \
 	src\rt\qsort.d \
 	src\rt\switch_.d \
@@ -356,6 +360,7 @@ DOCS=\
 	$(DOCDIR)\core_math.html \
 	$(DOCDIR)\core_memory.html \
 	$(DOCDIR)\core_runtime.html \
+	$(DOCDIR)\core_simd.html \
 	$(DOCDIR)\core_thread.html \
 	$(DOCDIR)\core_time.html \
 	$(DOCDIR)\core_vararg.html \
@@ -377,6 +382,7 @@ IMPORTS=\
 	$(IMPDIR)\core\math.di \
 	$(IMPDIR)\core\memory.di \
 	$(IMPDIR)\core\runtime.di \
+	$(IMPDIR)\core\simd.di \
 	$(IMPDIR)\core\thread.di \
 	$(IMPDIR)\core\time.di \
 	$(IMPDIR)\core\vararg.di \
@@ -452,6 +458,7 @@ IMPORTS=\
 	$(IMPDIR)\core\sys\posix\sys\time.di \
 	$(IMPDIR)\core\sys\posix\sys\types.di \
 	$(IMPDIR)\core\sys\posix\sys\uio.di \
+	$(IMPDIR)\core\sys\posix\sys\un.di \
 	$(IMPDIR)\core\sys\posix\sys\wait.di \
 	\
 	$(IMPDIR)\core\sys\windows\dbghelp.di \
@@ -489,6 +496,9 @@ $(DOCDIR)\core_memory.html : src\core\memory.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $**
 
 $(DOCDIR)\core_runtime.html : src\core\runtime.d
+	$(DMD) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $**
+
+$(DOCDIR)\core_simd.html : src\core\simd.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $**
 
 $(DOCDIR)\core_thread.html : src\core\thread.d
@@ -547,6 +557,9 @@ $(IMPDIR)\core\memory.di : src\core\memory.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\runtime.di : src\core\runtime.d
+	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+
+$(IMPDIR)\core\simd.di : src\core\simd.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\thread.di : src\core\thread.d
@@ -738,6 +751,9 @@ $(IMPDIR)\core\sys\posix\sys\types.di : src\core\sys\posix\sys\types.d
 $(IMPDIR)\core\sys\posix\sys\uio.di : src\core\sys\posix\sys\uio.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
+$(IMPDIR)\core\sys\posix\sys\un.di : src\core\sys\posix\sys\un.d
+	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+
 $(IMPDIR)\core\sys\posix\sys\wait.di : src\core\sys\posix\sys\wait.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
@@ -758,13 +774,13 @@ $(IMPDIR)\core\sys\posix\utime.di : src\core\sys\posix\utime.d
 
 $(IMPDIR)\core\sys\windows\dbghelp.di : src\core\sys\windows\dbghelp.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
-	
+
 $(IMPDIR)\core\sys\windows\dll.di : src\core\sys\windows\dll.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\sys\windows\stacktrace.di : src\core\sys\windows\stacktrace.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
-	
+
 $(IMPDIR)\core\sys\windows\threadaux.di : src\core\sys\windows\threadaux.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
@@ -799,7 +815,7 @@ $(DRUNTIME): $(OBJS) $(SRCS) win32.mak
 	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
 unittest : $(SRCS) $(DRUNTIME) src\unittest.d
-	$(DMD) $(UDFLAGS) -L/co -unittest src\unittest.d $(SRCS) $(DRUNTIME) -debuglib=$(DRUNTIME_BASE) -defaultlib=$(DRUNTIME_BASE)
+	$(DMD) $(UDFLAGS) -L/co -unittest src\unittest.d $(SRCS) $(DRUNTIME) -debuglib=$(DRUNTIME) -defaultlib=$(DRUNTIME)
 
 zip: druntime.zip
 

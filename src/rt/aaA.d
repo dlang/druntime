@@ -30,7 +30,6 @@ private
     }
 
     extern (C) void* gc_malloc( size_t sz, uint ba = 0 );
-    extern (C) void* gc_calloc( size_t sz, uint ba = 0 );
     extern (C) void  gc_free( void* p );
     
     // Convenience function to make sure the NO_INTERIOR gets set on the
@@ -105,7 +104,7 @@ struct AA
 
 size_t aligntsize(size_t tsize)
 {
-    version (X86_64)
+    version (D_LP64)
         // Size of key needed to align value on 16 bytes
         return (tsize + 15) & ~(15);
     else
@@ -245,7 +244,7 @@ body
     aaA *e;
     //printf("keyti = %p\n", keyti);
     //printf("aa = %p\n", aa);
-    auto keysize = aligntsize(keyti.tsize());
+    immutable keytitsize = keyti.tsize();
 
     if (!aa.a)
     {   aa.a = new BB();
@@ -272,11 +271,13 @@ body
 
     // Not found, create new elem
     //printf("create new one\n");
-    size_t size = aaA.sizeof + keysize + valuesize;
-    e = cast(aaA *) gc_calloc(size);
-    memcpy(e + 1, pkey, keyti.tsize);
-    memset(cast(byte*)(e + 1) + keyti.tsize, 0, keysize - keyti.tsize);
+    size_t size = aaA.sizeof + aligntsize(keytitsize) + valuesize;
+    e = cast(aaA *) gc_malloc(size);
+    e.next = null;
     e.hash = key_hash;
+    ubyte* ptail = cast(ubyte*)(e + 1);
+    memcpy(ptail, pkey, keytitsize);
+    memset(ptail + aligntsize(keytitsize), 0, valuesize); // zero value
     *pe = e;
 
     auto nodes = ++aa.a.nodes;
@@ -288,7 +289,7 @@ body
     }
 
 Lret:
-    return cast(void *)(e + 1) + keysize;
+    return cast(void *)(e + 1) + aligntsize(keytitsize);
 }
 
 
@@ -387,12 +388,12 @@ body
  * If key is not in aa[], do nothing.
  */
 
-void _aaDel(AA aa, TypeInfo keyti, ...)
+bool _aaDel(AA aa, TypeInfo keyti, ...)
 {
     return _aaDelX(aa, keyti, cast(void*)(&keyti + 1));
 }
 
-void _aaDelX(AA aa, TypeInfo keyti, void* pkey)
+bool _aaDelX(AA aa, TypeInfo keyti, void* pkey)
 {
     aaA *e;
 
@@ -412,12 +413,13 @@ void _aaDelX(AA aa, TypeInfo keyti, void* pkey)
                     *pe = e.next;
                     aa.a.nodes--;
                     gc_free(e);
-                    break;
+                    return true;
                 }
             }
             pe = &e.next;
         }
     }
+    return false;
 }
 
 
@@ -661,7 +663,6 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
     //printf("tivalue = %.*s\n", ti.next.classinfo.name);
     if (length == 0 || valuesize == 0 || keysize == 0)
     {
-        ;
     }
     else
     {
@@ -740,7 +741,6 @@ BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] val
     assert(length == values.length);
     if (length == 0 || valuesize == 0 || keysize == 0)
     {
-        ;
     }
     else
     {

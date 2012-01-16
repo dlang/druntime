@@ -27,8 +27,8 @@ IMPDIR=import
 
 MODEL=32
 
-DFLAGS=-m$(MODEL) -O -release -inline -nofloat -w -d -Isrc -Iimport
-UDFLAGS=-m$(MODEL) -O -release -nofloat -w -d -Isrc -Iimport
+DFLAGS=-m$(MODEL) -O -release -inline -nofloat -w -d -Isrc -Iimport -property
+UDFLAGS=-m$(MODEL) -O -release -nofloat -w -d -Isrc -Iimport -property
 
 CFLAGS=-m$(MODEL) -O
 
@@ -58,6 +58,7 @@ MANIFEST= \
 	src/core/math.d \
 	src/core/memory.d \
 	src/core/runtime.d \
+	src/core/simd.d \
 	src/core/thread.d \
 	src/core/threadasm.S \
 	src/core/time.d \
@@ -186,8 +187,9 @@ MANIFEST= \
 	src/rt/llmath.d \
 	src/rt/mars.h \
 	src/rt/memory.d \
-	src/rt/memory_osx.c \
+	src/rt/memory_osx.d \
 	src/rt/memset.d \
+	src/rt/minfo.d \
 	src/rt/minit.asm \
 	src/rt/monitor_.d \
 	src/rt/obj.d \
@@ -251,6 +253,7 @@ SRC_D_MODULES = \
 	core/math \
 	core/memory \
 	core/runtime \
+	core/simd \
 	core/thread \
 	core/time \
 	core/vararg \
@@ -311,7 +314,9 @@ SRC_D_MODULES = \
 	rt/lifetime \
 	rt/llmath \
 	rt/memory \
+	rt/memory_osx \
 	rt/memset \
+	rt/minfo \
 	rt/monitor_ \
 	rt/obj \
 	rt/qsort \
@@ -364,7 +369,7 @@ SRC_D_MODULES = \
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o $(OBJDIR)/complex.o $(OBJDIR)/memory_osx.o
+OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o $(OBJDIR)/complex.o
 
 DOCS=\
 	$(DOCDIR)/object.html \
@@ -376,6 +381,7 @@ DOCS=\
 	$(DOCDIR)/core_math.html \
 	$(DOCDIR)/core_memory.html \
 	$(DOCDIR)/core_runtime.html \
+	$(DOCDIR)/core_simd.html \
 	$(DOCDIR)/core_thread.html \
 	$(DOCDIR)/core_time.html \
 	$(DOCDIR)/core_vararg.html \
@@ -397,6 +403,7 @@ IMPORTS=\
 	$(IMPDIR)/core/math.di \
 	$(IMPDIR)/core/memory.di \
 	$(IMPDIR)/core/runtime.di \
+	$(IMPDIR)/core/simd.di \
 	$(IMPDIR)/core/thread.di \
 	$(IMPDIR)/core/time.di \
 	$(IMPDIR)/core/vararg.di \
