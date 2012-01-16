@@ -122,7 +122,6 @@ enum
 
 struct _iobuf
 {
-    align (1):
     version( Windows )
     {
         char* _ptr;
@@ -132,7 +131,7 @@ struct _iobuf
         int   _file;
         int   _charbuf;
         int   _bufsiz;
-        int   __tmpnum;
+        char* __tmpnum;
     }
     else version( linux )
     {

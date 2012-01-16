@@ -50,7 +50,7 @@ private:
         }
 
         alias extern(Windows)
-        void* fnRtlAllocateHeap(void* HeapHandle, uint Flags, uint Size);
+        void* fnRtlAllocateHeap(void* HeapHandle, uint Flags, SIZE_T Size);
 
         // find a code sequence and return the address after the sequence
         static void* findCodeSequence( void* adr, int len, ref ubyte[] pattern )
@@ -191,7 +191,7 @@ private:
                 void** peb = cast(void**) teb[12];
                 void* heap = peb[6];
 
-                int sz = tlsend - tlsstart;
+                size_t sz = tlsend - tlsstart;
                 void* tlsdata = cast(void*) (*fnAlloc)( heap, *pNtdllBaseTag | 0xc0000, sz );
                 if( !tlsdata )
                     return false;

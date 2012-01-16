@@ -796,7 +796,8 @@ class Thread
         {
             version( Windows )
             {
-                m_hndl = cast(HANDLE) _beginthreadex( null, m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
+                assert(m_sz <= uint.max, "m_sz should not exceed uint.max");
+                m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint)m_sz, &thread_entryPoint, cast(void*) this, 0, &m_addr );
                 if( cast(size_t) m_hndl == 0 )
                     throw new ThreadException( "Error creating thread" );
             }
@@ -2243,7 +2244,30 @@ extern (C) void thread_suspendAll()
             if( !GetThreadContext( t.m_hndl, &context ) )
                 throw new ThreadException( "Unable to load thread context" );
 
-            version( X86 )
+            version( X86_64 )
+            {
+                if( !t.m_lock )
+                    t.m_curr.tstack = cast(void*) context.Rsp;            
+                // rax,rbx,rcx,rdx,rdi,rsi,rbp,rsp
+                t.m_reg[0] = context.Rax;
+                t.m_reg[1] = context.Rbx;
+                t.m_reg[2] = context.Rcx;
+                t.m_reg[3] = context.Rdx;
+                t.m_reg[4] = context.Rdi;
+                t.m_reg[5] = context.Rsi;
+                t.m_reg[6] = context.Rbp;
+                t.m_reg[7] = context.Rsp;
+                // r8,r9,r10,r11,r12,r13,r14,r15
+                t.m_reg[8]  = context.R8;
+                t.m_reg[9]  = context.R9;
+                t.m_reg[10] = context.R10;
+                t.m_reg[11] = context.R11;
+                t.m_reg[12] = context.R12;
+                t.m_reg[13] = context.R13;
+                t.m_reg[14] = context.R14;
+                t.m_reg[15] = context.R15;                    
+            }
+            else version( X86 )
             {
                 if( !t.m_lock )
                     t.m_curr.tstack = cast(void*) context.Esp;
@@ -2301,25 +2325,25 @@ extern (C) void thread_suspendAll()
                 if( thread_get_state( t.m_tmach, x86_THREAD_STATE64, &state, &count ) != KERN_SUCCESS )
                     throw new ThreadException( "Unable to load thread state" );
                 if( !t.m_lock )
-                    t.m_curr.tstack = cast(void*) state.rsp;
+                    t.m_curr.tstack = cast(void*) state.Rsp;
                 // rax,rbx,rcx,rdx,rdi,rsi,rbp,rsp
-                t.m_reg[0] = state.rax;
-                t.m_reg[1] = state.rbx;
-                t.m_reg[2] = state.rcx;
-                t.m_reg[3] = state.rdx;
-                t.m_reg[4] = state.rdi;
-                t.m_reg[5] = state.rsi;
-                t.m_reg[6] = state.rbp;
-                t.m_reg[7] = state.rsp;
+                t.m_reg[0] = state.Rax;
+                t.m_reg[1] = state.Rbx;
+                t.m_reg[2] = state.Rcx;
+                t.m_reg[3] = state.Rdx;
+                t.m_reg[4] = state.Rdi;
+                t.m_reg[5] = state.Rsi;
+                t.m_reg[6] = state.Rbp;
+                t.m_reg[7] = state.Rsp;
                 // r8,r9,r10,r11,r12,r13,r14,r15
-                t.m_reg[8]  = state.r8;
-                t.m_reg[9]  = state.r9;
-                t.m_reg[10] = state.r10;
-                t.m_reg[11] = state.r11;
-                t.m_reg[12] = state.r12;
-                t.m_reg[13] = state.r13;
-                t.m_reg[14] = state.r14;
-                t.m_reg[15] = state.r15;
+                t.m_reg[8]  = state.R8;
+                t.m_reg[9]  = state.R9;
+                t.m_reg[10] = state.R10;
+                t.m_reg[11] = state.R11;
+                t.m_reg[12] = state.R12;
+                t.m_reg[13] = state.R13;
+                t.m_reg[14] = state.R14;
+                t.m_reg[15] = state.R15;
             }
             else
             {
