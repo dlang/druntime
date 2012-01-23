@@ -104,6 +104,7 @@ else // Win32
     alias HANDLE HINSTANCE;
     alias HINSTANCE HMODULE;
     alias HANDLE HWND;
+    alias HANDLE HDWP;
 
     alias HANDLE HGDIOBJ;
     alias HANDLE HACCEL;
@@ -1830,8 +1831,146 @@ enum
     DCX_VALIDATE =         0x00200000,
 }
 
+struct ALTTABINFO
+{
+    DWORD cbSize;
+    int   cItems;
+    int   cColumns;
+    int   cRows;
+    int   iColFocus;
+    int   iRowFocus;
+    int   cxItem;
+    int   cyItem;
+    POINT ptStart;
+}
+alias ALTTABINFO* PALTTABINFO, LPALTTABINFO;
+
+struct GUITHREADINFO    // Windows 2000
+{
+    DWORD cbSize;
+    DWORD flags;
+    HWND  hwndActive;
+    HWND  hwndFocus;
+    HWND  hwndCapture;
+    HWND  hwndMenuOwner;
+    HWND  hwndMoveSize;
+    HWND  hwndCaret;
+    RECT  rcCaret;
+}
+alias GUITHREADINFO* PGUITHREADINFO, LPGUITHREADINFO;
+
+enum CCHILDREN_TITLEBAR = 5;
+
+enum
+{
+    STATE_SYSTEM_FOCUSABLE   = 0x00100000,
+    STATE_SYSTEM_INVISIBLE   = 0x00008000,
+    STATE_SYSTEM_OFFSCREEN   = 0x00010000,
+    STATE_SYSTEM_UNAVAILABLE = 0x00000001,
+    STATE_SYSTEM_PRESSED     = 0x00000008
+}
+
+struct TITLEBARINFO
+{
+    DWORD cbSize;
+    RECT  rcTitleBar;
+    DWORD rgstate[CCHILDREN_TITLEBAR + 1];
+}
+alias TITLEBARINFO* PTITLEBARINFO, LPTITLEBARINFO;
+
+enum
+{
+    GW_CHILD        = 5,
+    GW_ENABLEDPOPUP = 6,
+    GW_HWNDFIRST    = 0,
+    GW_HWNDLAST     = 1,
+    GW_HWNDNEXT     = 2,
+    GW_HWNDPREV     = 3,
+    GW_OWNER        = 4,
+}
+
+struct WINDOWINFO
+{
+    DWORD cbSize;
+    RECT  rcWindow;
+    RECT  rcClient;
+    DWORD dwStyle;
+    DWORD dwExStyle;
+    DWORD dwWindowStatus;
+    UINT  cxWindowBorders;
+    UINT  cyWindowBorders;
+    ATOM  atomWindowType;
+    WORD  wCreatorVersion;
+}
+alias WINDOWINFO* PWINDOWINFO, LPWINDOWINFO;
+
+struct WINDOWPLACEMENT
+{
+    UINT  length;
+    UINT  flags;
+    UINT  showCmd;
+    POINT ptMinPosition;
+    POINT ptMaxPosition;
+    RECT  rcNormalPosition;
+}
+alias WINDOWPLACEMENT* PWINDOWPLACEMENT, LPWINDOWPLACEMENT;
+
+enum
+{
+    WPF_ASYNCWINDOWPLACEMENT = 0x0004,
+    WPF_RESTORETOMAXIMIZED   = 0x0002,
+    WPF_SETMINPOSITION       = 0x0001,
+}
+
 export
 {
+ BOOL AnimateWindow(HWND hwnd, DWORD dwTime, DWORD dwFlags);    // Windows 2000
+ BOOL AllowSetForegroundWindow(DWORD dwProcessId);              // Windows 2000
+ BOOL AnyPopup();
+ UINT ArrangeIconicWindows(HWND hWnd);
+ HDWP BeginDeferWindowPos(int nNumWindows);
+ BOOL BringWindowToTop(HWND hWnd);
+ WORD CascadeWindows(HWND hwndParent, UINT wHow, const(RECT)* lpRect, 
+                     UINT cKids, const(HWND)* lpKids);
+ HWND ChildWindowFromPointEx(HWND hwndParent, POINT pt, UINT uFlags);
+ BOOL CloseWindow(HWND hWnd);
+ HDWP DeferWindowPos(HDWP hWinPosInfo, HWND hWnd, HWND hWndInsertAfter, 
+                     int x, int y, int cx, int cy, UINT uFlags);
+ BOOL DeregisterShellHookWindow(HWND hWnd);
+ BOOL EndDeferWindowPos(HDWP hWinPosInfo);
+ BOOL DestroyWindow(HWND hWnd);
+ BOOL EndTask(HWND hWnd, BOOL fShutDown, BOOL fForce);
+ BOOL EnumChildWindows(HWND hWndParent, WNDENUMPROC lpEnumFunc, LPARAM lParam);
+ BOOL EnumThreadWindows(DWORD dwThreadId, WNDENUMPROC lpfn, LPARAM lParam);
+ BOOL EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam);
+ HWND FindWindowA(LPCSTR lpClassName, LPCSTR lpWindowName);
+ HWND FindWindowW(LPCWSTR lpClassName, LPCWSTR lpWindowName);
+ HWND FindWindowExA(HWND hwndParent, HWND hwndChildAfter, LPCSTR lpszClass, LPCSTR lpszWindow);
+ HWND FindWindowExW(HWND hwndParent, HWND hwndChildAfter, LPCWSTR lpszClass, LPCWSTR lpszWindow);
+ BOOL GetAltTabInfoA( HWND hwnd, int iItem, PALTTABINFO pati, LPSTR pszItemText, UINT cchItemText);
+ BOOL GetAltTabInfoW( HWND hwnd, int iItem, PALTTABINFO pati, LPWSTR pszItemText, UINT cchItemText);
+ HWND GetAncestor(HWND hwnd, UINT gaFlags);
+ HWND GetDesktopWindow();
+ BOOL GetGUIThreadInfo(DWORD idThread, LPGUITHREADINFO lpgui);  // Windows 2000
+ HWND GetLastActivePopup(HWND hWnd);
+ HWND GetNextWindow(HWND hWnd, UINT wCmd);
+ HWND GetParent(HWND hWnd);
+ BOOL GetProcessDefaultLayout(DWORD *pdwDefaultLayout);  // Windows 2000
+ HWND GetShellWindow(); // Windows 2000
+ DWORD GetSysColor(int nIndex);
+ BOOL GetTitleBarInfo(HWND hwnd, PTITLEBARINFO pti);
+ HWND GetTopWindow(HWND hWnd);
+ HWND GetWindow(HWND hWnd, UINT uCmd);
+ BOOL GetWindowInfo(HWND hwnd, PWINDOWINFO pwi);
+ UINT GetWindowModuleFileNameA(HWND hwnd, LPSTR lpszFileName, UINT cchFileNameMax);
+ UINT GetWindowModuleFileNameW(HWND hwnd, LPWSTR lpszFileName, UINT cchFileNameMax);
+ BOOL GetWindowPlacement(HWND hWnd, WINDOWPLACEMENT* lpwndpl);
+ int GetWindowTextA(HWND hWnd, LPSTR lpString, int nMaxCount);
+ int GetWindowTextW(HWND hWnd, LPWSTR lpString, int nMaxCount);
+ int GetWindowTextLengthA(HWND hWnd);
+ int GetWindowTextLengthW(HWND hWnd);
+ DWORD GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId);
+ 
  BOOL UpdateWindow(HWND hWnd);
  HWND SetActiveWindow(HWND hWnd);
  HWND GetForegroundWindow();
@@ -2360,6 +2499,19 @@ export HWND CreateWindowExA(
     HINSTANCE hInstance,
     LPVOID lpParam);
 
+export HWND CreateWindowExW(
+    DWORD dwExStyle,
+    LPCWSTR lpClassName,
+    LPCWSTR lpWindowName,
+    DWORD dwStyle,
+    int X,
+    int Y,
+    int nWidth,
+    int nHeight,
+    HWND hWndParent ,
+    HMENU hMenu,
+    HINSTANCE hInstance,
+    LPVOID lpParam);
 
 HWND CreateWindowA(
     LPCSTR lpClassName,
@@ -2375,6 +2527,22 @@ HWND CreateWindowA(
     LPVOID lpParam)
 {
     return CreateWindowExA(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+}
+
+HWND CreateWindowW(
+    LPCWSTR lpClassName,
+    LPCWSTR lpWindowName,
+    DWORD dwStyle,
+    int X,
+    int Y,
+    int nWidth,
+    int nHeight,
+    HWND hWndParent ,
+    HMENU hMenu,
+    HINSTANCE hInstance,
+    LPVOID lpParam)
+{
+    return CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 
 /*
