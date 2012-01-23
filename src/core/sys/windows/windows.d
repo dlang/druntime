@@ -2196,8 +2196,8 @@ export
 
  BOOL GetClassInfoA(HINSTANCE hInstance, LPCSTR lpClassName, LPWNDCLASSA lpWndClass);
  BOOL GetClassInfoW(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lpWndClass);
- BOOL GetClassInfoEx(HINSTANCE hinst, LPCSTR lpszClass, LPWNDCLASSEXA lpwcx);
- BOOL GetClassInfoEx(HINSTANCE hinst, LPCWSTR lpszClass, LPWNDCLASSEXW lpwcx);
+ BOOL GetClassInfoExA(HINSTANCE hinst, LPCSTR lpszClass, LPWNDCLASSEXA lpwcx);
+ BOOL GetClassInfoExW(HINSTANCE hinst, LPCWSTR lpszClass, LPWNDCLASSEXW lpwcx);
  DWORD GetClassLongA(HWND hWnd, int nIndex);
  DWORD GetClassLongW(HWND hWnd, int nIndex);
  ULONG_PTR GetClassLongPtrA(HWND hWnd, int nIndex);
