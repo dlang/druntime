@@ -2063,6 +2063,50 @@ struct STYLESTRUCT
 }
 alias STYLESTRUCT* LPSTYLESTRUCT;
 
+enum : int
+{
+    GWL_EXSTYLE     = -20,
+    GWL_HINSTANCE   =  -6,
+    GWL_HWNDPARENT  =  -8,
+    GWL_ID          = -12,
+    GWL_STYLE       = -16,
+    GWL_USERDATA    = -21,
+    GWL_WNDPROC     =  -4,
+    DWL_MSGRESULT   =   0,
+    GWLP_HINSTANCE  =  -6,
+    GWLP_HWNDPARENT =  -8,
+    GWLP_ID         = -12,
+    GWLP_USERDATA   = -21,
+    GWLP_WNDPROC    =  -4,
+    DWLP_MSGRESULT  =   0,
+
+    DWLP_DLGPROC    = DWLP_MSGRESULT + LRESULT.sizeof,
+    DWLP_USER       = DWLP_DLGPROC   + DLGPROC.sizeof,
+    DWL_DLGPROC     = DWLP_MSGRESULT + LRESULT.sizeof,
+    DWL_USER        = DWLP_DLGPROC   + DLGPROC.sizeof,
+}
+
+enum : int
+{
+    GCL_CBCLSEXTRA      = -20,
+    GCL_CBWNDEXTRA      = -18,
+    GCL_HBRBACKGROUND   = -10,
+    GCL_HCURSOR         = -12,
+    GCL_HICON           = -14,
+    GCL_HICONSM         = -34,
+    GCL_HMODULE         = -16,
+    GCL_MENUNAME        =  -8,
+    GCL_STYLE           = -26,
+    GCL_WNDPROC         = -24,
+}
+alias GCL_HBRBACKGROUND GCLP_HBRBACKGROUND;
+alias GCL_HCURSOR       GCLP_HCURSOR;
+alias GCL_HICON         GCLP_HICON;
+alias GCL_HICONSM       GCLP_HICONSM;
+alias GCL_HMODULE       GCLP_HMODULE;
+alias GCL_MENUNAME      GCLP_MENUNAME;
+alias GCL_WNDPROC       GCLP_WNDPROC;
+
 export
 {
  BOOL AnimateWindow(HWND hwnd, DWORD dwTime, DWORD dwFlags);    // Windows 2000
@@ -2071,11 +2115,11 @@ export
  UINT ArrangeIconicWindows(HWND hWnd);
  HDWP BeginDeferWindowPos(int nNumWindows);
  BOOL BringWindowToTop(HWND hWnd);
- WORD CascadeWindows(HWND hwndParent, UINT wHow, const(RECT)* lpRect, 
+ WORD CascadeWindows(HWND hwndParent, UINT wHow, const(RECT)* lpRect,
                      UINT cKids, const(HWND)* lpKids);
  HWND ChildWindowFromPointEx(HWND hwndParent, POINT pt, UINT uFlags);
  BOOL CloseWindow(HWND hWnd);
- HDWP DeferWindowPos(HDWP hWinPosInfo, HWND hWnd, HWND hWndInsertAfter, 
+ HDWP DeferWindowPos(HDWP hWinPosInfo, HWND hWnd, HWND hWndInsertAfter,
                      int x, int y, int cx, int cy, UINT uFlags);
  BOOL DeregisterShellHookWindow(HWND hWnd);
  BOOL EndDeferWindowPos(HDWP hWinPosInfo);
@@ -2086,13 +2130,13 @@ export
  BOOL EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam);
  HWND FindWindowA(LPCSTR lpClassName, LPCSTR lpWindowName);
  HWND FindWindowW(LPCWSTR lpClassName, LPCWSTR lpWindowName);
- HWND FindWindowExA(HWND hwndParent, HWND hwndChildAfter, LPCSTR lpszClass, 
+ HWND FindWindowExA(HWND hwndParent, HWND hwndChildAfter, LPCSTR lpszClass,
                     LPCSTR lpszWindow);
- HWND FindWindowExW(HWND hwndParent, HWND hwndChildAfter, LPCWSTR lpszClass, 
+ HWND FindWindowExW(HWND hwndParent, HWND hwndChildAfter, LPCWSTR lpszClass,
                     LPCWSTR lpszWindow);
- BOOL GetAltTabInfoA(HWND hwnd, int iItem, PALTTABINFO pati, LPSTR pszItemText, 
+ BOOL GetAltTabInfoA(HWND hwnd, int iItem, PALTTABINFO pati, LPSTR pszItemText,
                      UINT cchItemText);
- BOOL GetAltTabInfoW(HWND hwnd, int iItem, PALTTABINFO pati, LPWSTR pszItemText, 
+ BOOL GetAltTabInfoW(HWND hwnd, int iItem, PALTTABINFO pati, LPWSTR pszItemText,
                      UINT cchItemText);
  HWND GetAncestor(HWND hwnd, UINT gaFlags);
  HWND GetDesktopWindow();
@@ -2150,7 +2194,35 @@ export
                           POINT* pptSrc, COLORREF crKey, BLENDFUNCTION* pblend, DWORD dwFlags);
  HWND WindowFromPoint(POINT Point);
 
- 
+ BOOL GetClassInfoA(HINSTANCE hInstance, LPCSTR lpClassName, LPWNDCLASSA lpWndClass);
+ BOOL GetClassInfoW(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lpWndClass);
+ BOOL GetClassInfoEx(HINSTANCE hinst, LPCSTR lpszClass, LPWNDCLASSEXA lpwcx);
+ BOOL GetClassInfoEx(HINSTANCE hinst, LPCWSTR lpszClass, LPWNDCLASSEXW lpwcx);
+ DWORD GetClassLongA(HWND hWnd, int nIndex);
+ DWORD GetClassLongW(HWND hWnd, int nIndex);
+ ULONG_PTR GetClassLongPtrA(HWND hWnd, int nIndex);
+ ULONG_PTR GetClassLongPtrW(HWND hWnd, int nIndex);
+ int GetClassNameA(HWND hWnd, LPSTR lpClassName, int nMaxCount);
+ int GetClassNameW(HWND hWnd, LPWSTR lpClassName, int nMaxCount);
+ WORD GetClassWord(HWND hWnd, int nIndex);
+ LONG GetWindowLongA(HWND hWnd, int nIndex);
+ LONG GetWindowLongW(HWND hWnd, int nIndex);
+ LONG_PTR GetWindowLongPtrA(HWND hWnd, int nIndex);
+ LONG_PTR GetWindowLongPtrW(HWND hWnd, int nIndex);
+ ATOM RegisterClassExA(const(WNDCLASSEXA)* lpwcx);
+ ATOM RegisterClassExW(const(WNDCLASSEXW)* lpwcx);
+ DWORD SetClassLongA(HWND hWnd, int nIndex, LONG dwNewLong);
+ DWORD SetClassLongW(HWND hWnd, int nIndex, LONG dwNewLong);
+ ULONG_PTR SetClassLongPtrA(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+ ULONG_PTR SetClassLongPtrW(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+ WORD SetClassWord(HWND hWnd, int nIndex, WORD wNewWord);
+ LONG SetWindowLongA(HWND hWnd, int nIndex, LONG dwNewLong);
+ LONG SetWindowLongW(HWND hWnd, int nIndex, LONG dwNewLong);
+ LONG_PTR SetWindowLongPtrA(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+ LONG_PTR SetWindowLongPtrW(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+ BOOL UnregisterClassA(LPCSTR lpClassName, HINSTANCE hInstance);
+ BOOL UnregisterClassW(LPCWSTR lpClassName, HINSTANCE hInstance);
+  
  BOOL UpdateWindow(HWND hWnd);
  HWND SetActiveWindow(HWND hWnd);
  HWND GetForegroundWindow();
@@ -2510,6 +2582,21 @@ struct WNDCLASSEXA {
 }
 alias WNDCLASSEXA* PWNDCLASSEXA, NPWNDCLASSEXA, LPWNDCLASSEXA;
 
+struct WNDCLASSEXW {
+    UINT        cbSize;
+    UINT        style;
+    WNDPROC     lpfnWndProc;
+    int         cbClsExtra;
+    int         cbWndExtra;
+    HINSTANCE   hInstance;
+    HICON       hIcon;
+    HCURSOR     hCursor;
+    HBRUSH      hbrBackground;
+    LPCWSTR     lpszMenuName;
+    LPCWSTR     lpszClassName;
+    HICON       hIconSm;
+}
+alias WNDCLASSEXW* PWNDCLASSEXW, NPWNDCLASSEXW, LPWNDCLASSEXW;
 
 struct WNDCLASSA {
     UINT        style;
@@ -2525,6 +2612,20 @@ struct WNDCLASSA {
 }
 alias WNDCLASSA* PWNDCLASSA, NPWNDCLASSA, LPWNDCLASSA;
 alias WNDCLASSA WNDCLASS;
+
+struct WNDCLASSW {
+    UINT        style;
+    WNDPROC     lpfnWndProc;
+    int         cbClsExtra;
+    int         cbWndExtra;
+    HINSTANCE   hInstance;
+    HICON       hIcon;
+    HCURSOR     hCursor;
+    HBRUSH      hbrBackground;
+    LPCWSTR     lpszMenuName;
+    LPCWSTR     lpszClassName;
+}
+alias WNDCLASSW* PWNDCLASSW, NPWNDCLASSW, LPWNDCLASSW;
 
 /*
  * Window Styles
@@ -2671,6 +2772,7 @@ enum : HWND
 }
 
 export ATOM RegisterClassA(WNDCLASSA *lpWndClass);
+export ATOM RegisterClassW(WNDCLASSW *lpWndClass);
 
 export HWND CreateWindowExA(
     DWORD dwExStyle,
