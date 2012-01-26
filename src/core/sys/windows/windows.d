@@ -104,6 +104,7 @@ else // Win32
     alias HANDLE HINSTANCE;
     alias HINSTANCE HMODULE;
     alias HANDLE HWND;
+    alias HANDLE HDWP;
 
     alias HANDLE HGDIOBJ;
     alias HANDLE HACCEL;
@@ -1459,14 +1460,7 @@ enum
     WM_MBUTTONDBLCLK =                0x0209,
 
 
-
     WM_MOUSELAST =                    0x0209,
-
-
-
-
-
-
 
 
     WM_PARENTNOTIFY =                 0x0210,
@@ -1477,6 +1471,35 @@ enum
 
 
     WM_NEXTMENU =                     0x0213,
+}
+
+
+enum
+{
+    WS_EX_DLGMODALFRAME     = 0x00000001,
+    WS_EX_NOPARENTNOTIFY    = 0x00000004,
+    WS_EX_TOPMOST           = 0x00000008,
+    WS_EX_ACCEPTFILES       = 0x00000010,
+    WS_EX_TRANSPARENT       = 0x00000020,
+    WS_EX_MDICHILD          = 0x00000040,
+    WS_EX_TOOLWINDOW        = 0x00000080,
+    WS_EX_WINDOWEDGE        = 0x00000100,
+    WS_EX_CLIENTEDGE        = 0x00000200,
+    WS_EX_CONTEXTHELP       = 0x00000400,
+    WS_EX_RIGHT             = 0x00001000,
+    WS_EX_LEFT              = 0x00000000,
+    WS_EX_RTLREADING        = 0x00002000,
+    WS_EX_LTRREADING        = 0x00000000,
+    WS_EX_LEFTSCROLLBAR     = 0x00004000,
+    WS_EX_RIGHTSCROLLBAR    = 0x00000000,
+    WS_EX_CONTROLPARENT     = 0x00010000,
+    WS_EX_STATICEDGE        = 0x00020000,
+    WS_EX_APPWINDOW         = 0x00040000,
+    WS_EX_LAYERED           = 0x00080000,
+    WS_EX_NOINHERITLAYOUT   = 0x00100000,
+    WS_EX_LAYOUTRTL         = 0x00400000,
+    WS_EX_COMPOSITED        = 0x02000000,
+    WS_EX_NOACTIVATE        = 0x08000000,
 }
 
 enum
@@ -1830,8 +1853,376 @@ enum
     DCX_VALIDATE =         0x00200000,
 }
 
+struct ALTTABINFO
+{
+    DWORD cbSize;
+    int   cItems;
+    int   cColumns;
+    int   cRows;
+    int   iColFocus;
+    int   iRowFocus;
+    int   cxItem;
+    int   cyItem;
+    POINT ptStart;
+}
+alias ALTTABINFO* PALTTABINFO, LPALTTABINFO;
+
+struct GUITHREADINFO
+{
+    DWORD cbSize;
+    DWORD flags;
+    HWND  hwndActive;
+    HWND  hwndFocus;
+    HWND  hwndCapture;
+    HWND  hwndMenuOwner;
+    HWND  hwndMoveSize;
+    HWND  hwndCaret;
+    RECT  rcCaret;
+}
+alias GUITHREADINFO* PGUITHREADINFO, LPGUITHREADINFO;
+
+enum CCHILDREN_TITLEBAR = 5;
+
+enum
+{
+    STATE_SYSTEM_FOCUSABLE   = 0x00100000,
+    STATE_SYSTEM_INVISIBLE   = 0x00008000,
+    STATE_SYSTEM_OFFSCREEN   = 0x00010000,
+    STATE_SYSTEM_UNAVAILABLE = 0x00000001,
+    STATE_SYSTEM_PRESSED     = 0x00000008
+}
+
+struct TITLEBARINFO
+{
+    DWORD cbSize;
+    RECT  rcTitleBar;
+    DWORD rgstate[CCHILDREN_TITLEBAR + 1];
+}
+alias TITLEBARINFO* PTITLEBARINFO, LPTITLEBARINFO;
+
+enum
+{
+    GW_CHILD        = 5,
+    GW_ENABLEDPOPUP = 6,
+    GW_HWNDFIRST    = 0,
+    GW_HWNDLAST     = 1,
+    GW_HWNDNEXT     = 2,
+    GW_HWNDPREV     = 3,
+    GW_OWNER        = 4,
+}
+
+struct WINDOWINFO
+{
+    DWORD cbSize;
+    RECT  rcWindow;
+    RECT  rcClient;
+    DWORD dwStyle;
+    DWORD dwExStyle;
+    DWORD dwWindowStatus;
+    UINT  cxWindowBorders;
+    UINT  cyWindowBorders;
+    ATOM  atomWindowType;
+    WORD  wCreatorVersion;
+}
+alias WINDOWINFO* PWINDOWINFO, LPWINDOWINFO;
+
+struct WINDOWPLACEMENT
+{
+    UINT  length;
+    UINT  flags;
+    UINT  showCmd;
+    POINT ptMinPosition;
+    POINT ptMaxPosition;
+    RECT  rcNormalPosition;
+}
+alias WINDOWPLACEMENT* PWINDOWPLACEMENT, LPWINDOWPLACEMENT;
+
+enum
+{
+    WPF_ASYNCWINDOWPLACEMENT = 0x0004,
+    WPF_RESTORETOMAXIMIZED   = 0x0002,
+    WPF_SETMINPOSITION       = 0x0001,
+}
+
+enum : HWND
+{
+    HWND_BOTTOM     = cast(HWND)  1,
+    HWND_NOTOPMOST  = cast(HWND) -2,
+    HWND_TOP        = cast(HWND)  0,
+    HWND_TOPMOST    = cast(HWND) -1,
+}
+
+enum : UINT
+{
+    SWP_ASYNCWINDOWPOS  = 0x4000,
+    SWP_DEFERERASE      = 0x2000,
+    SWP_DRAWFRAME       = 0x0020,
+    SWP_FRAMECHANGED    = 0x0020,
+    SWP_HIDEWINDOW      = 0x0080,
+    SWP_NOACTIVATE      = 0x0010,
+    SWP_NOCOPYBITS      = 0x0100,
+    SWP_NOMOVE          = 0x0002,
+    SWP_NOOWNERZORDER   = 0x0200,
+    SWP_NOREDRAW        = 0x0008, 
+    SWP_NOREPOSITION    = 0x0200,
+    SWP_NOSENDCHANGING  = 0x0400,
+    SWP_NOSIZE          = 0x0001,
+    SWP_NOZORDER        = 0x0004,
+    SWP_SHOWWINDOW      = 0x0040,
+}
+
+enum : UINT
+{
+    MDITILE_HORIZONTAL = 0x0001,
+    MDITILE_VERTICAL   = 0x0000,
+}
+
+struct BLENDFUNCTION
+{
+    BYTE BlendOp;
+    BYTE BlendFlags;
+    BYTE SourceConstantAlpha;
+    BYTE AlphaFormat;
+}
+alias BLENDFUNCTION* PBLENDFUNCTION, LPBLENDFUNCTION;
+
+struct CLIENTCREATESTRUCT
+{
+    HANDLE hWindowMenu;
+    UINT   idFirstChild;
+}
+alias CLIENTCREATESTRUCT* LPCLIENTCREATESTRUCT;
+
+struct CREATESTRUCTA
+{
+    LPVOID    lpCreateParams;
+    HINSTANCE hInstance;
+    HMENU     hMenu;
+    HWND      hwndParent;
+    int       cy;
+    int       cx;
+    int       y;
+    int       x;
+    LONG      style;
+    LPCSTR    lpszName;
+    LPCSTR    lpszClass;
+    DWORD     dwExStyle;
+}
+alias CREATESTRUCTA* LPCREATESTRUCTA;
+
+struct CREATESTRUCTW
+{
+    LPVOID    lpCreateParams;
+    HINSTANCE hInstance;
+    HMENU     hMenu;
+    HWND      hwndParent;
+    int       cy;
+    int       cx;
+    int       y;
+    int       x;
+    LONG      style;
+    LPCWSTR   lpszName;
+    LPCWSTR   lpszClass;
+    DWORD     dwExStyle;
+}
+alias CREATESTRUCTW* LPCREATESTRUCTW;
+
+struct MINMAXINFO
+{
+    POINT ptReserved;
+    POINT ptMaxSize;
+    POINT ptMaxPosition;
+    POINT ptMinTrackSize;
+    POINT ptMaxTrackSize;
+}
+alias MINMAXINFO* PMINMAXINFO, LPMINMAXINFO;
+
+struct WINDOWPOS
+{
+    HWND hwnd;
+    HWND hwndInsertAfter;
+    int  x;
+    int  y;
+    int  cx;
+    int  cy;
+    UINT flags;
+}
+alias WINDOWPOS* LPWINDOWPOS, PWINDOWPOS;
+
+struct NCCALCSIZE_PARAMS
+{
+    RECT       rgrc[3];
+    PWINDOWPOS lppos;
+}
+alias NCCALCSIZE_PARAMS* LPNCCALCSIZE_PARAMS;
+
+struct STYLESTRUCT
+{
+    DWORD styleOld;
+    DWORD styleNew;
+}
+alias STYLESTRUCT* LPSTYLESTRUCT;
+
+enum : int
+{
+    GWL_EXSTYLE     = -20,
+    GWL_HINSTANCE   =  -6,
+    GWL_HWNDPARENT  =  -8,
+    GWL_ID          = -12,
+    GWL_STYLE       = -16,
+    GWL_USERDATA    = -21,
+    GWL_WNDPROC     =  -4,
+    DWL_MSGRESULT   =   0,
+    GWLP_HINSTANCE  =  -6,
+    GWLP_HWNDPARENT =  -8,
+    GWLP_ID         = -12,
+    GWLP_USERDATA   = -21,
+    GWLP_WNDPROC    =  -4,
+    DWLP_MSGRESULT  =   0,
+
+    DWLP_DLGPROC    = DWLP_MSGRESULT + LRESULT.sizeof,
+    DWLP_USER       = DWLP_DLGPROC   + DLGPROC.sizeof,
+    DWL_DLGPROC     = DWLP_MSGRESULT + LRESULT.sizeof,
+    DWL_USER        = DWLP_DLGPROC   + DLGPROC.sizeof,
+}
+
+enum : int
+{
+    GCL_CBCLSEXTRA      = -20,
+    GCL_CBWNDEXTRA      = -18,
+    GCL_HBRBACKGROUND   = -10,
+    GCL_HCURSOR         = -12,
+    GCL_HICON           = -14,
+    GCL_HICONSM         = -34,
+    GCL_HMODULE         = -16,
+    GCL_MENUNAME        =  -8,
+    GCL_STYLE           = -26,
+    GCL_WNDPROC         = -24,
+}
+alias GCL_HBRBACKGROUND GCLP_HBRBACKGROUND;
+alias GCL_HCURSOR       GCLP_HCURSOR;
+alias GCL_HICON         GCLP_HICON;
+alias GCL_HICONSM       GCLP_HICONSM;
+alias GCL_HMODULE       GCLP_HMODULE;
+alias GCL_MENUNAME      GCLP_MENUNAME;
+alias GCL_WNDPROC       GCLP_WNDPROC;
+
 export
 {
+ BOOL AnimateWindow(HWND hwnd, DWORD dwTime, DWORD dwFlags);
+ BOOL AllowSetForegroundWindow(DWORD dwProcessId);
+ BOOL AnyPopup();
+ UINT ArrangeIconicWindows(HWND hWnd);
+ HDWP BeginDeferWindowPos(int nNumWindows);
+ BOOL BringWindowToTop(HWND hWnd);
+ WORD CascadeWindows(HWND hwndParent, UINT wHow, const(RECT)* lpRect,
+                     UINT cKids, const(HWND)* lpKids);
+ HWND ChildWindowFromPointEx(HWND hwndParent, POINT pt, UINT uFlags);
+ BOOL CloseWindow(HWND hWnd);
+ HDWP DeferWindowPos(HDWP hWinPosInfo, HWND hWnd, HWND hWndInsertAfter,
+                     int x, int y, int cx, int cy, UINT uFlags);
+ BOOL DeregisterShellHookWindow(HWND hWnd);
+ BOOL EndDeferWindowPos(HDWP hWinPosInfo);
+ BOOL DestroyWindow(HWND hWnd);
+ BOOL EndTask(HWND hWnd, BOOL fShutDown, BOOL fForce);
+ BOOL EnumChildWindows(HWND hWndParent, WNDENUMPROC lpEnumFunc, LPARAM lParam);
+ BOOL EnumThreadWindows(DWORD dwThreadId, WNDENUMPROC lpfn, LPARAM lParam);
+ BOOL EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam);
+ HWND FindWindowA(LPCSTR lpClassName, LPCSTR lpWindowName);
+ HWND FindWindowW(LPCWSTR lpClassName, LPCWSTR lpWindowName);
+ HWND FindWindowExA(HWND hwndParent, HWND hwndChildAfter, LPCSTR lpszClass,
+                    LPCSTR lpszWindow);
+ HWND FindWindowExW(HWND hwndParent, HWND hwndChildAfter, LPCWSTR lpszClass,
+                    LPCWSTR lpszWindow);
+ BOOL GetAltTabInfoA(HWND hwnd, int iItem, PALTTABINFO pati, LPSTR pszItemText,
+                     UINT cchItemText);
+ BOOL GetAltTabInfoW(HWND hwnd, int iItem, PALTTABINFO pati, LPWSTR pszItemText,
+                     UINT cchItemText);
+ HWND GetAncestor(HWND hwnd, UINT gaFlags);
+ HWND GetDesktopWindow();
+ BOOL GetGUIThreadInfo(DWORD idThread, LPGUITHREADINFO lpgui);
+ HWND GetLastActivePopup(HWND hWnd);
+ HWND GetNextWindow(HWND hWnd, UINT wCmd);
+ HWND GetParent(HWND hWnd);
+ BOOL GetProcessDefaultLayout(DWORD *pdwDefaultLayout);
+ HWND GetShellWindow();
+ DWORD GetSysColor(int nIndex);
+ BOOL GetTitleBarInfo(HWND hwnd, PTITLEBARINFO pti);
+ HWND GetTopWindow(HWND hWnd);
+ HWND GetWindow(HWND hWnd, UINT uCmd);
+ BOOL GetWindowInfo(HWND hwnd, PWINDOWINFO pwi);
+ UINT GetWindowModuleFileNameA(HWND hwnd, LPSTR lpszFileName, 
+                               UINT cchFileNameMax);
+ UINT GetWindowModuleFileNameW(HWND hwnd, LPWSTR lpszFileName, 
+                               UINT cchFileNameMax);
+ BOOL GetWindowPlacement(HWND hWnd, WINDOWPLACEMENT* lpwndpl);
+ int GetWindowTextA(HWND hWnd, LPSTR lpString, int nMaxCount);
+ int GetWindowTextW(HWND hWnd, LPWSTR lpString, int nMaxCount);
+ int GetWindowTextLengthA(HWND hWnd);
+ int GetWindowTextLengthW(HWND hWnd);
+ DWORD GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId);
+ BOOL IsChild(HWND hWndParent, HWND hWnd);
+ BOOL IsHungAppWindow(HWND hWnd);
+ BOOL IsIconic(HWND hWnd);
+ BOOL IsWindow(HWND hWnd);
+ BOOL IsWindowUnicode(HWND hWnd);
+ BOOL IsWindowVisible(HWND hWnd);
+ BOOL IsZoomed(HWND hWnd);
+ BOOL LockSetForegroundWindow(UINT uLockCode);
+ BOOL MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint);
+ BOOL OpenIcon(HWND hWnd);
+ HWND RealChildWindowFromPoint(HWND hwndParent, POINT ptParentClientCoords);
+ UINT RealGetWindowClassA(HWND hwnd, LPSTR pszType, UINT cchType);
+ UINT RealGetWindowClassW(HWND hwnd, LPWSTR pszType, UINT cchType);
+ BOOL RegisterShellHookWindow(HWND hWnd);
+ BOOL SetLayeredWindowAttributes(HWND hwnd, COLORREF crKey, BYTE bAlpha,DWORD dwFlags);
+ HWND SetParent(HWND hWndChild, HWND hWndNewParent);
+ BOOL SetProcessDefaultLayout(DWORD dwDefaultLayout);
+ BOOL SetSysColors(int cElements, const(INT)* lpaElements, 
+                   const(COLORREF)* lpaRgbValues);
+ BOOL SetWindowPlacement(HWND hWnd, const(WINDOWPLACEMENT)* lpwndpl);
+ BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, 
+                   int cx, int cy, UINT uFlags);
+ BOOL SetWindowTextA(HWND hWnd, LPCSTR lpString);
+ BOOL SetWindowTextW(HWND hWnd, LPCWSTR lpString);
+ BOOL ShowOwnedPopups(HWND hWnd,BOOL fShow);
+ BOOL ShowWindowAsync(HWND hWnd, int nCmdShow);
+ VOID SwitchToThisWindow(HWND hWnd, BOOL fAltTab);
+ WORD TileWindows(HWND hwndParent, UINT wHow, const(RECT)* lpRect, UINT cKids,
+                  const(HWND)* lpKids);
+ BOOL UpdateLayeredWindow(HWND hwnd, HDC hdcDst, POINT* pptDst, SIZE* psize, HDC hdcSrc, 
+                          POINT* pptSrc, COLORREF crKey, BLENDFUNCTION* pblend, DWORD dwFlags);
+ HWND WindowFromPoint(POINT Point);
+
+ BOOL GetClassInfoA(HINSTANCE hInstance, LPCSTR lpClassName, LPWNDCLASSA lpWndClass);
+ BOOL GetClassInfoW(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lpWndClass);
+ BOOL GetClassInfoExA(HINSTANCE hinst, LPCSTR lpszClass, LPWNDCLASSEXA lpwcx);
+ BOOL GetClassInfoExW(HINSTANCE hinst, LPCWSTR lpszClass, LPWNDCLASSEXW lpwcx);
+ DWORD GetClassLongA(HWND hWnd, int nIndex);
+ DWORD GetClassLongW(HWND hWnd, int nIndex);
+ ULONG_PTR GetClassLongPtrA(HWND hWnd, int nIndex);
+ ULONG_PTR GetClassLongPtrW(HWND hWnd, int nIndex);
+ int GetClassNameA(HWND hWnd, LPSTR lpClassName, int nMaxCount);
+ int GetClassNameW(HWND hWnd, LPWSTR lpClassName, int nMaxCount);
+ WORD GetClassWord(HWND hWnd, int nIndex);
+ LONG GetWindowLongA(HWND hWnd, int nIndex);
+ LONG GetWindowLongW(HWND hWnd, int nIndex);
+ LONG_PTR GetWindowLongPtrA(HWND hWnd, int nIndex);
+ LONG_PTR GetWindowLongPtrW(HWND hWnd, int nIndex);
+ ATOM RegisterClassExA(const(WNDCLASSEXA)* lpwcx);
+ ATOM RegisterClassExW(const(WNDCLASSEXW)* lpwcx);
+ DWORD SetClassLongA(HWND hWnd, int nIndex, LONG dwNewLong);
+ DWORD SetClassLongW(HWND hWnd, int nIndex, LONG dwNewLong);
+ ULONG_PTR SetClassLongPtrA(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+ ULONG_PTR SetClassLongPtrW(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+ WORD SetClassWord(HWND hWnd, int nIndex, WORD wNewWord);
+ LONG SetWindowLongA(HWND hWnd, int nIndex, LONG dwNewLong);
+ LONG SetWindowLongW(HWND hWnd, int nIndex, LONG dwNewLong);
+ LONG_PTR SetWindowLongPtrA(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+ LONG_PTR SetWindowLongPtrW(HWND hWnd, int nIndex, LONG_PTR dwNewLong);
+ BOOL UnregisterClassA(LPCSTR lpClassName, HINSTANCE hInstance);
+ BOOL UnregisterClassW(LPCWSTR lpClassName, HINSTANCE hInstance);
+  
  BOOL UpdateWindow(HWND hWnd);
  HWND SetActiveWindow(HWND hWnd);
  HWND GetForegroundWindow();
@@ -2150,6 +2541,13 @@ struct POINT
 }
 alias POINT* PPOINT, NPPOINT, LPPOINT;
 
+struct SIZE
+{
+  LONG cx;
+  LONG cy;
+}
+alias SIZE* PSIZE;
+
 
 export
 {
@@ -2184,6 +2582,21 @@ struct WNDCLASSEXA {
 }
 alias WNDCLASSEXA* PWNDCLASSEXA, NPWNDCLASSEXA, LPWNDCLASSEXA;
 
+struct WNDCLASSEXW {
+    UINT        cbSize;
+    UINT        style;
+    WNDPROC     lpfnWndProc;
+    int         cbClsExtra;
+    int         cbWndExtra;
+    HINSTANCE   hInstance;
+    HICON       hIcon;
+    HCURSOR     hCursor;
+    HBRUSH      hbrBackground;
+    LPCWSTR     lpszMenuName;
+    LPCWSTR     lpszClassName;
+    HICON       hIconSm;
+}
+alias WNDCLASSEXW* PWNDCLASSEXW, NPWNDCLASSEXW, LPWNDCLASSEXW;
 
 struct WNDCLASSA {
     UINT        style;
@@ -2199,6 +2612,20 @@ struct WNDCLASSA {
 }
 alias WNDCLASSA* PWNDCLASSA, NPWNDCLASSA, LPWNDCLASSA;
 alias WNDCLASSA WNDCLASS;
+
+struct WNDCLASSW {
+    UINT        style;
+    WNDPROC     lpfnWndProc;
+    int         cbClsExtra;
+    int         cbWndExtra;
+    HINSTANCE   hInstance;
+    HICON       hIcon;
+    HCURSOR     hCursor;
+    HBRUSH      hbrBackground;
+    LPCWSTR     lpszMenuName;
+    LPCWSTR     lpszClassName;
+}
+alias WNDCLASSW* PWNDCLASSW, NPWNDCLASSW, LPWNDCLASSW;
 
 /*
  * Window Styles
@@ -2345,6 +2772,7 @@ enum : HWND
 }
 
 export ATOM RegisterClassA(WNDCLASSA *lpWndClass);
+export ATOM RegisterClassW(WNDCLASSW *lpWndClass);
 
 export HWND CreateWindowExA(
     DWORD dwExStyle,
@@ -2360,6 +2788,19 @@ export HWND CreateWindowExA(
     HINSTANCE hInstance,
     LPVOID lpParam);
 
+export HWND CreateWindowExW(
+    DWORD dwExStyle,
+    LPCWSTR lpClassName,
+    LPCWSTR lpWindowName,
+    DWORD dwStyle,
+    int X,
+    int Y,
+    int nWidth,
+    int nHeight,
+    HWND hWndParent ,
+    HMENU hMenu,
+    HINSTANCE hInstance,
+    LPVOID lpParam);
 
 HWND CreateWindowA(
     LPCSTR lpClassName,
@@ -2375,6 +2816,22 @@ HWND CreateWindowA(
     LPVOID lpParam)
 {
     return CreateWindowExA(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+}
+
+HWND CreateWindowW(
+    LPCWSTR lpClassName,
+    LPCWSTR lpWindowName,
+    DWORD dwStyle,
+    int X,
+    int Y,
+    int nWidth,
+    int nHeight,
+    HWND hWndParent ,
+    HMENU hMenu,
+    HINSTANCE hInstance,
+    LPVOID lpParam)
+{
+    return CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 
 /*
