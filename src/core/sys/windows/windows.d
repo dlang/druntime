@@ -1867,7 +1867,7 @@ struct ALTTABINFO
 }
 alias ALTTABINFO* PALTTABINFO, LPALTTABINFO;
 
-struct GUITHREADINFO    // Windows 2000
+struct GUITHREADINFO
 {
     DWORD cbSize;
     DWORD flags;
@@ -1977,7 +1977,7 @@ enum : UINT
     MDITILE_VERTICAL   = 0x0000,
 }
 
-struct BLENDFUNCTION   // Windows 2000
+struct BLENDFUNCTION
 {
     BYTE BlendOp;
     BYTE BlendFlags;
@@ -2109,8 +2109,8 @@ alias GCL_WNDPROC       GCLP_WNDPROC;
 
 export
 {
- BOOL AnimateWindow(HWND hwnd, DWORD dwTime, DWORD dwFlags);    // Windows 2000
- BOOL AllowSetForegroundWindow(DWORD dwProcessId);              // Windows 2000
+ BOOL AnimateWindow(HWND hwnd, DWORD dwTime, DWORD dwFlags);
+ BOOL AllowSetForegroundWindow(DWORD dwProcessId);
  BOOL AnyPopup();
  UINT ArrangeIconicWindows(HWND hWnd);
  HDWP BeginDeferWindowPos(int nNumWindows);
@@ -2140,12 +2140,12 @@ export
                      UINT cchItemText);
  HWND GetAncestor(HWND hwnd, UINT gaFlags);
  HWND GetDesktopWindow();
- BOOL GetGUIThreadInfo(DWORD idThread, LPGUITHREADINFO lpgui);  // Windows 2000
+ BOOL GetGUIThreadInfo(DWORD idThread, LPGUITHREADINFO lpgui);
  HWND GetLastActivePopup(HWND hWnd);
  HWND GetNextWindow(HWND hWnd, UINT wCmd);
  HWND GetParent(HWND hWnd);
- BOOL GetProcessDefaultLayout(DWORD *pdwDefaultLayout);  // Windows 2000
- HWND GetShellWindow(); // Windows 2000
+ BOOL GetProcessDefaultLayout(DWORD *pdwDefaultLayout);
+ HWND GetShellWindow();
  DWORD GetSysColor(int nIndex);
  BOOL GetTitleBarInfo(HWND hwnd, PTITLEBARINFO pti);
  HWND GetTopWindow(HWND hWnd);
@@ -2162,20 +2162,20 @@ export
  int GetWindowTextLengthW(HWND hWnd);
  DWORD GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId);
  BOOL IsChild(HWND hWndParent, HWND hWnd);
- BOOL IsHungAppWindow(HWND hWnd);   // Windows 2000
+ BOOL IsHungAppWindow(HWND hWnd);
  BOOL IsIconic(HWND hWnd);
  BOOL IsWindow(HWND hWnd);
  BOOL IsWindowUnicode(HWND hWnd);
  BOOL IsWindowVisible(HWND hWnd);
  BOOL IsZoomed(HWND hWnd);
- BOOL LockSetForegroundWindow(UINT uLockCode);  // Windows 2000
+ BOOL LockSetForegroundWindow(UINT uLockCode);
  BOOL MoveWindow(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint);
  BOOL OpenIcon(HWND hWnd);
  HWND RealChildWindowFromPoint(HWND hwndParent, POINT ptParentClientCoords);
  UINT RealGetWindowClassA(HWND hwnd, LPSTR pszType, UINT cchType);
  UINT RealGetWindowClassW(HWND hwnd, LPWSTR pszType, UINT cchType);
  BOOL RegisterShellHookWindow(HWND hWnd);
- BOOL SetLayeredWindowAttributes(HWND hwnd, COLORREF crKey, BYTE bAlpha,DWORD dwFlags); // Windows 2000
+ BOOL SetLayeredWindowAttributes(HWND hwnd, COLORREF crKey, BYTE bAlpha,DWORD dwFlags);
  HWND SetParent(HWND hWndChild, HWND hWndNewParent);
  BOOL SetProcessDefaultLayout(DWORD dwDefaultLayout);
  BOOL SetSysColors(int cElements, const(INT)* lpaElements, 
@@ -2187,7 +2187,7 @@ export
  BOOL SetWindowTextW(HWND hWnd, LPCWSTR lpString);
  BOOL ShowOwnedPopups(HWND hWnd,BOOL fShow);
  BOOL ShowWindowAsync(HWND hWnd, int nCmdShow);
- VOID SwitchToThisWindow(HWND hWnd, BOOL fAltTab);  // Windows 2000
+ VOID SwitchToThisWindow(HWND hWnd, BOOL fAltTab);
  WORD TileWindows(HWND hwndParent, UINT wHow, const(RECT)* lpRect, UINT cKids,
                   const(HWND)* lpKids);
  BOOL UpdateLayeredWindow(HWND hwnd, HDC hdcDst, POINT* pptDst, SIZE* psize, HDC hdcSrc, 
