@@ -349,6 +349,53 @@ class Error : Throwable
     Throwable   bypassedException;
 }
 
+Value get(Key, Value)(Value[Key] aa, Key key, lazy Value defaultValue)
+{
+    auto p = key in aa;
+    return p ? *p : defaultValue;
+}
+
+Value[Key] dup(Key, Value)(Value[Key] aa)
+{
+    Value[Key] result;
+    foreach(k, v; aa)
+        result[k] = v;
+    return result;
+}
+
+int delegate(int delegate(ref Key key)) byKey(Key, Value)(Value[Key] aa)
+{
+    return delegate int(int delegate(ref Key key) dg)
+    {
+        foreach(k, v; aa)
+        {
+            auto r = dg(k);
+            if (r)
+                return r;
+        }
+        return 0;
+    };
+}
+
+int delegate(int delegate(ref Value value)) byValue(Key, Value)(Value[Key] aa)
+{
+    return delegate int(int delegate(ref Value value) dg)
+    {
+        foreach(k, v; aa)
+        {
+            auto r = dg(v);
+            if (r)
+                return r;
+        }
+        return 0;
+    };
+}
+
+Value[Key] rehash(Key, Value)(Value[Key] aa)
+{
+    return aa.rehash;
+}
+
 void clear(T)(T obj) if (is(T == class))
 {
     rt_finalize(cast(void*)obj);
