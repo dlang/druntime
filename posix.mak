@@ -32,8 +32,8 @@ UDFLAGS=-m$(MODEL) -O -release -nofloat -w -d -Isrc -Iimport -property
 
 CFLAGS=-m$(MODEL) -O
 
-OBJDIR=obj
-DRUNTIME_BASE=druntime
+OBJDIR=obj/$(MODEL)
+DRUNTIME_BASE=druntime-$(OS)$(MODEL)
 DRUNTIME=lib/lib$(DRUNTIME_BASE).a
 
 DOCFMT=
@@ -58,6 +58,7 @@ MANIFEST= \
 	src/core/math.d \
 	src/core/memory.d \
 	src/core/runtime.d \
+	src/core/simd.d \
 	src/core/thread.d \
 	src/core/threadasm.S \
 	src/core/time.d \
@@ -140,6 +141,7 @@ MANIFEST= \
 	src/core/sys/posix/sys/uio.d \
 	src/core/sys/posix/sys/un.d \
 	src/core/sys/posix/sys/wait.d \
+	src/core/sys/posix/sys/utsname.d \
 	\
 	src/core/sys/windows/dbghelp.d \
 	src/core/sys/windows/dll.d \
@@ -188,6 +190,7 @@ MANIFEST= \
 	src/rt/memory.d \
 	src/rt/memory_osx.d \
 	src/rt/memset.d \
+	src/rt/minfo.d \
 	src/rt/minit.asm \
 	src/rt/monitor_.d \
 	src/rt/obj.d \
@@ -251,6 +254,7 @@ SRC_D_MODULES = \
 	core/math \
 	core/memory \
 	core/runtime \
+	core/simd \
 	core/thread \
 	core/time \
 	core/vararg \
@@ -274,6 +278,7 @@ SRC_D_MODULES = \
 	core/sys/posix/sys/stat \
 	core/sys/posix/sys/wait \
 	core/sys/posix/netdb \
+	core/sys/posix/sys/utsname \
 	core/sys/posix/netinet/in_ \
 	\
 	core/sync/barrier \
@@ -313,6 +318,7 @@ SRC_D_MODULES = \
 	rt/memory \
 	rt/memory_osx \
 	rt/memset \
+	rt/minfo \
 	rt/monitor_ \
 	rt/obj \
 	rt/qsort \
@@ -377,6 +383,7 @@ DOCS=\
 	$(DOCDIR)/core_math.html \
 	$(DOCDIR)/core_memory.html \
 	$(DOCDIR)/core_runtime.html \
+	$(DOCDIR)/core_simd.html \
 	$(DOCDIR)/core_thread.html \
 	$(DOCDIR)/core_time.html \
 	$(DOCDIR)/core_vararg.html \
@@ -398,6 +405,7 @@ IMPORTS=\
 	$(IMPDIR)/core/math.di \
 	$(IMPDIR)/core/memory.di \
 	$(IMPDIR)/core/runtime.di \
+	$(IMPDIR)/core/simd.di \
 	$(IMPDIR)/core/thread.di \
 	$(IMPDIR)/core/time.di \
 	$(IMPDIR)/core/vararg.di \
@@ -475,6 +483,7 @@ IMPORTS=\
 	$(IMPDIR)/core/sys/posix/sys/uio.di \
 	$(IMPDIR)/core/sys/posix/sys/un.di \
 	$(IMPDIR)/core/sys/posix/sys/wait.di \
+	$(IMPDIR)/core/sys/posix/sys/utsname.di \
 	\
 	$(IMPDIR)/core/sys/windows/dbghelp.di \
 	$(IMPDIR)/core/sys/windows/dll.di \
@@ -566,6 +575,5 @@ install: druntime.zip
 	unzip -o druntime.zip -d /dmd2/src/druntime
 
 clean:
-	rm -f $(DOCS) $(DRUNTIME)
-	rm -rf $(OBJDIR) import/core
+	rm -rf obj lib import/core doc
 
