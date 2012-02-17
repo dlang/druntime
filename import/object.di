@@ -352,198 +352,51 @@ class Error : Throwable
     Throwable   bypassedException;
 }
 
-extern (C)
+Value get(Key, Value)(Value[Key] aa, Key key, lazy Value defaultValue)
 {
-    // from druntime/src/compiler/dmd/aaA.d
-
-    size_t _aaLen(void* p);
-    void*  _aaGet(void** pp, TypeInfo keyti, size_t valuesize, ...);
-    void*  _aaGetRvalue(void* p, TypeInfo keyti, size_t valuesize, ...);
-    void*  _aaIn(void* p, TypeInfo keyti);
-    void   _aaDel(void* p, TypeInfo keyti, ...);
-    void[] _aaValues(void* p, size_t keysize, size_t valuesize);
-    void[] _aaKeys(void* p, size_t keysize);
-    void*  _aaRehash(void** pp, TypeInfo keyti);
-
-    extern (D) alias scope int delegate(void *) _dg_t;
-    int _aaApply(void* aa, size_t keysize, _dg_t dg);
-
-    extern (D) alias scope int delegate(void *, void *) _dg2_t;
-    int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
-
-    void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...);
+    auto p = key in aa;
+    return p ? *p : defaultValue;
 }
 
-struct AssociativeArray(Key, Value)
+Value[Key] dup(Key, Value)(Value[Key] aa)
 {
-private:
-    // Duplicates of the stuff found in druntime/src/rt/aaA.d
-    struct Slot
-    {
-        Slot *next;
-        hash_t hash;
-        Key key;
-        Value value;
-    }
-
-    struct Hashtable
-    {
-        Slot*[] b;
-        size_t nodes;
-        TypeInfo keyti;
-        Slot*[4] binit;
-    }
-
-    void* p; // really Hashtable*
-
-    struct Range
-    {
-        // State
-        Slot*[] slots;
-        Slot* current;
-
-        this(void * aa)
-        {
-            if (!aa) return;
-            auto pImpl = cast(Hashtable*) aa;
-            slots = pImpl.b;
-            nextSlot();
-        }
-
-        void nextSlot()
-        {
-            foreach (i, slot; slots)
-            {
-                if (!slot) continue;
-                current = slot;
-                slots = slots.ptr[i .. slots.length];
-                break;
-            }
-        }
-
-    public:
-        @property bool empty() const
-        {
-            return current is null;
-        }
-
-        @property ref inout(Slot) front() inout
-        {
-            assert(current);
-            return *current;
-        }
-
-        void popFront()
-        {
-            assert(current);
-            current = current.next;
-            if (!current)
-            {
-                slots = slots[1 .. $];
-                nextSlot();
-            }
-        }
-    }
-
-public:
-
-    @property size_t length() { return _aaLen(p); }
-
-    Value[Key] rehash() @property
-    {
-        auto p = _aaRehash(&p, typeid(Value[Key]));
-        return *cast(Value[Key]*)(&p);
-    }
-
-    Value[] values() @property
-    {
-        auto a = _aaValues(p, Key.sizeof, Value.sizeof);
-        return *cast(Value[]*) &a;
-    }
-
-    Key[] keys() @property
-    {
-        auto a = _aaKeys(p, Key.sizeof);
-        return *cast(Key[]*) &a;
-    }
-
-    int opApply(scope int delegate(ref Key, ref Value) dg)
-    {
-        return _aaApply2(p, Key.sizeof, cast(_dg2_t)dg);
-    }
-
-    int opApply(scope int delegate(ref Value) dg)
-    {
-        return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
-    }
-
-    Value get(Key key, lazy Value defaultValue)
-    {
-        auto p = key in *cast(Value[Key]*)(&p);
-        return p ? *p : defaultValue;
-    }
-
-    static if (is(typeof({ Value[Key] r; r[Key.init] = Value.init; }())))
-        @property Value[Key] dup()
-        {
-            Value[Key] result;
-            foreach (k, v; this)
-            {
-                result[k] = v;
-            }
-            return result;
-        }
-
-    @property auto byKey()
-    {
-        static struct Result
-        {
-            Range state;
-
-            this(void* p)
-            {
-                state = Range(p);
-            }
-
-            @property ref Key front()
-            {
-                return state.front.key;
-            }
-
-            alias state this;
-        }
-
-        return Result(p);
-    }
-
-    @property auto byValue()
-    {
-        static struct Result
-        {
-            Range state;
-
-            this(void* p)
-            {
-                state = Range(p);
-            }
-
-            @property ref Value front()
-            {
-                return state.front.value;
-            }
-
-            alias state this;
-        }
-
-        return Result(p);
-    }
+    Value[Key] result;
+    foreach(k, v; aa)
+        result[k] = v;
+    return result;
 }
 
-unittest
+int delegate(int delegate(ref Key key)) byKey(Key, Value)(Value[Key] aa)
 {
-    auto a = [ 1:"one", 2:"two", 3:"three" ];
-    auto b = a.dup;
-    assert(b == [ 1:"one", 2:"two", 3:"three" ]);
+    return delegate int(int delegate(ref Key key) dg)
+    {
+        foreach(k, v; aa)
+        {
+            auto r = dg(k);
+            if (r)
+                return r;
+        }
+        return 0;
+    };
+}
+
+int delegate(int delegate(ref Value value)) byValue(Key, Value)(Value[Key] aa)
+{
+    return delegate int(int delegate(ref Value value) dg)
+    {
+        foreach(k, v; aa)
+        {
+            auto r = dg(v);
+            if (r)
+                return r;
+        }
+        return 0;
+    };
+}
+
+Value[Key] rehash(Key, Value)(Value[Key] aa)
+{
+    return aa.rehash;
 }
 
 void clear(T)(T obj) if (is(T == class))
