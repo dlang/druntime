@@ -216,3 +216,209 @@ unittest
     Array!int ary2;
     static assert(!__traits(compiles, ary = ary2));
 }
+
+
+struct List(T)
+{
+    @disable this(this);
+
+    ~this()
+    {
+        reset();
+    }
+
+    void reset()
+    {
+        _impl.reset();
+    }
+
+    @property ref T front()
+    {
+        return *cast(T*)_impl._head.value;
+    }
+
+    void insertFront(T value)
+    {
+        *(cast(T*)_impl.push(T.sizeof)) = value;
+    }
+
+    @property void popFront()
+    {
+        _impl.pop();
+    }
+
+    Array!T toArray()
+    {
+        Array!T ary;
+        ary.length = count;
+        size_t i;
+        foreach(ref val; this)
+            ary[i++] = val;
+        return ary;
+    }
+
+    int opApply(scope int delegate(ref T) dg)
+    {
+        return _impl.opApply((ref ListImpl.Node* p) { return dg(*cast(T*)p.value); });
+    }
+
+    void remove(T value)
+    {
+        bool eq(ref T other) { return other == value; }
+        remove(&eq);
+    }
+
+    void remove(scope bool delegate(ref T value) dg)
+    {
+        _impl.remove((void* value) => dg(*cast(T*)value));
+    }
+
+    ListImpl _impl;
+    alias _impl this;
+}
+
+private struct ListImpl
+{
+    static struct Node
+    {
+        @property void* value()
+        {
+            return cast(void*)(&this + 1);
+        }
+
+        Node *_next;
+        // payload
+    }
+
+    void reset()
+    {
+        while (_head)
+        {
+            auto p = _head;
+            _head = p._next;
+            .free(p);
+        }
+    }
+
+    @property bool empty()
+    {
+        return _head is null;
+    }
+
+    @property size_t count() const
+    {
+        size_t cnt;
+        for (const(Node)* p = _head; p; p = p._next)
+            ++cnt;
+        return cnt;
+    }
+
+    void* push(size_t nbytes)
+    {
+        auto p = cast(Node*).malloc(Node.sizeof + nbytes);
+        p._next = _head;
+        _head = p;
+        return p.value;
+    }
+
+    void pop()
+    {
+        auto p = _head;
+        _head = p._next;
+        .free(p);
+    }
+
+    int opApply(scope int delegate(ref Node* p) dg)
+    {
+        for (auto p = _head; p; p = p._next)
+        {
+            if (auto res = dg(p))
+                return res;
+        }
+        return 0;
+    }
+
+    void remove(scope bool delegate(void* value) dg)
+    {
+        auto pp = &_head;
+        while (*pp)
+        {
+            auto p = *pp;
+            if (dg(p.value))
+            {
+                *pp = p._next;
+                .free(p);
+            }
+            else
+                pp = &p._next;
+        }
+    }
+
+    Node* _head;
+}
+
+unittest
+{
+    static bool equal(ref List!int list, int[] comp)
+    {
+        size_t idx;
+        foreach(val; list)
+        {
+            if (val != comp[idx++])
+                return false;
+        }
+        return idx == comp.length;
+    }
+
+    List!int list;
+
+    assert(list.empty);
+
+    foreach(i; 0 .. 10)
+    {
+        list.insertFront(i);
+    }
+    assert(!list.empty);
+
+    foreach_reverse(i; 0 .. 10)
+    {
+        assert(list.front == i);
+        list.popFront;
+    }
+    assert(list.empty);
+
+    list.insertFront(3);
+    list.insertFront(2);
+    list.insertFront(1);
+    list.insertFront(0);
+
+    assert(!list.empty);
+    int i = 0;
+    foreach(val; list)
+        assert(val == i++);
+
+    assert(!list.empty);
+    assert(list.count == 4);
+
+    assert(equal(list, [0, 1, 2, 3]));
+    list.remove(2);
+    assert(equal(list, [0, 1, 3]));
+    list.insertFront(3);
+    assert(equal(list, [3, 0, 1, 3]));
+    list.remove(3);
+    assert(equal(list, [0, 1]));
+    list.remove((ref int val) => !!(val % 2));
+    assert(equal(list, [0]));
+
+    assert(!list.empty);
+    list.reset();
+    assert(list.empty);
+
+    list.insertFront(0);
+    assert(!list.empty);
+    list = List!int();
+    assert(list.empty);
+
+    List!int list2;
+    static assert(!__traits(compiles, list = list2));
+}
