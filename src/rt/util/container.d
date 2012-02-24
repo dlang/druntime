@@ -701,3 +701,296 @@ unittest
     tab.remove("foo");
     assert(tab.empty);
 }
+
+
+struct DList(T)
+{
+    @disable this(this);
+
+    ~this()
+    {
+        reset();
+    }
+
+    @property ref T front()
+    {
+        return *cast(T*)_impl.front;
+    }
+
+    void insertFront(T value)
+    {
+        *(cast(T*)_impl.insertFront(T.sizeof)) = value;
+    }
+
+    @property ref T back()
+    {
+        return *cast(T*)_impl.back;
+    }
+
+    void insertBack(T value)
+    {
+        *(cast(T*)_impl.insertBack(T.sizeof)) = value;
+    }
+
+    Array!T toArray()
+    {
+        Array!T ary;
+        ary.length = count;
+        size_t i;
+        foreach(ref val; this)
+            ary[i++] = val;
+        return ary;
+    }
+
+    int opApply(scope int delegate(ref T) dg)
+    {
+        return _impl.opApply((ref void* val) => dg(*cast(T*)val));
+    }
+
+    int opApplyReverse(scope int delegate(ref T) dg)
+    {
+        return _impl.opApplyReverse((ref void* val) => dg(*cast(T*)val));
+    }
+
+    void remove(T value)
+    {
+        bool eq(ref T other) { return other == value; }
+        remove(&eq);
+    }
+
+    void remove(scope bool delegate(ref T value) dg)
+    {
+        _impl.remove((void* val) => dg(*cast(T*)val));
+    }
+
+    DListImpl _impl;
+    alias _impl this;
+}
+
+private struct DListImpl
+{
+    static struct Node
+    {
+        @property void* value()
+        {
+            return cast(void*)(&this + 1);
+        }
+
+        Node* _prev, _next;
+        // payload
+    }
+
+    void reset()
+    {
+        while (!empty)
+            popFront();
+    }
+
+    @property bool empty()
+    out (res)
+    {
+        assert(res == (_last is null));
+    }
+    body
+    {
+        return _first is null;
+    }
+
+    @property size_t count() const
+    {
+        size_t cnt;
+        for (const(Node)* p = _first; p; p = p._next)
+            ++cnt;
+        return cnt;
+    }
+
+    @property void* front()
+    in
+    {
+        assert(!empty);
+    }
+    body
+    {
+        return _first.value;
+    }
+
+    void* insertFront(size_t nbytes)
+    {
+        auto node = newNode(nbytes);
+        node._next = _first;
+        node._prev = null;
+        if (_first !is null)
+            _first._prev = node;
+        _first = node;
+        if (_last is null)
+            _last = node;
+        return node.value;
+    }
+
+    void popFront()
+    in
+    {
+        assert(!empty);
+    }
+    body
+    {
+        auto p = _first;
+        _first = p._next;
+        _last._prev = null;
+        .free(p);
+        if (_first is null)
+            _last = null;
+    }
+
+    @property void* back()
+    in
+    {
+        assert(!empty);
+    }
+    body
+    {
+        return _last.value;
+    }
+
+    void* insertBack(size_t nbytes)
+    {
+        auto node = newNode(nbytes);
+        node._prev = _last;
+        node._next = null;
+        if (_last !is null)
+            _last._next = node;
+        _last = node;
+        if (_first is null)
+            _first = node;
+        return node.value;
+    }
+
+    void popBack()
+    in
+    {
+        assert(!empty);
+    }
+    body
+    {
+        auto p = _last;
+        _last = p._prev;
+        _last._next = null;
+        .free(p);
+        if (_last is null)
+            _first = null;
+    }
+
+    int opApply(scope int delegate(ref void* val) dg)
+    {
+        for (auto p = _first; p; p = p._next)
+        {
+            auto val = p.value;
+            if (auto res = dg(val))
+                return res;
+        }
+        return 0;
+    }
+
+    int opApplyReverse(scope int delegate(ref void* val) dg)
+    {
+        for (auto p = _last; p; p = p._prev)
+        {
+            auto val = p.value;
+            if (auto res = dg(val))
+                return res;
+        }
+        return 0;
+    }
+
+    void remove(scope bool delegate(void* val) dg)
+    {
+        auto pp = &_first;
+        while (*pp)
+        {
+            auto p = *pp;
+            if (dg(p.value))
+            {
+                *pp = p._next;
+                if (p._next)
+                    p._next._prev = p._prev;
+                if (p == _last)
+                    _last = p._prev;
+                .free(p);
+            }
+            else
+                pp = &p._next;
+        }
+    }
+
+private:
+    static Node* newNode(size_t nbytes)
+    {
+        return cast(Node*).malloc(Node.sizeof + nbytes);
+    }
+
+    Node* _first, _last;
+}
+
+unittest
+{
+    static bool equal(ref DList!int dlist, int[] comp)
+    {
+        size_t idx;
+        foreach(val; dlist)
+        {
+            if (val != comp[idx++])
+                return false;
+        }
+        if (idx != comp.length)
+            return false;
+
+        foreach_reverse(val; dlist)
+        {
+            if (val != comp[--idx])
+                return false;
+        }
+
+        return true;
+    }
+
+    DList!int dlist;
+    assert(dlist.empty);
+    dlist.insertFront(2);
+    assert(!dlist.empty);
+    assert(dlist.front == 2);
+    assert(dlist.back == 2);
+    dlist.insertBack(3);
+    assert(dlist.back == 3);
+    assert(equal(dlist, [2, 3]));
+
+    dlist.popBack();
+    assert(equal(dlist, [2]));
+    dlist.popFront();
+    assert(dlist.empty);
+    assert(equal(dlist, null));
+    dlist.reset();
+    foreach(i; 0 .. 4)
+        dlist.insertBack(i);
+    dlist.insertFront(3);
+    assert(equal(dlist, [3, 0, 1, 2, 3]));
+    dlist.remove(3);
+    assert(equal(dlist, [0, 1, 2]));
+
+    dlist.popFront();
+    dlist.insertFront(1);
+    dlist.insertFront(0);
+    assert(equal(dlist, [0, 1, 1, 2]));
+    dlist.remove(1);
+    assert(equal(dlist, [0, 2]));
+    dlist.reset();
+    assert(dlist.empty);
+    assert(equal(dlist, null));
+
+    dlist.insertFront(0);
+    assert(!dlist.empty);
+    dlist = DList!int();
+    assert(dlist.empty);
+
+    DList!int dlist2;
+    static assert(!__traits(compiles, dlist = dlist2));
+}
