@@ -15,7 +15,8 @@ module rt.util.container;
 
 import core.stdc.stdlib;
 import core.stdc.string;
-
+import core.bitop; // bsr
+import rt.util.hash;
 
 struct Array(T)
 {
@@ -421,4 +422,282 @@ unittest
 
     List!int list2;
     static assert(!__traits(compiles, list = list2));
+}
+
+
+struct HashTab(K, V)
+{
+    static struct Node
+    {
+        K _key;
+        V _value;
+    }
+
+    @disable this(this);
+
+    ~this()
+    {
+        reset();
+    }
+
+    void reset()
+    {
+        foreach(bucket; _buckets[])
+            bucket.reset();
+        _buckets.reset();
+    }
+
+    @property bool empty() const
+    {
+        return !_length;
+    }
+
+    @property size_t length() const
+    {
+        return _length;
+    }
+
+    bool remove(K key)
+    {
+        immutable hash = hashOf(key) & mask;
+        auto pp = &_buckets[hash]._head;
+        while (*pp)
+        {
+            auto p = *pp;
+            auto node = cast(Node*)p.value;
+            if (node._key == key)
+            {
+                *pp = p._next;
+                .free(p);
+                if (--_length < _buckets.length && _length >= 4)
+                    shrink();
+                return true;
+            }
+            else
+                pp = &p._next;
+        }
+        return false;
+    }
+
+    bool remove(scope bool delegate(ref K key) dg)
+    {
+        size_t olen = _length;
+        for (size_t idx = 0; idx < _buckets.length; ++idx)
+        {
+            auto pp = &_buckets[idx]._head;
+            while (*pp)
+            {
+                auto p = *pp;
+                auto node = cast(Node*)p.value;
+                if (dg(node._key))
+                {
+                    *pp = p._next;
+                    .free(p);
+                    --_length;
+                }
+                else
+                    pp = &p._next;
+            }
+        }
+        if (_length < olen)
+        {
+            while (_length < _buckets.length && _buckets.length >= 4)
+                shrink();
+            return true;
+        }
+        else
+            return false;
+    }
+
+    ref V opIndex(K key)
+    {
+        return *get(key, false);
+    }
+
+    void opIndexAssign(V value, K key)
+    {
+        *get(key, true) = value;
+    }
+
+    auto opIndexUnary(string op)(K key)
+    {
+        return mixin(op ~ "*get(key, false)");
+    }
+
+    void opIndexOpAssign(string op, T)(T c, K key)
+    {
+        mixin("*get(key, false)" ~ op ~ "= c;");
+    }
+
+    V* get(K key, bool lvalue)
+    {
+        hash_t hash = void;
+        if (_buckets.length)
+        {
+            hash = hashOf(key) & mask;
+            foreach(p; _buckets[hash])
+            {
+                auto node = cast(Node*)p.value;
+                if (node._key == key)
+                    return &node._value;
+            }
+        }
+        else if (lvalue)
+        {
+            _buckets.length = 4;
+            hash = hashOf(key) & mask;
+        }
+
+        if (!lvalue)
+            return null;
+        else
+        {
+            auto node = cast(Node*)_buckets[hash].push(Node.sizeof);
+            node._key = key;
+            if (++_length >= 2 * _buckets.length)
+                grow();
+            return &node._value;
+        }
+    }
+
+    int opApply(scope int delegate(ref const K, ref V) dg)
+    {
+        foreach(list; _buckets[])
+        {
+            foreach(p; list)
+            {
+                auto node = cast(Node*)p.value;
+                if (auto res = dg(node._key, node._value))
+                    return res;
+            }
+        }
+        return 0;
+    }
+
+private:
+
+    static hash_t hashOf(ref K key)
+    {
+        static if (is(K U : U[]))
+            return .hashOf(cast(ubyte*)key.ptr, key.length * key[0].sizeof);
+        else
+            return .hashOf(cast(ubyte*)&key, K.sizeof);
+    }
+
+    @property hash_t mask() const
+    {
+        return _buckets.length - 1;
+    }
+
+    void grow()
+    in
+    {
+        assert(_buckets.length);
+    }
+    body
+    {
+        immutable ocnt = _buckets.length;
+        immutable nmask = 2 * ocnt - 1;
+        _buckets.length = 2 * ocnt;
+        for (size_t i = 0; i < ocnt; ++i)
+        {
+            auto pp = &_buckets[i]._head;
+            while (*pp)
+            {
+                auto p = *pp;
+                auto node = cast(Node*)p.value;
+
+                immutable nidx = hashOf(node._key) & nmask;
+                if (nidx != i)
+                {
+                    *pp = p._next;
+                    p._next = _buckets[nidx]._head;
+                    _buckets[nidx]._head = p;
+                }
+                else
+                    pp = &p._next;
+            }
+        }
+    }
+
+    void shrink()
+    in
+    {
+        assert(_buckets.length >= 2);
+    }
+    body
+    {
+        immutable ocnt = _buckets.length;
+        immutable ncnt = ocnt >> 1;
+        immutable nmask = ncnt - 1;
+
+        for (size_t i = ncnt; i < ocnt; ++i)
+        {
+            if (auto tail = _buckets[i]._head)
+            {
+                immutable nidx = i & nmask;
+                auto pp = &_buckets[nidx]._head;
+                while (*pp)
+                    pp = &(*pp)._next;
+                *pp = tail;
+                _buckets[i]._head = null;
+            }
+        }
+        _buckets.length = ncnt;
+    }
+
+    Array!(ListImpl) _buckets;
+    size_t _length;
+}
+
+unittest
+{
+    HashTab!(int, int) tab;
+
+    foreach(i; 0 .. 100)
+        tab[i] = 100 - i;
+
+    foreach(i; 0 .. 100)
+        assert(tab[i] == 100 - i);
+
+    foreach(i; 0 .. 50)
+        tab.remove(2 * i) || assert(0);
+
+    assert(tab.length == 50);
+
+    foreach(i; 0 .. 50)
+        assert(tab[2 * i + 1] == 100 - 2 * i - 1);
+
+    assert(tab.length == 50);
+
+    tab.remove((ref int key) => !!(key % 2));
+
+    assert(!tab.length);
+    assert(tab.empty);
+    foreach(list; tab._buckets[])
+        assert(list.empty);
+}
+
+unittest
+{
+    HashTab!(string, size_t) tab;
+
+    tab["foo"] = 0;
+    assert(tab["foo"] == 0);
+    ++tab["foo"];
+    assert(tab["foo"] == 1);
+    tab["foo"]++;
+    assert(tab["foo"] == 2);
+
+    auto s = "fo";
+    s ~= "o";
+    assert(tab[s] == 2);
+    assert(tab.length == 1);
+    tab[s] -= 2;
+    assert(tab[s] == 0);
+    tab["foo"] = 12;
+    assert(tab[s] == 12);
+
+    tab.remove("foo");
+    assert(tab.empty);
 }
