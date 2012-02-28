@@ -36,7 +36,7 @@ class TypeInfo_C : TypeInfo
         return o1 == o2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;

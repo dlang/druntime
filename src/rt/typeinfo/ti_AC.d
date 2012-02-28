@@ -56,7 +56,7 @@ class TypeInfo_AC : TypeInfo
         return false;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         Object[] s1 = *cast(Object[]*)p1;
         Object[] s2 = *cast(Object[]*)p2;

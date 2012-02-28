@@ -28,7 +28,7 @@ class TypeInfo_c : TypeInfo
         return f1 == f2;
     }
 
-    static int _compare(creal f1, creal f2)
+    static compare_t _compare(creal f1, creal f2)
     {   int result;
 
         if (f1.re < f2.re)
@@ -58,7 +58,7 @@ class TypeInfo_c : TypeInfo
         return _equals(*cast(creal *)p1, *cast(creal *)p2);
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         return _compare(*cast(creal *)p1, *cast(creal *)p2);
     }

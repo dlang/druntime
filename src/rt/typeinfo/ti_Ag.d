@@ -42,7 +42,7 @@ class TypeInfo_Ag : TypeInfo
                memcmp(cast(byte *)s1, cast(byte *)s2, s1.length) == 0;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         byte[] s1 = *cast(byte[]*)p1;
         byte[] s2 = *cast(byte[]*)p2;

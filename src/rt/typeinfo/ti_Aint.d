@@ -41,7 +41,7 @@ class TypeInfo_Ai : TypeInfo
                memcmp(cast(void *)s1, cast(void *)s2, s1.length * int.sizeof) == 0;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         int[] s1 = *cast(int[]*)p1;
         int[] s2 = *cast(int[]*)p2;

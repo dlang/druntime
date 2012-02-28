@@ -36,7 +36,7 @@ class TypeInfo_l : TypeInfo
         return *cast(long *)p1 == *cast(long *)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         if (*cast(long *)p1 < *cast(long *)p2)
             return -1;

@@ -58,6 +58,7 @@ else
 
 alias size_t hash_t;
 alias bool equals_t;
+alias int compare_t;
 
 alias immutable(char)[]  string;
 alias immutable(wchar)[] wstring;
@@ -94,7 +95,7 @@ class Object
      *  $(TR $(TD this &gt; obj) $(TD &gt; 0))
      *  )
      */
-    int opCmp(Object o)
+    compare_t opCmp(Object o)
     {
         // BUG: this prevents a compacting GC from working, needs to be fixed
         //return cast(int)cast(void*)this - cast(int)cast(void*)o;
@@ -240,7 +241,7 @@ class TypeInfo
         return hashOf(data.ptr, data.length);
     }
 
-    override int opCmp(Object o)
+    override compare_t opCmp(Object o)
     {
         if (this is o)
             return 0;
@@ -269,7 +270,7 @@ class TypeInfo
     equals_t equals(in void* p1, in void* p2) { return p1 == p2; }
 
     /// Compares two instances for &lt;, ==, or &gt;.
-    int compare(in void* p1, in void* p2) { return 0; }
+    compare_t compare(in void* p1, in void* p2) { return 0; }
 
     /// Returns size of the type.
     @property size_t tsize() nothrow pure const @safe { return 0; }
@@ -332,7 +333,7 @@ class TypeInfo_Vector : TypeInfo
 
     override hash_t getHash(in void* p) { return base.getHash(p); }
     override equals_t equals(in void* p1, in void* p2) { return base.equals(p1, p2); }
-    override int compare(in void* p1, in void* p2) { return base.compare(p1, p2); }
+    override compare_t compare(in void* p1, in void* p2) { return base.compare(p1, p2); }
     @property override size_t tsize() nothrow pure { return base.tsize; }
     override void swap(void* p1, void* p2) { return base.swap(p1, p2); }
 
@@ -364,7 +365,7 @@ class TypeInfo_Typedef : TypeInfo
 
     override hash_t getHash(in void* p) { return base.getHash(p); }
     override equals_t equals(in void* p1, in void* p2) { return base.equals(p1, p2); }
-    override int compare(in void* p1, in void* p2) { return base.compare(p1, p2); }
+    override compare_t compare(in void* p1, in void* p2) { return base.compare(p1, p2); }
     @property override size_t tsize() nothrow pure { return base.tsize; }
     override void swap(void* p1, void* p2) { return base.swap(p1, p2); }
 
@@ -410,7 +411,7 @@ class TypeInfo_Pointer : TypeInfo
         return *cast(void**)p1 == *cast(void**)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         if (*cast(void**)p1 < *cast(void**)p2)
             return -1;
@@ -471,7 +472,7 @@ class TypeInfo_Array : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         void[] a1 = *cast(void[]*)p1;
         void[] a2 = *cast(void[]*)p2;
@@ -560,7 +561,7 @@ class TypeInfo_StaticArray : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         size_t sz = value.tsize;
 
@@ -778,7 +779,7 @@ class TypeInfo_Class : TypeInfo
         return (o1 is o2) || (o1 && o1.opEquals(o2));
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;
@@ -918,7 +919,7 @@ class TypeInfo_Interface : TypeInfo
         return o1 == o2 || (o1 && o1.opCmp(o2) == 0);
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         Interface* pi = **cast(Interface ***)*cast(void**)p1;
         Object o1 = cast(Object)(*cast(void**)p1 - pi.offset);
@@ -993,7 +994,7 @@ class TypeInfo_Struct : TypeInfo
             return memcmp(p1, p2, init().length) == 0;
     }
 
-    override int compare(in void* p1, in void* p2) @trusted pure nothrow const
+    override compare_t compare(in void* p1, in void* p2) @trusted pure nothrow const
     {
         // Regard null references as always being "less than"
         if (p1 != p2)
@@ -1042,10 +1043,10 @@ class TypeInfo_Struct : TypeInfo
 
   @safe pure nothrow
   {
-    hash_t   function(in void*)           xtoHash;
-    equals_t function(in void*, in void*) xopEquals;
-    int      function(in void*, in void*) xopCmp;
-    char[]   function(in void*)           xtoString;
+    hash_t    function(in void*)           xtoHash;
+    equals_t  function(in void*, in void*) xopEquals;
+    compare_t function(in void*, in void*) xopCmp;
+    char[]    function(in void*)           xtoString;
 
     uint m_flags;
 
@@ -1126,7 +1127,7 @@ class TypeInfo_Tuple : TypeInfo
         assert(0);
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         assert(0);
     }
@@ -1188,7 +1189,7 @@ class TypeInfo_Const : TypeInfo
 
     override hash_t getHash(in void *p) { return base.getHash(p); }
     override equals_t equals(in void *p1, in void *p2) { return base.equals(p1, p2); }
-    override int compare(in void *p1, in void *p2) { return base.compare(p1, p2); }
+    override compare_t compare(in void *p1, in void *p2) { return base.compare(p1, p2); }
     @property override size_t tsize() nothrow pure { return base.tsize; }
     override void swap(void *p1, void *p2) { return base.swap(p1, p2); }
 

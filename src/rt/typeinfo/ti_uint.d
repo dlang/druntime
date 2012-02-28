@@ -34,7 +34,7 @@ class TypeInfo_k : TypeInfo
         return *cast(uint *)p1 == *cast(uint *)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         if (*cast(uint*) p1 < *cast(uint*) p2)
             return -1;
