@@ -48,7 +48,7 @@ class TypeInfo_Ar : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         cdouble[] s1 = *cast(cdouble[]*)p1;
         cdouble[] s2 = *cast(cdouble[]*)p2;

@@ -32,7 +32,7 @@ class TypeInfo_P : TypeInfo
         return *cast(void* *)p1 == *cast(void* *)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         auto c = *cast(void* *)p1 - *cast(void* *)p2;
         if (c < 0)

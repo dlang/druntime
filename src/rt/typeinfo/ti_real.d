@@ -29,7 +29,7 @@ class TypeInfo_e : TypeInfo
                 (f1 !<>= f1 && f2 !<>= f2);
     }
 
-    static int _compare(real d1, real d2)
+    static compare_t _compare(real d1, real d2)
     {
         if (d1 !<>= d2)         // if either are NaN
         {
@@ -57,7 +57,7 @@ class TypeInfo_e : TypeInfo
         return _equals(*cast(real *)p1, *cast(real *)p2);
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         return _compare(*cast(real *)p1, *cast(real *)p2);
     }

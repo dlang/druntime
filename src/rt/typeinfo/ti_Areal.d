@@ -48,7 +48,7 @@ class TypeInfo_Ae : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         real[] s1 = *cast(real[]*)p1;
         real[] s2 = *cast(real[]*)p2;

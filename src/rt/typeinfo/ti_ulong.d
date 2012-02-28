@@ -36,7 +36,7 @@ class TypeInfo_m : TypeInfo
         return *cast(ulong *)p1 == *cast(ulong *)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         if (*cast(ulong *)p1 < *cast(ulong *)p2)
             return -1;

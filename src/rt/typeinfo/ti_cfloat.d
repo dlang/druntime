@@ -28,7 +28,7 @@ class TypeInfo_q : TypeInfo
         return f1 == f2;
     }
 
-    static int _compare(cfloat f1, cfloat f2)
+    static compare_t _compare(cfloat f1, cfloat f2)
     {   int result;
 
         if (f1.re < f2.re)
@@ -58,7 +58,7 @@ class TypeInfo_q : TypeInfo
         return _equals(*cast(cfloat *)p1, *cast(cfloat *)p2);
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         return _compare(*cast(cfloat *)p1, *cast(cfloat *)p2);
     }

@@ -34,7 +34,7 @@ class TypeInfo_a : TypeInfo
         return *cast(char *)p1 == *cast(char *)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         return *cast(char *)p1 - *cast(char *)p2;
     }

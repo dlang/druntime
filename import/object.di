@@ -23,6 +23,7 @@ alias ptrdiff_t                             sizediff_t;
 
 alias size_t hash_t;
 alias bool equals_t;
+alias int compare_t;
 
 alias immutable(char)[]  string;
 alias immutable(wchar)[] wstring;
@@ -30,11 +31,11 @@ alias immutable(dchar)[] dstring;
 
 class Object
 {
-    string   toString();
-    hash_t   toHash() @trusted;
-    int      opCmp(Object o);
-    equals_t opEquals(Object o);
-    equals_t opEquals(Object lhs, Object rhs);
+    string    toString();
+    hash_t    toHash() @trusted;
+    compare_t opCmp(Object o);
+    equals_t  opEquals(Object o);
+    equals_t  opEquals(Object lhs, Object rhs);
 
     interface Monitor
     {
@@ -66,9 +67,9 @@ struct OffsetTypeInfo
 
 class TypeInfo
 {
-    hash_t   getHash(in void* p) @safe;
-    equals_t equals(in void* p1, in void* p2);
-    int      compare(in void* p1, in void* p2);
+    hash_t    getHash(in void* p) @safe;
+    equals_t  equals(in void* p1, in void* p2);
+    compare_t compare(in void* p1, in void* p2);
     @property size_t   tsize() nothrow pure const @safe;
     void     swap(void* p1, void* p2);
     @property TypeInfo next() nothrow pure;
@@ -175,10 +176,10 @@ class TypeInfo_Struct : TypeInfo
 
   @safe pure nothrow
   {
-    uint function(in void*)               xtoHash;
-    equals_t function(in void*, in void*) xopEquals;
-    int function(in void*, in void*)      xopCmp;
-    string function(in void*)             xtoString;
+    uint function(in void*)                xtoHash;
+    equals_t function(in void*, in void*)  xopEquals;
+    compare_t function(in void*, in void*) xopCmp;
+    string function(in void*)              xtoString;
 
     uint m_flags;
 

@@ -41,7 +41,7 @@ class TypeInfo_As : TypeInfo
                memcmp(cast(void *)s1, cast(void *)s2, s1.length * short.sizeof) == 0;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override compare_t compare(in void* p1, in void* p2)
     {
         short[] s1 = *cast(short[]*)p1;
         short[] s2 = *cast(short[]*)p2;

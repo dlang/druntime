@@ -3675,7 +3675,7 @@ struct Pool
     /**
      * Used for sorting pooltable[]
      */
-    int opCmp(const Pool *p2) const
+    compare_t opCmp(const Pool *p2) const
     {
         if (baseAddr < p2.baseAddr)
             return -1;
