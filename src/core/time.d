@@ -118,7 +118,7 @@ public:
             $(TR $(TD this &gt; rhs) $(TD &gt; 0))
             )
      +/
-    int opCmp(Duration rhs) @safe const pure nothrow
+    compare_t opCmp(Duration rhs) @safe const pure nothrow
     {
         if(_hnsecs < rhs._hnsecs)
             return -1;
@@ -1709,7 +1709,7 @@ struct TickDuration
     /++
        operator overloading "<, >, <=, >="
       +/
-    int opCmp(ref const TickDuration rhs) @safe const pure nothrow
+    compare_t opCmp(ref const TickDuration rhs) @safe const pure nothrow
     {
         return length < rhs.length ? -1 : (length == rhs.length ? 0 : 1);
     }
