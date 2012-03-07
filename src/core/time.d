@@ -1245,23 +1245,23 @@ private:
             string retval;
             auto unitsUsed = 0;
 
-            static string unitsToPrint(string units, bool plural)
+            static string unitsToPrint(string units)(bool plural)
             {
-                if(isSecondTimeUnit!units)
+                static if(units == "secs" || units == "seconds")
                     return plural ? "secs" : "sec";
-                else if(units == "msecs")
+                else static if(units == "msecs")
                     return "ms";
-                else if(units == "usecs")
+                else static if(units == "usecs")
                     return "μs";
                 else
                     return plural ? units : units[0 .. $-1];
             }
 
-            void addUnitStr(string units, long value)
+            void addUnitStr(string units)(long value)
             {
                 if(value != 0)
                 {
-                    auto utp = unitsToPrint(units, value != 1);
+                    auto utp = unitsToPrint!units(value != 1);
                     auto valueStr = numToString(value);
 
                     if(unitsUsed == 0)
@@ -1280,14 +1280,14 @@ private:
                 }
             }
 
-            addUnitStr("weeks", weeks);
-            addUnitStr("days", days);
-            addUnitStr("hours", hours);
-            addUnitStr("minutes", minutes);
-            addUnitStr("seconds", seconds);
-            addUnitStr("msecs", milliseconds);
-            addUnitStr("usecs", microseconds);
-            addUnitStr("hnsecs", hnsecs);
+            addUnitStr!"weeks"(weeks);
+            addUnitStr!"days"(days);
+            addUnitStr!"hours"(hours);
+            addUnitStr!"minutes"(minutes);
+            addUnitStr!"seconds"(seconds);
+            addUnitStr!"msecs"(milliseconds);
+            addUnitStr!"usecs"(microseconds);
+            addUnitStr!"hnsecs"(hnsecs);
 
             if(retval.length == 0)
                 return "0 hnsecs";
@@ -1318,7 +1318,7 @@ private:
     with the given length.
 
     The possible values for units are $(D "weeks"), $(D "days"), $(D "hours"),
-    $(D "minutes"), $(D "seconds"), $(D "secs") (equivalent to $(D "seconds"),
+    $(D "minutes"), $(D "seconds"), $(D "secs") (equivalent to $(D "seconds")),
     $(D "msecs") (milliseconds), $(D "usecs"), (microseconds), $(D "hnsecs")
     (hecto-nanoseconds, i.e. 100 ns), and $(D "nsecs").
 
@@ -1451,7 +1451,7 @@ struct TickDuration
       +/
     T to(string units, T)() @safe const pure nothrow
         if((isSecondTimeUnit!units ||
-            isSubsecondTimeUnit!units)) &&
+            isSubsecondTimeUnit!units) &&
            ((__traits(isIntegral, T) && T.sizeof >= 4) || __traits(isFloating, T)))
     {
         static if(__traits(isIntegral, T) && T.sizeof >= 4)
