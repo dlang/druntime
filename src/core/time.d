@@ -961,6 +961,8 @@ assert(dur!"msecs"(1217).seconds == 1);
     {
         return get!"seconds"();
     }
+/// ditto
+    alias seconds secs;
 
     //Verify Examples.
     unittest
@@ -1483,6 +1485,8 @@ struct TickDuration
     {
         return to!("seconds", long)();
     }
+    /// ditto
+    alias seconds secs;
 
     unittest
     {
