@@ -7,10 +7,10 @@
     Various functions take a string (or strings) to represent a unit of time
     (e.g. $(D convert!("days", "hours")(numDays))). The valid strings to use
     with such functions are "years", "months", "weeks", "days", "hours",
-    "minutes", "seconds", "msecs" (milliseconds), "usecs" (microseconds),
-    "hnsecs" (hecto-nanoseconds - i.e. 100 ns) or some subset thereof. There
-    are a few functions that also allow "nsecs", but very little actually
-    has precision greater than hnsecs.
+    "minutes", "seconds", "secs" (same as seconds), "msecs" (milliseconds),
+    "usecs" (microseconds), "hnsecs" (hecto-nanoseconds - i.e. 100 ns) or some
+    subset thereof. There are a few functions that also allow "nsecs", but very
+    little actually has precision greater than hnsecs.
 
     Copyright: Copyright 2010 - 2012
     License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
@@ -57,6 +57,62 @@ ulong mach_absolute_time();
 
 }
 
+}
+
+/**
+ * Evaluates to true if the given string is a calendar-dependent time unit.
+ * The valid values for this are "weeks" and "years"
+ */
+template isCalendarTimeUnit(string s)
+{
+    enum isCalendarTimeUnit = (s == "months" || s == "years");
+}
+
+/**
+ * Evaluates to true if the given string is a valid unit representation for
+ * seconds.  Currently, "seconds" and "secs"
+ */
+template isSecondTimeUnit(string s)
+{
+    enum isSecondTimeUnit = (s == "secs" || s == "seconds");
+}
+
+/**
+ * Evaluates to true if the given unit is a valid unit for subsecond values.
+ * Currently evaluates to true for "msecs", "usecs", "hnsecs", "nsecs"
+ */
+template isSubsecondTimeUnit(string s)
+{
+    enum isSubsecondTimeUnit = (
+        s == "msecs" ||
+        s == "usecs" ||
+        s == "hnsecs" ||
+        s == "nsecs");
+}
+
+/**
+ * Evaluates to true if the given time unit is scalar in nature -- that is, it
+ * does not depend on a local calendar for determining the actual length of
+ * time.  Currently evaluates to true for "weeks", "days", "hours", "minutes",
+ * and second and subsecond units.
+ */
+template isScalarTimeUnit(string s)
+{
+    enum isScalarTimeUnit = (
+        s == "weeks" ||
+        s == "days" ||
+        s == "hours" ||
+        s == "minutes" ||
+        isSecondTimeUnit!s ||
+        isSubsecondTimeUnit!s);
+}
+
+/**
+ * Evaluates to true if the string is a valid time unit.
+ */
+template isTimeUnit(string s)
+{
+    enum isTimeUnit = (isScalarTimeUnit!s || isCalendarTimeUnit!s);
 }
 
 
@@ -660,7 +716,7 @@ public:
     {
         foreach(D; _TypeTuple!(Duration, const Duration, immutable Duration))
         {
-            foreach(units; _TypeTuple!("seconds", "msecs", "usecs", "hnsecs"))
+            foreach(units; _TypeTuple!("seconds", "secs", "msecs", "usecs", "hnsecs"))
             {
                 enum unitsPerSec = convert!("seconds", units)(1);
 
@@ -712,11 +768,7 @@ assert(dur!"hours"(49).get!"hours"() == 1);
 --------------------
       +/
     long get(string units)() @safe const pure nothrow
-        if(units == "weeks" ||
-           units == "days" ||
-           units == "hours" ||
-           units == "minutes" ||
-           units == "seconds")
+        if(isScalarTimeUnit!units)
     {
         static if(units == "weeks")
             return getUnitsFromHNSecs!"weeks"(_hnsecs);
@@ -909,6 +961,8 @@ assert(dur!"msecs"(1217).seconds == 1);
     {
         return get!"seconds"();
     }
+/// ditto
+    alias seconds secs;
 
     //Verify Examples.
     unittest
@@ -1014,15 +1068,7 @@ assert(dur!"nsecs"(2007).total!"nsecs"() == 2000);
 --------------------
       +/
     @property long total(string units)() @safe const pure nothrow
-        if(units == "weeks" ||
-           units == "days" ||
-           units == "hours" ||
-           units == "minutes" ||
-           units == "seconds" ||
-           units == "msecs" ||
-           units == "usecs" ||
-           units == "hnsecs" ||
-           units == "nsecs")
+        if(isScalarTimeUnit!units)
     {
         static if(units == "nsecs")
             return convert!("hnsecs", "nsecs")(_hnsecs);
@@ -1201,23 +1247,23 @@ private:
             string retval;
             auto unitsUsed = 0;
 
-            static string unitsToPrint(string units, bool plural)
+            static string unitsToPrint(string units)(bool plural)
             {
-                if(units == "seconds")
+                static if(units == "secs" || units == "seconds")
                     return plural ? "secs" : "sec";
-                else if(units == "msecs")
+                else static if(units == "msecs")
                     return "ms";
-                else if(units == "usecs")
+                else static if(units == "usecs")
                     return "μs";
                 else
                     return plural ? units : units[0 .. $-1];
             }
 
-            void addUnitStr(string units, long value)
+            void addUnitStr(string units)(long value)
             {
                 if(value != 0)
                 {
-                    auto utp = unitsToPrint(units, value != 1);
+                    auto utp = unitsToPrint!units(value != 1);
                     auto valueStr = numToString(value);
 
                     if(unitsUsed == 0)
@@ -1236,14 +1282,14 @@ private:
                 }
             }
 
-            addUnitStr("weeks", weeks);
-            addUnitStr("days", days);
-            addUnitStr("hours", hours);
-            addUnitStr("minutes", minutes);
-            addUnitStr("seconds", seconds);
-            addUnitStr("msecs", milliseconds);
-            addUnitStr("usecs", microseconds);
-            addUnitStr("hnsecs", hnsecs);
+            addUnitStr!"weeks"(weeks);
+            addUnitStr!"days"(days);
+            addUnitStr!"hours"(hours);
+            addUnitStr!"minutes"(minutes);
+            addUnitStr!"seconds"(seconds);
+            addUnitStr!"msecs"(milliseconds);
+            addUnitStr!"usecs"(microseconds);
+            addUnitStr!"hnsecs"(hnsecs);
 
             if(retval.length == 0)
                 return "0 hnsecs";
@@ -1274,24 +1320,16 @@ private:
     with the given length.
 
     The possible values for units are $(D "weeks"), $(D "days"), $(D "hours"),
-    $(D "minutes"), $(D "seconds"), $(D "msecs") (milliseconds), $(D "usecs"),
-    (microseconds), $(D "hnsecs") (hecto-nanoseconds, i.e. 100 ns), and
-    $(D "nsecs").
+    $(D "minutes"), $(D "seconds"), $(D "secs") (equivalent to $(D "seconds")),
+    $(D "msecs") (milliseconds), $(D "usecs"), (microseconds), $(D "hnsecs")
+    (hecto-nanoseconds, i.e. 100 ns), and $(D "nsecs").
 
     Params:
         units  = The time units of the $(D Duration) (e.g. $(D "days")).
         length = The number of units in the $(D Duration).
   +/
 Duration dur(string units)(long length) @safe pure nothrow
-    if(units == "weeks" ||
-       units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs" ||
-       units == "nsecs")
+    if(isScalarTimeUnit!units)
 {
     return Duration(convert!(units, "hnsecs")(length));
 }
@@ -1414,11 +1452,8 @@ struct TickDuration
                     floating point type).
       +/
     T to(string units, T)() @safe const pure nothrow
-        if((units == "seconds" ||
-            units == "msecs" ||
-            units == "usecs" ||
-            units == "hnsecs" ||
-            units == "nsecs") &&
+        if((isSecondTimeUnit!units ||
+            isSubsecondTimeUnit!units) &&
            ((__traits(isIntegral, T) && T.sizeof >= 4) || __traits(isFloating, T)))
     {
         static if(__traits(isIntegral, T) && T.sizeof >= 4)
@@ -1429,7 +1464,7 @@ struct TickDuration
         }
         else static if(__traits(isFloating, T))
         {
-            static if(units == "seconds")
+            static if(isSecondTimeUnit!units)
                 return length / cast(T)ticksPerSec;
             else
             {
@@ -1450,6 +1485,8 @@ struct TickDuration
     {
         return to!("seconds", long)();
     }
+    /// ditto
+    alias seconds secs;
 
     unittest
     {
@@ -1511,11 +1548,8 @@ struct TickDuration
             length = The number of units in the $(D TickDuration).
       +/
     static TickDuration from(string units)(long length) @safe pure nothrow
-        if(units == "seconds" ||
-           units == "msecs" ||
-           units == "usecs" ||
-           units == "hnsecs" ||
-           units == "nsecs")
+        if(isSecondTimeUnit!units ||
+           isSubsecondTimeUnit!units)
     {
         enum unitsPerSec = convert!("seconds", units)(1);
 
@@ -1524,7 +1558,7 @@ struct TickDuration
 
     unittest
     {
-        foreach(units; _TypeTuple!("seconds", "msecs", "usecs", "nsecs"))
+        foreach(units; _TypeTuple!("seconds", "secs", "msecs", "usecs", "nsecs"))
         {
             foreach(T; _TypeTuple!(TickDuration, const TickDuration, immutable TickDuration))
             {
@@ -2031,25 +2065,8 @@ assert(convert!("seconds", "nsecs")(1) == 1_000_000_000);
 --------------------
   +/
 long convert(string from, string to)(long value) @safe pure nothrow
-    if(((from == "weeks" ||
-         from == "days" ||
-         from == "hours" ||
-         from == "minutes" ||
-         from == "seconds" ||
-         from == "msecs" ||
-         from == "usecs" ||
-         from == "hnsecs" ||
-         from == "nsecs") &&
-        (to == "weeks" ||
-         to == "days" ||
-         to == "hours" ||
-         to == "minutes" ||
-         to == "seconds" ||
-         to == "msecs" ||
-         to == "usecs" ||
-         to == "hnsecs" ||
-         to == "nsecs")) ||
-       ((from == "years" || from == "months") && (to == "years" || to == "months")))
+    if((isScalarTimeUnit!from && isScalarTimeUnit!to) ||
+       (isCalendarTimeUnit!from && isCalendarTimeUnit!to))
 {
     static if(from == "years")
     {
@@ -2206,10 +2223,7 @@ public:
             $(D -1) seconds.
       +/
     static FracSec from(string units)(long value) @safe pure
-        if(units == "msecs" ||
-           units == "usecs" ||
-           units == "hnsecs" ||
-           units == "nsecs")
+        if(isSubsecondTimeUnit!units)
     {
         return FracSec(cast(int)convert!(units, "hnsecs")(value));
     }
@@ -2818,14 +2832,7 @@ private:
     Template to help with converting between time units.
  +/
 template hnsecsPer(string units)
-    if(units == "weeks" ||
-       units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs")
+    if(isScalarTimeUnit!units)
 {
     static if(units == "hnsecs")
         enum hnsecsPer = 1L;
@@ -2833,7 +2840,7 @@ template hnsecsPer(string units)
         enum hnsecsPer = 10L;
     else static if(units == "msecs")
         enum hnsecsPer = 1000 * hnsecsPer!"usecs";
-    else static if(units == "seconds")
+    else static if(isSecondTimeUnit!units)
         enum hnsecsPer = 1000 * hnsecsPer!"msecs";
     else static if(units == "minutes")
         enum hnsecsPer = 60 * hnsecsPer!"seconds";
@@ -2871,14 +2878,7 @@ assert(hnsecs == 7);
 --------------------
   +/
 long splitUnitsFromHNSecs(string units)(ref long hnsecs) @safe pure nothrow
-    if(units == "weeks" ||
-       units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs")
+    if(isScalarTimeUnit!units)
 {
     immutable value = convert!("hnsecs", units)(hnsecs);
     hnsecs -= convert!(units, "hnsecs")(value);
@@ -2923,14 +2923,7 @@ assert(hnsecs == 2595000000007L);
 --------------------
   +/
 long getUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
-    if(units == "weeks" ||
-       units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs")
+    if(isScalarTimeUnit!units)
 {
     return convert!("hnsecs", units)(hnsecs);
 }
@@ -2968,14 +2961,7 @@ assert(hnsecs == 2595000000007L);
 --------------------
   +/
 long removeUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
-    if(units == "weeks" ||
-       units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs")
+    if(isScalarTimeUnit!units)
 {
     immutable value = convert!("hnsecs", units)(hnsecs);
 
@@ -3001,14 +2987,14 @@ bool validTimeUnits(string[] units...)
     {
         switch(str)
         {
-            case "years", "months", "weeks", "days", "hours", "minutes", "seconds", "msecs", "usecs", "hnsecs":
-                return true;
+            case "years", "months", "weeks", "days", "hours", "minutes", "seconds", "secs", "msecs", "usecs", "hnsecs":
+                break;
             default:
                 return false;
         }
     }
 
-    return false;
+    return true;
 }
 
 
@@ -3022,14 +3008,8 @@ assert(nextLargerTimeUnits!"hnsecs" == "usecs");
 --------------------
   +/
 template nextLargerTimeUnits(string units)
-    if(units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs" ||
-       units == "nsecs")
+    if(units != "weeks" &&
+       (isScalarTimeUnit!units))
 {
     static if(units == "days")
         enum nextLargerTimeUnits = "weeks";
@@ -3037,7 +3017,7 @@ template nextLargerTimeUnits(string units)
         enum nextLargerTimeUnits = "days";
     else static if(units == "minutes")
         enum nextLargerTimeUnits = "hours";
-    else static if(units == "seconds")
+    else static if(isSecondTimeUnit!units)
         enum nextLargerTimeUnits = "minutes";
     else static if(units == "msecs")
         enum nextLargerTimeUnits = "seconds";
@@ -3065,6 +3045,7 @@ unittest
     assert(nextLargerTimeUnits!"usecs" == "msecs");
     assert(nextLargerTimeUnits!"msecs" == "seconds");
     assert(nextLargerTimeUnits!"seconds" == "minutes");
+    assert(nextLargerTimeUnits!"secs" == "minutes");
     assert(nextLargerTimeUnits!"minutes" == "hours");
     assert(nextLargerTimeUnits!"hours" == "days");
     assert(nextLargerTimeUnits!"days" == "weeks");
