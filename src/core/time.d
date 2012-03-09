@@ -70,7 +70,9 @@ ulong mach_absolute_time();
     In std.datetime, it is also used as the result of various arithmetic
     operations on time points.
 
-    Use the $(D dur) function to create $(D Duration)s.
+    Use the unit functions such as $(D minutes), $(D hours), etc.
+	to create $(D Duration)s. If you wish to create a $(D Duration)
+	generically, use the $(D duration) function.
 
     You cannot create a duration of months or years because the variable number
     of days in a month or a year makes it so that you cannot convert between
@@ -84,15 +86,15 @@ ulong mach_absolute_time();
 
     Examples:
 --------------------
-assert(dur!"days"(12) == Duration(10_368_000_000_000L));
-assert(dur!"hnsecs"(27) == Duration(27));
-assert(std.datetime.Date(2010, 9, 7) + dur!"days"(5) ==
+assert(days(12) == Duration(10_368_000_000_000L));
+assert(hnsecs(27) == Duration(27));
+assert(std.datetime.Date(2010, 9, 7) + days(5) ==
        std.datetime.Date(2010, 9, 12));
 
-assert(dur!"days"(-12) == Duration(-10_368_000_000_000L));
-assert(dur!"hnsecs"(-27) == Duration(-27));
+assert(days(-12) == Duration(-10_368_000_000_000L));
+assert(hnsecs(-27) == Duration(-27));
 assert(std.datetime.Date(2010, 9, 7) - std.datetime.Date(2010, 10, 3) ==
-       dur!"days"(-26));
+       days(-26));
 --------------------
  +/
 struct Duration
@@ -100,10 +102,10 @@ struct Duration
     //Verify Examples.
     unittest
     {
-        assert(dur!"days"(12) == Duration(10_368_000_000_000L));
-        assert(dur!"hnsecs"(27) == Duration(27));
-        assert(dur!"days"(-12) == Duration(-10_368_000_000_000L));
-        assert(dur!"hnsecs"(-27) == Duration(-27));
+        assert(days(12) == Duration(10_368_000_000_000L));
+        assert(hnsecs(27) == Duration(27));
+        assert(days(-12) == Duration(-10_368_000_000_000L));
+        assert(hnsecs(-27) == Duration(-27));
     }
 
 public:
@@ -669,9 +671,9 @@ public:
                     foreach(T; _TypeTuple!(TickDuration, const TickDuration, immutable TickDuration))
                     {
                         auto t = TickDuration.from!units(1);
-                        assert(cast(T)cast(D)dur!units(1) == t, units);
+                        assert(cast(T)cast(D)duration!units(1) == t, units);
                         t = TickDuration.from!units(2);
-                        assert(cast(T)cast(D)dur!units(2) == t, units);
+                        assert(cast(T)cast(D)duration!units(2) == t, units);
                     }
                 }
                 else
@@ -701,14 +703,14 @@ public:
 
         Examples:
 --------------------
-assert(dur!"weeks"(12).get!"weeks"() == 12);
-assert(dur!"weeks"(12).get!"days"() == 0);
+assert(weeks(12).get!"weeks"() == 12);
+assert(weeks(12).get!"days"() == 0);
 
-assert(dur!"days"(13).get!"weeks"() == 1);
-assert(dur!"days"(13).get!"days"() == 6);
+assert(days(13).get!"weeks"() == 1);
+assert(days(13).get!"days"() == 6);
 
-assert(dur!"hours"(49).get!"days"() == 2);
-assert(dur!"hours"(49).get!"hours"() == 1);
+assert(hours(49).get!"days"() == 2);
+assert(hours(49).get!"hours"() == 1);
 --------------------
       +/
     long get(string units)() @safe const pure nothrow
@@ -731,28 +733,28 @@ assert(dur!"hours"(49).get!"hours"() == 1);
     //Verify Examples
     unittest
     {
-        assert(dur!"weeks"(12).get!"weeks"() == 12);
-        assert(dur!"weeks"(12).get!"days"() == 0);
+        assert(weeks(12).get!"weeks"() == 12);
+        assert(weeks(12).get!"days"() == 0);
 
-        assert(dur!"days"(13).get!"weeks"() == 1);
-        assert(dur!"days"(13).get!"days"() == 6);
+        assert(days(13).get!"weeks"() == 1);
+        assert(days(13).get!"days"() == 6);
 
-        assert(dur!"hours"(49).get!"days"() == 2);
-        assert(dur!"hours"(49).get!"hours"() == 1);
+        assert(hours(49).get!"days"() == 2);
+        assert(hours(49).get!"hours"() == 1);
     }
 
     unittest
     {
         foreach(D; _TypeTuple!(const Duration, immutable Duration))
         {
-            assert((cast(D)dur!"weeks"(12)).get!"weeks"() == 12);
-            assert((cast(D)dur!"weeks"(12)).get!"days"() == 0);
+            assert((cast(D)weeks(12)).get!"weeks"() == 12);
+            assert((cast(D)weeks(12)).get!"days"() == 0);
 
-            assert((cast(D)dur!"days"(13)).get!"weeks"() == 1);
-            assert((cast(D)dur!"days"(13)).get!"days"() == 6);
+            assert((cast(D)days(13)).get!"weeks"() == 1);
+            assert((cast(D)days(13)).get!"days"() == 6);
 
-            assert((cast(D)dur!"hours"(49)).get!"days"() == 2);
-            assert((cast(D)dur!"hours"(49)).get!"hours"() == 1);
+            assert((cast(D)hours(49)).get!"days"() == 2);
+            assert((cast(D)hours(49)).get!"hours"() == 1);
         }
     }
 
@@ -763,8 +765,8 @@ assert(dur!"hours"(49).get!"hours"() == 1);
 
         Examples:
 --------------------
-assert(dur!"weeks"(12).weeks == 12);
-assert(dur!"days"(13).weeks == 1);
+assert(weeks(12).weeks == 12);
+assert(days(13).weeks == 1);
 --------------------
       +/
     @property long weeks() @safe const pure nothrow
@@ -775,16 +777,16 @@ assert(dur!"days"(13).weeks == 1);
     //Verify Examples
     unittest
     {
-        assert(dur!"weeks"(12).weeks == 12);
-        assert(dur!"days"(13).weeks == 1);
+        assert(weeks(12).weeks == 12);
+        assert(days(13).weeks == 1);
     }
 
     unittest
     {
         foreach(D; _TypeTuple!(const Duration, immutable Duration))
         {
-            assert((cast(D)dur!"weeks"(12)).weeks == 12);
-            assert((cast(D)dur!"days"(13)).weeks == 1);
+            assert((cast(D)weeks(12)).weeks == 12);
+            assert((cast(D)days(13)).weeks == 1);
         }
     }
 
@@ -795,9 +797,9 @@ assert(dur!"days"(13).weeks == 1);
 
         Examples:
 --------------------
-assert(dur!"weeks"(12).days == 0);
-assert(dur!"days"(13).days == 6);
-assert(dur!"hours"(49).days == 2);
+assert(weeks(12).days == 0);
+assert(days(13).days == 6);
+assert(hours(49).days == 2);
 --------------------
       +/
     @property long days() @safe const pure nothrow
@@ -808,18 +810,18 @@ assert(dur!"hours"(49).days == 2);
     //Verify Examples.
     unittest
     {
-        assert(dur!"weeks"(12).days == 0);
-        assert(dur!"days"(13).days == 6);
-        assert(dur!"hours"(49).days == 2);
+        assert(weeks(12).days == 0);
+        assert(days(13).days == 6);
+        assert(hours(49).days == 2);
     }
 
     unittest
     {
         foreach(D; _TypeTuple!(const Duration, immutable Duration))
         {
-            assert((cast(D)dur!"weeks"(12)).days == 0);
-            assert((cast(D)dur!"days"(13)).days == 6);
-            assert((cast(D)dur!"hours"(49)).days == 2);
+            assert((cast(D)weeks(12)).days == 0);
+            assert((cast(D)days(13)).days == 6);
+            assert((cast(D)hours(49)).days == 2);
         }
     }
 
@@ -830,9 +832,9 @@ assert(dur!"hours"(49).days == 2);
 
         Examples:
 --------------------
-assert(dur!"days"(8).hours == 0);
-assert(dur!"hours"(49).hours == 1);
-assert(dur!"minutes"(121).hours == 2);
+assert(days(8).hours == 0);
+assert(hours(49).hours == 1);
+assert(minutes(121).hours == 2);
 --------------------
       +/
     @property long hours() @safe const pure nothrow
@@ -843,18 +845,18 @@ assert(dur!"minutes"(121).hours == 2);
     //Verify Examples.
     unittest
     {
-        assert(dur!"days"(8).hours == 0);
-        assert(dur!"hours"(49).hours == 1);
-        assert(dur!"minutes"(121).hours == 2);
+        assert(days(8).hours == 0);
+        assert(hours(49).hours == 1);
+        assert(minutes(121).hours == 2);
     }
 
     unittest
     {
         foreach(D; _TypeTuple!(const Duration, immutable Duration))
         {
-            assert((cast(D)dur!"days"(8)).hours == 0);
-            assert((cast(D)dur!"hours"(49)).hours == 1);
-            assert((cast(D)dur!"minutes"(121)).hours == 2);
+            assert((cast(D)days(8)).hours == 0);
+            assert((cast(D)hours(49)).hours == 1);
+            assert((cast(D)minutes(121)).hours == 2);
         }
     }
 
@@ -865,9 +867,9 @@ assert(dur!"minutes"(121).hours == 2);
 
         Examples:
 --------------------
-assert(dur!"hours"(47).minutes == 0);
-assert(dur!"minutes"(127).minutes == 7);
-assert(dur!"seconds"(121).minutes == 2);
+assert(hours(47).minutes == 0);
+assert(minutes(127).minutes == 7);
+assert(seconds(121).minutes == 2);
 --------------------
       +/
     @property long minutes() @safe const pure nothrow
@@ -878,18 +880,18 @@ assert(dur!"seconds"(121).minutes == 2);
     //Verify Examples.
     unittest
     {
-        assert(dur!"hours"(47).minutes == 0);
-        assert(dur!"minutes"(127).minutes == 7);
-        assert(dur!"seconds"(121).minutes == 2);
+        assert(hours(47).minutes == 0);
+        assert(minutes(127).minutes == 7);
+        assert(seconds(121).minutes == 2);
     }
 
     unittest
     {
         foreach(D; _TypeTuple!(const Duration, immutable Duration))
         {
-            assert((cast(D)dur!"hours"(47)).minutes == 0);
-            assert((cast(D)dur!"minutes"(127)).minutes == 7);
-            assert((cast(D)dur!"seconds"(121)).minutes == 2);
+            assert((cast(D)hours(47)).minutes == 0);
+            assert((cast(D)minutes(127)).minutes == 7);
+            assert((cast(D)seconds(121)).minutes == 2);
         }
     }
 
@@ -900,9 +902,9 @@ assert(dur!"seconds"(121).minutes == 2);
 
         Examples:
 --------------------
-assert(dur!"minutes"(47).seconds == 0);
-assert(dur!"seconds"(127).seconds == 7);
-assert(dur!"msecs"(1217).seconds == 1);
+assert(minutes(47).seconds == 0);
+assert(seconds(127).seconds == 7);
+assert(msecs(1217).seconds == 1);
 --------------------
       +/
     @property long seconds() @safe const pure nothrow
@@ -913,18 +915,18 @@ assert(dur!"msecs"(1217).seconds == 1);
     //Verify Examples.
     unittest
     {
-        assert(dur!"minutes"(47).seconds == 0);
-        assert(dur!"seconds"(127).seconds == 7);
-        assert(dur!"msecs"(1217).seconds == 1);
+        assert(minutes(47).seconds == 0);
+        assert(seconds(127).seconds == 7);
+        assert(msecs(1217).seconds == 1);
     }
 
     unittest
     {
         foreach(D; _TypeTuple!(const Duration, immutable Duration))
         {
-            assert((cast(D)dur!"minutes"(47)).seconds == 0);
-            assert((cast(D)dur!"seconds"(127)).seconds == 7);
-            assert((cast(D)dur!"msecs"(1217)).seconds == 1);
+            assert((cast(D)minutes(47)).seconds == 0);
+            assert((cast(D)seconds(127)).seconds == 7);
+            assert((cast(D)msecs(1217)).seconds == 1);
         }
     }
 
@@ -934,17 +936,17 @@ assert(dur!"msecs"(1217).seconds == 1);
 
         Examples:
 --------------------
-assert(dur!"msecs"(1000).fracSec == FracSec.from!"msecs"(0));
-assert(dur!"msecs"(1217).fracSec == FracSec.from!"msecs"(217));
-assert(dur!"usecs"(43).fracSec == FracSec.from!"usecs"(43));
-assert(dur!"hnsecs"(50_007).fracSec == FracSec.from!"hnsecs"(50_007));
-assert(dur!"nsecs"(62_127).fracSec == FracSec.from!"nsecs"(62_100));
+assert(msecs(1000).fracSec == FracSec.from!"msecs"(0));
+assert(msecs(1217).fracSec == FracSec.from!"msecs"(217));
+assert(usecs(43).fracSec == FracSec.from!"usecs"(43));
+assert(hnsecs(50_007).fracSec == FracSec.from!"hnsecs"(50_007));
+assert(nsecs(62_127).fracSec == FracSec.from!"nsecs"(62_100));
 
-assert(dur!"msecs"(-1000).fracSec == FracSec.from!"msecs"(-0));
-assert(dur!"msecs"(-1217).fracSec == FracSec.from!"msecs"(-217));
-assert(dur!"usecs"(-43).fracSec == FracSec.from!"usecs"(-43));
-assert(dur!"hnsecs"(-50_007).fracSec == FracSec.from!"hnsecs"(-50_007));
-assert(dur!"nsecs"(-62_127).fracSec == FracSec.from!"nsecs"(-62_100));
+assert(msecs(-1000).fracSec == FracSec.from!"msecs"(-0));
+assert(msecs(-1217).fracSec == FracSec.from!"msecs"(-217));
+assert(usecs(-43).fracSec == FracSec.from!"usecs"(-43));
+assert(hnsecs(-50_007).fracSec == FracSec.from!"hnsecs"(-50_007));
+assert(nsecs(-62_127).fracSec == FracSec.from!"nsecs"(-62_100));
 --------------------
      +/
     @property FracSec fracSec() @safe const pure nothrow
@@ -962,34 +964,34 @@ assert(dur!"nsecs"(-62_127).fracSec == FracSec.from!"nsecs"(-62_100));
     //Verify Examples.
     unittest
     {
-        assert(dur!"msecs"(1000).fracSec == FracSec.from!"msecs"(0));
-        assert(dur!"msecs"(1217).fracSec == FracSec.from!"msecs"(217));
-        assert(dur!"usecs"(43).fracSec == FracSec.from!"usecs"(43));
-        assert(dur!"hnsecs"(50_007).fracSec == FracSec.from!"hnsecs"(50_007));
-        assert(dur!"nsecs"(62_127).fracSec == FracSec.from!"nsecs"(62_100));
+        assert(msecs(1000).fracSec == FracSec.from!"msecs"(0));
+        assert(msecs(1217).fracSec == FracSec.from!"msecs"(217));
+        assert(usecs(43).fracSec == FracSec.from!"usecs"(43));
+        assert(hnsecs(50_007).fracSec == FracSec.from!"hnsecs"(50_007));
+        assert(nsecs(62_127).fracSec == FracSec.from!"nsecs"(62_100));
 
-        assert(dur!"msecs"(-1000).fracSec == FracSec.from!"msecs"(-0));
-        assert(dur!"msecs"(-1217).fracSec == FracSec.from!"msecs"(-217));
-        assert(dur!"usecs"(-43).fracSec == FracSec.from!"usecs"(-43));
-        assert(dur!"hnsecs"(-50_007).fracSec == FracSec.from!"hnsecs"(-50_007));
-        assert(dur!"nsecs"(-62_127).fracSec == FracSec.from!"nsecs"(-62_100));
+        assert(msecs(-1000).fracSec == FracSec.from!"msecs"(-0));
+        assert(msecs(-1217).fracSec == FracSec.from!"msecs"(-217));
+        assert(usecs(-43).fracSec == FracSec.from!"usecs"(-43));
+        assert(hnsecs(-50_007).fracSec == FracSec.from!"hnsecs"(-50_007));
+        assert(nsecs(-62_127).fracSec == FracSec.from!"nsecs"(-62_100));
     }
 
     unittest
     {
         foreach(D; _TypeTuple!(const Duration, immutable Duration))
         {
-            assert((cast(D)dur!"msecs"(1000)).fracSec == FracSec.from!"msecs"(0));
-            assert((cast(D)dur!"msecs"(1217)).fracSec == FracSec.from!"msecs"(217));
-            assert((cast(D)dur!"usecs"(43)).fracSec == FracSec.from!"usecs"(43));
-            assert((cast(D)dur!"hnsecs"(50_007)).fracSec == FracSec.from!"hnsecs"(50_007));
-            assert((cast(D)dur!"nsecs"(62_127)).fracSec == FracSec.from!"nsecs"(62_100));
+            assert((cast(D)msecs(1000)).fracSec == FracSec.from!"msecs"(0));
+            assert((cast(D)msecs(1217)).fracSec == FracSec.from!"msecs"(217));
+            assert((cast(D)usecs(43)).fracSec == FracSec.from!"usecs"(43));
+            assert((cast(D)hnsecs(50_007)).fracSec == FracSec.from!"hnsecs"(50_007));
+            assert((cast(D)nsecs(62_127)).fracSec == FracSec.from!"nsecs"(62_100));
 
-            assert((cast(D)dur!"msecs"(-1000)).fracSec == FracSec.from!"msecs"(-0));
-            assert((cast(D)dur!"msecs"(-1217)).fracSec == FracSec.from!"msecs"(-217));
-            assert((cast(D)dur!"usecs"(-43)).fracSec == FracSec.from!"usecs"(-43));
-            assert((cast(D)dur!"hnsecs"(-50_007)).fracSec == FracSec.from!"hnsecs"(-50_007));
-            assert((cast(D)dur!"nsecs"(-62_127)).fracSec == FracSec.from!"nsecs"(-62_100));
+            assert((cast(D)msecs(-1000)).fracSec == FracSec.from!"msecs"(-0));
+            assert((cast(D)msecs(-1217)).fracSec == FracSec.from!"msecs"(-217));
+            assert((cast(D)usecs(-43)).fracSec == FracSec.from!"usecs"(-43));
+            assert((cast(D)hnsecs(-50_007)).fracSec == FracSec.from!"hnsecs"(-50_007));
+            assert((cast(D)nsecs(-62_127)).fracSec == FracSec.from!"nsecs"(-62_100));
         }
     }
 
@@ -1000,17 +1002,17 @@ assert(dur!"nsecs"(-62_127).fracSec == FracSec.from!"nsecs"(-62_100));
 
         Examples:
 --------------------
-assert(dur!"weeks"(12).total!"weeks"() == 12);
-assert(dur!"weeks"(12).total!"days"() == 84);
+assert(weeks(12).total!"weeks"() == 12);
+assert(weeks(12).total!"days"() == 84);
 
-assert(dur!"days"(13).total!"weeks"() == 1);
-assert(dur!"days"(13).total!"days"() == 13);
+assert(days(13).total!"weeks"() == 1);
+assert(days(13).total!"days"() == 13);
 
-assert(dur!"hours"(49).total!"days"() == 2);
-assert(dur!"hours"(49).total!"hours"() == 49);
+assert(hours(49).total!"days"() == 2);
+assert(hours(49).total!"hours"() == 49);
 
-assert(dur!"nsecs"(2007).total!"hnsecs"() == 20);
-assert(dur!"nsecs"(2007).total!"nsecs"() == 2000);
+assert(nsecs(2007).total!"hnsecs"() == 20);
+assert(nsecs(2007).total!"nsecs"() == 2000);
 --------------------
       +/
     @property long total(string units)() @safe const pure nothrow
@@ -1033,34 +1035,34 @@ assert(dur!"nsecs"(2007).total!"nsecs"() == 2000);
     //Verify Examples.
     unittest
     {
-        assert(dur!"weeks"(12).total!"weeks" == 12);
-        assert(dur!"weeks"(12).total!"days" == 84);
+        assert(weeks(12).total!"weeks" == 12);
+        assert(weeks(12).total!"days" == 84);
 
-        assert(dur!"days"(13).total!"weeks" == 1);
-        assert(dur!"days"(13).total!"days" == 13);
+        assert(days(13).total!"weeks" == 1);
+        assert(days(13).total!"days" == 13);
 
-        assert(dur!"hours"(49).total!"days" == 2);
-        assert(dur!"hours"(49).total!"hours" == 49);
+        assert(hours(49).total!"days" == 2);
+        assert(hours(49).total!"hours" == 49);
 
-        assert(dur!"nsecs"(2007).total!"hnsecs" == 20);
-        assert(dur!"nsecs"(2007).total!"nsecs" == 2000);
+        assert(nsecs(2007).total!"hnsecs" == 20);
+        assert(nsecs(2007).total!"nsecs" == 2000);
     }
 
     unittest
     {
         foreach(D; _TypeTuple!(const Duration, immutable Duration))
         {
-            assert((cast(D)dur!"weeks"(12)).total!"weeks" == 12);
-            assert((cast(D)dur!"weeks"(12)).total!"days" == 84);
+            assert((cast(D)weeks(12)).total!"weeks" == 12);
+            assert((cast(D)weeks(12)).total!"days" == 84);
 
-            assert((cast(D)dur!"days"(13)).total!"weeks" == 1);
-            assert((cast(D)dur!"days"(13)).total!"days" == 13);
+            assert((cast(D)days(13)).total!"weeks" == 1);
+            assert((cast(D)days(13)).total!"days" == 13);
 
-            assert((cast(D)dur!"hours"(49)).total!"days" == 2);
-            assert((cast(D)dur!"hours"(49)).total!"hours" == 49);
+            assert((cast(D)hours(49)).total!"days" == 2);
+            assert((cast(D)hours(49)).total!"hours" == 49);
 
-            assert((cast(D)dur!"nsecs"(2007)).total!"hnsecs" == 20);
-            assert((cast(D)dur!"nsecs"(2007)).total!"nsecs" == 2000);
+            assert((cast(D)nsecs(2007)).total!"hnsecs" == 20);
+            assert((cast(D)nsecs(2007)).total!"nsecs" == 2000);
         }
     }
 
@@ -1312,7 +1314,8 @@ Duration duration(string units)(long length) @safe pure nothrow
 }
 
 /++
-	To be deprecated. Use $(D duration) instead.
+	To be deprecated. Use the $(D minutes), $(D hours), etc. functions instead.
+	Or if you need genericness, use the $(D duration) function.
   +/
 alias duration dur;
 
@@ -1320,15 +1323,15 @@ unittest
 {
     foreach(D; _TypeTuple!(Duration, const Duration, immutable Duration))
     {
-        assert(dur!"weeks"(7).total!"weeks"() == 7);
-        assert(dur!"days"(7).total!"days"() == 7);
-        assert(dur!"hours"(7).total!"hours"() == 7);
-        assert(dur!"minutes"(7).total!"minutes"() == 7);
-        assert(dur!"seconds"(7).total!"seconds"() == 7);
-        assert(dur!"msecs"(7).total!"msecs"() == 7);
-        assert(dur!"usecs"(7).total!"usecs"() == 7);
-        assert(dur!"hnsecs"(7).total!"hnsecs"() == 7);
-        assert(dur!"nsecs"(7).total!"nsecs"() == 0);
+        assert(weeks(7).total!"weeks"() == 7);
+        assert(days(7).total!"days"() == 7);
+        assert(hours(7).total!"hours"() == 7);
+        assert(minutes(7).total!"minutes"() == 7);
+        assert(seconds(7).total!"seconds"() == 7);
+        assert(msecs(7).total!"msecs"() == 7);
+        assert(usecs(7).total!"usecs"() == 7);
+        assert(hnsecs(7).total!"hnsecs"() == 7);
+        assert(nsecs(7).total!"nsecs"() == 0);
     }
 }
 
@@ -1575,13 +1578,13 @@ struct TickDuration
         {
             foreach(T; _TypeTuple!(TickDuration, const TickDuration, immutable TickDuration))
             {
-                auto expected = dur!"seconds"(1);
+                auto expected = seconds(1);
                 assert(cast(D)cast(T)TickDuration.from!"seconds"(1) == expected);
 
                 foreach(units; _TypeTuple!("msecs", "usecs", "hnsecs"))
                 {
                     D actual = cast(D)cast(T)TickDuration.from!units(1_000_000);
-                    assertApprox(actual, dur!units(900_000), dur!units(1_100_000));
+                    assertApprox(actual, duration!units(900_000), duration!units(1_100_000));
                 }
             }
         }
@@ -2818,8 +2821,8 @@ TickDuration abs(TickDuration duration)
 
 unittest
 {
-    assert(abs(dur!"msecs"(5)) == dur!"msecs"(5));
-    assert(abs(dur!"msecs"(-5)) == dur!"msecs"(5));
+    assert(abs(msecs(5)) == msecs(5));
+    assert(abs(msecs(-5)) == msecs(5));
 
     assert(abs(TickDuration(17)) == TickDuration(17));
     assert(abs(TickDuration(-17)) == TickDuration(17));

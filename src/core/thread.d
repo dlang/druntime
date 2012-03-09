@@ -1118,8 +1118,8 @@ class Thread
      * Example:
      * ------------------------------------------------------------------------
      *
-     * Thread.sleep( dur!("msecs")( 50 ) );  // sleep for 50 milliseconds
-     * Thread.sleep( dur!("seconds")( 5 ) ); // sleep for 5 seconds
+     * Thread.sleep( msecs( 50 ) );  // sleep for 50 milliseconds
+     * Thread.sleep( seconds( 5 ) ); // sleep for 5 seconds
      *
      * ------------------------------------------------------------------------
      */
@@ -1132,7 +1132,7 @@ class Thread
     {
         version( Windows )
         {
-            auto maxSleepMillis = dur!("msecs")( uint.max - 1 );
+            auto maxSleepMillis = msecs( uint.max - 1 );
 
             // NOTE: In instances where all other threads in the process have a
             //       lower priority than the current thread, the current thread
@@ -1206,7 +1206,7 @@ class Thread
     }
     body
     {
-        sleep( dur!"hnsecs"( period ) );
+        sleep( hnsecs( period ) );
     }
 
 
