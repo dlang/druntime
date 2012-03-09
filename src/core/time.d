@@ -1268,10 +1268,25 @@ private:
     long _hnsecs;
 }
 
+/++
+    These allow you to construct a $(D Duration) from the given time unit
+    with the given length.
+
+    Params:
+        length = The number of units in the $(D Duration).
+  +/
+alias duration!"weeks" weeks;
+alias duration!"days" days;
+alias duration!"hours" hours;
+alias duration!"minutes" minutes;
+alias duration!"seconds" seconds;
+alias duration!"msecs" msecs;
+alias duration!"usecs" usecs;
+alias duration!"hnsecs" hnsecs;
 
 /++
-    This allows you to construct a $(D Duration) from the given time units
-    with the given length.
+    This allows you to generically construct a $(D Duration) of any
+	given time unit with the given length.
 
     The possible values for units are $(D "weeks"), $(D "days"), $(D "hours"),
     $(D "minutes"), $(D "seconds"), $(D "msecs") (milliseconds), $(D "usecs"),
@@ -1282,7 +1297,7 @@ private:
         units  = The time units of the $(D Duration) (e.g. $(D "days")).
         length = The number of units in the $(D Duration).
   +/
-Duration dur(string units)(long length) @safe pure nothrow
+Duration duration(string units)(long length) @safe pure nothrow
     if(units == "weeks" ||
        units == "days" ||
        units == "hours" ||
@@ -1295,6 +1310,11 @@ Duration dur(string units)(long length) @safe pure nothrow
 {
     return Duration(convert!(units, "hnsecs")(length));
 }
+
+/++
+	To be deprecated. Use $(D duration) instead.
+  +/
+alias duration dur;
 
 unittest
 {
