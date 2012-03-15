@@ -35,6 +35,11 @@ hash_t hashOf( const (void)* buf, size_t len, hash_t seed = 0 )
     {
         static uint get16bits( const (ubyte)* x ) pure nothrow
         {
+	    // CTFE doesn't support casting ubyte* -> ushort*, so revert
+	    // to per-byte access when in CTFE.
+	    if (__ctfe)
+                return ((cast(uint) x[1]) << 8) + (cast(uint) x[0]);
+
             return *cast(ushort*) x;
         }
     }
