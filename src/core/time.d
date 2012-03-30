@@ -1315,13 +1315,13 @@ private:
         length = The number of units in the $(D Duration).
   +/
 alias dur!"weeks" weeks;
-alias dur!"days" days;
-alias dur!"hours" hours;
-alias dur!"minutes" minutes;
-alias dur!"seconds" seconds;
-alias dur!"msecs" msecs;
-alias dur!"usecs" usecs;
-alias dur!"hnsecs" hnsecs;
+alias dur!"days" days; ///ditto
+alias dur!"hours" hours; ///ditto
+alias dur!"minutes" minutes; ///ditto
+alias dur!"seconds" seconds; ///ditto
+alias dur!"msecs" msecs; ///ditto
+alias dur!"usecs" usecs; ///ditto
+alias dur!"hnsecs" hnsecs; ///ditto
 
 /++
     This allows you to generically construct a $(D Duration) of any
