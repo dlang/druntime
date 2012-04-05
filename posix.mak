@@ -29,6 +29,7 @@ MODEL=32
 
 DFLAGS=-m$(MODEL) -O -release -inline -nofloat -w -d -Isrc -Iimport -property
 UDFLAGS=-m$(MODEL) -O -release -nofloat -w -d -Isrc -Iimport -property
+DDOCFLAGS=-m$(MODEL) -c -w -d -o- -Isrc -Iimport
 
 CFLAGS=-m$(MODEL) -O
 
@@ -60,6 +61,7 @@ MANIFEST= \
 	src/core/runtime.d \
 	src/core/simd.d \
 	src/core/thread.d \
+	src/core/thread.di \
 	src/core/threadasm.S \
 	src/core/time.d \
 	src/core/vararg.d \
@@ -94,6 +96,8 @@ MANIFEST= \
 	src/core/sync/mutex.d \
 	src/core/sync/rwmutex.d \
 	src/core/sync/semaphore.d \
+	\
+	src/core/sys/freebsd/sys/event.d \
 	\
 	src/core/sys/osx/mach/dyld.d \
 	src/core/sys/osx/mach/getsect.d \
@@ -198,6 +202,7 @@ MANIFEST= \
 	src/rt/qsort2.d \
 	src/rt/switch_.d \
 	src/rt/tls.S \
+	src/rt/tlsgc.d \
 	src/rt/trace.d \
 	\
 	src/rt/typeinfo/ti_AC.d \
@@ -273,6 +278,8 @@ SRC_D_MODULES = \
 	core/stdc/time \
 	core/stdc/wchar_ \
 	\
+	core/sys/freebsd/sys/event \
+	\
 	core/sys/posix/sys/select \
 	core/sys/posix/sys/socket \
 	core/sys/posix/sys/stat \
@@ -323,6 +330,7 @@ SRC_D_MODULES = \
 	rt/obj \
 	rt/qsort \
 	rt/switch_ \
+	rt/tlsgc \
 	rt/trace \
 	\
 	rt/util/console \
@@ -440,6 +448,8 @@ IMPORTS=\
 	$(IMPDIR)/core/sync/rwmutex.di \
 	$(IMPDIR)/core/sync/semaphore.di \
 	\
+	$(IMPDIR)/core/sys/freebsd/sys/event.di \
+	\
 	$(IMPDIR)/core/sys/osx/mach/kern_return.di \
 	$(IMPDIR)/core/sys/osx/mach/port.di \
 	$(IMPDIR)/core/sys/osx/mach/semaphore.di \
@@ -498,13 +508,16 @@ SRCS=$(addprefix src/,$(addsuffix .d,$(SRC_D_MODULES)))
 doc: $(DOCS)
 
 $(DOCDIR)/object.html : src/object_.d
-	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+
+$(DOCDIR)/core_%.html : src/core/%.di
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
 
 $(DOCDIR)/core_%.html : src/core/%.d
-	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
 
 $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
-	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
 
 ######################## Header .di file generation ##############################
 
@@ -512,6 +525,9 @@ import: $(IMPORTS)
 
 $(IMPDIR)/core/sys/windows/%.di : src/core/sys/windows/%.d
 	$(DMD) -m32 -c -d -o- -Isrc -Iimport -Hf$@ $<
+
+$(IMPDIR)/core/%.di : src/core/%.di
+	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Hf$@ $<
 
 $(IMPDIR)/core/%.di : src/core/%.d
 	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Hf$@ $<

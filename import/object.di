@@ -31,7 +31,7 @@ alias immutable(dchar)[] dstring;
 class Object
 {
     string   toString();
-    hash_t   toHash();
+    hash_t   toHash() @trusted;
     int      opCmp(Object o);
     equals_t opEquals(Object o);
     equals_t opEquals(Object lhs, Object rhs);
@@ -66,20 +66,20 @@ struct OffsetTypeInfo
 
 class TypeInfo
 {
-    hash_t   getHash(in void* p);
+    hash_t   getHash(in void* p) @trusted;
     equals_t equals(in void* p1, in void* p2);
     int      compare(in void* p1, in void* p2);
-    @property size_t   tsize() nothrow pure;
+    @property size_t   tsize() nothrow pure const @safe;
     void     swap(void* p1, void* p2);
     @property TypeInfo next() nothrow pure;
-    void[]   init() nothrow pure; // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
-    @property uint     flags() nothrow pure;
+    const(void)[]   init() nothrow pure const @safe; // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
+    @property uint     flags() nothrow pure const @safe;
     // 1:    // has possible pointers into GC memory
     OffsetTypeInfo[] offTi();
     void destroy(void* p);
     void postblit(void* p);
-    @property size_t talign() nothrow pure;
-    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2);
+    @property size_t talign() nothrow pure const @safe;
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe nothrow;
 }
 
 class TypeInfo_Typedef : TypeInfo
@@ -134,8 +134,8 @@ class TypeInfo_Delegate : TypeInfo
 
 class TypeInfo_Class : TypeInfo
 {
-    @property TypeInfo_Class info() nothrow pure { return this; }
-    @property TypeInfo typeinfo() nothrow pure { return this; }
+    @property auto info() @safe nothrow pure { return this; }
+    @property auto typeinfo() @safe nothrow pure { return this; }
 
     byte[]      init;   // class static initializer
     string      name;   // class name
@@ -173,6 +173,8 @@ class TypeInfo_Struct : TypeInfo
     string name;
     void[] m_init;
 
+  @safe pure nothrow
+  {
     uint function(in void*)               xtoHash;
     equals_t function(in void*, in void*) xopEquals;
     int function(in void*, in void*)      xopCmp;
@@ -181,6 +183,7 @@ class TypeInfo_Struct : TypeInfo
     uint m_flags;
 
     const(MemberInfo[]) function(in char[]) xgetMembers;
+  }
     void function(void*)                    xdtor;
     void function(void*)                    xpostblit;
 
@@ -614,5 +617,6 @@ bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
 
 bool _xopEquals(in void* ptr, in void* ptr);
 
-void __ctfeWriteln(T...)(auto ref T) {}
+void __ctfeWrite(T...)(auto ref T) {}
+void __ctfeWriteln(T...)(auto ref T values) { __ctfeWrite(values, "\n"); }
 
