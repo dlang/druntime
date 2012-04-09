@@ -224,6 +224,8 @@ struct _iobuf
     {
         static assert( false, "Unsupported platform" );
     }
+
+
 }
 
 alias shared(_iobuf) FILE;
