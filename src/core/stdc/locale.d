@@ -17,6 +17,7 @@ module core.stdc.locale;
 extern (C):
 
 nothrow:
+@safe:
 
 struct lconv
 {
