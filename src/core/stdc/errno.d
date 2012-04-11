@@ -14,14 +14,15 @@
  */
 module core.stdc.errno;
 
-extern (C) int getErrno();      // for internal use
-extern (C) int setErrno(int);   // for internal use
+nothrow:
 
-@property int errno() { return getErrno(); }
-@property int errno(int n) { return setErrno(n); }
+extern (C) int getErrno() @safe;      // for internal use
+extern (C) int setErrno(int) @safe;   // for internal use
+
+@property int errno() @safe { return getErrno(); }
+@property int errno(int n) @safe { return setErrno(n); }
 
 extern (C):
-nothrow:
 
 version( Windows )
 {
