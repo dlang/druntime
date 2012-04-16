@@ -128,11 +128,14 @@ version( DigitalMarsWin32 )
         FP_FAST_FMAL = 0,
     }
 
+  @trusted pure
+  {
     uint __fpclassify_f(float x);
     uint __fpclassify_d(double x);
     uint __fpclassify_ld(real x);
+  }
 
-  extern (D)
+  extern (D) @safe pure
   {
     //int fpclassify(real-floating x);
     int fpclassify(float x)     { return __fpclassify_f(x); }
@@ -164,6 +167,8 @@ version( DigitalMarsWin32 )
     int isnormal(double x)      { return fpclassify(x) == FP_NORMAL; }
     int isnormal(real x)        { return fpclassify(x) == FP_NORMAL; }
 
+@trusted:
+
     //int signbit(real-floating x);
     int signbit(float x)     { return (cast(short*)&(x))[1] & 0x8000; }
     int signbit(double x)    { return (cast(short*)&(x))[3] & 0x8000; }
@@ -193,6 +198,8 @@ else version( linux )
         FP_FAST_FMAL = 0,
     }
 
+  @trusted pure
+  {
     int __fpclassifyf(float x);
     int __fpclassify(double x);
     int __fpclassifyl(real x);
@@ -212,8 +219,9 @@ else version( linux )
     int __signbitf(float x);
     int __signbit(double x);
     int __signbitl(real x);
+  }
 
-  extern (D)
+  extern (D) @safe pure
   {
     //int fpclassify(real-floating x);
     int fpclassify(float x)     { return __fpclassifyf(x); }
@@ -290,6 +298,8 @@ else version( OSX )
         FP_FAST_FMAL = 0,
     }
 
+  @trusted pure
+  {
     int __fpclassifyf(float x);
     int __fpclassifyd(double x);
     int __fpclassify(real x);
@@ -309,8 +319,9 @@ else version( OSX )
     int __signbitf(float x);
     int __signbitd(double x);
     int __signbitl(real x);
+  }
 
-  extern (D)
+  extern (D) @safe pure
   {
     //int fpclassify(real-floating x);
     int fpclassify(float x)     { return __fpclassifyf(x); }
@@ -386,6 +397,8 @@ else version( FreeBSD )
         FP_FAST_FMAL = 0,
     }
 
+  @trusted pure
+  {
     int __fpclassifyd(double);
     int __fpclassifyf(float);
     int __fpclassifyl(real);
@@ -401,8 +414,9 @@ else version( FreeBSD )
     int __signbit(double);
     int __signbitf(float);
     int __signbitl(real);
+  }
 
-  extern (D)
+  extern (D) @safe pure
   {
     //int fpclassify(real-floating x);
     int fpclassify(float x)     { return __fpclassifyf(x); }
@@ -436,7 +450,7 @@ else version( FreeBSD )
   }
 }
 
-extern (D)
+extern (D) @trusted pure
 {
     //int isgreater(real-floating x, real-floating y);
     int isgreater(float x, float y)        { return !(x !>  y); }
@@ -482,6 +496,9 @@ version( FreeBSD )
 {
   version (none) // < 8-CURRENT
   {
+@safe:
+pure:
+
     real    acosl(real x) { return acos(x); }
     real    asinl(real x) { return asin(x); }
     real    atanl(real x) { return atan(x); }
@@ -500,8 +517,8 @@ version( FreeBSD )
     real    fabsl(real x) { return fabs(x); }
     real    hypotl(real x, real y) { return hypot(x, y); }
     real    sqrtl(real x) { return sqrt(x); }
-    real    ceill(real x) { return ceil(x); }
-    real    floorl(real x) { return floor(x); }
+    real    ceill(real x) @safe pure { return ceil(x); }
+    real    floorl(real x) @safe pure { return floor(x); }
     real    nearbyintl(real x) { return nearbyint(x); }
     real    rintl(real x) { return rint(x); }
     c_long  lrintl(real x) { return lrint(x); }
@@ -525,6 +542,9 @@ version( FreeBSD )
   }
   else
   {
+@safe:
+pure:
+
     real    acosl(real x);
     real    asinl(real x);
     real    atanl(real x);
@@ -543,8 +563,8 @@ version( FreeBSD )
     real    fabsl(real x);
     real    hypotl(real x, real y);
     real    sqrtl(real x);
-    real    ceill(real x);
-    real    floorl(real x);
+    real    ceill(real x) @safe pure;
+    real    floorl(real x) @safe pure;
     real    nearbyintl(real x);
     real    rintl(real x);
     c_long  lrintl(real x);
@@ -566,6 +586,10 @@ version( FreeBSD )
     real    fminl(real x, real y);
     real    fmal(real x, real y, real z);
   }
+
+@safe:
+pure:
+
     double  acos(double x);
     float   acosf(float x);
 
@@ -693,8 +717,8 @@ version( FreeBSD )
     float   tgammaf(float x);
     real    tgammal(real x) { return tgamma(x); }
 
-    double  ceil(double x);
-    float   ceilf(float x);
+    double  ceil(double x) @safe pure;
+    float   ceilf(float x) @safe pure;
 
     double  floor(double x);
     float   floorf(float x);
@@ -756,6 +780,9 @@ version( FreeBSD )
 }
 else
 {
+@safe:
+pure:
+
     double  acos(double x);
     float   acosf(float x);
     real    acosl(real x);
@@ -900,13 +927,13 @@ else
     float   tgammaf(float x);
     real    tgammal(real x);
 
-    double  ceil(double x);
-    float   ceilf(float x);
-    real    ceill(real x);
+    double  ceil(double x) @safe pure;
+    float   ceilf(float x) @safe pure;
+    real    ceill(real x) @safe pure;
 
-    double  floor(double x);
-    float   floorf(float x);
-    real    floorl(real x);
+    double  floor(double x) @safe pure;
+    float   floorf(float x) @safe pure;
+    real    floorl(real x) @safe pure;
 
     double  nearbyint(double x);
     float   nearbyintf(float x);

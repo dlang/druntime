@@ -18,6 +18,8 @@ public  import core.stdc.wchar_; // for wint_t, WEOF
 
 extern (C):
 nothrow:
+@safe:
+pure:
 
 alias wchar_t wctrans_t;
 alias wchar_t wctype_t;
