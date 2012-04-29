@@ -42,25 +42,25 @@ private
         uint   attr;
     }
 
-    extern (C) uint gc_getAttr( in void* p );
-    extern (C) uint gc_isCollecting( in void* p );
-    extern (C) uint gc_setAttr( in void* p, uint a );
-    extern (C) uint gc_clrAttr( in void* p, uint a );
+    extern (C) uint gc_getAttr( in void* p ) pure nothrow;
+    extern (C) uint gc_isCollecting( in void* p ) pure nothrow;
+    extern (C) uint gc_setAttr( in void* p, uint a ) pure nothrow;
+    extern (C) uint gc_clrAttr( in void* p, uint a ) pure nothrow;
 
-    extern (C) void*  gc_malloc( size_t sz, uint ba = 0 );
-    extern (C) BlkInfo  gc_qalloc( size_t sz, uint ba = 0 );
-    extern (C) void*  gc_calloc( size_t sz, uint ba = 0 );
-    extern (C) size_t gc_extend( void* p, size_t mx, size_t sz );
-    extern (C) void   gc_free( void* p );
+    extern (C) void*  gc_malloc( size_t sz, uint ba = 0 ) pure nothrow;
+    extern (C) BlkInfo  gc_qalloc( size_t sz, uint ba = 0 ) pure nothrow;
+    extern (C) void*  gc_calloc( size_t sz, uint ba = 0 ) pure nothrow;
+    extern (C) size_t gc_extend( void* p, size_t mx, size_t sz ) pure nothrow;
+    extern (C) void   gc_free( void* p ) pure nothrow;
 
-    extern (C) void*   gc_addrOf( in void* p );
-    extern (C) size_t  gc_sizeOf( in void* p );
-    extern (C) BlkInfo gc_query( in void* p );
+    extern (C) void*   gc_addrOf( in void* p ) pure nothrow;
+    extern (C) size_t  gc_sizeOf( in void* p ) pure nothrow;
+    extern (C) BlkInfo gc_query( in void* p ) pure nothrow;
 
-    extern (C) void onFinalizeError( ClassInfo c, Throwable e );
-    extern (C) void onOutOfMemoryError();
+    extern (C) void onFinalizeError( ClassInfo c, Throwable e ) pure nothrow;
+    extern (C) void onOutOfMemoryError() pure nothrow;
 
-    extern (C) void _d_monitordelete(Object h, bool det = true);
+    extern (C) void _d_monitordelete(Object h, bool det = true) pure nothrow;
 
     enum
     {
@@ -232,6 +232,8 @@ private class ArrayAllocLengthLock
   |N*elemsize|padding|elem0|elem1|...|elemN-1|emptyspace|sentinelbyte|
 
   where elem0 starts 16 bytes after the first byte.
+
+  Warning: newlength and oldlength are in terms of bytes _NOT_ elements.
   */
 bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, size_t oldlength = ~0)
 {
@@ -337,7 +339,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
 /**
   get the start of the array for the given block
   */
-void *__arrayStart(BlkInfo info)
+void *__arrayStart(BlkInfo info) pure nothrow
 {
     return info.base + ((info.size & BIGLENGTHMASK) ? LARGEPREFIX : 0);
 }
@@ -347,7 +349,7 @@ void *__arrayStart(BlkInfo info)
   NOT included in the passed in size.  Therefore, do NOT call this function
   with the size of an allocated block.
   */
-size_t __arrayPad(size_t size)
+size_t __arrayPad(size_t size) pure nothrow @trusted
 {
     return size > MAXMEDSIZE ? LARGEPAD : (size > MAXSMALLSIZE ? MEDPAD : SMALLPAD);
 }
@@ -379,13 +381,13 @@ else
     int __nextBlkIdx;
 }
 
-@property BlkInfo *__blkcache()
+@property BlkInfo *__blkcache() nothrow
 {
     if(!__blkcache_storage)
     {
         // allocate the block cache for the first time
         immutable size = BlkInfo.sizeof * N_CACHE_BLOCKS;
-        __blkcache_storage = cast(BlkInfo *)malloc(size);
+        __blkcache_storage = cast(BlkInfo *) malloc(size);
         memset(__blkcache_storage, 0, size);
     }
     return __blkcache_storage;
@@ -441,7 +443,7 @@ void processGCMarks(BlkInfo* cache, scope rt.tlsgc.IsMarkedDg isMarked)
         the base ptr as an indication of whether the struct is valid, or set
         the BlkInfo as a side-effect and return a bool to indicate success.
   */
-BlkInfo *__getBlkInfo(void *interior)
+BlkInfo *__getBlkInfo(void *interior) nothrow
 {
     BlkInfo *ptr = __blkcache;
     version(single_cache)
@@ -478,7 +480,7 @@ BlkInfo *__getBlkInfo(void *interior)
     return null; // not in cache.
 }
 
-void __insertBlkInfoCache(BlkInfo bi, BlkInfo *curpos)
+void __insertBlkInfoCache(BlkInfo bi, BlkInfo *curpos) nothrow
 {
     version(single_cache)
     {
@@ -598,7 +600,6 @@ void __doPostblit(void *ptr, size_t len, TypeInfo ti)
     }
 }
 
-
 /**
  * set the array capacity.  If the array capacity isn't currently large enough
  * to hold the requested capacity (in number of elements), then the array is
@@ -606,7 +607,7 @@ void __doPostblit(void *ptr, size_t len, TypeInfo ti)
  * of 0 to get the current capacity.  Returns the number of elements that can
  * actually be stored once the resizing is done.
  */
-extern(C) size_t _d_arraysetcapacity(TypeInfo ti, size_t newcapacity, Array *p)
+extern(C) size_t _d_arraysetcapacity(TypeInfo ti, size_t newcapacity, Array *p) nothrow
 in
 {
     assert(ti);
@@ -865,6 +866,7 @@ extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
 
         auto info = gc_qalloc(size + __arrayPad(size), !(ti.next.flags() & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
         debug(PRINTF) printf(" p = %p\n", info.base);
+        // update the length of the array
         auto arrstart = __arrayStart(info);
         if (isize == 1)
             memset(arrstart, *cast(ubyte*)q, size);
