@@ -61,6 +61,11 @@ version (FreeBSD)
     import core.stdc.fenv;
 }
 
+version (Posix)
+{
+    import core.sys.posix.dlfcn;
+}
+
 extern (C) void _STI_monitor_staticctor();
 extern (C) void _STD_monitor_staticdtor();
 extern (C) void _STI_critical_init();
@@ -135,11 +140,18 @@ extern (C) void* rt_loadLibrary(in char[] name)
             gcSet(gc_getProxy());
         }
         return ptr;
-
     }
     else version (Posix)
     {
-        throw new Exception("rt_loadLibrary not yet implemented on Posix.");
+        if (auto lib = dlopen(name.ptr, RTLD_LAZY))
+        {
+            if (auto fn = cast(gcSetFn)dlsym(lib, "gc_setProxy"))
+                fn(gc_getProxy());
+
+            return lib;
+        }
+        else
+            return null;
     }
 }
 
@@ -154,7 +166,10 @@ extern (C) bool rt_unloadLibrary(void* ptr)
     }
     else version (Posix)
     {
-        throw new Exception("rt_unloadLibrary not yet implemented on Posix.");
+        if (auto fn = cast(gcClrFn)dlsym(ptr, "gc_clrProxy"))
+            fn();
+
+        return dlclose(ptr) == 0;
     }
 }
 
