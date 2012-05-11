@@ -578,7 +578,7 @@ $(IMPDIR)\core\time.di : src\core\time.d
 $(IMPDIR)\core\vararg.di : src\core\vararg.d
 	copy $** $@ 
 
-$(IMPDIR)\core\stdc\complex.di : src\core\stdc\complex.d
+$(IMPDIR)\core\stdc\complex.di : src\core\stdc\complex.d ; mkdir $(IMPDIR)\core\stdc
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\config.di : src\core\stdc\config.d
