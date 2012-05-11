@@ -546,7 +546,6 @@ $(IMPDIR)\core\atomic.di : src\core\atomic.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\bitop.di : src\core\bitop.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf
 	copy $** $@ 
 
 $(IMPDIR)\core\cpuid.di : src\core\cpuid.d
@@ -556,118 +555,90 @@ $(IMPDIR)\core\demangle.di : src\core\demangle.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\exception.di : src\core\exception.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\math.di : src\core\math.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\memory.di : src\core\memory.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\runtime.di : src\core\runtime.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\simd.di : src\core\simd.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\thread.di : src\core\thread.di
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\time.di : src\core\time.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\vararg.di : src\core\vararg.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\complex.di : src\core\stdc\complex.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\config.di : src\core\stdc\config.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\ctype.di : src\core\stdc\ctype.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\errno.di : src\core\stdc\errno.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\fenv.di : src\core\stdc\fenv.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\float_.di : src\core\stdc\float_.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\inttypes.di : src\core\stdc\inttypes.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\limits.di : src\core\stdc\limits.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\locale.di : src\core\stdc\locale.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\math.di : src\core\stdc\math.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\signal.di : src\core\stdc\signal.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\stdarg.di : src\core\stdc\stdarg.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\stddef.di : src\core\stdc\stddef.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\stdint.di : src\core\stdc\stdint.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\stdio.di : src\core\stdc\stdio.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\stdlib.di : src\core\stdc\stdlib.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\string.di : src\core\stdc\string.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\tgmath.di : src\core\stdc\tgmath.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\time.di : src\core\stdc\time.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\wchar_.di : src\core\stdc\wchar_.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\stdc\wctype.di : src\core\stdc\wctype.d
-#	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 	copy $** $@ 
 
 $(IMPDIR)\core\sync\barrier.di : src\core\sync\barrier.d
