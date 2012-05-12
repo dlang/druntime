@@ -917,7 +917,10 @@ export BOOL SetFileTime(HANDLE hFile, in FILETIME *lpCreationTime, in FILETIME *
 export void GetLocalTime(SYSTEMTIME* lpSystemTime);
 export BOOL SetLocalTime(SYSTEMTIME* lpSystemTime);
 export BOOL SystemTimeToTzSpecificLocalTime(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpUniversalTime, SYSTEMTIME* lpLocalTime);
-export BOOL TzSpecificLocalTimeToSystemTime(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpLocalTime, SYSTEMTIME* lpUniversalTime);
+version(Win32) // For Windows 2000 support
+    alias extern(Windows) BOOL function(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpLocalTime, SYSTEMTIME* lpUniversalTime) TzSpecificLocalTimeToSystemTimeFunc;
+else
+    export BOOL TzSpecificLocalTimeToSystemTime(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpLocalTime, SYSTEMTIME* lpUniversalTime);
 export DWORD GetTimeZoneInformation(TIME_ZONE_INFORMATION* lpTimeZoneInformation);
 export BOOL SetTimeZoneInformation(TIME_ZONE_INFORMATION* lpTimeZoneInformation);
 
@@ -3364,4 +3367,20 @@ BOOL TlsFree(DWORD);
 // shellapi.h
 HINSTANCE ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
 HINSTANCE ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
+}
+
+version(Win32) // For Windows 2000 support
+{
+    BOOL TzSpecificLocalTimeToSystemTime(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpLocalTime, SYSTEMTIME* lpUniversalTime)
+    {
+        static TzSpecificLocalTimeToSystemTimeFunc f;
+        if(!f)
+        {
+            f = cast(TzSpecificLocalTimeToSystemTimeFunc)
+                GetProcAddress(GetModuleHandleA("Kernel32"), "TzSpecificLocalTimeToSystemTime");
+            if(!f)
+                throw new Exception("There is no TzSpecificLocalTimeToSystemTime in Windows 2000 or older");
+        }
+        return f(lpTimeZoneInformation, lpLocalTime, lpUniversalTime);
+    }
 }
