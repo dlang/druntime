@@ -49,6 +49,8 @@ private
     extern (C) void thread_init();
     extern (C) void onOutOfMemoryError();
 
+    alias extern (C) void delegate() LockedDelegate;
+
     struct Proxy
     {
         extern (C) void function() gc_enable;
@@ -78,6 +80,8 @@ private
 
         extern (C) void function(void*) gc_removeRoot;
         extern (C) void function(void*) gc_removeRange;
+
+        extern (C) void function(scope LockedDelegate) gc_callLocked;
     }
 
     __gshared Proxy  pthis;
@@ -112,6 +116,8 @@ private
 
         pthis.gc_removeRoot = &gc_removeRoot;
         pthis.gc_removeRange = &gc_removeRange;
+
+        pthis.gc_callLocked = &gc_callLocked;
     }
 
     __gshared void** roots  = null;
@@ -349,6 +355,14 @@ extern (C) void gc_removeRange( void *p )
         assert( false );
     }
     return proxy.gc_removeRange( p );
+}
+
+extern (C) void gc_callLocked(scope LockedDelegate dg)
+{
+    if (proxy is null)
+        dg(); // No locking really necessary in the stub.
+
+    return proxy.gc_callLocked(dg);
 }
 
 extern (C) Proxy* gc_getProxy()

@@ -16,6 +16,12 @@
 module core.memory;
 
 
+/**
+ * A delegate to be passed to GC.callLocked.
+ */
+alias extern (C) void delegate() LockedDelegate;
+
+
 private
 {
     extern (C) void gc_init();
@@ -55,6 +61,8 @@ private
 
     extern (C) void gc_removeRoot( in void* p );
     extern (C) void gc_removeRange( in void* p );
+
+    extern (C) void gc_callLocked(scope LockedDelegate dg);
 }
 
 
@@ -485,5 +493,21 @@ struct GC
     static void removeRange( in void* p )
     {
         gc_removeRange( p );
+    }
+
+
+    /**
+     * Locks the garbage collector, calls dg, then unlocks the garbage collector.
+     *
+     * This is useful when a piece of code must not be interrupted by garbage
+     * collection. It is the caller's responsibility to ensure that a garbage
+     * collection pass doesn't happen due to memory allocation inside dg.
+     *
+     * Params:
+     *  dg = A delegate to call while the GC lock is held.
+     */
+    static void callLocked(scope LockedDelegate dg)
+    {
+        gc_callLocked(dg);
     }
 }

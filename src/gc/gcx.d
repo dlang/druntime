@@ -130,6 +130,8 @@ private
     extern (C) void onOutOfMemoryError();
     extern (C) void onInvalidMemoryOperationError();
 
+    alias extern (C) void delegate() LockedDelegate;
+
     enum
     {
         OPFAIL = ~cast(size_t)0
@@ -1340,6 +1342,22 @@ class GC
     }
 
 
+    void callLocked(scope LockedDelegate dg)
+    {
+        if (!thread_needLock())
+            gcx.callLocked(dg);
+        else
+        {
+            gcLock.lock();
+
+            scope (exit)
+                gcLock.unlock();
+
+            gcx.callLocked(dg);
+        }
+    }
+
+
     /**
      *
      */
@@ -1808,6 +1826,12 @@ struct Gcx
         // The problem is that we can get a Close() call on a thread
         // other than the one the range was allocated on.
         //assert(zero);
+    }
+
+
+    void callLocked(scope LockedDelegate dg)
+    {
+        dg();
     }
 
 
