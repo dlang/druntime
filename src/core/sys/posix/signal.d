@@ -375,6 +375,62 @@ version( linux )
                 int      si_fd;
             } _sigpoll_t _sigpoll;
         } _sifields_t _sifields;
+        
+        // How these fields are to be accessed. (as mentionned in kernel source code).
+        @property
+        auto si_pid() {
+            return _sifields._kill.si_pid;
+        }
+        
+        @property
+        auto si_uid() {
+            return _sifields._kill.si_uid;
+        }
+        
+        @property
+        auto si_tid() {
+            return _sifields._timer.si_tid;
+        }
+        
+        @property
+        auto si_overrun() {
+            return _sifields._timer.si_overrun;
+        }
+        
+        @property
+        auto si_status() {
+            return _sifields._sigchld.si_status;
+        }
+        
+        @property
+        auto si_utime() {
+            return _sifields._sigchld.si_utime;
+        }
+        
+        @property
+        auto si_stime() {
+            return _sifields._sigchld.si_stime;
+        }
+        
+        @property
+        auto si_value() {
+            return _sifields._rt.si_sigval;
+        }
+        
+        @property
+        auto si_int() {
+            return _sifields._rt.si_sigval.sival_int;
+        }
+        
+        @property
+        auto si_ptr() {
+            return _sifields._rt.si_sigval.sival_ptr;
+        }
+        
+        @property
+        auto si_addr() {
+            return _sifields._sigfault.si_addr;
+        }
     }
 
     enum
