@@ -542,16 +542,16 @@ $(DOCDIR)\core_sync_semaphore.html : src\core\sync\semaphore.d
 import: $(IMPORTS)
 
 $(IMPDIR)\core\atomic.di : src\core\atomic.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\bitop.di : src\core\bitop.d
 	copy $** $@ 
 
 $(IMPDIR)\core\cpuid.di : src\core\cpuid.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\demangle.di : src\core\demangle.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\exception.di : src\core\exception.d
 	copy $** $@ 
@@ -662,139 +662,139 @@ $(IMPDIR)\core\sync\semaphore.di : src\core\sync\semaphore.d
 	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
 
 $(IMPDIR)\core\sys\osx\mach\kern_return.di : src\core\sys\osx\mach\kern_return.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\osx\mach\port.di : src\core\sys\osx\mach\port.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\osx\mach\semaphore.di : src\core\sys\osx\mach\semaphore.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\osx\mach\thread_act.di : src\core\sys\osx\mach\thread_act.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\arpa\inet.di : src\core\sys\posix\arpa\inet.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\config.di : src\core\sys\posix\config.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\dirent.di : src\core\sys\posix\dirent.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\dlfcn.di : src\core\sys\posix\dlfcn.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\fcntl.di : src\core\sys\posix\fcntl.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\inttypes.di : src\core\sys\posix\inttypes.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\netdb.di : src\core\sys\posix\netdb.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\net\if_.di : src\core\sys\posix\net\if_.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\netinet\in_.di : src\core\sys\posix\netinet\in_.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\netinet\tcp.di : src\core\sys\posix\netinet\tcp.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\poll.di : src\core\sys\posix\poll.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\pthread.di : src\core\sys\posix\pthread.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\pwd.di : src\core\sys\posix\pwd.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sched.di : src\core\sys\posix\sched.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\semaphore.di : src\core\sys\posix\semaphore.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\setjmp.di : src\core\sys\posix\setjmp.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\signal.di : src\core\sys\posix\signal.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\stdio.di : src\core\sys\posix\stdio.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\stdlib.di : src\core\sys\posix\stdlib.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\ipc.di : src\core\sys\posix\sys\ipc.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\mman.di : src\core\sys\posix\sys\mman.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\select.di : src\core\sys\posix\sys\select.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\shm.di : src\core\sys\posix\sys\shm.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\socket.di : src\core\sys\posix\sys\socket.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\stat.di : src\core\sys\posix\sys\stat.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\time.di : src\core\sys\posix\sys\time.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\types.di : src\core\sys\posix\sys\types.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\uio.di : src\core\sys\posix\sys\uio.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\un.di : src\core\sys\posix\sys\un.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\wait.di : src\core\sys\posix\sys\wait.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\sys\utsname.di : src\core\sys\posix\sys\utsname.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\termios.di : src\core\sys\posix\termios.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\time.di : src\core\sys\posix\time.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\ucontext.di : src\core\sys\posix\ucontext.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\unistd.di : src\core\sys\posix\unistd.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\posix\utime.di : src\core\sys\posix\utime.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\windows\dbghelp.di : src\core\sys\windows\dbghelp.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\windows\dll.di : src\core\sys\windows\dll.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\windows\stacktrace.di : src\core\sys\windows\stacktrace.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\windows\threadaux.di : src\core\sys\windows\threadaux.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 $(IMPDIR)\core\sys\windows\windows.di : src\core\sys\windows\windows.d
-	$(DMD) -c -d -o- -Isrc -Iimport -Hf$@ $**
+	copy $** $@ 
 
 ################### C\ASM Targets ############################
 

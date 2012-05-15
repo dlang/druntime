@@ -39,7 +39,7 @@ DRUNTIME=lib/lib$(DRUNTIME_BASE).a
 
 DOCFMT=
 
-target : import $(DRUNTIME) doc
+target : import copydir copy $(DRUNTIME) doc
 
 MANIFEST= \
 	LICENSE_1_0.txt \
@@ -403,6 +403,17 @@ DOCS=\
 	$(DOCDIR)/core_sync_semaphore.html
 
 IMPORTS=\
+	$(IMPDIR)/core/thread.di \
+	\
+	$(IMPDIR)/core/sync/barrier.di \
+	$(IMPDIR)/core/sync/condition.di \
+	$(IMPDIR)/core/sync/config.di \
+	$(IMPDIR)/core/sync/exception.di \
+	$(IMPDIR)/core/sync/mutex.di \
+	$(IMPDIR)/core/sync/rwmutex.di \
+	$(IMPDIR)/core/sync/semaphore.di
+
+COPY=\
 	$(IMPDIR)/core/atomic.di \
 	$(IMPDIR)/core/bitop.di \
 	$(IMPDIR)/core/cpuid.di \
@@ -412,7 +423,6 @@ IMPORTS=\
 	$(IMPDIR)/core/memory.di \
 	$(IMPDIR)/core/runtime.di \
 	$(IMPDIR)/core/simd.di \
-	$(IMPDIR)/core/thread.di \
 	$(IMPDIR)/core/time.di \
 	$(IMPDIR)/core/vararg.di \
 	\
@@ -437,14 +447,6 @@ IMPORTS=\
 	$(IMPDIR)/core/stdc/time.di \
 	$(IMPDIR)/core/stdc/wchar_.di \
 	$(IMPDIR)/core/stdc/wctype.di \
-	\
-	$(IMPDIR)/core/sync/barrier.di \
-	$(IMPDIR)/core/sync/condition.di \
-	$(IMPDIR)/core/sync/config.di \
-	$(IMPDIR)/core/sync/exception.di \
-	$(IMPDIR)/core/sync/mutex.di \
-	$(IMPDIR)/core/sync/rwmutex.di \
-	$(IMPDIR)/core/sync/semaphore.di \
 	\
 	$(IMPDIR)/core/sys/freebsd/sys/event.di \
 	\
@@ -519,102 +521,29 @@ $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
 
 ######################## Header .di file generation ##############################
 
-import: $(IMPORTS) ; mkdir -p '$(IMPDIR)/core/stdc'
-
-$(IMPDIR)/core/sys/windows/%.di : src/core/sys/windows/%.d
-	$(DMD) -m32 -c -d -o- -Isrc -Iimport -Hf$@ $<
+import: $(IMPORTS) 
 
 $(IMPDIR)/core/%.di : src/core/%.di
 	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Hf$@ $<
 
-$(IMPDIR)/core/%.di : src/core/%.d
+$(IMPDIR)/core/sync/%.di : src/core/sync/%.d
 	$(DMD) -m$(MODEL) -c -d -o- -Isrc -Iimport -Hf$@ $<
 
-$(IMPDIR)/core/bitop.di : src/core/bitop.d ; mkdir -p '$(IMPDIR)/core/stdc'
-	cp $< $@ 
+######################## Header .di file copy ##############################
 
-$(IMPDIR)/core/exception.di : src/core/exception.d
-	cp $< $@ 
+copydir:
+	mkdir -p $(IMPDIR)/core/sys/windows/
+	mkdir -p $(IMPDIR)/core/sys/posix/arpa/
+	mkdir -p $(IMPDIR)/core/sys/posix/sys/
+	mkdir -p $(IMPDIR)/core/sys/posix/net/
+	mkdir -p $(IMPDIR)/core/sys/posix/netinet/
+	mkdir -p $(IMPDIR)/core/sys/osx/mach/
+	mkdir -p $(IMPDIR)/core/sys/freebsd/sys/
+	mkdir -p $(IMPDIR)/core/stdc/
 
-$(IMPDIR)/core/math.di : src/core/math.d
-	cp $< $@ 
+copy: $(COPY)
 
-$(IMPDIR)/core/memory.di : src/core/memory.d
-	cp $< $@ 
-
-$(IMPDIR)/core/runtime.di : src/core/runtime.d
-	cp $< $@ 
-
-$(IMPDIR)/core/simd.di : src/core/simd.d
-	cp $< $@ 
-
-$(IMPDIR)/core/time.di : src/core/time.d
-	cp $< $@ 
-
-$(IMPDIR)/core/vararg.di : src/core/vararg.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/complex.di : src/core/stdc/complex.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/config.di : src/core/stdc/config.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/ctype.di : src/core/stdc/ctype.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/errno.di : src/core/stdc/errno.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/fenv.di : src/core/stdc/fenv.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/float_.di : src/core/stdc/float_.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/inttypes.di : src/core/stdc/inttypes.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/limits.di : src/core/stdc/limits.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/locale.di : src/core/stdc/locale.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/math.di : src/core/stdc/math.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/signal.di : src/core/stdc/signal.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/stdarg.di : src/core/stdc/stdarg.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/stddef.di : src/core/stdc/stddef.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/stdint.di : src/core/stdc/stdint.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/stdio.di : src/core/stdc/stdio.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/stdlib.di : src/core/stdc/stdlib.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/string.di : src/core/stdc/string.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/tgmath.di : src/core/stdc/tgmath.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/time.di : src/core/stdc/time.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/wchar_.di : src/core/stdc/wchar_.d
-	cp $< $@ 
-
-$(IMPDIR)/core/stdc/wctype.di : src/core/stdc/wctype.d
+$(IMPDIR)/core/%.di : src/core/%.d
 	cp $< $@ 
 
 ################### C/ASM Targets ############################
