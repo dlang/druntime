@@ -159,8 +159,7 @@ class FinalizeError : Error
 
 unittest
 {
-    ClassInfo info = new ClassInfo;
-    info.name = "testInfo";
+    ClassInfo info = C.classinfo;
 
     {
         auto fe = new FinalizeError(info);
@@ -211,15 +210,16 @@ class HiddenFuncError : Error
     }
 }
 
+version (unittest) class C { }
+
 unittest
 {
-    ClassInfo info = new ClassInfo;
-    info.name = "testInfo";
+    ClassInfo info = C.classinfo;
 
     {
         auto hfe = new HiddenFuncError(info);
         assert(hfe.next is null);
-        assert(hfe.msg == "Hidden method called for testInfo");
+        assert(hfe.msg == "Hidden method called for core.exception.C");
     }
 }
 

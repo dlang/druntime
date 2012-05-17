@@ -227,7 +227,7 @@ public:
     }
 
 
-    int opApply( scope int delegate(ref char[]) dg )
+    @trusted int opApply( scope int delegate(ref char[]) dg )
     {
         return opApply( (ref size_t, ref char[] buf)
                         {
@@ -236,7 +236,7 @@ public:
     }
 
 
-    int opApply( scope int delegate(ref size_t, ref char[]) dg )
+    @trusted int opApply( scope int delegate(ref size_t, ref char[]) dg )
     {
         int result;
 

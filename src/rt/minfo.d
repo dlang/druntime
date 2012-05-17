@@ -67,7 +67,7 @@ __gshared SortedCtors _sortedCtors;
  * Iterate over all module infos.
  */
 
-int moduleinfos_apply(scope int delegate(ref ModuleInfo*) dg)
+int moduleinfos_apply(scope int delegate(ref const ModuleInfo*) dg)
 {
     int ret = 0;
 
@@ -380,7 +380,7 @@ private SortedCtors sortCtorsImpl(ModuleInfo*[] modules, StackRec[] stack)
                     // recurse
                     stack[stackidx++] = StackRec(mods, idx);
                     idx  = 0;
-                    mods = m.importedModules;
+                    mods = cast(ModuleInfo*[])m.importedModules;
                 }
             }
         }
@@ -441,7 +441,7 @@ unittest
 
     static ModuleInfo mockMI(uint flags, ModuleInfo*[] imports...)
     {
-        ModuleInfo mi;
+        ModuleInfo mi = ModuleInfo.init;
         mi.n.flags |= flags | MInew;
         size_t fcnt;
         auto p = cast(ubyte*)&mi + ModuleInfo.New.sizeof;
@@ -466,7 +466,7 @@ unittest
         return mi;
     }
 
-    ModuleInfo m0, m1, m2;
+    ModuleInfo m0 = ModuleInfo.init, m1 = ModuleInfo.init, m2 = ModuleInfo.init;
 
     void checkExp(ModuleInfo*[] dtors=null, ModuleInfo*[] tlsdtors=null)
     {

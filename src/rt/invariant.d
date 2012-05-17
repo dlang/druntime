@@ -31,6 +31,6 @@ void _d_invariant(Object o)
         {
             (*c.classInvariant)(o);
         }
-        c = c.base;
+        c = cast()c.base;
     } while (c);
 }

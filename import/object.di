@@ -53,15 +53,15 @@ void setSameMutex(shared Object ownee, shared Object owner);
 
 struct Interface
 {
-    TypeInfo_Class   classinfo;
-    void*[]     vtbl;
-    ptrdiff_t   offset;   // offset to Interface 'this' from Object 'this'
+    const TypeInfo_Class   classinfo;
+    const void*[]     vtbl;
+    const ptrdiff_t   offset;   // offset to Interface 'this' from Object 'this'
 }
 
 struct OffsetTypeInfo
 {
-    size_t   offset;
-    TypeInfo ti;
+    const size_t   offset;
+    const TypeInfo ti;
 }
 
 class TypeInfo
@@ -69,167 +69,197 @@ class TypeInfo
     hash_t   getHash(in void* p) @trusted nothrow;
     equals_t equals(in void* p1, in void* p2);
     int      compare(in void* p1, in void* p2);
-    @property size_t   tsize() nothrow pure const @safe;
+    @property size_t   tsize() nothrow pure const @trusted;
     void     swap(void* p1, void* p2);
-    @property TypeInfo next() nothrow pure;
-    const(void)[]   init() nothrow pure const @safe; // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
-    @property uint     flags() nothrow pure const @safe;
+    @property const(TypeInfo) next() nothrow pure const @trusted;
+    const(void)[]   init() nothrow pure const @trusted; // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
+    @property uint     flags() nothrow pure const @trusted;
     // 1:    // has possible pointers into GC memory
-    OffsetTypeInfo[] offTi();
+    const(OffsetTypeInfo)[] offTi() nothrow pure const @trusted;
     void destroy(void* p);
     void postblit(void* p);
-    @property size_t talign() nothrow pure const @safe;
-    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe nothrow;
-    @property immutable(void)* rtInfo() nothrow pure const @safe;
+    @property size_t talign() nothrow pure const @trusted;
+    version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @trusted nothrow pure const;
+    @property immutable(void)* rtInfo() nothrow pure const @trusted;
 }
 
 class TypeInfo_Typedef : TypeInfo
 {
-    TypeInfo base;
-    string   name;
-    void[]   m_init;
+    private this() {}
+
+    const TypeInfo base;
+    const string   name;
+    const void[]   m_init;
 }
 
 class TypeInfo_Enum : TypeInfo_Typedef
 {
-
+    private this() {}
 }
 
 class TypeInfo_Pointer : TypeInfo
 {
-    TypeInfo m_next;
+    private this() {}
+
+    const TypeInfo m_next;
 }
 
 class TypeInfo_Array : TypeInfo
 {
-    TypeInfo value;
+    private this() {}
+
+    const TypeInfo value;
 }
 
 class TypeInfo_Vector : TypeInfo
 {
-    TypeInfo base;
+    private this() {}
+
+    const TypeInfo base;
 }
 
 class TypeInfo_StaticArray : TypeInfo
 {
-    TypeInfo value;
-    size_t   len;
+    private this() {}
+
+    const TypeInfo value;
+    const size_t   len;
 }
 
 class TypeInfo_AssociativeArray : TypeInfo
 {
-    TypeInfo value;
-    TypeInfo key;
-    TypeInfo impl;
+    private this() {}
+
+    const TypeInfo value;
+    const TypeInfo key;
+    const TypeInfo impl;
 }
 
 class TypeInfo_Function : TypeInfo
 {
-    TypeInfo next;
+    private this() {}
+
+    const TypeInfo next;
 }
 
 class TypeInfo_Delegate : TypeInfo
 {
-    TypeInfo next;
+    private this() {}
+
+    const TypeInfo next;
 }
 
 class TypeInfo_Class : TypeInfo
 {
-    @property auto info() @safe nothrow pure { return this; }
-    @property auto typeinfo() @safe nothrow pure { return this; }
+    private this() {}
 
-    byte[]      init;   // class static initializer
-    string      name;   // class name
-    void*[]     vtbl;   // virtual function pointer table
-    Interface[] interfaces;
-    TypeInfo_Class   base;
-    void*       destructor;
-    void function(Object) classInvariant;
-    uint        m_flags;
+    @property const(TypeInfo_Class) info() @trusted nothrow pure const { return this; }
+    @property const(TypeInfo_Class) typeinfo() @trusted nothrow pure const { return this; }
+
+    const byte[]      init;   // class static initializer
+    const string      name;   // class name
+    const void*[]     vtbl;   // virtual function pointer table
+    const Interface[] interfaces;
+    const TypeInfo_Class   base;
+    const void*       destructor;
+    const void function(Object) classInvariant;
+    const uint        m_flags;
     //  1:      // is IUnknown or is derived from IUnknown
     //  2:      // has no possible pointers into GC memory
     //  4:      // has offTi[] member
     //  8:      // has constructors
     // 16:      // has xgetMembers member
     // 32:      // has typeinfo member
-    void*       deallocator;
-    OffsetTypeInfo[] m_offTi;
-    void*       defaultConstructor;
+    const void*       deallocator;
+    const OffsetTypeInfo[] m_offTi;
+    const void*       defaultConstructor;
     immutable(void)*    m_rtInfo;     // data for precise GC
 
-    static TypeInfo_Class find(in char[] classname);
-    Object create();
+    @trusted static const(TypeInfo_Class) find(in char[] classname);
+    @trusted Object create();
 }
 
 alias TypeInfo_Class ClassInfo;
 
 class TypeInfo_Interface : TypeInfo
 {
-    ClassInfo info;
+    private this() {}
+
+    const ClassInfo info;
 }
 
 class TypeInfo_Struct : TypeInfo
 {
-    string name;
-    void[] m_init;
+    private this() {}
+
+    const string name;
+    const void[] m_init;
 
   @safe pure nothrow
   {
-    uint function(in void*)               xtoHash;
-    equals_t function(in void*, in void*) xopEquals;
-    int function(in void*, in void*)      xopCmp;
-    string function(in void*)             xtoString;
+    const uint function(in void*)               xtoHash;
+    const equals_t function(in void*, in void*) xopEquals;
+    const int function(in void*, in void*)      xopCmp;
+    const string function(in void*)             xtoString;
 
-    uint m_flags;
+    const uint m_flags;
   }
-    void function(void*)                    xdtor;
-    void function(void*)                    xpostblit;
+    const void function(void*)                    xdtor;
+    const void function(void*)                    xpostblit;
 
-    uint m_align;
+    const uint m_align;
 
     version (X86_64)
     {
-        TypeInfo m_arg1;
-        TypeInfo m_arg2;
+        const TypeInfo m_arg1;
+        const TypeInfo m_arg2;
     }
     immutable(void)* m_rtInfo;
 }
 
 class TypeInfo_Tuple : TypeInfo
 {
-    TypeInfo[]  elements;
+    private this() {}
+
+    const TypeInfo[]  elements;
 }
 
 class TypeInfo_Const : TypeInfo
 {
-    TypeInfo next;
+    private this() {}
+
+    const TypeInfo next;
 }
 
 class TypeInfo_Invariant : TypeInfo_Const
 {
-
+    private this() {}
 }
 
 class TypeInfo_Shared : TypeInfo_Const
 {
+    private this() {}
 }
 
 class TypeInfo_Inout : TypeInfo_Const
 {
+    private this() {}
 }
 
 abstract class MemberInfo
 {
-    @property string name() nothrow pure;
+    private this() {}
+
+    @property string name() nothrow pure const @trusted;
 }
 
 class MemberInfo_field : MemberInfo
 {
-    this(string name, TypeInfo ti, size_t offset);
+    private this(string name, TypeInfo ti, size_t offset);
 
-    @property override string name() nothrow pure;
-    @property TypeInfo typeInfo() nothrow pure;
-    @property size_t offset() nothrow pure;
+    @property override string name() nothrow pure const @trusted;
+    @property const(TypeInfo) typeInfo() nothrow pure const @trusted;
+    @property size_t offset() nothrow pure const @trusted;
 }
 
 class MemberInfo_function : MemberInfo
@@ -241,16 +271,18 @@ class MemberInfo_function : MemberInfo
         Static  = 4,
     }
 
-    this(string name, TypeInfo ti, void* fp, uint flags);
+    private this(string name, TypeInfo ti, const(void)* fp, uint flags);
 
-    @property override string name() nothrow pure;
-    @property TypeInfo typeInfo() nothrow pure;
-    @property void* fp() nothrow pure;
-    @property uint flags() nothrow pure;
+    @property override string name() nothrow pure const @trusted;
+    @property const(TypeInfo) typeInfo() nothrow pure const @trusted;
+    @property const(void)* fp() nothrow pure const @trusted;
+    @property uint flags() nothrow pure const @trusted;
 }
 
 struct ModuleInfo
 {
+    @disable this();
+
     struct New
     {
         uint flags;
@@ -259,20 +291,20 @@ struct ModuleInfo
 
     struct Old
     {
-        string           name;
-        ModuleInfo*[]    importedModules;
-        TypeInfo_Class[] localClasses;
+        const string           name;
+        const ModuleInfo*[]    importedModules;
+        const TypeInfo_Class[] localClasses;
         uint             flags;
 
-        void function() ctor;
-        void function() dtor;
-        void function() unitTest;
-        void* xgetMembers;
-        void function() ictor;
-        void function() tlsctor;
-        void function() tlsdtor;
+        const void function() ctor;
+        const void function() dtor;
+        const void function() unitTest;
+        const void* xgetMembers;
+        const void function() ictor;
+        const void function() tlsctor;
+        const void function() tlsdtor;
         uint index;
-        void*[1] reserved;
+        const void*[1] reserved;
     }
 
     union
@@ -281,31 +313,31 @@ struct ModuleInfo
         Old o;
     }
 
-    @property bool isNew() nothrow pure;
-    @property uint index() nothrow pure;
-    @property void index(uint i) nothrow pure;
-    @property uint flags() nothrow pure;
-    @property void flags(uint f) nothrow pure;
-    @property void function() tlsctor() nothrow pure;
-    @property void function() tlsdtor() nothrow pure;
-    @property void* xgetMembers() nothrow pure;
-    @property void function() ctor() nothrow pure;
-    @property void function() dtor() nothrow pure;
-    @property void function() ictor() nothrow pure;
-    @property void function() unitTest() nothrow pure;
-    @property ModuleInfo*[] importedModules() nothrow pure;
-    @property TypeInfo_Class[] localClasses() nothrow pure;
-    @property string name() nothrow pure;
+    @property bool isNew() nothrow pure const @trusted;
+    @property uint index() nothrow pure const @trusted;
+    @property void index(uint i) nothrow pure @trusted;
+    @property uint flags() nothrow pure const @trusted;
+    @property void flags(uint f) nothrow pure @trusted;
+    @property void function() tlsctor() nothrow pure const @trusted;
+    @property void function() tlsdtor() nothrow pure const @trusted;
+    @property const(void)* xgetMembers() nothrow pure const @trusted;
+    @property void function() ctor() nothrow pure const @trusted;
+    @property void function() dtor() nothrow pure const @trusted;
+    @property void function() ictor() nothrow pure const @trusted;
+    @property void function() unitTest() nothrow pure const @trusted;
+    @property const(ModuleInfo*)[] importedModules() nothrow pure const @trusted;
+    @property const(TypeInfo_Class)[] localClasses() nothrow pure const @trusted;
+    @property string name() nothrow pure const @trusted;
 
-    static int opApply(scope int delegate(ref ModuleInfo*) dg);
+    @trusted static int opApply(scope int delegate(ref const ModuleInfo*) dg);
 }
 
 class Throwable : Object
 {
     interface TraceInfo
     {
-        int opApply(scope int delegate(ref char[]));
-        int opApply(scope int delegate(ref size_t, ref char[]));
+        @trusted int opApply(scope int delegate(ref char[]));
+        @trusted int opApply(scope int delegate(ref size_t, ref char[]));
         string toString();
     }
 
@@ -315,20 +347,20 @@ class Throwable : Object
     TraceInfo   info;
     Throwable   next;
 
-    this(string msg, Throwable next = null);
-    this(string msg, string file, size_t line, Throwable next = null);
+    this(string msg, Throwable next = null) pure nothrow @trusted;
+    this(string msg, string file, size_t line, Throwable next = null) pure nothrow @trusted;
     override string toString();
 }
 
 
 class Exception : Throwable
 {
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null) pure nothrow @trusted
     {
         super(msg, file, line, next);
     }
 
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__) pure nothrow @trusted
     {
         super(msg, file, line, next);
     }
@@ -337,13 +369,13 @@ class Exception : Throwable
 
 class Error : Throwable
 {
-    this(string msg, Throwable next = null)
+    this(string msg, Throwable next = null) pure nothrow @trusted
     {
         super(msg, next);
         bypassedException = null;
     }
 
-    this(string msg, string file, size_t line, Throwable next = null)
+    this(string msg, string file, size_t line, Throwable next = null) pure nothrow @trusted
     {
         super(msg, file, line, next);
         bypassedException = null;
@@ -355,22 +387,22 @@ extern (C)
 {
     // from druntime/src/compiler/dmd/aaA.d
 
-    size_t _aaLen(void* p);
-    void*  _aaGet(void** pp, TypeInfo keyti, size_t valuesize, ...);
-    void*  _aaGetRvalue(void* p, TypeInfo keyti, size_t valuesize, ...);
-    void*  _aaIn(void* p, TypeInfo keyti);
-    void   _aaDel(void* p, TypeInfo keyti, ...);
-    void[] _aaValues(void* p, size_t keysize, size_t valuesize);
-    void[] _aaKeys(void* p, size_t keysize);
-    void*  _aaRehash(void** pp, TypeInfo keyti);
+    @trusted size_t _aaLen(void* p) pure nothrow;
+    @trusted void*  _aaGet(void** pp, TypeInfo keyti, size_t valuesize, ...) pure nothrow;
+    @trusted void*  _aaGetRvalue(void* p, TypeInfo keyti, size_t valuesize, ...) pure nothrow;
+    @trusted void*  _aaIn(void* p, TypeInfo keyti) pure nothrow;
+    @trusted void   _aaDel(void* p, TypeInfo keyti, ...) pure nothrow;
+    @trusted void[] _aaValues(void* p, size_t keysize, size_t valuesize) pure nothrow;
+    @trusted void[] _aaKeys(void* p, size_t keysize) pure nothrow;
+    @trusted void*  _aaRehash(void** pp, TypeInfo keyti) pure nothrow;
 
     extern (D) alias scope int delegate(void *) _dg_t;
-    int _aaApply(void* aa, size_t keysize, _dg_t dg);
+    @trusted int _aaApply(void* aa, size_t keysize, _dg_t dg);
 
     extern (D) alias scope int delegate(void *, void *) _dg2_t;
-    int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
+    @trusted int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...);
+    @trusted void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...) pure nothrow;
 }
 
 struct AssociativeArray(Key, Value)
@@ -401,7 +433,7 @@ private:
         Slot*[] slots;
         Slot* current;
 
-        this(void * aa)
+        @trusted this(void * aa) pure nothrow
         {
             if (!aa) return;
             auto pImpl = cast(Hashtable*) aa;
@@ -409,7 +441,7 @@ private:
             nextSlot();
         }
 
-        void nextSlot()
+        @trusted void nextSlot() pure nothrow
         {
             foreach (i, slot; slots)
             {
@@ -421,18 +453,18 @@ private:
         }
 
     public:
-        @property bool empty() const
+        @trusted @property bool empty() const pure nothrow
         {
             return current is null;
         }
 
-        @property ref inout(Slot) front() inout
+        @trusted @property ref inout(Slot) front() inout pure nothrow
         {
             assert(current);
             return *current;
         }
 
-        void popFront()
+        @trusted void popFront() pure nothrow
         {
             assert(current);
             current = current.next;
@@ -446,44 +478,44 @@ private:
 
 public:
 
-    @property size_t length() { return _aaLen(p); }
+    @trusted @property size_t length() pure nothrow { return _aaLen(p); }
 
-    Value[Key] rehash() @property
+    @trusted Value[Key] rehash() @property pure nothrow
     {
         auto p = _aaRehash(&p, typeid(Value[Key]));
         return *cast(Value[Key]*)(&p);
     }
 
-    Value[] values() @property
+    @trusted Value[] values() @property pure nothrow
     {
         auto a = _aaValues(p, Key.sizeof, Value.sizeof);
         return *cast(Value[]*) &a;
     }
 
-    Key[] keys() @property
+    @trusted Key[] keys() @property pure nothrow
     {
         auto a = _aaKeys(p, Key.sizeof);
         return *cast(Key[]*) &a;
     }
 
-    int opApply(scope int delegate(ref Key, ref Value) dg)
+    @trusted int opApply(scope int delegate(ref Key, ref Value) dg)
     {
         return _aaApply2(p, Key.sizeof, cast(_dg2_t)dg);
     }
 
-    int opApply(scope int delegate(ref Value) dg)
+    @trusted int opApply(scope int delegate(ref Value) dg)
     {
         return _aaApply(p, Key.sizeof, cast(_dg_t)dg);
     }
 
-    Value get(Key key, lazy Value defaultValue)
+    @trusted Value get(Key key, lazy Value defaultValue)
     {
         auto p = key in *cast(Value[Key]*)(&p);
         return p ? *p : defaultValue;
     }
 
     static if (is(typeof({ Value[Key] r; r[Key.init] = Value.init; }())))
-        @property Value[Key] dup()
+        @trusted @property Value[Key] dup()
         {
             Value[Key] result;
             foreach (k, v; this)
@@ -493,18 +525,18 @@ public:
             return result;
         }
 
-    @property auto byKey()
+    @trusted @property auto byKey() pure nothrow
     {
         static struct Result
         {
             Range state;
 
-            this(void* p)
+            @trusted this(void* p) pure nothrow
             {
                 state = Range(p);
             }
 
-            @property ref Key front()
+            @trusted @property ref Key front() pure nothrow
             {
                 return state.front.key;
             }
@@ -515,18 +547,18 @@ public:
         return Result(p);
     }
 
-    @property auto byValue()
+    @trusted @property auto byValue() pure nothrow
     {
         static struct Result
         {
             Range state;
 
-            this(void* p)
+            @trusted this(void* p) pure nothrow
             {
                 state = Range(p);
             }
 
-            @property ref Value front()
+            @trusted @property ref Value front() pure nothrow
             {
                 return state.front.value;
             }
