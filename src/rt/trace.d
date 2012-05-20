@@ -15,6 +15,7 @@ module rt.trace;
 
 private
 {
+    import core.exception;
     import core.demangle;
     import core.stdc.ctype;
     import core.stdc.stdio;
@@ -443,7 +444,7 @@ static void *trace_malloc(size_t nbytes)
 
     p = malloc(nbytes);
     if (!p)
-        exit(EXIT_FAILURE);
+        core.exception.onOutOfMemoryError();
     return p;
 }
 

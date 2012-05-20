@@ -83,6 +83,7 @@ class FiberException : Exception
 private
 {
     import core.sync.mutex;
+    import core.exception;
 
     //
     // from core.memory
@@ -359,7 +360,10 @@ else version( Posix )
                 const sz0 = (_tls_data_array[0].length + 15) & ~cast(size_t)15;
                 const sz2 = sz0 + _tls_data_array[1].length;
                 auto p = malloc( sz2 );
-                assert( p );
+
+                if (!p)
+                    core.exception.onOutOfMemoryError();
+
                 obj.m_tls = p[0 .. sz2];
                 memcpy( p, _tls_data_array[0].ptr, _tls_data_array[0].length );
                 memcpy( p + sz0, _tls_data_array[1].ptr, _tls_data_array[1].length );
@@ -1281,7 +1285,10 @@ private:
             const sz0 = (_tls_data_array[0].length + 15) & ~cast(size_t)15;
             const sz2 = sz0 + _tls_data_array[1].length;
             auto p = malloc( sz2 );
-            assert( p );
+
+            if (!p)
+                core.exception.onOutOfMemoryError();
+
             m_tls = p[0 .. sz2];
             memcpy( p, _tls_data_array[0].ptr, _tls_data_array[0].length );
             memcpy( p + sz0, _tls_data_array[1].ptr, _tls_data_array[1].length );
@@ -1546,6 +1553,10 @@ private:
         {
             auto ci = Mutex.classinfo;
             auto p  = malloc( ci.init.length );
+
+            if (!p)
+                core.exception.onOutOfMemoryError();
+
             (cast(byte*) p)[0 .. ci.init.length] = ci.init[];
             m = cast(Mutex) p;
             m.__ctor();
@@ -1941,7 +1952,7 @@ extern (C) Thread thread_attachThis()
         const sz0 = (_tls_data_array[0].length + 15) & ~cast(size_t)15;
         const sz2 = sz0 + _tls_data_array[1].length;
         auto p = gc_malloc( sz2 );
-        assert( p );
+        assert( p ); // will always pass; GC throws on OOM
         thisThread.m_tls = p[0 .. sz2];
         memcpy( p, _tls_data_array[0].ptr, _tls_data_array[0].length );
         memcpy( p + sz0, _tls_data_array[1].ptr, _tls_data_array[1].length );
@@ -2030,7 +2041,7 @@ version( Windows )
             const sz0 = (_tls_data_array[0].length + 15) & ~cast(size_t)15;
             const sz2 = sz0 + _tls_data_array[1].length;
             auto p = gc_malloc( sz2 );
-            assert( p );
+            assert( p ); // will always pass; GC throws on OOM
             obj.m_tls = p[0 .. sz2];
             memcpy( p, _tls_data_array[0].ptr, _tls_data_array[0].length );
             memcpy( p + sz0, _tls_data_array[1].ptr, _tls_data_array[1].length );

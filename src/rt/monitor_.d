@@ -19,6 +19,7 @@ private
 {
     debug(PRINTF) import core.stdc.stdio;
     import core.stdc.stdlib;
+    import core.exception;
 
     version( linux )
     {
@@ -129,7 +130,10 @@ version( Windows )
         if (!h.__monitor)
         {
             cs = cast(Monitor *)calloc(Monitor.sizeof, 1);
-            assert(cs);
+
+            if (!cs)
+                core.exception.onOutOfMemoryError();
+
             InitializeCriticalSection(&cs.mon);
             setMonitor(h, cs);
             cs.refs = 1;
@@ -214,7 +218,10 @@ version( USE_PTHREADS )
         if (!h.__monitor)
         {
             cs = cast(Monitor *)calloc(Monitor.sizeof, 1);
-            assert(cs);
+
+            if (!cs)
+                core.exception.onOutOfMemoryError();
+
             pthread_mutex_init(&cs.mon, &_monitors_attr);
             setMonitor(h, cs);
             cs.refs = 1;

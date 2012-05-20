@@ -18,6 +18,7 @@ private
     import rt.memory;
     import rt.util.console;
     import rt.util.string;
+    import core.exception;
     import core.stdc.stddef;
     import core.stdc.stdlib;
     import core.stdc.string;
@@ -400,7 +401,12 @@ extern (C) int main(int argc, char** argv)
     }
     else version (Posix)
     {
-        char[]* am = cast(char[]*) malloc(argc * (char[]).sizeof);
+        size_t sz = argc * (char[]).sizeof;
+        char[]* am = cast(char[]*) malloc(sz);
+
+        if (sz && !am)
+            core.exception.onOutOfMemoryError();
+
         scope(exit) free(am);
 
         for (size_t i = 0; i < argc; i++)
