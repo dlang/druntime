@@ -102,7 +102,7 @@ extern (C) void gc_init()
     {   void* p;
         ClassInfo ci = GC.classinfo;
 
-        p = malloc(ci.init.length);
+        p = core.stdc.stdlib.malloc(ci.init.length);
         (cast(byte*)p)[0 .. ci.init.length] = ci.init[];
         _gc = cast(GC)p;
     }
