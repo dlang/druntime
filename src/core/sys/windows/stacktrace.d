@@ -27,12 +27,73 @@ import core.stdc.stdio;
 extern(Windows)
 {
     DWORD GetEnvironmentVariableA(LPCSTR lpName, LPSTR pBuffer, DWORD nSize);
-    void  RtlCaptureContext(CONTEXT* ContextRecord);
+    version(Win32) // For Windows 2000 support
+    {
+        alias void function(CONTEXT* ContextRecord) RtlCaptureContextFunc;
+
+        void m_RtlCaptureContext(CONTEXT* ContextRecord)
+        {
+            version(D_InlineAsm_X86) with(CONTEXT) asm
+            {
+                naked;
+                push EBX;
+                mov EBX, [ESP + 8];
+
+                // General-purpose registers
+                mov Eax.offsetof[EBX], EAX;
+                mov EAX, [ESP];
+                mov Ebx.offsetof[EBX], EAX;
+                mov Ecx.offsetof[EBX], ECX;
+                mov Edx.offsetof[EBX], EDX;
+                mov Esi.offsetof[EBX], ESI;
+                mov Edi.offsetof[EBX], EDI;
+                lea EAX, [EBP + 8];
+                mov Esp.offsetof[EBX], EAX;
+                mov EAX, [EBP];
+                mov Ebp.offsetof[EBX], EAX;
+
+                // Instruction pointer
+                mov EAX, [EBP + 4];
+                mov Eip.offsetof[EBX], EAX;
+
+                // Flags: push, mov, lea, and call (if a task switch does not occur)
+                // doesn't affect any flags
+                pushfd;
+                pop dword ptr EFlags.offsetof[EBX];
+
+                // Segment registers
+                mov SegCs.offsetof[EBX], CS;
+                mov SegDs.offsetof[EBX], DS;
+                mov SegSs.offsetof[EBX], SS;
+                mov SegEs.offsetof[EBX], ES;
+                mov SegFs.offsetof[EBX], FS;
+                mov SegGs.offsetof[EBX], GS;
+
+                pop EBX;
+                ret 0x4;
+            }
+            else
+            {
+                static RtlCaptureContextFunc f;
+                if(!f)
+                {
+                    f = cast(RtlCaptureContextFunc)
+                        GetProcAddress(GetModuleHandleA("Kernel32"), "RtlCaptureContext");
+                    if(!f)
+                        throw new Exception("There is no RtlCaptureContext in Windows 2000 or older");
+                }
+                f(ContextRecord);
+            }
+        }
+    }
+    else
+        void  RtlCaptureContext(CONTEXT* ContextRecord);
 
     alias LONG function(void*) UnhandeledExceptionFilterFunc;
     void* SetUnhandledExceptionFilter(void* handler);
 }
 
+version(Win32) RtlCaptureContextFunc RtlCaptureContext;
 
 enum : uint
 {
@@ -285,6 +346,14 @@ private:
         CONTEXT      c;
 
         c.ContextFlags = CONTEXT_FULL;
+
+        version(Win32) if(!RtlCaptureContext)
+        {
+            if(auto f = GetProcAddress(GetModuleHandleA("Kernel32"), "RtlCaptureContext"))
+                RtlCaptureContext = cast(RtlCaptureContextFunc) f;
+            else
+                RtlCaptureContext = &m_RtlCaptureContext;
+        }
         RtlCaptureContext( &c );
 
         //x86
