@@ -14,8 +14,10 @@
  */
 module core.sys.windows.dbghelp;
 
+version(Windows):
 
 import core.sys.windows.windows;
+import core.stdc.wchar_: wcslen;
 
 
 alias CHAR TCHAR;
@@ -188,39 +190,89 @@ struct DbgHelp
     SymGetSearchPathFunc     SymGetSearchPath;
     SymUnloadModule64Func    SymUnloadModule64;
 
+    /** This function will try to load dbghelp.dll from VS common folder
+    instead of outdated Windows XP's dbghelp.dll or if there is no
+    dbghelp.dll found by LoadLibrary. */
+    private static void loadDbgHelpDll()
+    {
+        sm_hndl = LoadLibraryA("dbghelp");
+
+        if(sm_hndl)
+        {
+            if(cast(ubyte) GetVersion() > 5)
+                return; // Windows 6+ has good enough dbghelp.dll
+
+            wchar[MAX_PATH] windir = void, path = void;
+            size_t len = GetEnvironmentVariableW("windir", windir.ptr, windir.length);
+            GetModuleFileNameW(sm_hndl, path.ptr, path.length);
+            if(path[0 .. len] != windir[0 .. len] || path[len + 1 .. len + 9] != "system32")
+                return; // dbghelp.dll isn't loaded from %windir%\system32 folder
+        }
+
+        // Windows XP has old dbghelp.dll, so lets try to load it from VS common folder
+        auto p = GetEnvironmentStringsW();
+        while(*p)
+        {
+            size_t len = wcslen(p);
+            if(len >= 13 && p[0 .. 2] == "VS")
+            {
+                p += 2, len -= 2;
+                while(len && cast(uint)(*p - '0') <= 9)
+                    ++p, --len;
+                if(len > 10 && p[0 .. 10] == "COMNTOOLS=")
+                {
+                    wchar[MAX_PATH + 50] buff = void;
+                    p += 10, len -= 10;
+                    buff[0 .. len] = p[0 .. len];
+                    buff[len .. len + 15] = `..\IDE\dbghelp` "\0";
+
+                    if(auto newHndl = LoadLibraryW(buff.ptr))
+                    {
+                        if(sm_hndl)
+                            FreeLibrary(sm_hndl);
+                        sm_hndl = newHndl;
+                        break;
+                    }
+                }
+            }
+            p += len + 1;
+        }
+    }
+
     static DbgHelp* get()
     {
-        if( sm_hndl != sm_hndl.init )
+        if(sm_hndl)
             return &sm_inst;
-        if( (sm_hndl = LoadLibraryA( "dbghelp.dll" )) != sm_hndl.init )
-        {
-            sm_inst.SymInitialize            = cast(SymInitializeFunc) GetProcAddress(sm_hndl,"SymInitialize");
-            sm_inst.SymCleanup               = cast(SymCleanupFunc) GetProcAddress(sm_hndl,"SymCleanup");
-            sm_inst.StackWalk64              = cast(StackWalk64Func) GetProcAddress(sm_hndl,"StackWalk64");
-            sm_inst.SymGetOptions            = cast(SymGetOptionsFunc) GetProcAddress(sm_hndl,"SymGetOptions");
-            sm_inst.SymSetOptions            = cast(SymSetOptionsFunc) GetProcAddress(sm_hndl,"SymSetOptions");
-            sm_inst.SymFunctionTableAccess64 = cast(SymFunctionTableAccess64Func) GetProcAddress(sm_hndl,"SymFunctionTableAccess64");
-            sm_inst.SymGetLineFromAddr64     = cast(SymGetLineFromAddr64Func) GetProcAddress(sm_hndl,"SymGetLineFromAddr64");
-            sm_inst.SymGetModuleBase64       = cast(SymGetModuleBase64Func) GetProcAddress(sm_hndl,"SymGetModuleBase64");
-            sm_inst.SymGetModuleInfo64       = cast(SymGetModuleInfo64Func) GetProcAddress(sm_hndl,"SymGetModuleInfo64");
-            sm_inst.SymGetSymFromAddr64      = cast(SymGetSymFromAddr64Func) GetProcAddress(sm_hndl,"SymGetSymFromAddr64");
-            sm_inst.SymLoadModule64          = cast(SymLoadModule64Func) GetProcAddress(sm_hndl,"SymLoadModule64");
-            sm_inst.SymGetSearchPath         = cast(SymGetSearchPathFunc) GetProcAddress(sm_hndl,"SymGetSearchPath");
-            sm_inst.SymUnloadModule64        = cast(SymUnloadModule64Func) GetProcAddress(sm_hndl,"SymUnloadModule64");
 
-            assert( sm_inst.SymInitialize && sm_inst.SymCleanup && sm_inst.StackWalk64 && sm_inst.SymGetOptions &&
-                    sm_inst.SymSetOptions && sm_inst.SymFunctionTableAccess64 && sm_inst.SymGetLineFromAddr64 &&
-                    sm_inst.SymGetModuleBase64 && sm_inst.SymGetModuleInfo64 && sm_inst.SymGetSymFromAddr64 &&
-                    sm_inst.SymLoadModule64 && sm_inst.SymGetSearchPath && sm_inst.SymUnloadModule64);
+        loadDbgHelpDll();
+        if(!sm_hndl)
+            return null;
 
-            return &sm_inst;
-        }
-        return null;
+        sm_inst.SymInitialize            = cast(SymInitializeFunc) GetProcAddress(sm_hndl,"SymInitialize");
+        sm_inst.SymCleanup               = cast(SymCleanupFunc) GetProcAddress(sm_hndl,"SymCleanup");
+        sm_inst.StackWalk64              = cast(StackWalk64Func) GetProcAddress(sm_hndl,"StackWalk64");
+        sm_inst.SymGetOptions            = cast(SymGetOptionsFunc) GetProcAddress(sm_hndl,"SymGetOptions");
+        sm_inst.SymSetOptions            = cast(SymSetOptionsFunc) GetProcAddress(sm_hndl,"SymSetOptions");
+        sm_inst.SymFunctionTableAccess64 = cast(SymFunctionTableAccess64Func) GetProcAddress(sm_hndl,"SymFunctionTableAccess64");
+        sm_inst.SymGetLineFromAddr64     = cast(SymGetLineFromAddr64Func) GetProcAddress(sm_hndl,"SymGetLineFromAddr64");
+        sm_inst.SymGetModuleBase64       = cast(SymGetModuleBase64Func) GetProcAddress(sm_hndl,"SymGetModuleBase64");
+        sm_inst.SymGetModuleInfo64       = cast(SymGetModuleInfo64Func) GetProcAddress(sm_hndl,"SymGetModuleInfo64");
+        sm_inst.SymGetSymFromAddr64      = cast(SymGetSymFromAddr64Func) GetProcAddress(sm_hndl,"SymGetSymFromAddr64");
+        sm_inst.SymLoadModule64          = cast(SymLoadModule64Func) GetProcAddress(sm_hndl,"SymLoadModule64");
+        sm_inst.SymGetSearchPath         = cast(SymGetSearchPathFunc) GetProcAddress(sm_hndl,"SymGetSearchPath");
+        sm_inst.SymUnloadModule64        = cast(SymUnloadModule64Func) GetProcAddress(sm_hndl,"SymUnloadModule64");
+
+        assert( sm_inst.SymInitialize && sm_inst.SymCleanup && sm_inst.StackWalk64 && sm_inst.SymGetOptions &&
+                sm_inst.SymSetOptions && sm_inst.SymFunctionTableAccess64 && sm_inst.SymGetLineFromAddr64 &&
+                sm_inst.SymGetModuleBase64 && sm_inst.SymGetModuleInfo64 && sm_inst.SymGetSymFromAddr64 &&
+                sm_inst.SymLoadModule64 && sm_inst.SymGetSearchPath && sm_inst.SymUnloadModule64);
+
+        return &sm_inst;
     }
 
     shared static ~this()
     {
-        if( sm_hndl != sm_hndl.init )
+        if( sm_hndl )
             FreeLibrary( sm_hndl );
     }
 
