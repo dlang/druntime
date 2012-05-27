@@ -247,30 +247,37 @@ extern (C) string[] rt_args()
 // be fine to leave it as __gshared.
 extern (C) __gshared bool rt_trapExceptions = true;
 
-private void initOSX ()
-{
-    version (OSX)
-        _d_osx_image_init2();
-}
-
-private void initFreeBSD ()
-{
-    version (FreeBSD) version (D_InlineAsm_X86)
+version (OSX)
+    private void initPlatform ()
     {
-        /*
-         * FreeBSD/i386 sets the FPU precision mode to 53 bit double.
-         * Make it 64 bit extended.
-         */
-        ushort fpucw;
-        asm
+        _d_osx_image_init2();
+    }
+
+else version (FreeBSD)
+    private void initPlatform ()
+    {
+        version (D_InlineAsm_X86)
         {
-            fstsw   fpucw;
-            or      fpucw, 0b11_00_111111; // 11: use 64 bit extended-precision
-                                           // 111111: mask all FP exceptions
-            fldcw   fpucw;
+            /*
+             * FreeBSD/i386 sets the FPU precision mode to 53 bit double.
+             * Make it 64 bit extended.
+             */
+            ushort fpucw;
+            asm
+            {
+                fstsw   fpucw;
+                or      fpucw, 0b11_00_111111; // 11: use 64 bit extended-precision
+                                               // 111111: mask all FP exceptions
+                fldcw   fpucw;
+            }
         }
     }
-}
+
+else
+    private void initPlatform ()
+    {
+        // NOOP
+    }
 
 void _d_criticalInit()
 {
@@ -280,9 +287,7 @@ void _d_criticalInit()
         return;
 
     hasBeenCalled = true;
-
-    initOSX();
-    initFreeBSD();
+    initPlatform();
 
     version (Posix)
     {
