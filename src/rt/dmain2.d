@@ -274,7 +274,7 @@ private void initFreeBSD ()
 
 void _d_criticalInit()
 {
-    static __gshared bool hasBeenCalled;
+    __gshared bool hasBeenCalled;
 
     if (hasBeenCalled)
         return;
@@ -295,7 +295,7 @@ alias void delegate(Throwable) ExceptionHandler;
 
 extern (C) bool rt_init(ExceptionHandler dg = null)
 {
-    static __gshared bool result;
+    __gshared bool result;
 
     if (result)
         return result;
@@ -323,7 +323,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
 
 void _d_criticalTerm()
 {
-    static __gshared bool hasBeenCalled;
+    __gshared bool hasBeenCalled;
 
     if (hasBeenCalled)
         return;
@@ -339,7 +339,7 @@ void _d_criticalTerm()
 
 extern (C) bool rt_term(ExceptionHandler dg = null, bool rethrow = false)
 {
-    static __gshared bool result;
+    __gshared bool result;
 
     if (result)
         return result;
