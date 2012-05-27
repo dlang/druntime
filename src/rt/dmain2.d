@@ -388,11 +388,7 @@ extern (C) int main(int argc, char** argv)
     char[][] args;
     int result;
 
-    version (Posix)
-    {
-        _STI_monitor_staticctor();
-        _STI_critical_init();
-    }
+    _d_criticalInit();
 
     version (Windows)
     {
@@ -564,11 +560,7 @@ extern (C) int main(int argc, char** argv)
     }
 
     tryExec(&runAll);
+    _d_criticalTerm();
 
-    version (Posix)
-    {
-        _STD_critical_term();
-        _STD_monitor_staticdtor();
-    }
     return result;
 }
