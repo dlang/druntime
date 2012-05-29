@@ -12,6 +12,7 @@
 
 module rt.minfo;
 
+import core.exception;
 import core.stdc.stdio;   // printf
 import core.stdc.stdlib;  // alloca
 import core.stdc.string;  // memcpy
@@ -44,9 +45,14 @@ struct SortedCtors
 {
     void alloc(size_t n)
     {
+        size_t sz = n * size_t.sizeof;
+
         // don't bother to initialize, as they are getting overwritten anyhow
-        _ctors = (cast(ModuleInfo**).malloc(n * size_t.sizeof))[0 .. n];
-        _tlsctors = (cast(ModuleInfo**).malloc(n * size_t.sizeof))[0 .. n];
+        _ctors = (cast(ModuleInfo**).malloc(sz))[0 .. n];
+        _tlsctors = (cast(ModuleInfo**).malloc(sz))[0 .. n];
+
+        if (sz && (!_ctors || !_tlsctors))
+            core.exception.onOutOfMemoryError();
     }
 
     void free()
@@ -168,6 +174,9 @@ body
 
         result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
 
+        if (cnt && !result)
+            core.exception.onOutOfMemoryError();
+
         p = _moduleinfo_array.ptr;
         cnt = 0;
         for (; p < pend; ++p)
@@ -181,7 +190,12 @@ body
 
         for (mr = _Dmodule_ref; mr; mr = mr.next)
             len++;
+
         result = (cast(ModuleInfo**).malloc(len * size_t.sizeof))[0 .. len];
+
+        if (len && !result)
+            core.exception.onOutOfMemoryError();
+
         len = 0;
         for (mr = _Dmodule_ref; mr; mr = mr.next)
         {   result[len] = mr.mod;
@@ -243,6 +257,10 @@ SortedCtors sortCtors(ModuleInfo*[] modules)
     else
     {
         auto p = cast(ubyte*).malloc(size);
+
+        if (!p) // size checked above
+            core.exception.onOutOfMemoryError();
+
         p[0 .. size] = 0;
         auto result = sortCtorsImpl(modules, (cast(StackRec*)p)[0 .. modules.length]);
         .free(p);

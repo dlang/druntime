@@ -15,6 +15,7 @@
 module core.sys.windows.stacktrace;
 
 
+import core.exception;
 import core.demangle;
 import core.runtime;
 import core.stdc.stdlib;
@@ -298,6 +299,9 @@ private:
 
         auto symbolSize = IMAGEHLP_SYMBOL64.sizeof + MAX_NAMELEN;
         auto symbol     = cast(IMAGEHLP_SYMBOL64*) calloc( symbolSize, 1 );
+
+        if (!symbol)
+            core.exception.onOutOfMemoryError();
 
         static assert((IMAGEHLP_SYMBOL64.sizeof + MAX_NAMELEN) <= uint.max, "symbolSize should never exceed uint.max");
 

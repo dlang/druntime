@@ -13,6 +13,7 @@
 module rt.tlsgc;
 
 import core.stdc.stdlib;
+import core.exception;
 
 static import rt.lifetime;
 
@@ -31,6 +32,10 @@ struct Data
 Data* init()
 {
     auto p = cast(Data*).malloc(Data.sizeof);
+
+    if (!p)
+        core.exception.onOutOfMemoryError();
+
     *p = Data.init;
 
     // do module specific initialization

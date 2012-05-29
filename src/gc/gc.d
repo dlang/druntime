@@ -103,6 +103,10 @@ extern (C) void gc_init()
         ClassInfo ci = GC.classinfo;
 
         p = malloc(ci.init.length);
+
+        if (!p)
+            core.exception.onOutOfMemoryError();
+
         (cast(byte*)p)[0 .. ci.init.length] = ci.init[];
         _gc = cast(GC)p;
     }
