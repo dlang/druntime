@@ -95,12 +95,7 @@ extern (C) void _moduleTlsDtor()
 }
 
 version (OSX)
-{
-    // The bottom of the stack
-    extern (C) __gshared void* __osx_stack_end = cast(void*)0xC0000000;
-
     extern (C) extern (C) void _d_osx_image_init2();
-}
 
 /***********************************
  * These are a temporary means of providing a GC hook for DLL use.  They may be
@@ -252,8 +247,48 @@ extern (C) string[] rt_args()
 // be fine to leave it as __gshared.
 extern (C) __gshared bool rt_trapExceptions = true;
 
+version (OSX)
+    private void initPlatform ()
+    {
+        _d_osx_image_init2();
+    }
+
+else version (FreeBSD)
+    private void initPlatform ()
+    {
+        version (D_InlineAsm_X86)
+        {
+            /*
+             * FreeBSD/i386 sets the FPU precision mode to 53 bit double.
+             * Make it 64 bit extended.
+             */
+            ushort fpucw;
+            asm
+            {
+                fstsw   fpucw;
+                or      fpucw, 0b11_00_111111; // 11: use 64 bit extended-precision
+                                               // 111111: mask all FP exceptions
+                fldcw   fpucw;
+            }
+        }
+    }
+
+else
+    private void initPlatform ()
+    {
+        // NOOP
+    }
+
 void _d_criticalInit()
 {
+    __gshared bool hasBeenCalled;
+
+    if (hasBeenCalled)
+        return;
+
+    hasBeenCalled = true;
+    initPlatform();
+
     version (Posix)
     {
         _STI_monitor_staticctor();
@@ -265,6 +300,11 @@ alias void delegate(Throwable) ExceptionHandler;
 
 extern (C) bool rt_init(ExceptionHandler dg = null)
 {
+    __gshared bool result;
+
+    if (result)
+        return result;
+
     _d_criticalInit();
 
     try
@@ -273,8 +313,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         initStaticDataGC();
         rt_moduleCtor();
         rt_moduleTlsCtor();
-        runModuleUnitTests();
-        return true;
+        return result = true;
     }
     catch (Throwable e)
     {
@@ -284,11 +323,18 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
             throw e;    // rethrow, don't silently ignore error
     }
     _d_criticalTerm();
-    return false;
+    return result = false;
 }
 
 void _d_criticalTerm()
 {
+    __gshared bool hasBeenCalled;
+
+    if (hasBeenCalled)
+        return;
+
+    hasBeenCalled = true;
+
     version (Posix)
     {
         _STD_critical_term();
@@ -296,26 +342,34 @@ void _d_criticalTerm()
     }
 }
 
-extern (C) bool rt_term(ExceptionHandler dg = null)
+extern (C) bool rt_term(ExceptionHandler dg = null, bool rethrow = false)
 {
+    __gshared bool result;
+
+    if (result)
+        return result;
+
     try
     {
         rt_moduleTlsDtor();
         thread_joinAll();
         rt_moduleDtor();
         gc_term();
-        return true;
+        return result = true;
     }
     catch (Throwable e)
     {
         if (dg)
             dg(e);
+
+        else if (rethrow)
+            throw e;
     }
     finally
     {
         _d_criticalTerm();
     }
-    return false;
+    return result = false;
 }
 
 /***********************************
@@ -334,38 +388,7 @@ extern (C) int main(int argc, char** argv)
     char[][] args;
     int result;
 
-    version (OSX)
-    {   /* OSX does not provide a way to get at the top of the
-         * stack, except for the magic value 0xC0000000.
-         * But as far as the gc is concerned, argv is at the top
-         * of the main thread's stack, so save the address of that.
-         */
-        __osx_stack_end = cast(void*)&argv;
-
-        _d_osx_image_init2();
-    }
-
-    version (FreeBSD) version (D_InlineAsm_X86)
-    {
-        /*
-         * FreeBSD/i386 sets the FPU precision mode to 53 bit double.
-         * Make it 64 bit extended.
-         */
-        ushort fpucw;
-        asm
-        {
-            fstsw   fpucw;
-            or      fpucw, 0b11_00_111111; // 11: use 64 bit extended-precision
-                                           // 111111: mask all FP exceptions
-            fldcw   fpucw;
-        }
-    }
-
-    version (Posix)
-    {
-        _STI_monitor_staticctor();
-        _STI_critical_init();
-    }
+    _d_criticalInit();
 
     version (Windows)
     {
@@ -525,26 +548,19 @@ extern (C) int main(int argc, char** argv)
 
     void runAll()
     {
-        gc_init();
-        initStaticDataGC();
-        rt_moduleCtor();
-        rt_moduleTlsCtor();
+        rt_init();
+
         if (runModuleUnitTests())
             tryExec(&runMain);
+
         else
             result = EXIT_FAILURE;
-        rt_moduleTlsDtor();
-        thread_joinAll();
-        rt_moduleDtor();
-        gc_term();
+
+        rt_term(null, true);
     }
 
     tryExec(&runAll);
+    _d_criticalTerm();
 
-    version (Posix)
-    {
-        _STD_critical_term();
-        _STD_monitor_staticdtor();
-    }
     return result;
 }
