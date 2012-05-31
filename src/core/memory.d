@@ -41,6 +41,8 @@ private
     extern (C) void*   gc_addrOf( in void* p );
     extern (C) size_t  gc_sizeOf( in void* p );
 
+    extern (C) size_t gc_collections() pure nothrow;
+
     struct BlkInfo_
     {
         void*  base;
@@ -485,5 +487,21 @@ struct GC
     static void removeRange( in void* p )
     {
         gc_removeRange( p );
+    }
+
+
+    /**
+     * Returns a count of how many full collections have taken place. This value
+     * is generally not reliable since it may race against actual collections,
+     * but it can provide a reasonable overview of how much GC activity is going
+     * on in an application. Note also that this value is expected to overflow
+     * and wrap sooner or later (although not likely in most applications).
+     *
+     * Returns:
+     *  A count of how many full GC collections have taken place.
+     */
+    @property static size_t collections() pure nothrow
+    {
+        return gc_collections();
     }
 }

@@ -1340,6 +1340,11 @@ class GC
     }
 
 
+    size_t collections()
+    {
+        return gcx.fullCollections;
+    }
+
     /**
      *
      */
@@ -1590,6 +1595,7 @@ struct Gcx
 
     List *bucket[B_MAX];        // free list for each size
 
+    size_t fullCollections;
 
     void initialize()
     {   int dummy;
@@ -2650,6 +2656,7 @@ struct Gcx
         if (running)
             onInvalidMemoryOperationError();
         running = 1;
+        fullCollections++;
 
         thread_suspendAll();
 
