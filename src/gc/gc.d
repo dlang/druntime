@@ -59,6 +59,8 @@ private
 
         extern (C) void function(void*) gc_removeRoot;
         extern (C) void function(void*) gc_removeRange;
+
+        extern (C) size_t function() gc_collections;
     }
 
     __gshared Proxy  pthis;
@@ -93,6 +95,8 @@ private
 
         pthis.gc_removeRoot = &gc_removeRoot;
         pthis.gc_removeRange = &gc_removeRange;
+
+        pthis.gc_collections = &gc_collections;
     }
 }
 
@@ -305,6 +309,14 @@ extern (C) void gc_removeRange( void* p )
     if( proxy is null )
         return _gc.removeRange( p );
     return proxy.gc_removeRange( p );
+}
+
+extern (C) size_t gc_collections()
+{
+    if (!proxy)
+        return _gc.collections();
+
+    return proxy.gc_collections();
 }
 
 extern (C) Proxy* gc_getProxy()
