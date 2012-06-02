@@ -92,7 +92,7 @@ private
 
     extern (C) void*    gc_malloc( size_t sz, uint ba = 0 ) pure nothrow;
     extern (C) void*    gc_calloc( size_t sz, uint ba = 0 ) pure nothrow;
-    extern (C) BlkInfo_ gc_qalloc( size_t sz, uint ba = 0 ) pure nothrow;
+    extern (C) BlockInfo gc_qalloc( size_t sz, uint ba = 0 ) pure nothrow;
     extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0 ) pure nothrow;
     extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz ) pure nothrow;
     extern (C) size_t   gc_reserve( size_t sz ) nothrow;
@@ -101,22 +101,65 @@ private
     extern (C) void*   gc_addrOf( void* p ) pure nothrow;
     extern (C) size_t  gc_sizeOf( void* p ) pure nothrow;
 
-    struct BlkInfo_
-    {
-        void*  base;
-        size_t size;
-        uint   attr;
-    }
-
-    extern (C) BlkInfo_ gc_query( void* p ) pure nothrow;
+    extern (C) BlockInfo gc_query( void* p ) pure nothrow;
 
     extern (C) void gc_addRoot( in void* p ) nothrow;
     extern (C) void gc_addRange( in void* p, size_t sz ) nothrow;
 
     extern (C) void gc_removeRoot( in void* p ) nothrow;
     extern (C) void gc_removeRange( in void* p ) nothrow;
+
+    extern (C) bool gc_getCollectStats() nothrow;
+    extern (C) void gc_setCollectStats(bool b) nothrow;
+    extern (C) GCStats gc_stats() nothrow;
+    extern (C) void gc_resetStats() nothrow;
 }
 
+/**
+ * Contains aggregate information about a block of managed memory.  The
+ * purpose of this struct is to support a more efficient query style in
+ * instances where detailed information is needed.
+ */
+struct BlockInfo
+{
+    void* base; /// A pointer to the base of the block in question.
+    size_t size; /// The size of the block, calculated from base.
+    uint attr; /// Attribute bits set on the memory block.
+}
+
+/**
+ * Contains various statistics about the garbage collection infrastructure.
+ */
+struct GCStats
+{
+    size_t poolSize = size_t.max; /// Total size of a pool.
+    size_t usedSize = size_t.max; /// Bytes allocated.
+    size_t freeBlocks = size_t.max; /// Number of blocks marked FREE.
+    size_t freeListSize = size_t.max; /// Total of memory on free lists.
+    size_t pageBlocks = size_t.max; /// Number of blocks marked PAGE.
+    size_t fullCollections = size_t.max; /// Number of full collections.
+}
+
+/**
+ * Elements for a bit field representing memory block attributes.  These
+ * are manipulated via the getAttr, setAttr, clrAttr functions.
+ */
+enum BlockAttr : uint
+{
+    NONE        = 0b0000_0000, /// No attributes set.
+    FINALIZE    = 0b0000_0001, /// Finalize the data in this block on collect.
+    NO_SCAN     = 0b0000_0010, /// Do not scan through this block on collect.
+    NO_MOVE     = 0b0000_0100, /// Do not move this memory block on collect.
+    APPENDABLE  = 0b0000_1000, /// This block contains the info to allow appending.
+
+    /**
+    This block is guaranteed to have a pointer to its base while it is
+    alive.  Interior pointers can be safely ignored.  This attribute is
+    useful for eliminating false pointers in very large data structures
+    and is only implemented for data structures at least a page in size.
+    */
+    NO_INTERIOR = 0b0001_0000,
+}
 
 /**
  * This struct encapsulates all garbage collection functionality for the D
@@ -174,38 +217,8 @@ struct GC
     }
 
 
-    /**
-     * Elements for a bit field representing memory block attributes.  These
-     * are manipulated via the getAttr, setAttr, clrAttr functions.
-     */
-    enum BlkAttr : uint
-    {
-        NONE        = 0b0000_0000, /// No attributes set.
-        FINALIZE    = 0b0000_0001, /// Finalize the data in this block on collect.
-        NO_SCAN     = 0b0000_0010, /// Do not scan through this block on collect.
-        NO_MOVE     = 0b0000_0100, /// Do not move this memory block on collect.
-        APPENDABLE  = 0b0000_1000, /// This block contains the info to allow appending.
-
-        /**
-        This block is guaranteed to have a pointer to its base while it is
-        alive.  Interior pointers can be safely ignored.  This attribute is
-        useful for eliminating false pointers in very large data structures
-        and is only implemented for data structures at least a page in size.
-        */
-        NO_INTERIOR = 0b0001_0000,
-    }
-
-
-    /**
-     * Contains aggregate information about a block of managed memory.  The
-     * purpose of this struct is to support a more efficient query style in
-     * instances where detailed information is needed.
-     *
-     * base = A pointer to the base of the block in question.
-     * size = The size of the block, calculated from base.
-     * attr = Attribute bits set on the memory block.
-     */
-    alias BlkInfo_ BlkInfo;
+    alias BlockInfo BlkInfo; /// Deprecated. Please use $(D BlockInfo) instead.
+    alias BlockAttr BlkAttr; /// Deprecated. Please use $(D BlockAttr) instead.
 
 
     /**
@@ -324,13 +337,13 @@ struct GC
      *  ba = A bitmask of the attributes to set on this block.
      *
      * Returns:
-     *  Information regarding the allocated memory block or BlkInfo.init on
+     *  Information regarding the allocated memory block or BlockInfo.init on
      *  error.
      *
      * Throws:
      *  OutOfMemoryError on allocation failure.
      */
-    static BlkInfo qalloc( size_t sz, uint ba = 0 ) pure nothrow
+    static BlockInfo qalloc( size_t sz, uint ba = 0 ) pure nothrow
     {
         return gc_qalloc( sz, ba );
     }
@@ -511,7 +524,7 @@ struct GC
      * Returns aggregate information about the memory block containing p.  If p
      * references memory not originally allocated by this garbage collector, if
      * p is null, or if the garbage collector does not support this operation,
-     * BlkInfo.init will be returned.  Typically, support for this operation
+     * BlockInfo.init will be returned.  Typically, support for this operation
      * is dependent on support for addrOf.
      *
      * Params:
@@ -519,17 +532,17 @@ struct GC
      *      null.
      *
      * Returns:
-     *  Information regarding the memory block referenced by p or BlkInfo.init
+     *  Information regarding the memory block referenced by p or BlockInfo.init
      *  on error.
      */
-    static BlkInfo query( in void* p ) nothrow
+    static BlockInfo query( in void* p ) nothrow
     {
         return gc_query(cast(void*)p);
     }
 
 
     /// ditto
-    static BlkInfo query(void* p) pure nothrow
+    static BlockInfo query(void* p) pure nothrow
     {
         return gc_query( p );
     }
@@ -590,5 +603,65 @@ struct GC
     static void removeRange( in void* p ) nothrow /* FIXME pure */
     {
         gc_removeRange( p );
+    }
+
+
+    /**
+     * Gets a value indicating whether collection of garbage collector
+     * statistics is enabled.
+     *
+     * Returns:
+     *  true if collection of statistics is enabled; otherwise, false.
+     */
+    @property static bool collectStatistics() nothrow /* FIXME pure */
+    {
+        return gc_getCollectStats();
+    }
+
+
+    /**
+     * Enables/disables collection of garbage collector statistics.
+     *
+     * Params:
+     *  b = Whether to collect statistics.
+     */
+    @property static bool collectStatistics(bool b) nothrow /* FIXME pure */
+    {
+        gc_setCollectStats(b);
+        return b;
+    }
+
+
+    /**
+     * Returns statistics from the garbage collector.
+     *
+     * The statistics returned are only a snapshot of the current garbage
+     * collector state. They don't necessarily reflect the immediate state of
+     * the garbage collector. As such, these statistics are mostly useful
+     * for profiling purposes.
+     *
+     * If the GC implementation does not support a particular statistic, that
+     * statistic is guaranteed to always be size_t.max.
+     *
+     * Returns:
+     *  A snapshot of the garbage collector's current statistics.
+     */
+    static GCStats statistics() nothrow /* FIXME pure */
+    {
+        return gc_stats();
+    }
+
+
+    /**
+     * Resets any collected statistics to size_t.min. Note that unsupported
+     * statistics will still be set to size_t.max.
+     *
+     * Note that some statistics represent the actual state of the garbage
+     * collector (in the sense that they reflect internal data structures).
+     * These will not be reset.
+     */
+    static void resetStatistics() nothrow /* FIXME pure */
+    {
+        gc_resetStats();
     }
 }
