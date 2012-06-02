@@ -204,13 +204,18 @@ struct DbgHelp
 
             wchar[MAX_PATH] windir = void, path = void;
             size_t len = GetEnvironmentVariableW("windir", windir.ptr, windir.length);
-            GetModuleFileNameW(sm_hndl, path.ptr, path.length);
-            if(path[0 .. len] != windir[0 .. len] || path[len + 1 .. len + 9] != "system32")
+            if(!len || len >= windir.length)
+                return; // GetEnvironmentVariableW failed
+            size_t pathLen = GetModuleFileNameW(sm_hndl, path.ptr, path.length);
+            if(!pathLen) return; // GetModuleFileNameW failed
+            if(pathLen != len/*%windir%*/ + 1 + 8/*system32*/ + 1 + 11/*dbghelp.dll*/ ||
+               path[0 .. len] != windir[0 .. len] || path[len + 1 .. len + 9] != "system32")
                 return; // dbghelp.dll isn't loaded from %windir%\system32 folder
         }
 
         // Windows XP has old dbghelp.dll, so lets try to load it from VS common folder
         auto p = GetEnvironmentStringsW();
+        if(!p) return; // GetEnvironmentStringsW failed
         while(*p)
         {
             size_t len = wcslen(p);
