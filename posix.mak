@@ -27,11 +27,11 @@ IMPDIR=import
 
 MODEL?=32
 
-DFLAGS=-m$(MODEL) -O -release -inline -nofloat -w -d -Isrc -Iimport -property
-UDFLAGS=-m$(MODEL) -O -release -nofloat -w -d -Isrc -Iimport -property
+DFLAGS=-m$(MODEL) -fPIC -O -release -inline -nofloat -w -d -Isrc -Iimport -property
+UDFLAGS=-m$(MODEL) -fPIC -O -release -nofloat -w -d -Isrc -Iimport -property
 DDOCFLAGS=-m$(MODEL) -c -w -d -o- -Isrc -Iimport
 
-CFLAGS=-m$(MODEL) -O
+CFLAGS=-m$(MODEL) -fPIC -O
 
 OBJDIR=obj/$(MODEL)
 DRUNTIME_BASE=druntime-$(OS)$(MODEL)
