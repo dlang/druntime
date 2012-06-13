@@ -670,7 +670,7 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
         version(X86_64) va_start(q, __va_argsave); else va_start(q, length);
 
         result = new BB();
-        result.keyti = keyti;
+        result.keyti = cast()keyti;
         size_t i;
 
         for (i = 0; i < prime_list.length - 1; i++)
@@ -693,7 +693,7 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
             q += valuestacksize;
             aaA* e;
 
-            auto key_hash = keyti.getHash(pkey);
+            auto key_hash = (cast()keyti).getHash(pkey);
             //printf("hash = %d\n", key_hash);
             i = key_hash % len;
             auto pe = &result.b[i];
@@ -713,7 +713,7 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
                 }
                 if (key_hash == e.hash)
                 {
-                    auto c = keyti.compare(pkey, e + 1);
+                    auto c = (cast()keyti).compare(pkey, e + 1);
                     if (c == 0)
                         break;
                 }
@@ -745,7 +745,7 @@ BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] val
     else
     {
         result = new BB();
-        result.keyti = keyti;
+        result.keyti = cast()keyti;
 
         size_t i;
         for (i = 0; i < prime_list.length - 1; i++)
@@ -763,7 +763,7 @@ BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] val
             auto pvalue = values.ptr + j * valuesize;
             aaA* e;
 
-            auto key_hash = keyti.getHash(pkey);
+            auto key_hash = (cast()keyti).getHash(pkey);
             //printf("hash = %d\n", key_hash);
             i = key_hash % len;
             auto pe = &result.b[i];
@@ -783,7 +783,7 @@ BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] val
                 }
                 if (key_hash == e.hash)
                 {
-                    auto c = keyti.compare(pkey, e + 1);
+                    auto c = (cast()keyti).compare(pkey, e + 1);
                     if (c == 0)
                         break;
                 }
@@ -829,10 +829,10 @@ int _aaEqual(TypeInfo tiRaw, AA e1, AA e2)
             //  requires changes to std.format in Phobos, fixing object_.d
             //  makes Phobos's unittest fail, so this hack is employed here to
             //  avoid irrelevant changes.
-            static if (is(typeof(&tiConst.base) == TypeInfo*))
-                tiRaw = tiConst.base;
+            static if (is(typeof(&tiConst.base) == const(TypeInfo)*))
+                tiRaw = cast()tiConst.base;
             else
-                tiRaw = tiConst.next;
+                tiRaw = cast()tiConst.next;
         } else
             assert(0);  // ???
     }
@@ -858,7 +858,7 @@ int _aaEqual(TypeInfo tiRaw, AA e1, AA e2)
 
             // We have key/value for e1. See if they exist in e2
 
-            auto key_hash = keyti.getHash(pkey);
+            auto key_hash = (cast()keyti).getHash(pkey);
             //printf("hash = %d\n", key_hash);
             const i = key_hash % len2;
             auto f = e2.a.b[i];
@@ -870,12 +870,12 @@ int _aaEqual(TypeInfo tiRaw, AA e1, AA e2)
                 if (key_hash == f.hash)
                 {
                     //printf("hash equals\n");
-                    auto c = keyti.compare(pkey, f + 1);
+                    auto c = (cast()keyti).compare(pkey, f + 1);
                     if (c == 0)
                     {   // Found key in e2. Compare values
                         //printf("key equals\n");
                         auto pvalue2 = cast(void *)(f + 1) + keysize;
-                        if (valueti.equals(pvalue, pvalue2))
+                        if ((cast()valueti).equals(pvalue, pvalue2))
                         {
                             //printf("value equals\n");
                             break;

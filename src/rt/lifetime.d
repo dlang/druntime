@@ -565,7 +565,7 @@ extern(C) void _d_arrayshrinkfit(TypeInfo ti, void[] arr)
     }
 }
 
-void __doPostblit(void *ptr, size_t len, TypeInfo ti)
+void __doPostblit(void *ptr, size_t len, const TypeInfo ti)
 {
     // optimize out any type info that does not need postblit.
     //if((&ti.postblit).funcptr is &TypeInfo.postblit) // compiler doesn't like this
@@ -594,7 +594,7 @@ void __doPostblit(void *ptr, size_t len, TypeInfo ti)
         immutable size = ti.tsize();
         const eptr = ptr + len;
         for(;ptr < eptr;ptr += size)
-            ti.postblit(ptr);
+            (cast()ti).postblit(ptr);
     }
 }
 
@@ -761,7 +761,7 @@ Loverflow:
  * ti is the type of the resulting array, or pointer to element.
  * (For when the array is initialized to 0)
  */
-extern (C) void[] _d_newarrayT(TypeInfo ti, size_t length)
+extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length)
 {
     void[] result;
     auto size = ti.next.tsize();                // array element size
@@ -820,7 +820,7 @@ Loverflow:
 /**
  * For when the array has a non-zero initializer.
  */
-extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length)
+extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length)
 {
     void[] result;
     auto size = ti.next.tsize();                // array element size
@@ -899,14 +899,14 @@ Loverflow:
 /**
  *
  */
-void[] _d_newarrayOpT(alias op)(TypeInfo ti, size_t ndims, va_list q)
+void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t ndims, va_list q)
 {
     debug(PRINTF) printf("_d_newarrayOpT(ndims = %d)\n", ndims);
     if (ndims == 0)
         return null;
     else
     {
-        void[] foo(TypeInfo ti, va_list ap, size_t ndims)
+        void[] foo(const TypeInfo ti, va_list ap, size_t ndims)
         {
             size_t dim;
             va_arg(ap, dim);
@@ -966,7 +966,7 @@ void[] _d_newarrayOpT(alias op)(TypeInfo ti, size_t ndims, va_list q)
 /**
  *
  */
-extern (C) void[] _d_newarraymT(TypeInfo ti, size_t ndims, ...)
+extern (C) void[] _d_newarraymT(const TypeInfo ti, size_t ndims, ...)
 {
     debug(PRINTF) printf("_d_newarraymT(ndims = %d)\n", ndims);
 
@@ -989,7 +989,7 @@ extern (C) void[] _d_newarraymT(TypeInfo ti, size_t ndims, ...)
 /**
  *
  */
-extern (C) void[] _d_newarraymiT(TypeInfo ti, size_t ndims, ...)
+extern (C) void[] _d_newarraymiT(const TypeInfo ti, size_t ndims, ...)
 {
     debug(PRINTF) printf("_d_newarraymiT(ndims = %d)\n", ndims);
 
@@ -1215,7 +1215,7 @@ extern (C) void rt_finalize(void* p, bool det = true)
         if (*pc)
         {
             ClassInfo c = **pc;
-            byte[]    w = c.init;
+            const(byte)[]    w = c.init;
 
             try
             {
@@ -1228,7 +1228,7 @@ extern (C) void rt_finalize(void* p, bool det = true)
                             fp_t fp = cast(fp_t)c.destructor;
                             (*fp)(cast(Object)p); // call destructor
                         }
-                        c = c.base;
+                        c = cast()c.base;
                     } while (c);
                 }
                 if ((cast(void**)p)[1]) // if monitor is not null
@@ -1273,7 +1273,7 @@ extern (C) void rt_finalize_gc(void* p)
                         fp_t fp = cast(fp_t)c.destructor;
                         (*fp)(cast(Object)p); // call destructor
                     }
-                    c = c.base;
+                    c = cast()c.base;
                 } while (c);
             }
             if ((cast(void**)p)[1]) // if monitor is not null

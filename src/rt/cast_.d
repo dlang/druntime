@@ -106,19 +106,19 @@ int _d_isbaseof2(ClassInfo oc, ClassInfo c, ref size_t offset)
         foreach (i; 0..oc.interfaces.length)
         {
             auto ic = oc.interfaces[i].classinfo;
-            if (_d_isbaseof2(ic, c, offset))
+            if (_d_isbaseof2(cast()ic, c, offset))
             {   offset = oc.interfaces[i].offset;
                 return 1;
             }
         }
         if (oc.name == c.name)
             return 1;
-        oc = oc.base;
+        oc = cast()oc.base;
     } while (oc);
     return 0;
 }
 
-int _d_isbaseof(ClassInfo oc, ClassInfo c)
+int _d_isbaseof(ClassInfo oc,  ClassInfo c)
 {
     if (oc is c)
         return 1;
@@ -129,12 +129,12 @@ int _d_isbaseof(ClassInfo oc, ClassInfo c)
         foreach (i; 0..oc.interfaces.length)
         {
             auto ic = oc.interfaces[i].classinfo;
-            if (ic is c || _d_isbaseof(ic, c))
+            if (ic is c || _d_isbaseof(cast()ic, c))
                 return 1;
         }
         if (oc.name == c.name)
             return 1;
-        oc = oc.base;
+        oc = cast()oc.base;
     } while (oc);
     return 0;
 }
