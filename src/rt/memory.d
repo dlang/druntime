@@ -23,7 +23,7 @@ private
 
     version (FreeBSD)
     {
-        extern (C) int sysctlbyname(const(char)*, void*, size_t*, void*, size_t);
+          extern (C) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
     }
     else version (linux)
     {
@@ -98,15 +98,15 @@ extern (C) void* rt_stackBottom()
     }
     else version (FreeBSD)
     {
-        static void* kern_usrstack;
+        pthread_attr_t attr;
+        void* addr;
+        size_t size;
 
-        if (kern_usrstack == kern_usrstack.init)
-        {
-            size_t len = kern_usrstack.sizeof;
-            sysctlbyname("kern.usrstack", &kern_usrstack, &len, null, 0);
-        }
+        pthread_attr_get_np(pthread_self(), &attr);
+        pthread_attr_getstack(&attr, &addr, &size);
+        pthread_attr_destroy(&attr);
 
-        return kern_usrstack;
+        return addr + size;
     }
     else version (Solaris)
     {
