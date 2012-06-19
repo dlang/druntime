@@ -1,12 +1,12 @@
 /**
  * This module exposes functionality for inspecting and manipulating memory.
  *
- * Copyright: Copyright Digital Mars 2000 - 2010.
+ * Copyright: Copyright Digital Mars 2000 - 2012.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly, Alex Rønne Petersen
  */
 
-/*          Copyright Digital Mars 2000 - 2010.
+/*          Copyright Digital Mars 2000 - 2012.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -23,26 +23,19 @@ private
 
     version (FreeBSD)
     {
-          extern (C) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
+        import core.sys.posix.pthread;
+
+        extern (C) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
     }
-    else version (linux)
+    version (linux)
     {
         import core.sys.posix.pthread;
 
         extern (C) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
     }
-    else version (OSX)
+    version (OSX)
     {
         import core.sys.osx.pthread;
-    }
-    version (Solaris)
-    {
-        version = SimpleLibcStackEnd;
-
-        version( SimpleLibcStackEnd )
-        {
-            extern (C) extern __gshared void* __libc_stack_end;
-        }
     }
 
     extern (C) void gc_addRange(void* p, size_t sz);
@@ -107,12 +100,6 @@ extern (C) void* rt_stackBottom()
         pthread_attr_destroy(&attr);
 
         return addr + size;
-    }
-    else version (Solaris)
-    {
-        // FIXME: This is horribly broken. It won't return the
-        //        correct stack address for non-main threads.
-        return __libc_stack_end;
     }
     else
     {
