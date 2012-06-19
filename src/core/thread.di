@@ -637,7 +637,10 @@ extern(C) void thread_processGCMarks( scope IsMarkedDg isMarked );
 
 
 /**
+ * Returns the stack bottom for the current thread.
  *
+ * Returns:
+ *  The stack bottom for the current thread.
  */
 extern (C) void* thread_stackBottom();
 
