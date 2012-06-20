@@ -239,12 +239,6 @@ public:
     /// Is this an Intel 64 or AMD 64 CPU?
     bool isX86_64()         {return (amdfeatures&AMD64_BIT)!=0;}
 
-    /// Is this an IA64 (Itanium) processor?
-    bool isItanium()        { return (features&IA64_BIT)!=0; }
-    // TODO: I think it's a mistake to have this here. This can already
-    //       be detected via version identifiers. For Itanium in x86
-    //       mode, a compiler should simply define both X86 and IA64.
-
     /// Is hyperthreading supported?
     bool hyperThreading()   { return maxThreads>maxCores; }
     /// Returns number of threads per CPU
