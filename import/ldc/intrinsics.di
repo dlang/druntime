@@ -19,6 +19,13 @@ else
     static assert(false, "This module is only valid for LDC");
 }
 
+// All intrinsics are nothrow. The codegen intrinsics are not categorized any
+// further (they probably could), the rest is pure (aborting is fine by
+// definition; memcpy and friends can be viewed as weakly pure, just as e.g.
+// strlen() is marked weakly pure as well) and mostly @safe.
+nothrow:
+
+
 //
 // CODE GENERATOR INTRINSICS
 //
@@ -96,6 +103,8 @@ pragma(intrinsic, "llvm.readcyclecounter")
 //
 
 
+pure:
+
 // The 'llvm.memcpy.*' intrinsics copy a block of memory from the source
 // location to the destination location.
 // Note that, unlike the standard libc function, the llvm.memcpy.* intrinsics do
@@ -149,6 +158,8 @@ else
 }
 
 
+@safe:
+
 // The 'llvm.sqrt' intrinsics return the sqrt of the specified operand,
 // returning the same value as the libm 'sqrt' functions would. Unlike sqrt in
 // libm, however, llvm.sqrt has undefined behavior for negative numbers other
@@ -156,19 +167,19 @@ else
 // worry about errno being set). llvm.sqrt(-0.0) is defined to return -0.0 like
 // IEEE sqrt.
 
-@safe nothrow pure pragma(intrinsic, "llvm.sqrt.f#")
-     T llvm_sqrt(T)(T val);
+pragma(intrinsic, "llvm.sqrt.f#")
+    T llvm_sqrt(T)(T val);
 
 
 // The 'llvm.sin.*' intrinsics return the sine of the operand.
 
-@safe nothrow pure pragma(intrinsic, "llvm.sin.f#")
+pragma(intrinsic, "llvm.sin.f#")
     T llvm_sin(T)(T val);
 
 
 // The 'llvm.cos.*' intrinsics return the cosine of the operand.
 
-@safe nothrow pure pragma(intrinsic, "llvm.cos.f#")
+pragma(intrinsic, "llvm.cos.f#")
     T llvm_cos(T)(T val);
 
 
@@ -263,67 +274,67 @@ pragma(fence)
 
 // This intrinsic loads a value stored in memory at ptr.
 pragma(atomic_load)
-    T llvm_atomic_load(T)(T *ptr, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load(T)(in shared T *ptr, AtomicOrdering ordering = DefaultOrdering);
 
 // This intrinsic stores a value in val in the memory at ptr.
 pragma(atomic_store)
-    void llvm_atomic_store(T)(T val, T *ptr, AtomicOrdering ordering = DefaultOrdering);
+    void llvm_atomic_store(T)(T val, in shared T *ptr, AtomicOrdering ordering = DefaultOrdering);
 
 
 // This loads a value in memory and compares it to a given value. If they are
 // equal, it stores a new value into the memory.
 
 pragma(atomic_cmp_xchg)
-    T llvm_atomic_cmp_swap(T)(shared T* ptr, T cmp, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_cmp_swap(T)(in shared T* ptr, T cmp, T val, AtomicOrdering ordering = DefaultOrdering);
 
 
 // This intrinsic loads the value stored in memory at ptr and yields the value
 // from memory. It then stores the value in val in the memory at ptr.
 
 pragma(atomic_rmw, "xchg")
-    T llvm_atomic_swap(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_swap(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // This intrinsic adds delta to the value stored in memory at ptr. It yields
 // the original value at ptr.
 
 pragma(atomic_rmw, "add")
-    T llvm_atomic_load_add(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_add(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // This intrinsic subtracts delta to the value stored in memory at ptr. It
 // yields the original value at ptr.
 
 pragma(atomic_rmw, "sub")
-    T llvm_atomic_load_sub(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_sub(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // These intrinsics bitwise the operation (and, nand, or, xor) delta to the
 // value stored in memory at ptr. It yields the original value at ptr.
 
 pragma(atomic_rmw, "and")
-    T llvm_atomic_load_and(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_and(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 pragma(atomic_rmw, "nand")
-    T llvm_atomic_load_nand(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_nand(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 pragma(atomic_rmw, "or")
-    T llvm_atomic_load_or(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_or(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 pragma(atomic_rmw, "xor")
-    T llvm_atomic_load_xor(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_xor(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // These intrinsics takes the signed or unsigned minimum or maximum of delta
 // and the value stored in memory at ptr. It yields the original value at ptr.
 
 pragma(atomic_rmw, "max")
-    T llvm_atomic_load_max(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_max(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 pragma(atomic_rmw, "min")
-    T llvm_atomic_load_min(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_min(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 pragma(atomic_rmw, "umax")
-    T llvm_atomic_load_umax(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_umax(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 pragma(atomic_rmw, "umin")
-    T llvm_atomic_load_umin(T)(T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_load_umin(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 
 //
