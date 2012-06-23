@@ -278,21 +278,21 @@ pragma(atomic_load)
 
 // This intrinsic stores a value in val in the memory at ptr.
 pragma(atomic_store)
-    void llvm_atomic_store(T)(T val, in shared T *ptr, AtomicOrdering ordering = DefaultOrdering);
+    void llvm_atomic_store(T)(T val, shared T *ptr, AtomicOrdering ordering = DefaultOrdering);
 
 
 // This loads a value in memory and compares it to a given value. If they are
 // equal, it stores a new value into the memory.
 
 pragma(atomic_cmp_xchg)
-    T llvm_atomic_cmp_swap(T)(in shared T* ptr, T cmp, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_cmp_swap(T)(shared T* ptr, T cmp, T val, AtomicOrdering ordering = DefaultOrdering);
 
 
 // This intrinsic loads the value stored in memory at ptr and yields the value
 // from memory. It then stores the value in val in the memory at ptr.
 
 pragma(atomic_rmw, "xchg")
-    T llvm_atomic_swap(T)(in shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
+    T llvm_atomic_swap(T)(shared T* ptr, T val, AtomicOrdering ordering = DefaultOrdering);
 
 // This intrinsic adds delta to the value stored in memory at ptr. It yields
 // the original value at ptr.
