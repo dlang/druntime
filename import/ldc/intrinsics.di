@@ -342,7 +342,7 @@ pragma(atomic_rmw, "umin")
 //
 
 struct OverflowRet(T) {
-    static assert(is(T : int), T.stringof ~ " is not an integer type!");
+    static assert(is(T : long), T.stringof ~ " is not an integer type!");
     T result;
     bool overflow;
 }
