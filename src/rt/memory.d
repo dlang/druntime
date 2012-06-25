@@ -1,12 +1,12 @@
 /**
  * This module exposes functionality for inspecting and manipulating memory.
  *
- * Copyright: Copyright Digital Mars 2000 - 2010.
+ * Copyright: Copyright Digital Mars 2000 - 2012.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
- * Authors:   Walter Bright, Sean Kelly
+ * Authors:   Walter Bright, Sean Kelly, Alex Rønne Petersen
  */
 
-/*          Copyright Digital Mars 2000 - 2010.
+/*          Copyright Digital Mars 2000 - 2012.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -16,38 +16,30 @@ module rt.memory;
 
 private
 {
-    version( GNU )
+    version (GNU)
     {
         import gcc.builtins;
     }
-    version( linux )
-    {
-        version = SimpleLibcStackEnd;
 
-        version( SimpleLibcStackEnd )
-        {
-            extern (C) extern __gshared void* __libc_stack_end;
-        }
-    }
-    version( FreeBSD )
+    version (FreeBSD)
     {
-        extern (C) int sysctlbyname( const(char)*, void*, size_t*, void*, size_t );
-    }
-    version( Solaris )
-    {
-        version = SimpleLibcStackEnd;
+        import core.sys.posix.pthread;
 
-        version( SimpleLibcStackEnd )
-        {
-            extern (C) extern __gshared void* __libc_stack_end;
-        }
+        extern (C) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
     }
-    version( OSX )
+    version (linux)
+    {
+        import core.sys.posix.pthread;
+
+        extern (C) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
+    }
+    version (OSX)
     {
         import core.sys.osx.pthread;
     }
-    extern (C) void gc_addRange( void* p, size_t sz );
-    extern (C) void gc_removeRange( void* p );
+
+    extern (C) void gc_addRange(void* p, size_t sz);
+    extern (C) void gc_removeRange(void* p);
 }
 
 
@@ -56,9 +48,9 @@ private
  */
 extern (C) void* rt_stackBottom()
 {
-    version( Windows )
+    version (Windows)
     {
-        version( D_InlineAsm_X86 )
+        version (D_InlineAsm_X86)
         {
             asm
             {
@@ -67,7 +59,7 @@ extern (C) void* rt_stackBottom()
                 ret;
             }
         }
-        else version( D_InlineAsm_X86_64 )
+        else version (D_InlineAsm_X86_64)
         {
             asm
             {
@@ -78,51 +70,40 @@ extern (C) void* rt_stackBottom()
         }
         else
         {
-            static assert( false, "Platform not supported." );
+            static assert(false, "Platform not supported.");
         }
     }
-    else version( linux )
+    else version (linux)
     {
-        version( SimpleLibcStackEnd )
-        {
-            return __libc_stack_end;
-        }
-        else
-        {
-            // See discussion: http://autopackage.org/forums/viewtopic.php?t=22
-            static void** libc_stack_end;
+        pthread_attr_t attr;
+        void* addr;
+        size_t size;
 
-            if( libc_stack_end == libc_stack_end.init )
-            {
-                void* handle = dlopen( null, RTLD_NOW );
-                libc_stack_end = cast(void**) dlsym( handle, "__libc_stack_end" );
-                dlclose( handle );
-            }
-            return *libc_stack_end;
-        }
+        pthread_getattr_np(pthread_self(), &attr);
+        pthread_attr_getstack(&attr, &addr, &size);
+        pthread_attr_destroy(&attr);
+
+        return addr + size;
     }
-    else version( OSX )
+    else version (OSX)
     {
         return pthread_get_stackaddr_np(pthread_self());
     }
-    else version( FreeBSD )
+    else version (FreeBSD)
     {
-        static void* kern_usrstack;
+        pthread_attr_t attr;
+        void* addr;
+        size_t size;
 
-        if( kern_usrstack == kern_usrstack.init )
-        {
-            size_t len = kern_usrstack.sizeof;
-            sysctlbyname( "kern.usrstack", &kern_usrstack, &len, null, 0 );
-        }
-        return kern_usrstack;
-    }
-    else version( Solaris )
-    {
-        return __libc_stack_end;
+        pthread_attr_get_np(pthread_self(), &attr);
+        pthread_attr_getstack(&attr, &addr, &size);
+        pthread_attr_destroy(&attr);
+
+        return addr + size;
     }
     else
     {
-        static assert( false, "Operating system not supported." );
+        static assert(false, "Operating system not supported.");
     }
 }
 
@@ -132,7 +113,7 @@ extern (C) void* rt_stackBottom()
  */
 extern (C) void* rt_stackTop()
 {
-    version( D_InlineAsm_X86 )
+    version (D_InlineAsm_X86)
     {
         asm
         {
@@ -141,7 +122,7 @@ extern (C) void* rt_stackTop()
             ret;
         }
     }
-    else version( D_InlineAsm_X86_64 )
+    else version (D_InlineAsm_X86_64)
     {
         asm
         {
@@ -150,13 +131,13 @@ extern (C) void* rt_stackTop()
             ret;
         }
     }
-    else version( GNU )
+    else version (GNU)
     {
         return __builtin_frame_address(0);
     }
     else
     {
-        static assert( false, "Architecture not supported." );
+        static assert(false, "Architecture not supported.");
     }
 }
 

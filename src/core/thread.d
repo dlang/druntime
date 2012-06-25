@@ -315,40 +315,7 @@ else version( Posix )
             assert( obj );
 
             assert( obj.m_curr is &obj.m_main );
-            // NOTE: For some reason this does not always work for threads.
-            //obj.m_main.bstack = getStackBottom();
-            version( D_InlineAsm_X86 )
-            {
-                static void* getBasePtr()
-                {
-                    asm
-                    {
-                        naked;
-                        mov EAX, EBP;
-                        ret;
-                    }
-                }
-
-                obj.m_main.bstack = getBasePtr();
-            }
-            else version( D_InlineAsm_X86_64 )
-            {
-                static void* getBasePtr()
-                {
-                    asm
-                    {
-                        naked;
-                        mov RAX, RBP;
-                        ret;
-                    }
-                }
-
-                obj.m_main.bstack = getBasePtr();
-            }
-            else version( StackGrowsDown )
-                obj.m_main.bstack = &obj + 1;
-            else
-                obj.m_main.bstack = &obj;
+            obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
 
             version (OSX)
@@ -2699,7 +2666,10 @@ extern(C) void thread_processGCMarks(scope rt.tlsgc.IsMarkedDg dg)
 
 
 /**
+ * Returns the stack bottom for the current thread.
  *
+ * Returns:
+ *  The stack bottom for the current thread.
  */
 extern (C) void* thread_stackBottom()
 {
