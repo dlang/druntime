@@ -7,11 +7,11 @@ struct __asmtuple_t(T...)
 
 pragma(llvm_inline_asm)
 {
-    void __asm( )(char[] asmcode, char[] constraints, ...);
-    T    __asm(T)(char[] asmcode, char[] constraints, ...);
+    void __asm()(const(char)[] asmcode, const(char)[] constraints, ...);
+    T __asm(T)(const(char)[] asmcode, const(char)[] constraints, ...);
 
     template __asmtuple(T...)
     {
-        __asmtuple_t!(T) __asmtuple(char[] asmcode, char[] constraints, ...);
+        __asmtuple_t!(T) __asmtuple(const(char)[] asmcode, const(char)[] constraints, ...);
     }
 }
