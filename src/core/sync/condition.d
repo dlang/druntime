@@ -182,7 +182,7 @@ class Condition
     {
         version( Windows )
         {
-            auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
+            auto maxWaitMillis = msecs( uint.max - 1 );
 
             while( val > maxWaitMillis )
             {
@@ -238,7 +238,7 @@ class Condition
     }
     body
     {
-        return wait( dur!"hnsecs"( period ) );
+        return wait( hnsecs( period ) );
     }
 
 
@@ -594,8 +594,8 @@ version( unittest )
             synchronized( mutex )
             {
                 waiting    = true;
-                alertedOne = condReady.wait( dur!"seconds"(1) );
-                alertedTwo = condReady.wait( dur!"seconds"(1) );
+                alertedOne = condReady.wait( seconds(1) );
+                alertedTwo = condReady.wait( seconds(1) );
             }
         }
 

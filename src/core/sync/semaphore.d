@@ -188,7 +188,7 @@ class Semaphore
     {
         version( Windows )
         {
-            auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
+            auto maxWaitMillis = msecs( uint.max - 1 );
 
             while( val > maxWaitMillis )
             {
@@ -289,7 +289,7 @@ class Semaphore
     }
     body
     {
-        return wait( dur!("hnsecs")( period ) );
+        return wait( hnsecs( period ) );
     }
 
 
@@ -517,8 +517,8 @@ version( unittest )
                 }
                 Thread.yield();
             }
-            alertedOne = semReady.wait( dur!"msecs"(100) );
-            alertedTwo = semReady.wait( dur!"msecs"(100) );
+            alertedOne = semReady.wait( msecs(100) );
+            alertedTwo = semReady.wait( msecs(100) );
         }
 
         auto thread = new Thread( &waiter );
