@@ -2689,7 +2689,7 @@ body
         atomicStore(*cast(shared)&shouldSuspend, false);
 
         // Notify all synchronously suspended threads that they can continue.
-        scope (exit) Thread.suspendLock.unlock();
+        Thread.suspendLock.unlock();
     }
 }
 
