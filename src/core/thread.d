@@ -1353,6 +1353,8 @@ private:
     }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
+    bool                m_isCooperative;
+    bool                m_isReadyToSuspend;
     Throwable           m_unhandled;
 
 
@@ -1524,6 +1526,27 @@ private:
             m.__ctor();
             return m;
         }
+    }
+
+    //
+    // Used by the suspend machinery to synchronously suspend cooperative threads.
+    //
+    @property static Mutex suspendLock()
+    {
+        __gshared Mutex m = null;
+
+        if (m is null)
+        {
+            auto ci = Mutex.classinfo;
+            auto p = malloc(ci.init.length);
+
+            (cast(byte*)p)[0 .. ci.init.length] = ci.init[];
+
+            m = cast(Mutex)p;
+            m.__ctor();
+        }
+
+        return m;
     }
 
 
@@ -1735,11 +1758,11 @@ else
     static assert((void*).sizeof == 4); // 32-bit
 
     version (Windows)
-        static assert(__traits(classInstanceSize, Thread) == 128);
+        static assert(__traits(classInstanceSize, Thread) == 132);
     else version (OSX)
-        static assert(__traits(classInstanceSize, Thread) == 128);
+        static assert(__traits(classInstanceSize, Thread) == 132);
     else version (Posix)
-        static assert(__traits(classInstanceSize, Thread) ==  92);
+        static assert(__traits(classInstanceSize, Thread) ==  96);
     else
         static assert(0, "Platform not supported.");
 }
@@ -2224,6 +2247,7 @@ body
 
 // Used for suspendAll/resumeAll below.
 private __gshared uint suspendDepth = 0;
+private __gshared bool shouldSuspend;
 
 /**
  * Suspend the specified thread and load stack and register information for
@@ -2433,6 +2457,22 @@ extern (C) void thread_suspendAll()
         if( ++suspendDepth > 1 )
             return;
 
+        // Acquire the suspension lock such that all cooperative threads that
+        // wish to suspend synchronously can do so. See the code in
+        // thread_cooperativeSuspend. This scheme can actually fail if
+        // the cooperative suspension API is abused. For example, if a thread
+        // erroneously manages to acquire this lock through a call to
+        // thread_cooperativeSuspend while no stop-the-world sequence is
+        // in progress, we'd most likely have a deadlock on our hands here.
+        // But in any case, this is a violation of the API, so we don't care.
+        Thread.suspendLock.lock();
+
+        // Atomically signal that we're stopping the world. This value is used
+        // in thread_shouldSuspend. This has to be done after the lock so that
+        // we avoid the deadlock condition described above (in the normal,
+        // no-abuse case).
+        atomicStore(*cast(shared)&shouldSuspend, true);
+
         // NOTE: I'd really prefer not to check isRunning within this loop but
         //       not doing so could be problematic if threads are terminated
         //       abnormally and a new thread is created with the same thread
@@ -2446,6 +2486,40 @@ extern (C) void thread_suspendAll()
                 suspend( t );
             else
                 Thread.remove( t );
+        }
+
+        // NOTE: It's important that we suspend cooperative threads before
+        //       uncooperative threads. If a cooperative thread and an
+        //       uncooperative thread are both acquiring/releasing the same
+        //       lock, for example, suspending the uncooperative thread first
+        //       could result in the cooperative thread never signaling
+        //       readiness for suspension because the uncooperative thread
+        //       could be holding the lock when the world stop was initiated.
+        // NOTE: We assume that cooperative threads are not inside critical
+        //       regions when they signal readiness for suspension. This is
+        //       reasonable since cooperative suspension can involve a lock,
+        //       which would break horribly with critical regions anyway.
+        for (;;)
+        {
+            uint readyCount;
+
+            // NOTE: The race against m_isCooperative is acceptable, since in the
+            //       worst case, it just results in uncooperatively suspending
+            //       a thread which was about to turn cooperative. This is not
+            //       problematic since it cannot result in a deadlock, and is
+            //       completely transparent to the thread in question.
+            for (auto t = Thread.sm_tbeg; t; t = t.next)
+                if (atomicLoad(*cast(shared)&t.m_isCooperative) && !atomicLoad(*cast(shared)&t.m_isReadyToSuspend))
+                    readyCount += 10;
+
+            // If readyCount == 0, then either no cooperative threads were picked up,
+            // or all cooperative threads are ready to be suspended. If, on the other
+            // hand, readyCount != 0, cooperative threads are still busy, and we have
+            // to continue waiting for them.
+            if (readyCount)
+                Thread.sleep(dur!"usecs"(readyCount));
+            else
+                break;
         }
 
         // The world is stopped. We now make sure that all threads are outside
@@ -2473,7 +2547,7 @@ extern (C) void thread_suspendAll()
             // critical regions in the first place, and we can just break. Otherwise,
             // we sleep for a bit to give the threads a chance to get to safe points.
             if (unsafeCount)
-                Thread.sleep(dur!"usecs"(unsafeCount)); // This heuristic could probably use some tuning.
+                Thread.sleep(dur!"usecs"(unsafeCount));
             else
                 break;
 
@@ -2600,10 +2674,22 @@ body
 
         for( Thread t = Thread.sm_tbeg; t; t = t.next )
         {
+            // For cooperative threads, reset their state to busy.
+            atomicStore(*cast(shared)&t.m_isReadyToSuspend, false);
+
             // NOTE: We do not need to care about critical regions at all
             //       here. thread_suspendAll takes care of everything.
             resume( t );
         }
+
+        // Atomically signal that we're waking up all threads again. It's
+        // somewhat important that we do this before releasing the suspend
+        // lock, since otherwise cooperative threads could end up thinking
+        // that they should still suspend.
+        atomicStore(*cast(shared)&shouldSuspend, false);
+
+        // Notify all synchronously suspended threads that they can continue.
+        scope (exit) Thread.suspendLock.unlock();
     }
 }
 
@@ -2797,6 +2883,73 @@ unittest
     }
 
     thr.join();
+}
+
+extern (C) void thread_setCooperative(bool value)
+in
+{
+    assert(Thread.getThis());
+}
+body
+{
+    atomicStore(*cast(shared)&Thread.getThis().m_isCooperative, value);
+}
+
+extern (C) bool thread_isCooperative()
+in
+{
+    assert(Thread.getThis());
+}
+body
+{
+    return atomicLoad(*cast(shared)&Thread.getThis().m_isCooperative);
+}
+
+extern (C) bool thread_shouldSuspend()
+in
+{
+    assert(thread_isCooperative()); // Implies a Thread.getThis() check.
+}
+body
+{
+    return atomicLoad(*cast(shared)&shouldSuspend);
+}
+
+extern (C) void thread_cooperativeSuspend()
+in
+{
+    assert(thread_isCooperative()); // Implies a Thread.getThis() check.
+    assert(thread_shouldSuspend());
+    assert(!thread_inCriticalRegion());
+}
+body
+{
+    thread_cooperativeSignal();
+
+    // NOTE: This lock is acquired by thread_suspendAll when the world is
+    //       going to be stopped. It is released once the suspend depth
+    //       reaches zero. Thus, when a thread attempts to acquire this lock,
+    //       it will have to wait until the world is resumed, which results
+    //       in the desired behavior as described in the docs in thread.di.
+    // NOTE: Lock contention isn't really an issue here. Thread.slock is
+    //       bound to cause contention long before this one, and frankly, I
+    //       doubt it will ever be an issue in either case.
+    Thread.suspendLock.lock();
+
+    scope (exit)
+        Thread.suspendLock.unlock();
+}
+
+extern (C) void thread_cooperativeSignal()
+in
+{
+    assert(thread_isCooperative()); // Implies a Thread.getThis() check.
+    assert(thread_shouldSuspend());
+    assert(!thread_inCriticalRegion());
+}
+body
+{
+    atomicStore(*cast(shared)&Thread.getThis().m_isReadyToSuspend, true);
 }
 
 /**

@@ -429,9 +429,9 @@ private:
     {
         static assert((void*).sizeof == 4); // 32-bit
 
-        version (Windows)      enum ThreadSize = 128;
-        else version (OSX)     enum ThreadSize = 128;
-        else version (Posix)   enum ThreadSize =  92;
+        version (Windows)      enum ThreadSize = 132;
+        else version (OSX)     enum ThreadSize = 132;
+        else version (Posix)   enum ThreadSize =  96;
         else static assert(0, "Platform not supported.");
     }
 
@@ -640,6 +640,69 @@ extern (C) void thread_exitCriticalRegion();
  *  The calling thread must be attached to the runtime.
  */
 extern (C) bool thread_inCriticalRegion();
+
+
+/**
+ * Sets whether the current thread is cooperative. That is, it will signal to
+ * the stop-the-world routine when it is ready to be suspended, and the stop-
+ * the-world routine will not suspend it until then.
+ *
+ * $(RED Warning):
+ * Use this feature with care. Switching a thread to cooperative mode and not
+ * correctly respecting thread_shouldSuspend can result in deadlocks when the
+ * garbage collector attempts to run. When using this feature, also make sure
+ * that the thread doesn't take too long to suspend as it can cause contention.
+ *
+ * In:
+ *  The calling thread must be attached to the runtime.
+ */
+extern (C) void thread_setCooperative(bool value);
+
+/**
+ * Gets a value indicating whether the current thread is cooperative as set by
+ * thread_setCooperative.
+ *
+ * In:
+ *  The calling thread must be attached to the runtime.
+ */
+extern (C) bool thread_isCooperative();
+
+/**
+ * Indicates whether the current thread should suspend. When this returns true,
+ * the calling thread should call either of the thread_cooperativeSuspend and
+ * thread_cooperativeSignal functions as soon as possible.
+ *
+ * In:
+ *  The calling thread must be attached to the runtime and must have cooperative
+ *  suspension enabled (as set by thread_setCooperative).
+ */
+extern (C) bool thread_shouldSuspend();
+
+
+/**
+ * Signals to the stop-the-world routine that the current thread is ready to be
+ * suepended. This function blocks until the world has been resumed again.
+ *
+ * In:
+ *  The calling thread must be attached to the runtime and must have cooperative
+ *  suspension enabled (as set by thread_setCooperative). The calling thread
+ *  $(I must not) be in a critical region.
+ */
+extern (C) void thread_cooperativeSuspend();
+
+
+/**
+ * Signals to the stop-the-world routine that the current thread is ready to be
+ * suspended. Unlike thread_cooperativeSuspend, this function does not block.
+ * This merely lets the runtime know that this thread can handle being suspended.
+ *
+ * In:
+ *  The calling thread must be attached to the runtime and must have cooperative
+ *  suspension enabled (as set by thread_setCooperative). The calling thread
+ *  $(I must not) be in a critical region.
+ */
+extern (C) void thread_cooperativeSignal();
+
 
 /**
  * Indicates whether an address has been marked by the GC.
