@@ -429,7 +429,7 @@ private:
     {
         static assert((void*).sizeof == 4); // 32-bit
 
-        version (Windows)      enum ThreadSize = 132;
+        version (Windows)      enum ThreadSize = 128;
         else version (OSX)     enum ThreadSize = 132;
         else version (Posix)   enum ThreadSize =  96;
         else static assert(0, "Platform not supported.");

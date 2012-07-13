@@ -1758,7 +1758,7 @@ else
     static assert((void*).sizeof == 4); // 32-bit
 
     version (Windows)
-        static assert(__traits(classInstanceSize, Thread) == 132);
+        static assert(__traits(classInstanceSize, Thread) == 128);
     else version (OSX)
         static assert(__traits(classInstanceSize, Thread) == 132);
     else version (Posix)
