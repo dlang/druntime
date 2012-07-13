@@ -2473,21 +2473,6 @@ extern (C) void thread_suspendAll()
         // no-abuse case).
         atomicStore(*cast(shared)&shouldSuspend, true);
 
-        // NOTE: I'd really prefer not to check isRunning within this loop but
-        //       not doing so could be problematic if threads are terminated
-        //       abnormally and a new thread is created with the same thread
-        //       address before the next GC run.  This situation might cause
-        //       the same thread to be suspended twice, which would likely
-        //       cause the second suspend to fail, the garbage collection to
-        //       abort, and Bad Things to occur.
-        for( Thread t = Thread.sm_tbeg; t; t = t.next )
-        {
-            if( t.isRunning )
-                suspend( t );
-            else
-                Thread.remove( t );
-        }
-
         // NOTE: It's important that we suspend cooperative threads before
         //       uncooperative threads. If a cooperative thread and an
         //       uncooperative thread are both acquiring/releasing the same
@@ -2520,6 +2505,21 @@ extern (C) void thread_suspendAll()
                 Thread.sleep(dur!"usecs"(readyCount));
             else
                 break;
+        }
+
+        // NOTE: I'd really prefer not to check isRunning within this loop but
+        //       not doing so could be problematic if threads are terminated
+        //       abnormally and a new thread is created with the same thread
+        //       address before the next GC run.  This situation might cause
+        //       the same thread to be suspended twice, which would likely
+        //       cause the second suspend to fail, the garbage collection to
+        //       abort, and Bad Things to occur.
+        for( Thread t = Thread.sm_tbeg; t; t = t.next )
+        {
+            if( t.isRunning )
+                suspend( t );
+            else
+                Thread.remove( t );
         }
 
         // The world is stopped. We now make sure that all threads are outside
