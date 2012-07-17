@@ -78,7 +78,7 @@ class TypeInfo_r : TypeInfo
         *cast(cdouble *)p2 = t;
     }
 
-    override const(void)[] init() nothrow pure
+    override void[] init() nothrow pure
     {
         static immutable cdouble r;
 

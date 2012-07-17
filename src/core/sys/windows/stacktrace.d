@@ -42,16 +42,16 @@ public:
     }
 
 
-    int opApply( scope int delegate(ref const(char[])) dg ) const
+    int opApply( scope int delegate(ref char[]) dg )
     {
-        return opApply( (ref size_t, ref const(char[]) buf)
+        return opApply( (ref size_t, ref char[] buf)
                         {
                             return dg( buf );
                         });
     }
 
 
-    int opApply( scope int delegate(ref size_t, ref const(char[])) dg ) const
+    int opApply( scope int delegate(ref size_t, ref char[]) dg )
     {
         int result;
 
