@@ -78,7 +78,7 @@ class TypeInfo_q : TypeInfo
         *cast(cfloat *)p2 = t;
     }
 
-    override const(void)[] init() nothrow pure
+    override void[] init() nothrow pure
     {
         static immutable cfloat r;
 

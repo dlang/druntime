@@ -30,11 +30,11 @@ alias immutable(dchar)[] dstring;
 
 class Object
 {
-    string   toString() const;
-    hash_t   toHash() @trusted nothrow const;
-    int      opCmp(const Object o) const;
-    equals_t opEquals(const Object o) const;
-    equals_t opEquals(const Object lhs, const Object rhs) const;
+    string   toString();
+    hash_t   toHash() @trusted nothrow;
+    int      opCmp(Object o);
+    equals_t opEquals(Object o);
+    equals_t opEquals(Object lhs, Object rhs);
 
     interface Monitor
     {
@@ -45,131 +45,9 @@ class Object
     static Object factory(string classname);
 }
 
-bool opEquals(Lhs, Rhs)(Lhs lhs, Rhs rhs)
-    if (is(Lhs == class) && is(Rhs == class))
-{
-    // If aliased to the same object or both null => equal
-    if (lhs is rhs) return true;
-
-    static if (is(Lhs == shared) || is(Rhs == shared))
-    {
-        // If either is shared, is defined only equality comparisons.
-        return false;
-    }
-    else
-    {
-      version (all) // allow direct comparison
-      {
-        // If either is null => non-equal
-        if (lhs is null || rhs is null) return false;
-
-        // If same exact type => one call to method opEquals
-        if (typeid(lhs) is typeid(rhs) || typeid(lhs).opEquals(typeid(rhs)))
-            return lhs.opEquals(rhs);
-
-        // General case => symmetric calls to method opEquals
-        return lhs.opEquals(rhs) && rhs.opEquals(lhs);
-      }
-      else      // always compare with const(Object)
-      {
-        return _ObjectEq(lhs, rhs);
-      }
-    }
-}
-
-bool opEquals(Lhs, Rhs)(Lhs lhs, Rhs rhs)
-    if (is(Lhs == interface) || is(Rhs == interface))
-{
-    // If aliased to the same object or both null => equal
-    static if (is(typeof(lhs is rhs)))
-    {
-        if (lhs is rhs) return true;
-    }
-
-    static if (is(Lhs == shared) || is(Rhs == shared))
-    {
-        // If either is shared, is defined only equality comparisons.
-        return false;
-    }
-    else
-    {
-        // If either is interface, downcast to Object and keep qualifier
-        static if (is(Lhs == interface))
-        {
-            static if (is(Lhs == shared))
-                auto lho = cast(shared const(Object))lhs;
-            else
-                auto lho = cast(const Object)lhs;
-            // If C++ interface, result is null
-        }
-        else
-            alias lhs lho;
-
-        static if (is(Rhs == interface))
-        {
-            static if (is(Rhs == shared))
-                auto rho = cast(shared const(Object))rhs;
-            else
-                auto rho = cast(const Object)rhs;
-        }
-        else
-            alias rhs rho;
-
-        return _ObjectEq(lho, rho);
-    }
-}
-
-deprecated bool opEquals(Lhs, Rhs)(Lhs lhs, Rhs rhs)
-    if (is(Lhs == typedef) || is(Rhs == typedef))
-{
-    static if (is(Lhs LhsB == typedef))
-    {
-        static if (is(Lhs == immutable))
-            alias immutable(LhsB) Lhs2;
-        else static if (is(Lhs == const))
-        {
-            static if (is(Lhs == shared))
-                alias const(shared(LhsB)) Lhs2;
-            else
-                alias const(LhsB) Lhs2;
-        }
-        else
-        {
-            static if (is(Lhs == shared))
-                alias shared(LhsB) Lhs2;
-            else
-                alias LhsB Lhs2;
-        }
-    }
-    else
-        alias Lhs Lhs2;
-
-    static if (is(Rhs RhsB == typedef))
-    {
-        static if (is(Rhs == immutable))
-            alias immutable(RhsB) Rhs2;
-        else static if (is(Rhs == const))
-        {
-            static if (is(Rhs == shared))
-                alias const(shared(RhsB)) Rhs2;
-            else
-                alias const(RhsB) Rhs2;
-        }
-        else
-        {
-            static if (is(Rhs == shared))
-                alias shared(RhsB) Rhs2;
-            else
-                alias RhsB Rhs2;
-        }
-    }
-    else
-        alias Rhs Rhs2;
-
-    return opEquals(cast(Lhs2)lhs, cast(Rhs2)rhs);
-}
-
-private bool _ObjectEq(const Object lhs, const Object rhs);
+bool opEquals(const Object lhs, const Object rhs);
+bool opEquals(Object lhs, Object rhs);
+//bool opEquals(TypeInfo lhs, TypeInfo rhs);
 
 void setSameMutex(shared Object ownee, shared Object owner);
 
@@ -188,18 +66,18 @@ struct OffsetTypeInfo
 
 class TypeInfo
 {
-    hash_t   getHash(in void* p) @trusted nothrow const;
-    equals_t equals(in void* p1, in void* p2) const;
-    int      compare(in void* p1, in void* p2) const;
+    hash_t   getHash(in void* p) @trusted nothrow;
+    equals_t equals(in void* p1, in void* p2);
+    int      compare(in void* p1, in void* p2);
     @property size_t   tsize() nothrow pure const @safe;
-    void     swap(void* p1, void* p2) const;
-    @property const(TypeInfo) next() nothrow pure const;
+    void     swap(void* p1, void* p2);
+    @property TypeInfo next() nothrow pure;
     const(void)[]   init() nothrow pure const @safe; // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
     @property uint     flags() nothrow pure const @safe;
     // 1:    // has possible pointers into GC memory
-    const(OffsetTypeInfo)[] offTi() const;
-    void destroy(void* p) const;
-    void postblit(void* p) const;
+    OffsetTypeInfo[] offTi();
+    void destroy(void* p);
+    void postblit(void* p);
     @property size_t talign() nothrow pure const @safe;
     version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe nothrow;
     @property immutable(void)* rtInfo() nothrow pure const @safe;
@@ -224,16 +102,16 @@ class TypeInfo_Pointer : TypeInfo
 
 class TypeInfo_Array : TypeInfo
 {
-    override string toString() const;
-    override equals_t opEquals(const Object o) const;
-    override hash_t getHash(in void* p) @trusted const;
-    override equals_t equals(in void* p1, in void* p2) const;
-    override int compare(in void* p1, in void* p2) const;
-    override @property size_t tsize() nothrow pure const;
-    override void swap(void* p1, void* p2) const;
-    override @property const(TypeInfo) next() nothrow pure const;
-    override @property uint flags() nothrow pure const;
-    override @property size_t talign() nothrow pure const;
+    override string toString();
+    override equals_t opEquals(Object o);
+    override hash_t getHash(in void* p) @trusted;
+    override equals_t equals(in void* p1, in void* p2);
+    override int compare(in void* p1, in void* p2);
+    override @property size_t tsize() nothrow pure;
+    override void swap(void* p1, void* p2);
+    override @property TypeInfo next() nothrow pure;
+    override @property uint flags() nothrow pure;
+    override @property size_t talign() nothrow pure;
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2);
 
     TypeInfo value;
@@ -269,8 +147,8 @@ class TypeInfo_Delegate : TypeInfo
 
 class TypeInfo_Class : TypeInfo
 {
-    @property auto info() @safe nothrow pure const { return this; }
-    @property auto typeinfo() @safe nothrow pure const { return this; }
+    @property auto info() @safe nothrow pure { return this; }
+    @property auto typeinfo() @safe nothrow pure { return this; }
 
     byte[]      init;   // class static initializer
     string      name;   // class name
@@ -291,8 +169,8 @@ class TypeInfo_Class : TypeInfo
     void*       defaultConstructor;
     immutable(void)*    m_rtInfo;     // data for precise GC
 
-    static const(TypeInfo_Class) find(in char[] classname);
-    Object create() const;
+    static TypeInfo_Class find(in char[] classname);
+    Object create();
 }
 
 alias TypeInfo_Class ClassInfo;
@@ -438,9 +316,9 @@ class Throwable : Object
 {
     interface TraceInfo
     {
-        int opApply(scope int delegate(ref const(char[]))) const;
-        int opApply(scope int delegate(ref size_t, ref const(char[]))) const;
-        string toString() const;
+        int opApply(scope int delegate(ref char[]));
+        int opApply(scope int delegate(ref size_t, ref char[]));
+        string toString();
     }
 
     string      msg;
@@ -451,7 +329,7 @@ class Throwable : Object
 
     this(string msg, Throwable next = null);
     this(string msg, string file, size_t line, Throwable next = null);
-    override string toString() const;
+    override string toString();
 }
 
 
