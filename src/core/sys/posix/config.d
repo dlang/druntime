@@ -23,4 +23,27 @@ version( linux )
     enum bool  __USE_LARGEFILE64    = true;
     enum bool  __USE_FILE_OFFSET64  = __USE_LARGEFILE64;
     enum bool  __REDIRECT           = false;
+    enum bool  __USE_XOPEN2K8       = true; //#if (_POSIX_C_SOURCE - 0) >= 200809L
+    enum bool _BSD_SOURCE           = true; /// Seems to be default in gcc.
+    enum bool _SVID_SOURCE          = true; /// Ditto
+    enum bool __USE_GNU             = true;
+    static if(_BSD_SOURCE || _SVID_SOURCE) {
+        enum bool __USE_MISC        = true; 
+    }
+
+    version(D_LP64) {
+        enum __WORDSIZE=64;
+    }
+    else {
+        enum __WORDSIZE=32;
+    }
+}
+
+version( posix )
+{
+    enum bool  __USE_XOPEN2K8        = false; 
+    enum bool _BSD_SOURCE        = false;
+    enum bool _SVID_SOURCE           = false;
+    enum bool __USE_GNU            = false;
+    enum bool __USE_MISC        = false; 
 }
