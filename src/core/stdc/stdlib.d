@@ -113,3 +113,7 @@ version( DigitalMars )
     // See malloc comment about @trusted.
     void* alloca(size_t size); // non-standard
 }
+else version( GNU )
+{
+    void* alloca(size_t size); // compiler intrinsic.
+}

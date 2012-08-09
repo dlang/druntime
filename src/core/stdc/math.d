@@ -483,505 +483,505 @@ version( FreeBSD )
 {
   version (none) // < 8-CURRENT
   {
-    real    acosl(real x) { return acos(x); }
-    real    asinl(real x) { return asin(x); }
-    real    atanl(real x) { return atan(x); }
-    real    atan2l(real y, real x) { return atan2(y, x); }
-    real    cosl(real x) { return cos(x); }
-    real    sinl(real x) { return sin(x); }
-    real    tanl(real x) { return tan(x); }
-    real    exp2l(real x) { return exp2(x); }
-    real    frexpl(real value, int* exp) { return frexp(value, exp); }
-    int     ilogbl(real x) { return ilogb(x); }
-    real    ldexpl(real x, int exp) { return ldexp(x, exp); }
-    real    logbl(real x) { return logb(x); }
-    //real    modfl(real value, real *iptr); // nontrivial conversion
-    real    scalbnl(real x, int n) { return scalbn(x, n); }
-    real    scalblnl(real x, c_long n) { return scalbln(x, n); }
-    real    fabsl(real x) { return fabs(x); }
-    real    hypotl(real x, real y) { return hypot(x, y); }
-    real    sqrtl(real x) { return sqrt(x); }
-    real    ceill(real x) { return ceil(x); }
-    real    floorl(real x) { return floor(x); }
-    real    nearbyintl(real x) { return nearbyint(x); }
-    real    rintl(real x) { return rint(x); }
-    c_long  lrintl(real x) { return lrint(x); }
-    real    roundl(real x) { return round(x); }
-    c_long  lroundl(real x) { return lround(x); }
-    long    llroundl(real x) { return llround(x); }
-    real    truncl(real x) { return trunc(x); }
-    real    fmodl(real x, real y) { return fmod(x, y); }
-    real    remainderl(real x, real y) { return remainder(x, y); }
-    real    remquol(real x, real y, int* quo) { return remquo(x, y, quo); }
-    real    copysignl(real x, real y) { return copysign(x, y); }
-//  double  nan(char* tagp);
-//  float   nanf(char* tagp);
-//  real    nanl(char* tagp);
-    real    nextafterl(real x, real y) { return nextafter(x, y); }
-    real    nexttowardl(real x, real y) { return nexttoward(x, y); }
-    real    fdiml(real x, real y) { return fdim(x, y); }
-    real    fmaxl(real x, real y) { return fmax(x, y); }
-    real    fminl(real x, real y) { return fmin(x, y); }
-    real    fmal(real x, real y, real z) { return fma(x, y, z); }
+    pure real   acosl(real x) { return acos(x); }
+    pure real   asinl(real x) { return asin(x); }
+    pure real   atanl(real x) { return atan(x); }
+    pure real   atan2l(real y, real x) { return atan2(y, x); }
+    pure real   cosl(real x) { return cos(x); }
+    pure real   sinl(real x) { return sin(x); }
+    pure real   tanl(real x) { return tan(x); }
+    pure real   exp2l(real x) { return exp2(x); }
+    real        frexpl(real value, int* exp) { return frexp(value, exp); }
+    pure int    ilogbl(real x) { return ilogb(x); }
+    pure real   ldexpl(real x, int exp) { return ldexp(x, exp); }
+    pure real   logbl(real x) { return logb(x); }
+    //pure real   modfl(real value, real *iptr); // nontrivial conversion
+    pure real   scalbnl(real x, int n) { return scalbn(x, n); }
+    pure real   scalblnl(real x, c_long n) { return scalbln(x, n); }
+    pure real   fabsl(real x) { return fabs(x); }
+    pure real   hypotl(real x, real y) { return hypot(x, y); }
+    pure real   sqrtl(real x) { return sqrt(x); }
+    pure real   ceill(real x) { return ceil(x); }
+    pure real   floorl(real x) { return floor(x); }
+    pure real   nearbyintl(real x) { return nearbyint(x); }
+    pure real   rintl(real x) { return rint(x); }
+    pure c_long lrintl(real x) { return lrint(x); }
+    pure real   roundl(real x) { return round(x); }
+    pure c_long lroundl(real x) { return lround(x); }
+    pure long   llroundl(real x) { return llround(x); }
+    pure real   truncl(real x) { return trunc(x); }
+    pure real   fmodl(real x, real y) { return fmod(x, y); }
+    pure real   remainderl(real x, real y) { return remainder(x, y); }
+    real        remquol(real x, real y, int* quo) { return remquo(x, y, quo); }
+    pure real   copysignl(real x, real y) { return copysign(x, y); }
+//  pure double nan(char* tagp);
+//  pure float  nanf(char* tagp);
+//  pure real   nanl(char* tagp);
+    pure real   nextafterl(real x, real y) { return nextafter(x, y); }
+    pure real   nexttowardl(real x, real y) { return nexttoward(x, y); }
+    pure real   fdiml(real x, real y) { return fdim(x, y); }
+    pure real   fmaxl(real x, real y) { return fmax(x, y); }
+    pure real   fminl(real x, real y) { return fmin(x, y); }
+    pure real   fmal(real x, real y, real z) { return fma(x, y, z); }
   }
   else
   {
-    real    acosl(real x);
-    real    asinl(real x);
-    real    atanl(real x);
-    real    atan2l(real y, real x);
-    real    cosl(real x);
-    real    sinl(real x);
-    real    tanl(real x);
-    real    exp2l(real x);
-    real    frexpl(real value, int* exp);
-    int     ilogbl(real x);
-    real    ldexpl(real x, int exp);
-    real    logbl(real x);
-    real    modfl(real value, real *iptr);
-    real    scalbnl(real x, int n);
-    real    scalblnl(real x, c_long n);
-    real    fabsl(real x);
-    real    hypotl(real x, real y);
-    real    sqrtl(real x);
-    real    ceill(real x);
-    real    floorl(real x);
-    real    nearbyintl(real x);
-    real    rintl(real x);
-    c_long  lrintl(real x);
-    real    roundl(real x);
-    c_long  lroundl(real x);
-    long    llroundl(real x);
-    real    truncl(real x);
-    real    fmodl(real x, real y);
-    real    remainderl(real x, real y);
-    real    remquol(real x, real y, int* quo);
-    real    copysignl(real x, real y);
-    double  nan(char* tagp);
-    float   nanf(char* tagp);
-    real    nanl(char* tagp);
-    real    nextafterl(real x, real y);
-    real    nexttowardl(real x, real y);
-    real    fdiml(real x, real y);
-    real    fmaxl(real x, real y);
-    real    fminl(real x, real y);
-    real    fmal(real x, real y, real z);
+    pure real   acosl(real x);
+    pure real   asinl(real x);
+    pure real   atanl(real x);
+    pure real   atan2l(real y, real x);
+    pure real   cosl(real x);
+    pure real   sinl(real x);
+    pure real   tanl(real x);
+    pure real   exp2l(real x);
+    real        frexpl(real value, int* exp);
+    pure int    ilogbl(real x);
+    pure real   ldexpl(real x, int exp);
+    pure real   logbl(real x);
+    pure real   modfl(real value, real *iptr);
+    pure real   scalbnl(real x, int n);
+    pure real   scalblnl(real x, c_long n);
+    pure real   fabsl(real x);
+    pure real   hypotl(real x, real y);
+    pure real   sqrtl(real x);
+    pure real   ceill(real x);
+    pure real   floorl(real x);
+    pure real   nearbyintl(real x);
+    pure real   rintl(real x);
+    pure c_long lrintl(real x);
+    pure real   roundl(real x);
+    pure c_long lroundl(real x);
+    pure long   llroundl(real x);
+    pure real   truncl(real x);
+    pure real   fmodl(real x, real y);
+    pure real   remainderl(real x, real y);
+    real        remquol(real x, real y, int* quo);
+    pure real   copysignl(real x, real y);
+    pure double nan(char* tagp);
+    pure float  nanf(char* tagp);
+    pure real   nanl(char* tagp);
+    pure real   nextafterl(real x, real y);
+    pure real   nexttowardl(real x, real y);
+    pure real   fdiml(real x, real y);
+    pure real   fmaxl(real x, real y);
+    pure real   fminl(real x, real y);
+    pure real   fmal(real x, real y, real z);
   }
-    double  acos(double x);
-    float   acosf(float x);
+    pure double acos(double x);
+    pure float  acosf(float x);
 
-    double  asin(double x);
-    float   asinf(float x);
+    pure double asin(double x);
+    pure float  asinf(float x);
 
-    double  atan(double x);
-    float   atanf(float x);
+    pure double atan(double x);
+    pure float  atanf(float x);
 
-    double  atan2(double y, double x);
-    float   atan2f(float y, float x);
+    pure double atan2(double y, double x);
+    pure float  atan2f(float y, float x);
 
-    double  cos(double x);
-    float   cosf(float x);
+    pure double cos(double x);
+    pure float  cosf(float x);
 
-    double  sin(double x);
-    float   sinf(float x);
+    pure double sin(double x);
+    pure float  sinf(float x);
 
-    double  tan(double x);
-    float   tanf(float x);
+    pure double tan(double x);
+    pure float  tanf(float x);
 
-    double  acosh(double x);
-    float   acoshf(float x);
-    real    acoshl(real x) { return acosh(x); }
+    pure double acosh(double x);
+    pure float  acoshf(float x);
+    pure real   acoshl(real x) { return acosh(x); }
 
-    double  asinh(double x);
-    float   asinhf(float x);
-    real    asinhl(real x) { return asinh(x); }
+    pure double asinh(double x);
+    pure float  asinhf(float x);
+    pure real   asinhl(real x) { return asinh(x); }
 
-    double  atanh(double x);
-    float   atanhf(float x);
-    real    atanhl(real x) { return atanh(x); }
+    pure double atanh(double x);
+    pure float  atanhf(float x);
+    pure real   atanhl(real x) { return atanh(x); }
 
-    double  cosh(double x);
-    float   coshf(float x);
-    real    coshl(real x) { return cosh(x); }
+    pure double cosh(double x);
+    pure float  coshf(float x);
+    pure real   coshl(real x) { return cosh(x); }
 
-    double  sinh(double x);
-    float   sinhf(float x);
-    real    sinhl(real x) { return sinh(x); }
+    pure double sinh(double x);
+    pure float  sinhf(float x);
+    pure real   sinhl(real x) { return sinh(x); }
 
-    double  tanh(double x);
-    float   tanhf(float x);
-    real    tanhl(real x) { return tanh(x); }
+    pure double tanh(double x);
+    pure float  tanhf(float x);
+    pure real   tanhl(real x) { return tanh(x); }
 
-    double  exp(double x);
-    float   expf(float x);
-    real    expl(real x) { return exp(x); }
+    pure double exp(double x);
+    pure float  expf(float x);
+    pure real   expl(real x) { return exp(x); }
 
-    double  exp2(double x);
-    float   exp2f(float x);
+    pure double exp2(double x);
+    pure float  exp2f(float x);
 
-    double  expm1(double x);
-    float   expm1f(float x);
-    real    expm1l(real x) { return expm1(x); }
+    pure double expm1(double x);
+    pure float  expm1f(float x);
+    pure real   expm1l(real x) { return expm1(x); }
 
-    double  frexp(double value, int* exp);
-    float   frexpf(float value, int* exp);
+    double      frexp(double value, int* exp);
+    float       frexpf(float value, int* exp);
 
-    int     ilogb(double x);
-    int     ilogbf(float x);
+    pure int    ilogb(double x);
+    pure int    ilogbf(float x);
 
-    double  ldexp(double x, int exp);
-    float   ldexpf(float x, int exp);
+    pure double ldexp(double x, int exp);
+    pure float  ldexpf(float x, int exp);
 
-    double  log(double x);
-    float   logf(float x);
-    real    logl(real x) { return log(x); }
+    pure double log(double x);
+    pure float  logf(float x);
+    pure real   logl(real x) { return log(x); }
 
-    double  log10(double x);
-    float   log10f(float x);
-    real    log10l(real x) { return log10(x); }
+    pure double log10(double x);
+    pure float  log10f(float x);
+    pure real   log10l(real x) { return log10(x); }
 
-    double  log1p(double x);
-    float   log1pf(float x);
-    real    log1pl(real x) { return log1p(x); }
+    pure double log1p(double x);
+    pure float  log1pf(float x);
+    pure real   log1pl(real x) { return log1p(x); }
 
     private enum real ONE_LN2 = 1 / 0x1.62e42fefa39ef358p-1L;
-    double  log2(double x) { return log(x) * ONE_LN2; }
-    float   log2f(float x) { return logf(x) * ONE_LN2; }
-    real    log2l(real x)  { return logl(x) * ONE_LN2; }
+    pure double log2(double x) { return log(x) * ONE_LN2; }
+    pure float  log2f(float x) { return logf(x) * ONE_LN2; }
+    pure real   log2l(real x)  { return logl(x) * ONE_LN2; }
 
-    double  logb(double x);
-    float   logbf(float x);
+    pure double logb(double x);
+    pure float  logbf(float x);
 
-    double  modf(double value, double* iptr);
-    float   modff(float value, float* iptr);
+    pure double modf(double value, double* iptr);
+    pure float  modff(float value, float* iptr);
 
-    double  scalbn(double x, int n);
-    float   scalbnf(float x, int n);
+    pure double scalbn(double x, int n);
+    pure float  scalbnf(float x, int n);
 
-    double  scalbln(double x, c_long n);
-    float   scalblnf(float x, c_long n);
+    double scalbln(double x, c_long n);
+    float  scalblnf(float x, c_long n);
 
-    double  cbrt(double x);
-    float   cbrtf(float x);
-    real    cbrtl(real x) { return cbrt(x); }
+    pure double cbrt(double x);
+    pure float  cbrtf(float x);
+    pure real   cbrtl(real x) { return cbrt(x); }
 
-    double  fabs(double x);
-    float   fabsf(float x);
+    pure double fabs(double x);
+    pure float  fabsf(float x);
 
-    double  hypot(double x, double y);
-    float   hypotf(float x, float y);
+    pure double hypot(double x, double y);
+    pure float  hypotf(float x, float y);
 
-    double  pow(double x, double y);
-    float   powf(float x, float y);
-    real    powl(real x, real y) { return pow(x, y); }
+    pure double pow(double x, double y);
+    pure float  powf(float x, float y);
+    pure real   powl(real x, real y) { return pow(x, y); }
 
-    double  sqrt(double x);
-    float   sqrtf(float x);
+    pure double sqrt(double x);
+    pure float  sqrtf(float x);
 
-    double  erf(double x);
-    float   erff(float x);
-    real    erfl(real x) { return erf(x); }
+    pure double erf(double x);
+    pure float  erff(float x);
+    pure real   erfl(real x) { return erf(x); }
 
-    double  erfc(double x);
-    float   erfcf(float x);
-    real    erfcl(real x) { return erfc(x); }
+    pure double erfc(double x);
+    pure float  erfcf(float x);
+    pure real   erfcl(real x) { return erfc(x); }
 
-    double  lgamma(double x);
-    float   lgammaf(float x);
-    real    lgammal(real x) { return lgamma(x); }
+    double      lgamma(double x);
+    float       lgammaf(float x);
+    real        lgammal(real x) { return lgamma(x); }
 
-    double  tgamma(double x);
-    float   tgammaf(float x);
-    real    tgammal(real x) { return tgamma(x); }
+    pure double tgamma(double x);
+    pure float  tgammaf(float x);
+    pure real   tgammal(real x) { return tgamma(x); }
 
-    double  ceil(double x);
-    float   ceilf(float x);
+    pure double ceil(double x);
+    pure float  ceilf(float x);
 
-    double  floor(double x);
-    float   floorf(float x);
+    pure double floor(double x);
+    pure float  floorf(float x);
 
-    double  nearbyint(double x);
-    float   nearbyintf(float x);
+    pure double nearbyint(double x);
+    pure float  nearbyintf(float x);
 
-    double  rint(double x);
-    float   rintf(float x);
+    pure double rint(double x);
+    pure float  rintf(float x);
 
-    c_long  lrint(double x);
-    c_long  lrintf(float x);
+    pure c_long lrint(double x);
+    pure c_long lrintf(float x);
 
-    long    llrint(double x);
-    long    llrintf(float x);
-    long    llrintl(real x) { return llrint(x); }
+    pure long   llrint(double x);
+    pure long   llrintf(float x);
+    pure long   llrintl(real x) { return llrint(x); }
 
-    double  round(double x);
-    float   roundf(float x);
+    pure double round(double x);
+    pure float  roundf(float x);
 
-    c_long  lround(double x);
-    c_long  lroundf(float x);
+    pure c_long lround(double x);
+    pure c_long lroundf(float x);
 
-    long    llround(double x);
-    long    llroundf(float x);
+    pure long   llround(double x);
+    pure long   llroundf(float x);
 
-    double  trunc(double x);
-    float   truncf(float x);
+    pure double trunc(double x);
+    pure float  truncf(float x);
 
-    double  fmod(double x, double y);
-    float   fmodf(float x, float y);
+    pure double fmod(double x, double y);
+    pure float  fmodf(float x, float y);
 
-    double  remainder(double x, double y);
-    float   remainderf(float x, float y);
+    pure double remainder(double x, double y);
+    pure float  remainderf(float x, float y);
 
-    double  remquo(double x, double y, int* quo);
-    float   remquof(float x, float y, int* quo);
+    double      remquo(double x, double y, int* quo);
+    float       remquof(float x, float y, int* quo);
 
-    double  copysign(double x, double y);
-    float   copysignf(float x, float y);
+    pure double copysign(double x, double y);
+    pure float  copysignf(float x, float y);
 
-    double  nextafter(double x, double y);
-    float   nextafterf(float x, float y);
+    pure double nextafter(double x, double y);
+    pure float  nextafterf(float x, float y);
 
-    double  nexttoward(double x, real y);
-    float   nexttowardf(float x, real y);
+    pure double nexttoward(double x, real y);
+    pure float  nexttowardf(float x, real y);
 
-    double  fdim(double x, double y);
-    float   fdimf(float x, float y);
+    pure double fdim(double x, double y);
+    pure float  fdimf(float x, float y);
 
-    double  fmax(double x, double y);
-    float   fmaxf(float x, float y);
+    pure double fmax(double x, double y);
+    pure float  fmaxf(float x, float y);
 
-    double  fmin(double x, double y);
-    float   fminf(float x, float y);
+    pure double fmin(double x, double y);
+    pure float  fminf(float x, float y);
 
-    double  fma(double x, double y, double z);
-    float   fmaf(float x, float y, float z);
+    pure double fma(double x, double y, double z);
+    pure float  fmaf(float x, float y, float z);
 }
 else
 {
-    double  acos(double x);
-    float   acosf(float x);
-    real    acosl(real x);
+    pure double acos(double x);
+    pure float  acosf(float x);
+    pure real   acosl(real x);
 
-    double  asin(double x);
-    float   asinf(float x);
-    real    asinl(real x);
+    pure double asin(double x);
+    pure float  asinf(float x);
+    pure real   asinl(real x);
 
-    double  atan(double x);
-    float   atanf(float x);
-    real    atanl(real x);
+    pure double atan(double x);
+    pure float  atanf(float x);
+    pure real   atanl(real x);
 
-    double  atan2(double y, double x);
-    float   atan2f(float y, float x);
-    real    atan2l(real y, real x);
+    pure double atan2(double y, double x);
+    pure float  atan2f(float y, float x);
+    pure real   atan2l(real y, real x);
 
-    double  cos(double x);
-    float   cosf(float x);
-    real    cosl(real x);
+    pure double cos(double x);
+    pure float  cosf(float x);
+    pure real   cosl(real x);
 
-    double  sin(double x);
-    float   sinf(float x);
-    real    sinl(real x);
+    pure double sin(double x);
+    pure float  sinf(float x);
+    pure real   sinl(real x);
 
-    double  tan(double x);
-    float   tanf(float x);
-    real    tanl(real x);
+    pure double tan(double x);
+    pure float  tanf(float x);
+    pure real   tanl(real x);
 
-    double  acosh(double x);
-    float   acoshf(float x);
-    real    acoshl(real x);
+    pure double acosh(double x);
+    pure float  acoshf(float x);
+    pure real   acoshl(real x);
 
-    double  asinh(double x);
-    float   asinhf(float x);
-    real    asinhl(real x);
+    pure double asinh(double x);
+    pure float  asinhf(float x);
+    pure real   asinhl(real x);
 
-    double  atanh(double x);
-    float   atanhf(float x);
-    real    atanhl(real x);
+    pure double atanh(double x);
+    pure float  atanhf(float x);
+    pure real   atanhl(real x);
 
-    double  cosh(double x);
-    float   coshf(float x);
-    real    coshl(real x);
+    pure double cosh(double x);
+    pure float  coshf(float x);
+    pure real   coshl(real x);
 
-    double  sinh(double x);
-    float   sinhf(float x);
-    real    sinhl(real x);
+    pure double sinh(double x);
+    pure float  sinhf(float x);
+    pure real   sinhl(real x);
 
-    double  tanh(double x);
-    float   tanhf(float x);
-    real    tanhl(real x);
+    pure double tanh(double x);
+    pure float  tanhf(float x);
+    pure real   tanhl(real x);
 
-    double  exp(double x);
-    float   expf(float x);
-    real    expl(real x);
+    pure double exp(double x);
+    pure float  expf(float x);
+    pure real   expl(real x);
 
-    double  exp2(double x);
-    float   exp2f(float x);
-    real    exp2l(real x);
+    pure double exp2(double x);
+    pure float  exp2f(float x);
+    pure real   exp2l(real x);
 
-    double  expm1(double x);
-    float   expm1f(float x);
-    real    expm1l(real x);
+    pure double expm1(double x);
+    pure float  expm1f(float x);
+    pure real   expm1l(real x);
 
-    double  frexp(double value, int* exp);
-    float   frexpf(float value, int* exp);
-    real    frexpl(real value, int* exp);
+    double      frexp(double value, int* exp);
+    float       frexpf(float value, int* exp);
+    real        frexpl(real value, int* exp);
 
-    int     ilogb(double x);
-    int     ilogbf(float x);
-    int     ilogbl(real x);
+    pure int    ilogb(double x);
+    pure int    ilogbf(float x);
+    pure int    ilogbl(real x);
 
-    double  ldexp(double x, int exp);
-    float   ldexpf(float x, int exp);
-    real    ldexpl(real x, int exp);
+    pure double ldexp(double x, int exp);
+    pure float  ldexpf(float x, int exp);
+    pure real   ldexpl(real x, int exp);
 
-    double  log(double x);
-    float   logf(float x);
-    real    logl(real x);
+    pure double log(double x);
+    pure float  logf(float x);
+    pure real   logl(real x);
 
-    double  log10(double x);
-    float   log10f(float x);
-    real    log10l(real x);
+    pure double log10(double x);
+    pure float  log10f(float x);
+    pure real   log10l(real x);
 
-    double  log1p(double x);
-    float   log1pf(float x);
-    real    log1pl(real x);
+    pure double log1p(double x);
+    pure float  log1pf(float x);
+    pure real   log1pl(real x);
 
-    double  log2(double x);
-    float   log2f(float x);
-    real    log2l(real x);
+    pure double log2(double x);
+    pure float  log2f(float x);
+    pure real   log2l(real x);
 
-    double  logb(double x);
-    float   logbf(float x);
-    real    logbl(real x);
+    pure double logb(double x);
+    pure float  logbf(float x);
+    pure real   logbl(real x);
 
-    double  modf(double value, double* iptr);
-    float   modff(float value, float* iptr);
-    real    modfl(real value, real *iptr);
+    pure double modf(double value, double* iptr);
+    pure float  modff(float value, float* iptr);
+    pure real   modfl(real value, real *iptr);
 
-    double  scalbn(double x, int n);
-    float   scalbnf(float x, int n);
-    real    scalbnl(real x, int n);
+    pure double scalbn(double x, int n);
+    pure float  scalbnf(float x, int n);
+    pure real   scalbnl(real x, int n);
 
-    double  scalbln(double x, c_long n);
-    float   scalblnf(float x, c_long n);
-    real    scalblnl(real x, c_long n);
+    pure double scalbln(double x, c_long n);
+    pure float  scalblnf(float x, c_long n);
+    pure real   scalblnl(real x, c_long n);
 
-    double  cbrt(double x);
-    float   cbrtf(float x);
-    real    cbrtl(real x);
+    pure double cbrt(double x);
+    pure float  cbrtf(float x);
+    pure real   cbrtl(real x);
 
-    double  fabs(double x);
-    float   fabsf(float x);
-    real    fabsl(real x);
+    pure double fabs(double x);
+    pure float  fabsf(float x);
+    pure real   fabsl(real x);
 
-    double  hypot(double x, double y);
-    float   hypotf(float x, float y);
-    real    hypotl(real x, real y);
+    pure double hypot(double x, double y);
+    pure float  hypotf(float x, float y);
+    pure real   hypotl(real x, real y);
 
-    double  pow(double x, double y);
-    float   powf(float x, float y);
-    real    powl(real x, real y);
+    pure double pow(double x, double y);
+    pure float  powf(float x, float y);
+    pure real   powl(real x, real y);
 
-    double  sqrt(double x);
-    float   sqrtf(float x);
-    real    sqrtl(real x);
+    pure double sqrt(double x);
+    pure float  sqrtf(float x);
+    pure real   sqrtl(real x);
 
-    double  erf(double x);
-    float   erff(float x);
-    real    erfl(real x);
+    pure double erf(double x);
+    pure float  erff(float x);
+    pure real   erfl(real x);
 
-    double  erfc(double x);
-    float   erfcf(float x);
-    real    erfcl(real x);
+    pure double erfc(double x);
+    pure float  erfcf(float x);
+    pure real   erfcl(real x);
 
-    double  lgamma(double x);
-    float   lgammaf(float x);
-    real    lgammal(real x);
+    double      lgamma(double x);
+    float       lgammaf(float x);
+    real        lgammal(real x);
 
-    double  tgamma(double x);
-    float   tgammaf(float x);
-    real    tgammal(real x);
+    pure double tgamma(double x);
+    pure float  tgammaf(float x);
+    pure real   tgammal(real x);
 
-    double  ceil(double x);
-    float   ceilf(float x);
-    real    ceill(real x);
+    pure double ceil(double x);
+    pure float  ceilf(float x);
+    pure real   ceill(real x);
 
-    double  floor(double x);
-    float   floorf(float x);
-    real    floorl(real x);
+    pure double floor(double x);
+    pure float  floorf(float x);
+    pure real   floorl(real x);
 
-    double  nearbyint(double x);
-    float   nearbyintf(float x);
-    real    nearbyintl(real x);
+    pure double nearbyint(double x);
+    pure float  nearbyintf(float x);
+    pure real   nearbyintl(real x);
 
-    double  rint(double x);
-    float   rintf(float x);
-    real    rintl(real x);
+    pure double rint(double x);
+    pure float  rintf(float x);
+    pure real   rintl(real x);
 
-    c_long  lrint(double x);
-    c_long  lrintf(float x);
-    c_long  lrintl(real x);
+    pure c_long lrint(double x);
+    pure c_long lrintf(float x);
+    pure c_long lrintl(real x);
 
-    long    llrint(double x);
-    long    llrintf(float x);
-    long    llrintl(real x);
+    pure long   llrint(double x);
+    pure long   llrintf(float x);
+    pure long   llrintl(real x);
 
-    double  round(double x);
-    float   roundf(float x);
-    real    roundl(real x);
+    pure double round(double x);
+    pure float  roundf(float x);
+    pure real   roundl(real x);
 
-    c_long  lround(double x);
-    c_long  lroundf(float x);
-    c_long  lroundl(real x);
+    pure c_long lround(double x);
+    pure c_long lroundf(float x);
+    pure c_long lroundl(real x);
 
-    long    llround(double x);
-    long    llroundf(float x);
-    long    llroundl(real x);
+    pure long   llround(double x);
+    pure long   llroundf(float x);
+    pure long   llroundl(real x);
 
-    double  trunc(double x);
-    float   truncf(float x);
-    real    truncl(real x);
+    pure double trunc(double x);
+    pure float  truncf(float x);
+    pure real   truncl(real x);
 
-    double  fmod(double x, double y);
-    float   fmodf(float x, float y);
-    real    fmodl(real x, real y);
+    pure double fmod(double x, double y);
+    pure float  fmodf(float x, float y);
+    pure real   fmodl(real x, real y);
 
-    double  remainder(double x, double y);
-    float   remainderf(float x, float y);
-    real    remainderl(real x, real y);
+    pure double remainder(double x, double y);
+    pure float  remainderf(float x, float y);
+    pure real   remainderl(real x, real y);
 
-    double  remquo(double x, double y, int* quo);
-    float   remquof(float x, float y, int* quo);
-    real    remquol(real x, real y, int* quo);
+    double      remquo(double x, double y, int* quo);
+    float       remquof(float x, float y, int* quo);
+    real        remquol(real x, real y, int* quo);
 
-    double  copysign(double x, double y);
-    float   copysignf(float x, float y);
-    real    copysignl(real x, real y);
+    pure double copysign(double x, double y);
+    pure float  copysignf(float x, float y);
+    pure real   copysignl(real x, real y);
 
-    double  nan(char* tagp);
-    float   nanf(char* tagp);
-    real    nanl(char* tagp);
+    pure double nan(char* tagp);
+    pure float  nanf(char* tagp);
+    pure real   nanl(char* tagp);
 
-    double  nextafter(double x, double y);
-    float   nextafterf(float x, float y);
-    real    nextafterl(real x, real y);
+    pure double nextafter(double x, double y);
+    pure float  nextafterf(float x, float y);
+    pure real   nextafterl(real x, real y);
 
-    double  nexttoward(double x, real y);
-    float   nexttowardf(float x, real y);
-    real    nexttowardl(real x, real y);
+    pure double nexttoward(double x, real y);
+    pure float  nexttowardf(float x, real y);
+    pure real   nexttowardl(real x, real y);
 
-    double  fdim(double x, double y);
-    float   fdimf(float x, float y);
-    real    fdiml(real x, real y);
+    pure double fdim(double x, double y);
+    pure float  fdimf(float x, float y);
+    pure real   fdiml(real x, real y);
 
-    double  fmax(double x, double y);
-    float   fmaxf(float x, float y);
-    real    fmaxl(real x, real y);
+    pure double fmax(double x, double y);
+    pure float  fmaxf(float x, float y);
+    pure real   fmaxl(real x, real y);
 
-    double  fmin(double x, double y);
-    float   fminf(float x, float y);
-    real    fminl(real x, real y);
+    pure double fmin(double x, double y);
+    pure float  fminf(float x, float y);
+    pure real   fminl(real x, real y);
 
-    double  fma(double x, double y, double z);
-    float   fmaf(float x, float y, float z);
-    real    fmal(real x, real y, real z);
+    pure double fma(double x, double y, double z);
+    pure float  fmaf(float x, float y, float z);
+    pure real   fmal(real x, real y, real z);
 }

@@ -21,90 +21,90 @@ nothrow:
 alias creal complex;
 alias ireal imaginary;
 
-cdouble cacos(cdouble z);
-cfloat  cacosf(cfloat z);
-creal   cacosl(creal z);
+pure cdouble cacos(cdouble z);
+pure cfloat  cacosf(cfloat z);
+pure creal   cacosl(creal z);
 
-cdouble casin(cdouble z);
-cfloat  casinf(cfloat z);
-creal   casinl(creal z);
+pure cdouble casin(cdouble z);
+pure cfloat  casinf(cfloat z);
+pure creal   casinl(creal z);
 
-cdouble catan(cdouble z);
-cfloat  catanf(cfloat z);
-creal   catanl(creal z);
+pure cdouble catan(cdouble z);
+pure cfloat  catanf(cfloat z);
+pure creal   catanl(creal z);
 
-cdouble ccos(cdouble z);
-cfloat  ccosf(cfloat z);
-creal   ccosl(creal z);
+pure cdouble ccos(cdouble z);
+pure cfloat  ccosf(cfloat z);
+pure creal   ccosl(creal z);
 
-cdouble csin(cdouble z);
-cfloat  csinf(cfloat z);
-creal   csinl(creal z);
+pure cdouble csin(cdouble z);
+pure cfloat  csinf(cfloat z);
+pure creal   csinl(creal z);
 
-cdouble ctan(cdouble z);
-cfloat  ctanf(cfloat z);
-creal   ctanl(creal z);
+pure cdouble ctan(cdouble z);
+pure cfloat  ctanf(cfloat z);
+pure creal   ctanl(creal z);
 
-cdouble cacosh(cdouble z);
-cfloat  cacoshf(cfloat z);
-creal   cacoshl(creal z);
+pure cdouble cacosh(cdouble z);
+pure cfloat  cacoshf(cfloat z);
+pure creal   cacoshl(creal z);
 
-cdouble casinh(cdouble z);
-cfloat  casinhf(cfloat z);
-creal   casinhl(creal z);
+pure cdouble casinh(cdouble z);
+pure cfloat  casinhf(cfloat z);
+pure creal   casinhl(creal z);
 
-cdouble catanh(cdouble z);
-cfloat  catanhf(cfloat z);
-creal   catanhl(creal z);
+pure cdouble catanh(cdouble z);
+pure cfloat  catanhf(cfloat z);
+pure creal   catanhl(creal z);
 
-cdouble ccosh(cdouble z);
-cfloat  ccoshf(cfloat z);
-creal   ccoshl(creal z);
+pure cdouble ccosh(cdouble z);
+pure cfloat  ccoshf(cfloat z);
+pure creal   ccoshl(creal z);
 
-cdouble csinh(cdouble z);
-cfloat  csinhf(cfloat z);
-creal   csinhl(creal z);
+pure cdouble csinh(cdouble z);
+pure cfloat  csinhf(cfloat z);
+pure creal   csinhl(creal z);
 
-cdouble ctanh(cdouble z);
-cfloat  ctanhf(cfloat z);
-creal   ctanhl(creal z);
+pure cdouble ctanh(cdouble z);
+pure cfloat  ctanhf(cfloat z);
+pure creal   ctanhl(creal z);
 
-cdouble cexp(cdouble z);
-cfloat  cexpf(cfloat z);
-creal   cexpl(creal z);
+pure cdouble cexp(cdouble z);
+pure cfloat  cexpf(cfloat z);
+pure creal   cexpl(creal z);
 
-cdouble clog(cdouble z);
-cfloat  clogf(cfloat z);
-creal   clogl(creal z);
+pure cdouble clog(cdouble z);
+pure cfloat  clogf(cfloat z);
+pure creal   clogl(creal z);
 
- double cabs(cdouble z);
- float  cabsf(cfloat z);
- real   cabsl(creal z);
+pure double cabs(cdouble z);
+pure float  cabsf(cfloat z);
+pure real   cabsl(creal z);
 
-cdouble cpow(cdouble x, cdouble y);
-cfloat  cpowf(cfloat x, cfloat y);
-creal   cpowl(creal x, creal y);
+pure cdouble cpow(cdouble x, cdouble y);
+pure cfloat  cpowf(cfloat x, cfloat y);
+pure creal   cpowl(creal x, creal y);
 
-cdouble csqrt(cdouble z);
-cfloat  csqrtf(cfloat z);
-creal   csqrtl(creal z);
+pure cdouble csqrt(cdouble z);
+pure cfloat  csqrtf(cfloat z);
+pure creal   csqrtl(creal z);
 
- double carg(cdouble z);
- float  cargf(cfloat z);
- real   cargl(creal z);
+pure double carg(cdouble z);
+pure float  cargf(cfloat z);
+pure real   cargl(creal z);
 
- double cimag(cdouble z);
- float  cimagf(cfloat z);
- real   cimagl(creal z);
+pure double cimag(cdouble z);
+pure float  cimagf(cfloat z);
+pure real   cimagl(creal z);
 
-cdouble conj(cdouble z);
-cfloat  conjf(cfloat z);
-creal   conjl(creal z);
+pure cdouble conj(cdouble z);
+pure cfloat  conjf(cfloat z);
+pure creal   conjl(creal z);
 
-cdouble cproj(cdouble z);
-cfloat  cprojf(cfloat z);
-creal   cprojl(creal z);
+pure cdouble cproj(cdouble z);
+pure cfloat  cprojf(cfloat z);
+pure creal   cprojl(creal z);
 
-// double creal(cdouble z);
- float  crealf(cfloat z);
- real   creall(creal z);
+//pure double creal(cdouble z);
+pure float  crealf(cfloat z);
+pure real   creall(creal z);
