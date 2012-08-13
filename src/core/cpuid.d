@@ -61,6 +61,9 @@
  */
 module core.cpuid;
 
+@trusted:
+nothrow:
+
 // If optimizing for a particular processor, it is generally better
 // to identify based on features rather than model. NOTE: Normally
 // it's only worthwhile to optimise for the latest Intel and AMD CPU,
@@ -72,14 +75,14 @@ module core.cpuid;
 // PIII       --   + mmx() + sse()
 // PentiumM   --   + mmx() + sse() + sse2()
 // Pentium4   -- preferPentium4()
-// PentiumD   --   + isX86_64()
-// Core2      -- default + isX86_64()
+// PentiumD   --   + is64()
+// Core2      -- default + is64()
 // AMD K5     -- preferPentium1()
 // AMD K6     --   + mmx()
-// AMD K6-II  --   + mmx() + 3dnow()
+// AMD K6-II  --   + mmx() + 3DNow()
 // AMD K7     -- preferAthlon()
 // AMD K8     --   + sse2()
-// AMD K10    --   + isX86_64()
+// AMD K10    --   + is64()
 // Cyrix 6x86 -- preferPentium1()
 //    6x86MX  --   + mmx()
 version(D_InlineAsm_X86)
@@ -112,19 +115,25 @@ struct CacheInfo
 }
 
 public:
+    /// $(RED Scheduled for deprecation. Please use $(D dataCaches) instead.)
+    // Note: When we deprecate it, we simply make it private.
+    __gshared CacheInfo[5] datacache;
+
+    @property {
+    /// The data caches. If there are fewer than 5 physical caches levels,
+    /// the remaining levels are set to size_t.max (== entire memory space)
+    const(CacheInfo)[5] dataCaches() { return datacache; }
     /// Returns vendor string, for display purposes only.
-    /// Do NOT use this to determine features!
-    /// Note that some CPUs have programmable vendorIDs.
+    /// Do $(B not) use this to determine features.
+    /// Note that some CPUs have programmable vendor IDs.
     string vendor()     {return cast(string)vendorID;}
     /// Returns processor string, for display purposes only
     string processor()  {return processorName;}
 
-    /// The data caches. If there are fewer than 5 physical caches levels,
-    /// the remaining levels are set to size_t.max (== entire memory space)
-    __gshared CacheInfo[5] datacache;
-    @property {
     /// Does it have an x87 FPU on-chip?
-    bool x87onChip()    {return (features&FPU_BIT)!=0;}
+    bool x87()          {return (features&FPU_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D x87) instead.)
+    alias x87 x87onChip;
     /// Is MMX supported?
     bool mmx()          {return (features&MMX_BIT)!=0;}
     /// Is SSE supported?
@@ -141,66 +150,94 @@ public:
     bool sse42()        {return (miscfeatures&SSE42_BIT)!=0;}
     /// Is SSE4a supported?
     bool sse4a()        {return (amdmiscfeatures&SSE4A_BIT)!=0;}
-    /// Is AES supported
+    /// Is AES supported?
     bool aes()          {return (miscfeatures&AES_BIT)!=0;}
-    /// Is pclmulqdq supported
-    bool hasPclmulqdq() {return (miscfeatures&PCLMULQDQ_BIT)!=0;}
-    /// Is rdrand supported
-    bool hasRdrand()    {return (miscfeatures&RDRAND_BIT)!=0;}
-    /// Is AVX supported
+    /// Is pclmulqdq supported?
+    bool pclmulqdq() {return (miscfeatures&PCLMULQDQ_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D pclmuldqd) instead.)
+    alias pclmulqdq hasPclmulqdq;
+    /// Is rdrand supported?
+    bool rdrand()    {return (miscfeatures&RDRAND_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D rdrand) instead.)
+    alias rdrand hasRdrand;
+    /// Is AVX supported?
     bool avx()
     {
         enum mask = XF_SSE_BIT|XF_YMM_BIT;
         return (xfeatures & mask) == mask && (miscfeatures&AVX_BIT)!=0;
     }
-    /// Is VEX-Encoded AES supported
+    /// Is VEX-encoded AES supported?
     bool vaes()         {return avx() && aes();}
-    /// Is vpclmulqdq supported
-    bool hasVpclmulqdq(){return avx() && hasPclmulqdq(); }
-    /// Is FMA supported
+    /// Is vpclmulqdq supported?
+    bool vpclmulqdq(){return avx() && pclmulqdq(); }
+    /// $(RED Scheduled for deprecation. Please use $(D vpclmulqdq) instead.)
+    alias vpclmulqdq hasVpclmulqdq;
+    /// Is FMA supported?
     bool fma()          {return avx() && (miscfeatures&FMA_BIT)!=0;}
-    /// Is FP16C supported
+    /// Is FP16C supported?
     bool fp16c()        {return avx() && (miscfeatures&FP16C_BIT)!=0;}
-    /// Is AMD 3DNOW supported?
-    bool amd3dnow()     {return (amdfeatures&AMD_3DNOW_BIT)!=0;}
-    /// Is AMD 3DNOW Ext supported?
-    bool amd3dnowExt()  {return (amdfeatures&AMD_3DNOW_EXT_BIT)!=0;}
+    /// Is AMD 3DNow supported?
+    bool amd3DNow()     {return (amdfeatures&AMD_3DNOW_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D amd3DNow) instead.)
+    alias amd3DNow amd3dnow;
+    /// Is AMD 3DNow Ext supported?
+    bool amd3DNowExt()  {return (amdfeatures&AMD_3DNOW_EXT_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D amd3DNowExt) instead.)
+    alias amd3DNowExt amd3dnowExt;
     /// Are AMD extensions to MMX supported?
-    bool amdMmx()       {return (amdfeatures&AMD_MMX_BIT)!=0;}
-    /// Is fxsave/fxrstor supported?
-    bool hasFxsr()          {return (features&FXSR_BIT)!=0;}
+    bool amdMMX()       {return (amdfeatures&AMD_MMX_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D amdMMX) instead.)
+    alias amdMMX amdMmx;
+    /// Are fxsave/fxrstor supported?
+    bool fxsr()          {return (features&FXSR_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D fxsr) instead.)
+    alias fxsr hasFxsr;
     /// Is cmov supported?
-    bool hasCmov()          {return (features&CMOV_BIT)!=0;}
+    bool cmov()          {return (features&CMOV_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D cmov) instead.)
+    alias cmov hasCmov;
     /// Is rdtsc supported?
-    bool hasRdtsc()         {return (features&TIMESTAMP_BIT)!=0;}
+    bool rdtsc()         {return (features&TIMESTAMP_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D rdtsc) instead.)
+    alias rdtsc hasRdtsc;
     /// Is cmpxchg8b supported?
-    bool hasCmpxchg8b()     {return (features&CMPXCHG8B_BIT)!=0;}
-    /// Is cmpxchg8b supported?
-    bool hasCmpxchg16b()    {return (miscfeatures&CMPXCHG16B_BIT)!=0;}
-    /// Is SYSENTER/SYSEXIT supported?
-    bool hasSysEnterSysExit()     {
+    bool cmpxchg8b()     {return (features&CMPXCHG8B_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D cmpxchg8b) instead.)
+    alias cmpxchg8b hasCmpxchg8b;
+    /// Is cmpxchg16b supported?
+    bool cmpxchg16b()    {return (miscfeatures&CMPXCHG16B_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D cmpxchg16b) instead.)
+    alias cmpxchg16b hasCmpxchg16b;
+    /// Are sysenter/sysexit supported?
+    bool sysEnterExit()     {
         // The SYSENTER/SYSEXIT features were buggy on Pentium Pro and early PentiumII.
         // (REF: www.geoffchappell.com).
         if (probablyIntel && (family < 6 || (family==6 && (model< 3 || (model==3 && stepping<3)))))
             return false;
         return (features & SYSENTERSYSEXIT_BIT)!=0;
     }
-
+    /// $(RED Scheduled for deprecation. Please use $(D sysEnterExit) instead.)
+    alias sysEnterExit hasSysEnterSysExit;
 
     /// Is 3DNow prefetch supported?
-    bool has3dnowPrefetch()
+    bool amd3DNowPrefetch()
         {return (amdmiscfeatures&AMD_3DNOW_PREFETCH_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D amd3DNowPrefetch) instead.)
+    alias amd3DNowPrefetch has3dnowPrefetch;
     /// Are LAHF and SAHF supported in 64-bit mode?
-    bool hasLahfSahf()          {return (amdmiscfeatures&LAHFSAHF_BIT)!=0;}
-    /// Is POPCNT supported?
-    bool hasPopcnt()        {return (miscfeatures&POPCNT_BIT)!=0;}
-    /// Is LZCNT supported?
-    bool hasLzcnt()         {return (amdmiscfeatures&LZCNT_BIT)!=0;}
-    /// Is this an Intel64 or AMD 64?
+    bool ahf()          {return (amdmiscfeatures&LAHFSAHF_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D ahf) instead.)
+    alias ahf hasLahfSahf;
+    /// Is popcnt supported?
+    bool popcnt()        {return (miscfeatures&POPCNT_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D popcnt) instead.)
+    alias popcnt hasPopcnt;
+    /// Is lzcnt supported?
+    bool lzcnt()         {return (amdmiscfeatures&LZCNT_BIT)!=0;}
+    /// $(RED Scheduled for deprecation. Please use $(D lzcnt) instead.)
+    alias lzcnt hasLzcnt;
+    /// Is this an Intel 64 or AMD 64 CPU?
     bool isX86_64()         {return (amdfeatures&AMD64_BIT)!=0;}
-
-    /// Is this an IA64 (Itanium) processor?
-    bool isItanium()        { return (features&IA64_BIT)!=0; }
 
     /// Is hyperthreading supported?
     bool hyperThreading()   { return maxThreads>maxCores; }
@@ -210,20 +247,25 @@ public:
     uint coresPerCPU()      {return maxCores;}
 
     /// Optimisation hints for assembly code.
+    ///
     /// For forward compatibility, the CPU is compared against different
-    /// microarchitectures. For 32-bit X86, comparisons are made against
+    /// microarchitectures. For 32-bit x86, comparisons are made against
     /// the Intel PPro/PII/PIII/PM family.
     ///
     /// The major 32-bit x86 microarchitecture 'dynasties' have been:
+    ///
     /// (1) Intel P6 (PentiumPro, PII, PIII, PM, Core, Core2).
     /// (2) AMD Athlon (K7, K8, K10).
     /// (3) Intel NetBurst (Pentium 4, Pentium D).
     /// (4) In-order Pentium (Pentium1, PMMX, Atom)
+    ///
     /// Other early CPUs (Nx586, AMD K5, K6, Centaur C3, Transmeta,
-    ///   Cyrix, Rise) were mostly in-order.
+    /// Cyrix, Rise) were mostly in-order.
+    ///
     /// Some new processors do not fit into the existing categories:
-    /// Intel Atom 230/330 (family 6, model 0x1C) is an in-order core.
-    /// Centaur Isiah = VIA Nano (family 6, model F) is an out-of-order core.
+    ///
+    /// * Intel Atom 230/330 (family 6, model 0x1C) is an in-order core.
+    /// * Centaur Isiah = VIA Nano (family 6, model F) is an out-of-order core.
     ///
     /// Within each dynasty, the optimisation techniques are largely
     /// identical (eg, use instruction pairing for group 4). Major
@@ -240,10 +282,15 @@ public:
 __gshared:
     // All these values are set only once, and never subsequently modified.
 public:
+    /// $(RED Warning: This field will be turned into a property in a future release.)
+    ///
     /// Processor type (vendor-dependent).
-    /// This should be visible ONLY for display purposes.
+    /// This should be used $(B only) for display purposes.
     uint stepping, model, family;
+    /// $(RED This field has been deprecated. Please use $(D cacheLevels) instead.)
     uint numCacheLevels = 1;
+    /// The number of cache levels in the CPU.
+    @property uint cacheLevels() { return numCacheLevels; }
 private:
     bool probablyIntel; // true = _probably_ an Intel processor, might be faking
     bool probablyAMD; // true = _probably_ an AMD processor
@@ -622,7 +669,7 @@ void cpuidX86()
         amdfeatures = d;
     }
     // Try to detect fraudulent vendorIDs
-    if (amd3dnow) probablyIntel = false;
+    if (amd3DNow) probablyIntel = false;
 
     stepping = a & 0xF;
     uint fbase = (a >> 8) & 0xF;
@@ -807,12 +854,13 @@ bool hasCPUID()
 
     void cpuidX86()
     {
-            datacache[0].size = 8;
-            datacache[0].associativity = 2;
-            datacache[0].lineSize = 32;
+        datacache[0].size = 8;
+        datacache[0].associativity = 2;
+        datacache[0].lineSize = 32;
     }
 }
 
+/*
 // TODO: Implement this function with OS support
 void cpuidPPC()
 {
@@ -850,7 +898,7 @@ void cpuidSparc()
     // UltraSparcIV+ : L1 = 64,  4way. L2 = 2048, L3=32*1024.
     // Sparc64V      : L1 = 128, 2way. L2 = 4096 4way.
 }
-
+*/
 
 shared static this()
 {
