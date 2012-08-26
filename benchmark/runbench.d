@@ -8,7 +8,7 @@
 
 /*          Copyright David Simcha 2011 - 2011.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 import std.ascii, std.datetime, std.exception, std.file, std.path,
@@ -28,8 +28,8 @@ void runTest(string pattern, string dflags)
 {
     string[] sources;
     auto re = regex(pattern, "g");
-    auto self = buildPath(curdir, "runbench.d");
-    foreach(DirEntry src; dirEntries(curdir, SpanMode.depth))
+    auto self = buildPath(".", "runbench.d");
+    foreach(DirEntry src; dirEntries(".", SpanMode.depth))
     {
         if (src.isFile && !match(src.name, re).empty &&
             endsWith(src.name, ".d") && src.name != self)

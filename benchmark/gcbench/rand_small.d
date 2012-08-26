@@ -1,5 +1,5 @@
 /**
- * Benchmark on uniformly distributed, random large allocations.
+ * Benchmark on uniformly distributed, random small allocations.
  *
  * Copyright: Copyright David Simcha 2011 - 2011.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
@@ -8,7 +8,7 @@
 
 /*          Copyright David Simcha 2011 - 2011.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 import std.random, core.memory, std.stdio;
@@ -16,13 +16,13 @@ import std.random, core.memory, std.stdio;
 enum nIter = 1000;
 
 void main() {
-    auto ptrs = new void*[1024];
+    auto ptrs = new void*[4096];
 
-    // Allocate 1024 large blocks with size uniformly distributed between 1
-    // and 128 kilobytes.
+    // Allocate 1024 large blocks with size uniformly distributed between 8
+    // and 2048 bytes.
     foreach(i; 0..nIter) {
         foreach(ref ptr; ptrs) {
-            ptr = GC.malloc(uniform(1024, 128 * 1024 + 1), GC.BlkAttr.NO_SCAN);
+            ptr = GC.malloc(uniform(8, 2048), GC.BlkAttr.NO_SCAN);
         }
     }
 }
