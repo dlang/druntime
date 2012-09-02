@@ -359,7 +359,7 @@ class Thread
      *  deleting this object is undefined.  If the current thread is not
      *  attached to the runtime, a null reference is returned.
      */
-    static Thread getThis();
+    static Thread getThis() nothrow;
 
 
     /**
@@ -678,7 +678,7 @@ extern(C) void thread_processGCMarks( scope IsMarkedDg isMarked );
  * Returns:
  *  The address of the stack top.
  */
-extern (C) void* thread_stackTop();
+extern (C) void* thread_stackTop() nothrow;
 
 
 /**
@@ -691,7 +691,7 @@ extern (C) void* thread_stackTop();
  * Returns:
  *  The address of the stack bottom.
  */
-extern (C) void* thread_stackBottom();
+extern (C) void* thread_stackBottom() nothrow;
 
 
 ///////////////////////////////////////////////////////////////////////////////
