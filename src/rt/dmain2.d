@@ -297,8 +297,6 @@ extern (C) bool rt_init(in ExceptionHandler dg = null) nothrow
     {
         if (dg)
             dg(e);
-        else
-            throw e;    // rethrow, don't silently ignore error
     }
     _d_criticalTerm();
     return false;
