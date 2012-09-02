@@ -13,6 +13,8 @@ version (FreeBSD):
 enum __BSD_VISIBLE = true;
 
 extern (C):
+@system:
+nothrow:
 
 /*
  * Modes and flags for dlopen().

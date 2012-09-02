@@ -19,6 +19,8 @@ public import core.sys.posix.sys.types;  // for time_t, suseconds_t
 public import core.sys.posix.sys.select; // for fd_set, FD_CLR() FD_ISSET() FD_SET() FD_ZERO() FD_SETSIZE, select()
 
 extern (C):
+@trusted:
+nothrow:
 
 //
 // XOpen (XSI)
@@ -68,7 +70,7 @@ version( linux )
     int getitimer(int, itimerval*);
     int gettimeofday(timeval*, void*);
     int setitimer(int, in itimerval*, itimerval*);
-    int utimes(in char*, ref const(timeval)[2]); // LEGACY
+    @system int utimes(in char*, ref const(timeval)[2]); // LEGACY
 }
 else version( OSX )
 {
@@ -94,7 +96,7 @@ else version( OSX )
     int getitimer(int, itimerval*);
     int gettimeofday(timeval*, timezone_t*); // timezone_t* is normally void*
     int setitimer(int, in itimerval*, itimerval*);
-    int utimes(in char*, ref const(timeval)[2]);
+    @system int utimes(in char*, ref const(timeval)[2]);
 }
 else version( FreeBSD )
 {
@@ -120,5 +122,5 @@ else version( FreeBSD )
     int getitimer(int, itimerval*);
     int gettimeofday(timeval*, timezone_t*); // timezone_t* is normally void*
     int setitimer(int, in itimerval*, itimerval*);
-    int utimes(in char*, ref const(timeval)[2]);
+    @system int utimes(in char*, ref const(timeval)[2]);
 }

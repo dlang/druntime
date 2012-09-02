@@ -19,6 +19,8 @@ public import core.sys.osx.mach.kern_return;
 public import core.sys.osx.mach.port;
 
 extern (C):
+@trusted:
+nothrow:
 
 version( X86 )
     version = i386;

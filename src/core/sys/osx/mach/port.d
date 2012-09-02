@@ -16,6 +16,8 @@ module core.sys.osx.mach.port;
 version (OSX):
 
 extern (C):
+@trusted: // Only types.
+nothrow:
 
 version( X86 )
     version = i386;

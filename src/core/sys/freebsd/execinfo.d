@@ -12,6 +12,9 @@ version (FreeBSD):
 
 import core.sys.freebsd.dlfcn;
 
+@system:
+nothrow:
+
 // Use extern (D) so that these functions don't collide with libexecinfo.
 
 extern (D) int backtrace(void** buffer, int size)

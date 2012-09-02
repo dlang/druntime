@@ -20,6 +20,8 @@ public import core.sys.posix.sys.types;
 public import core.sys.posix.signal; // for sigevent
 
 extern (C):
+@trusted:
+nothrow:
 
 //
 // Required (defined in core.stdc.time)
@@ -36,6 +38,8 @@ size_t strftime(char*, size_t, in char*, in tm*);
 time_t time(time_t*);
 */
 
+@system
+{
 version( linux )
 {
     time_t timegm(tm*); // non-standard
@@ -47,6 +51,7 @@ else version( OSX )
 else version( FreeBSD )
 {
     time_t timegm(tm*); // non-standard
+}
 }
 
 //
@@ -230,6 +235,8 @@ tm*   gmtime_r(in time_t*, tm*);
 tm*   localtime_r(in time_t*, tm*);
 */
 
+@system
+{
 version( linux )
 {
     char* asctime_r(in tm*, char*);
@@ -251,6 +258,7 @@ else version( FreeBSD )
     tm*   gmtime_r(in time_t*, tm*);
     tm*   localtime_r(in time_t*, tm*);
 }
+}
 
 //
 // XOpen (XSI)
@@ -265,6 +273,8 @@ tm* getdate(in char*);
 char* strptime(in char*, in char*, tm*);
 */
 
+@system
+{
 version( linux )
 {
     extern __gshared int    daylight;
@@ -293,4 +303,4 @@ else version( Solaris )
     //tm*   getdate(in char*);
     char* strptime(in char*, in char*, tm*);
 }
-
+}

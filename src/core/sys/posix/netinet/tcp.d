@@ -17,6 +17,8 @@ module core.sys.posix.netinet.tcp;
 private import core.sys.posix.config;
 
 extern (C):
+@trusted: // Constants only.
+nothrow:
 
 //
 // Required

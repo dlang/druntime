@@ -18,6 +18,8 @@ private import core.sys.posix.config;
 private import core.sys.posix.signal; // for sigset_t
 
 extern (C):
+@system:
+nothrow:
 
 //
 // Required

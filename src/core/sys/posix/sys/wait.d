@@ -20,6 +20,8 @@ public import core.sys.posix.signal;    // for siginfo_t (XSI)
 //public import core.sys.posix.resource; // for rusage (XSI)
 
 extern (C):
+@trusted:
+nothrow:
 
 //
 // Required

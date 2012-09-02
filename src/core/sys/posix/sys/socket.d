@@ -19,6 +19,8 @@ public import core.sys.posix.sys.types; // for ssize_t, size_t
 public import core.sys.posix.sys.uio;   // for iovec
 
 extern (C):
+@system: // TODO: Some functions in here can be @trusted.
+nothrow:
 
 //
 // Required

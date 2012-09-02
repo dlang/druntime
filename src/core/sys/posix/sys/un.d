@@ -17,6 +17,8 @@ module core.sys.posix.sys.un;
 version (Posix) public import core.sys.posix.sys.socket: sa_family_t;
 
 extern(C):
+@trusted: // Types only.
+nothrow:
 
 //
 // Required

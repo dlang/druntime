@@ -19,6 +19,8 @@ public import core.stdc.stddef;          // for size_t
 public import core.sys.posix.sys.types; // for off_t, mode_t
 
 extern (C):
+@system:
+nothrow:
 
 //
 // Advisory Information (ADV)

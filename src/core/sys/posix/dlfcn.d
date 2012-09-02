@@ -17,6 +17,8 @@ module core.sys.posix.dlfcn;
 private import core.sys.posix.config;
 
 extern (C):
+@system:
+nothrow:
 
 //
 // XOpen (XSI)
