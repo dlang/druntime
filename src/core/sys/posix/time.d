@@ -100,10 +100,6 @@ else version (OSX)
 {
     // No CLOCK_MONOTONIC defined
 }
-else version (Windows)
-{
-    pragma(msg, "no Windows support for CLOCK_MONOTONIC");
-}
 else
 {
     static assert(0);
