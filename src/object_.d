@@ -1371,7 +1371,7 @@ class Throwable : Object
 }
 
 
-alias Throwable.TraceInfo function(void* ptr) TraceHandler;
+private alias Throwable.TraceInfo function(void* ptr) nothrow TraceHandler;
 private __gshared TraceHandler traceHandler = null;
 
 
@@ -1381,7 +1381,7 @@ private __gshared TraceHandler traceHandler = null;
  * Params:
  *  h = The new trace handler.  Set to null to use the default handler.
  */
-extern (C) void  rt_setTraceHandler(TraceHandler h)
+private extern (C) void  rt_setTraceHandler(TraceHandler h) nothrow
 {
     traceHandler = h;
 }
@@ -1389,7 +1389,7 @@ extern (C) void  rt_setTraceHandler(TraceHandler h)
 /**
  * Return the current trace handler
  */
-extern (C) TraceHandler rt_getTraceHandler()
+private extern (C) TraceHandler rt_getTraceHandler() nothrow
 {
     return traceHandler;
 }
@@ -1408,7 +1408,7 @@ extern (C) TraceHandler rt_getTraceHandler()
  *  An object describing the current calling context or null if no handler is
  *  supplied.
  */
-extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null)
+private extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null)
 {
     if (traceHandler is null)
         return null;
@@ -1872,39 +1872,15 @@ void setMonitor(Object h, Monitor* m)
     h.__monitor = m;
 }
 
-void setSameMutex(shared Object ownee, shared Object owner)
-in
+private
 {
-    assert(ownee.__monitor is null);
-}
-body
-{
-    auto m = cast(shared(Monitor)*) owner.__monitor;
-
-    if (m is null)
-    {
-        _d_monitor_create(cast(Object) owner);
-        m = cast(shared(Monitor)*) owner.__monitor;
-    }
-
-    auto i = m.impl;
-    if (i is null)
-    {
-        atomicOp!("+=")(m.refs, cast(size_t)1);
-        ownee.__monitor = owner.__monitor;
-        return;
-    }
-    // If m.impl is set (ie. if this is a user-created monitor), assume
-    // the monitor is garbage collected and simply copy the reference.
-    ownee.__monitor = owner.__monitor;
+    extern (C) void _d_monitor_create(Object);
+    extern (C) void _d_monitor_destroy(Object);
+    extern (C) void _d_monitor_lock(Object);
+    extern (C) int  _d_monitor_unlock(Object);
 }
 
-extern (C) void _d_monitor_create(Object);
-extern (C) void _d_monitor_destroy(Object);
-extern (C) void _d_monitor_lock(Object);
-extern (C) int  _d_monitor_unlock(Object);
-
-extern (C) void _d_monitordelete(Object h, bool det)
+private extern (C) void _d_monitordelete(Object h, bool det)
 {
     // det is true when the object is being destroyed deterministically (ie.
     // when it is explicitly deleted or is a scope object whose time is up).
@@ -1938,7 +1914,7 @@ extern (C) void _d_monitordelete(Object h, bool det)
     }
 }
 
-extern (C) void _d_monitorenter(Object h)
+private extern (C) void _d_monitorenter(Object h)
 {
     Monitor* m = getMonitor(h);
 
@@ -1958,7 +1934,7 @@ extern (C) void _d_monitorenter(Object h)
     i.lock();
 }
 
-extern (C) void _d_monitorexit(Object h)
+private extern (C) void _d_monitorexit(Object h)
 {
     Monitor* m = getMonitor(h);
     IMonitor i = m.impl;
@@ -1971,7 +1947,7 @@ extern (C) void _d_monitorexit(Object h)
     i.unlock();
 }
 
-extern (C) void _d_monitor_devt(Monitor* m, Object h)
+private extern (C) void _d_monitor_devt(Monitor* m, Object h)
 {
     if (m.devt.length)
     {
