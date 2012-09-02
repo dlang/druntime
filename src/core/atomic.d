@@ -15,6 +15,8 @@
  */
 module core.atomic;
 
+@trusted:
+
 version( D_InlineAsm_X86 )
 {
     version = AsmX86;
