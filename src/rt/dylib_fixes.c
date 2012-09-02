@@ -13,8 +13,8 @@
  */
 void* _Dmain __attribute__((weak));
 
-char rt_init ();
-char rt_term ();
+__attribute__((nothrow)) char rt_init ();
+__attribute__((nothrow)) char rt_term ();
 
 __attribute__((constructor)) static void initializer ()
 {

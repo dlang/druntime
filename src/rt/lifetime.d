@@ -65,7 +65,7 @@ private
         PAGESIZE = 4096
     }
 
-    alias bool function(Object) CollectHandler;
+    alias bool function(Object) nothrow CollectHandler;
     __gshared CollectHandler collectHandler = null;
 
                 enum : size_t
@@ -1194,7 +1194,7 @@ extern (C) void _d_callfinalizer(void* p)
 /**
  *
  */
-extern (C) void rt_setCollectHandler(CollectHandler h)
+extern (C) void rt_setCollectHandler(CollectHandler h) nothrow
 {
     collectHandler = h;
 }
@@ -1203,7 +1203,7 @@ extern (C) void rt_setCollectHandler(CollectHandler h)
 /**
  *
  */
-extern (C) CollectHandler rt_getCollectHandler()
+extern (C) CollectHandler rt_getCollectHandler() nothrow
 {
     return collectHandler;
 }

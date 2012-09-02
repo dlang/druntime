@@ -62,12 +62,12 @@ version (FreeBSD)
     import core.stdc.fenv;
 }
 
-extern (C) void _STI_monitor_staticctor();
-extern (C) void _STD_monitor_staticdtor();
-extern (C) void _STI_critical_init();
-extern (C) void _STD_critical_term();
-extern (C) void gc_init();
-extern (C) void gc_term();
+extern (C) void _STI_monitor_staticctor() nothrow;
+extern (C) void _STD_monitor_staticdtor() nothrow;
+extern (C) void _STI_critical_init() nothrow;
+extern (C) void _STD_critical_term() nothrow;
+extern (C) void gc_init() nothrow;
+extern (C) void gc_term() nothrow;
 extern (C) void rt_moduleCtor();
 extern (C) void rt_moduleTlsCtor();
 extern (C) void rt_moduleDtor();
@@ -118,7 +118,7 @@ extern (C)
     alias void  function()      gcClrFn;
 }
 
-extern (C) void* rt_loadLibrary(in char[] name)
+extern (C) void* rt_loadLibrary(in char[] name) nothrow
 {
     version (Windows)
     {
@@ -157,11 +157,11 @@ extern (C) void* rt_loadLibrary(in char[] name)
     }
     else version (Posix)
     {
-        throw new Exception("rt_loadLibrary not yet implemented on Posix.");
+        assert(false, "rt_loadLibrary not yet implemented on Posix.");
     }
 }
 
-extern (C) bool rt_unloadLibrary(void* ptr)
+extern (C) bool rt_unloadLibrary(void* ptr) nothrow
 {
     version (Windows)
     {
@@ -172,7 +172,7 @@ extern (C) bool rt_unloadLibrary(void* ptr)
     }
     else version (Posix)
     {
-        throw new Exception("rt_unloadLibrary not yet implemented on Posix.");
+        assert(false, "rt_unloadLibrary not yet implemented on Posix.");
     }
 }
 
@@ -261,7 +261,7 @@ extern (C) void _d_hidden_func()
 
 __gshared string[] _d_args = null;
 
-extern (C) string[] rt_args()
+extern (C) const(string)[] rt_args()
 {
     return _d_args;
 }
@@ -270,15 +270,15 @@ extern (C) string[] rt_args()
 // be fine to leave it as __gshared.
 extern (C) __gshared bool rt_trapExceptions = true;
 
-void _d_criticalInit()
+void _d_criticalInit() nothrow
 {
   _STI_monitor_staticctor();
   _STI_critical_init();
 }
 
-alias void delegate(Throwable) ExceptionHandler;
+alias void delegate(Throwable) nothrow ExceptionHandler;
 
-extern (C) bool rt_init(ExceptionHandler dg = null)
+extern (C) bool rt_init(in ExceptionHandler dg = null) nothrow
 {
     version (OSX)
         _d_osx_image_init2();
@@ -304,13 +304,13 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
     return false;
 }
 
-void _d_criticalTerm()
+void _d_criticalTerm() nothrow
 {
   _STD_critical_term();
   _STD_monitor_staticdtor();
 }
 
-extern (C) bool rt_term(ExceptionHandler dg = null)
+extern (C) bool rt_term(in ExceptionHandler dg = null) nothrow
 {
     try
     {

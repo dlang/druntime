@@ -16,17 +16,7 @@
 module core.exception;
 
 import core.stdc.stdio;
-
-private
-{
-    alias void function( string file, size_t line, string msg ) errorHandlerType;
-
-    // NOTE: One assert handler is used for all threads.  Thread-local
-    //       behavior should occur within the handler itself.  This delegate
-    //       is __gshared for now based on the assumption that it will only
-    //       set by the main thread during program initialization.
-    __gshared errorHandlerType assertHandler = null;
-}
+import core.runtime;
 
 
 /**
@@ -369,23 +359,6 @@ unittest
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Overrides
-///////////////////////////////////////////////////////////////////////////////
-
-
-/**
- * Overrides the default assert hander with a user-supplied version.
- *
- * Params:
- *  h = The new assert handler.  Set to null to use the default handler.
- */
-void setAssertHandler( errorHandlerType h )
-{
-    assertHandler = h;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
 // Overridable Callbacks
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -400,9 +373,12 @@ void setAssertHandler( errorHandlerType h )
  */
 extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ )
 {
-    if( assertHandler is null )
+    auto handler = Runtime.assertHandler;
+
+    if( handler is null )
         throw new AssertError( file, line );
-    assertHandler( file, line, null);
+
+    handler( file, line, null);
 }
 
 
@@ -417,9 +393,12 @@ extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ )
  */
 extern (C) void onAssertErrorMsg( string file, size_t line, string msg )
 {
-    if( assertHandler is null )
+    auto handler = Runtime.assertHandler;
+
+    if( handler is null )
         throw new AssertError( msg, file, line );
-    assertHandler( file, line, msg );
+
+    handler( file, line, msg );
 }
 
 

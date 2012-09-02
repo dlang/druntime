@@ -14,29 +14,42 @@
  */
 module core.runtime;
 
+@system:
+
+/// Used to trigger assertion failures.
+alias void function(string file, size_t line, string msg) AssertHandler;
+
+/// Used to handle exceptions during runtime startup/termination.
+alias void delegate( Throwable ) nothrow ExceptionHandler;
+
+/// Used to run unit tests.
+alias bool function() nothrow ModuleUnitTester;
+
+/// Used to finalize dead objects.
+alias bool function(Object) nothrow CollectHandler;
+
+/// Used to generate stack traces.
+alias Throwable.TraceInfo function( void* ptr ) nothrow TraceHandler;
+
+nothrow:
 
 private
 {
-    alias bool function() ModuleUnitTester;
-    alias bool function(Object) CollectHandler;
-    alias Throwable.TraceInfo function( void* ptr ) TraceHandler;
-
     extern (C) void rt_setCollectHandler( CollectHandler h );
     extern (C) CollectHandler rt_getCollectHandler();
 
     extern (C) void rt_setTraceHandler( TraceHandler h );
     extern (C) TraceHandler rt_getTraceHandler();
 
-    alias void delegate( Throwable ) ExceptionHandler;
-    extern (C) bool rt_init( ExceptionHandler dg = null );
-    extern (C) bool rt_term( ExceptionHandler dg = null );
+    extern (C) bool rt_init( in ExceptionHandler dg = null );
+    extern (C) bool rt_term( in ExceptionHandler dg = null );
 
     extern (C) void* rt_loadLibrary( in char[] name );
     extern (C) bool  rt_unloadLibrary( void* ptr );
 
     extern (C) void* thread_stackBottom();
 
-    extern (C) string[] rt_args();
+    extern (C) const(string)[] rt_args();
 
     // backtrace
     version( linux )
@@ -66,7 +79,9 @@ static this()
     //       still possible the app could exit without a stack trace.  If
     //       this becomes an issue, the handler could be set in C main
     //       before the module ctors are run.
-    Runtime.traceHandler = &defaultTraceHandler;
+    // HACK: This cast is in place until we can propagate nothrow further
+    //       in the runtime.
+    Runtime.traceHandler = cast(Throwable.TraceInfo function( void* ptr ) nothrow)&defaultTraceHandler;
 }
 
 
@@ -81,6 +96,10 @@ static this()
  */
 struct Runtime
 {
+nothrow:
+
+    @disable this();
+
     /**
      * Initializes the runtime.  This call is to be used in instances where the
      * standard program initialization process is not executed.  This is most
@@ -94,7 +113,7 @@ struct Runtime
      * Returns:
      *  true if initialization succeeds and false if initialization fails.
      */
-    static bool initialize( ExceptionHandler dg = null )
+    static bool initialize( in ExceptionHandler dg = null )
     {
         return rt_init( dg );
     }
@@ -102,7 +121,7 @@ struct Runtime
 
     /**
      * Terminates the runtime.  This call is to be used in instances where the
-     * standard program termination process will not be not executed.  This is
+     * standard program termination process will not be executed.  This is
      * most often in shared libraries or in libraries linked to a C program.
      *
      * Params:
@@ -111,9 +130,9 @@ struct Runtime
      *       discarded.
      *
      * Returns:
-     *  true if termination succeeds and false if termination fails.
+     *  true if termination succeeds or false if termination fails.
      */
-    static bool terminate( ExceptionHandler dg = null )
+    static bool terminate( in ExceptionHandler dg = null )
     {
         return rt_term( dg );
     }
@@ -125,7 +144,7 @@ struct Runtime
      * Returns:
      *  The arguments supplied when this process was started.
      */
-    static @property string[] args()
+    static @property const(string)[] args() @trusted
     {
         return rt_args();
     }
@@ -246,11 +265,41 @@ struct Runtime
     }
 
 
+    /**
+     * Overrides the default assert handler with a user-supplied version.
+     * This routine will be called when an assert statement fails.
+     *
+     * Params:
+     *  h = The new assert handler.  Set to null to use the default assert handler.
+     */
+    static @property void assertHandler(AssertHandler h)
+    {
+        sm_assertHandler = h;
+    }
+
+
+    /**
+     * Gets the current assert handler.
+     *
+     * Returns:
+     *  The current assert handler or null if no assert handler is set.
+     */
+    static @property AssertHandler assertHandler()
+    {
+        return sm_assertHandler;
+    }
+
 private:
     // NOTE: This field will only ever be set in a static ctor and should
     //       never occur within any but the main thread, so it is safe to
     //       make it __gshared.
     __gshared ModuleUnitTester sm_moduleUnitTester = null;
+
+    // NOTE: One assert handler is used for all threads.  Thread-local
+    //       behavior should occur within the handler itself.  This delegate
+    //       is __gshared for now based on the assumption that it will only
+    //       set by the main thread during program initialization.
+    __gshared AssertHandler sm_assertHandler = null;
 }
 
 
@@ -274,7 +323,7 @@ extern (C) bool runModuleUnitTests()
     {
         import core.sys.posix.signal; // segv handler
 
-        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
+        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr ) nothrow
         {
             static enum MAXFRAMES = 128;
             void*[MAXFRAMES]  callstack;
@@ -323,28 +372,35 @@ extern (C) bool runModuleUnitTests()
 
     if( Runtime.sm_moduleUnitTester is null )
     {
-        size_t failed = 0;
-        foreach( m; ModuleInfo )
+        static size_t op()
         {
-            if( m )
-            {
-                auto fp = m.unitTest;
+            size_t failed = 0;
 
-                if( fp )
+            foreach( m; ModuleInfo )
+            {
+                if( m )
                 {
-                    try
+                    auto fp = m.unitTest;
+
+                    if( fp )
                     {
-                        fp();
-                    }
-                    catch( Throwable e )
-                    {
-                        console( e.toString() )( "\n" );
-                        failed++;
+                        try
+                        {
+                            fp();
+                        }
+                        catch( Throwable e )
+                        {
+                            console( e.toString() )( "\n" );
+                            failed++;
+                        }
                     }
                 }
             }
+
+            return failed;
         }
-        return failed == 0;
+
+        return (cast(size_t function() nothrow)&op)() == 0;
     }
     return Runtime.sm_moduleUnitTester();
 }
@@ -356,7 +412,8 @@ extern (C) bool runModuleUnitTests()
 
 
 /**
- *
+ * The default trace handler. Uses the trace mechanism of the
+ * platform the program is running on.
  */
 Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
@@ -368,7 +425,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
         class DefaultTraceInfo : Throwable.TraceInfo
         {
-            this()
+            this() nothrow
             {
                 static enum MAXFRAMES = 128;
                 void*[MAXFRAMES]  callstack;
