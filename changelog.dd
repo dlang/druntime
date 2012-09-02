@@ -1,3 +1,41 @@
+$(VERSION 061, mmm dd, 2012, =================================================,
+
+    $(WHATSNEW
+        $(LI The setSameMutex() function has been removed. No replacement exists
+        as the functionality this function exposed was very unsafe when combined
+        with finalizers.)
+        $(LI Runtime.initialize() now actually discards exceptions as documented
+        when no exception handler function is passed.)
+        $(LI Many modules in the core.sys package have been marked @trusted and
+        nothrow.)
+        $(LI Runtime.args() now returns const(string)[] rather than string[].)
+        $(LI thread_stackBottom() and thread_stackTop() are now nothrow.)
+        $(LI core.exception.setAssertHandler() has been removed. Please use the
+        Runtime.assertHandler property instead. This change was made in order to
+        make runtime event hooking consistent.)
+        $(LI Thread.getThis() is now nothrow.)
+        $(LI An annoying pragma(msg, ...) has been removed from the
+        core.sys.posix.time module.)
+        $(LI All of core.math is now @safe pure nothrow.)
+        $(LI All of core.atomic is now @trusted.)
+        $(LI A new core.sys.posix.sys.statvfs module has been added.)
+        $(LI __simd is now only available when the D_SIMD version is set (i.e.
+        for DMD only).)
+        $(LI The sem_t struct has been fixed for FreeBSD 9.)
+        $(LI A new core.sys.linux.xattr module has been added.)
+        $(LI core.cpuid now has functions to detect AVX2, HLE, and RTM.)
+        $(LI All of core.cpuid is now @trusted nothrow.)
+        $(LI The core.cpuid.datacache field has been scheduled for deprecation.
+        Please use the core.cpuid.dataCaches property instead.)
+        $(LI The core.cpuid.numCacheLevels field has been scheduled for
+        deprecation. Please use the core.cpuid.cacheLevels property instead.)
+    )
+
+    $(RUNTIMEBUGSFIXED
+        $(LI $(BUGZILLA 4793): Runtime.loadLibrary cannot load dll using MBS paths.)
+    )
+)
+
 $(VERSION 060, mmm dd, 2012, =================================================,
 
     $(WHATSNEW
