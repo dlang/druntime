@@ -626,16 +626,16 @@ template _isStaticArray(T)
         }
     }
 
+    auto copy = new E[](arr.length);
+    immutable blen = arr.length * E.sizeof;
+    (cast(ubyte*)copy.ptr)[0 .. blen] = (cast(ubyte*)arr.ptr)[0 .. blen];
+
     static if (X.hasMutableIndirection!E)
     {
-        auto copy = new E[](arr.length);
-        copy[] = cast(E[])arr[];        // assume constant
         return cast(inout(E)[])copy;    // assume constant
     }
     else
     {
-        auto copy = new E[](arr.length);
-        copy[] = arr[];
         return copy;
     }
 }

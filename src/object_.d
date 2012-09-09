@@ -2509,16 +2509,16 @@ version (unittest)
         }
     }
 
+    auto copy = new E[](arr.length);
+    immutable blen = arr.length * E.sizeof;
+    (cast(ubyte*)copy.ptr)[0 .. blen] = (cast(ubyte*)arr.ptr)[0 .. blen];
+
     static if (X.hasMutableIndirection!E)
     {
-        auto copy = new E[](arr.length);
-        copy[] = cast(E[])arr[];        // assume constant
         return cast(inout(E)[])copy;    // assume constant
     }
     else
     {
-        auto copy = new E[](arr.length);
-        copy[] = arr[];
         return copy;
     }
 }
@@ -2548,6 +2548,8 @@ unittest
     class C {}
     struct S1 { long n; }
     struct S2 { int* p; }
+    struct S3 { immutable int x; }
+    struct S4 { immutable int x; int* p; }
     struct T1 { S1 s; }
     struct T2 { S2 s; }
     struct T3 { S1 s1;  S2 s2; }
@@ -2557,6 +2559,8 @@ unittest
     test!(C     , false)();
     test!(S1    , true )();
     test!(S2    , false)();
+    test!(S3    , true )();
+    test!(S4    , false)();
     test!(T1    , true )();
     test!(T2    , false)();
     test!(T3    , false)();
