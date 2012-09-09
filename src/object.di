@@ -606,6 +606,40 @@ template _isStaticArray(T)
     enum bool _isStaticArray = false;
 }
 
+/*@property */auto dup(E)(inout(E)[] arr) pure @trusted
+{
+  static struct X	// dummy namespace
+  {
+    template Unqual(T)
+    {
+             static if (is(T U == shared(const U))) alias U Unqual;
+        else static if (is(T U ==        const U )) alias U Unqual;
+        else static if (is(T U ==    immutable U )) alias U Unqual;
+        else static if (is(T U ==        inout U )) alias U Unqual;
+        else static if (is(T U ==       shared U )) alias U Unqual;
+        else                                        alias T Unqual;
+    }
+
+    template hasMutableIndirection(T)
+    {
+        enum hasMutableIndirection = !is(typeof({ Unqual!T t = void; immutable T u = t; }));
+    }
+  }
+
+    static if (X.hasMutableIndirection!E)
+    {
+        auto copy = new E[](arr.length);
+        copy[] = cast(E[])arr[];        // assume constant
+        return cast(inout(E)[])copy;    // assume constant
+    }
+    else
+    {
+        auto copy = new E[](arr.length);
+        copy[] = arr[];
+        return copy;
+    }
+}
+
 private
 {
     extern (C) void _d_arrayshrinkfit(TypeInfo ti, void[] arr);

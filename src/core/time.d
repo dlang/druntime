@@ -3249,9 +3249,9 @@ string numToString(long value) @safe pure nothrow
         }
 
         if(negative)
-            return "-" ~ str[i .. $].idup;
+            return "-" ~ str[i .. $].dup();
         else
-            return str[i .. $].idup;
+            return str[i .. $].dup();
     }
     catch(Exception e)
         assert(0, "Something threw when nothing can throw.");
