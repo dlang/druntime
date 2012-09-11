@@ -335,11 +335,8 @@ else
 
 alias int fpos_t;
 
-int remove(in char* filename);
-int rename(in char* from, in char* to);
 
 @trusted FILE* tmpfile(); // No unsafe pointer manipulation.
-char* tmpnam(char* s);
 
 int   fclose(FILE* stream);
 
@@ -349,8 +346,16 @@ int   fclose(FILE* stream);
     int   fflush(FILE* stream);
 }
 
+
+// WARNING: On Windows these functions expect file names
+// to be encoded in CP_ACP instead of UTF-8.
+// For UTF-16 versions see core.sys.windows.c.stdio
+int remove(in char* filename);
+int rename(in char* from, in char* to);
+char* tmpnam(char* s);
 FILE* fopen(in char* filename, in char* mode);
 FILE* freopen(in char* filename, in char* mode, FILE* stream);
+
 
 void setbuf(FILE* stream, char* buf);
 int  setvbuf(FILE* stream, char* buf, int mode, size_t size);
