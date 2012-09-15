@@ -110,16 +110,8 @@ pure:
 // Note that, unlike the standard libc function, the llvm.memcpy.* intrinsics do
 // not return a value, and takes an extra alignment argument.
 
-version(LDC_LLVMPre28)
-{
-    pragma(intrinsic, "llvm.memcpy.i#")
-        void llvm_memcpy(T)(void* dst, void* src, T len, uint alignment);
-}
-else
-{
-    pragma(intrinsic, "llvm.memcpy.p0i8.p0i8.i#")
-        void llvm_memcpy(T)(void* dst, void* src, T len, uint alignment, bool volatile_ = false);
-}
+pragma(intrinsic, "llvm.memcpy.p0i8.p0i8.i#")
+    void llvm_memcpy(T)(void* dst, void* src, T len, uint alignment, bool volatile_ = false);
 
 
 // The 'llvm.memmove.*' intrinsics move a block of memory from the source
@@ -129,16 +121,8 @@ else
 // do not return a value, and takes an extra alignment argument.
 
 
-version(LDC_LLVMPre28)
-{
-    pragma(intrinsic, "llvm.memmove.i#")
-        void llvm_memmove(T)(void* dst, void* src, T len, uint alignment);
-}
-else
-{
-    pragma(intrinsic, "llvm.memmove.p0i8.p0i8.i#")
-        void llvm_memmove(T)(void* dst, void* src, T len, uint alignment, bool volatile_ = false);
-}
+pragma(intrinsic, "llvm.memmove.p0i8.p0i8.i#")
+    void llvm_memmove(T)(void* dst, void* src, T len, uint alignment, bool volatile_ = false);
 
 
 // The 'llvm.memset.*' intrinsics fill a block of memory with a particular byte
@@ -146,16 +130,8 @@ else
 // Note that, unlike the standard libc function, the llvm.memset intrinsic does
 // not return a value, and takes an extra alignment argument.
 
-version(LDC_LLVMPre28)
-{
-    pragma(intrinsic, "llvm.memset.i#")
-        void llvm_memset(T)(void* dst, ubyte val, T len, uint alignment);
-}
-else
-{
-    pragma(intrinsic, "llvm.memset.p0i8.i#")
-        void llvm_memset(T)(void* dst, ubyte val, T len, uint alignment, bool volatile_ = false);
-}
+pragma(intrinsic, "llvm.memset.p0i8.i#")
+    void llvm_memset(T)(void* dst, ubyte val, T len, uint alignment, bool volatile_ = false);
 
 
 @safe:
@@ -199,6 +175,44 @@ pragma(intrinsic, "llvm.pow.f#")
     T llvm_pow(T)(T val, T power);
 
 
+// The 'llvm.exp.*' intrinsics perform the exp function.
+
+pragma(intrinsic, "llvm.exp.f#")
+    T llvm_exp(T)(T val);
+
+
+// The 'llvm.log.*' intrinsics perform the log function.
+
+pragma(intrinsic, "llvm.log.f#")
+    T llvm_log(T)(T val);
+
+
+// The 'llvm.fma.*' intrinsics perform the fused multiply-add operation.
+
+pragma(intrinsic, "llvm.fma.f#")
+    T llvm_fma(T)(T vala, T valb, T valc);
+
+
+// The 'llvm.fabs.*' intrinsics return the absolute value of the operand.
+
+pragma(intrinsic, "llvm.fabs.f#")
+    T llvm_fabs(T)(T val);
+
+
+// The 'llvm.floor.*' intrinsics return the floor of the operand.
+
+pragma(intrinsic, "llvm.floor.f#")
+    T llvm_floor(T)(T val);
+
+
+// The 'llvm.fmuladd.*' intrinsic functions represent multiply-add expressions
+// that can be fused if the code generator determines that the fused expression
+//  would be legal and efficient.
+
+pragma(intrinsic, "llvm.fmuladd.f#")
+    T llvm_fmuladd(T)(T vala, T valb, T valc);
+
+
 //
 // BIT MANIPULATION INTRINSICS
 //
@@ -222,15 +236,31 @@ pragma(intrinsic, "llvm.ctpop.i#")
 // The 'llvm.ctlz' family of intrinsic functions counts the number of leading
 // zeros in a variable.
 
-pragma(intrinsic, "llvm.ctlz.i#")
-    T llvm_ctlz(T)(T src);
+version (LDC_LLVM_300)
+{
+    pragma(intrinsic, "llvm.ctlz.i#")
+        T llvm_ctlz(T)(T src);
+}
+else
+{
+    pragma(intrinsic, "llvm.ctlz.i#")
+        T llvm_ctlz(T)(T src, bool isZerodefined);
+}
 
 
 // The 'llvm.cttz' family of intrinsic functions counts the number of trailing
 // zeros.
 
-pragma(intrinsic, "llvm.cttz.i#")
-    T llvm_cttz(T)(T src);
+version (LDC_LLVM_300)
+{
+    pragma(intrinsic, "llvm.cttz.i#")
+        T llvm_cttz(T)(T src);
+}
+else
+{
+    pragma(intrinsic, "llvm.cttz.i#")
+        T llvm_cttz(T)(T src, bool isZerodefined);
+}
 
 
 // The 'llvm.part.select' family of intrinsic functions selects a range of bits
