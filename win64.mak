@@ -1,10 +1,16 @@
-# Makefile to build D runtime library druntime.lib for Win32
+# Makefile to build D runtime library druntime64.lib for Win64
 
-MODEL=32
+MODEL=64
+
+VCDIR="\Program Files (x86)\Microsoft Visual Studio 10.0\VC"
+SDKDIR="\Program Files (x86)\Microsoft SDKs\Windows\v7.0A"
 
 DMD=dmd
 
-CC=dmc
+CC=$(VCDIR)\bin\amd64\cl
+LD=$(VCDIR)\bin\amd64\link
+LIB=$(VCDIR)\bin\amd64\lib
+CP=cp
 
 DOCDIR=doc
 IMPDIR=import
@@ -13,15 +19,16 @@ DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property
 UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property
 DDOCFLAGS=-c -w -o- -Isrc -Iimport
 
-CFLAGS=
+#CFLAGS=/O2 /I$(VCDIR)\INCLUDE /I$(SDKDIR)\Include
+CFLAGS=/Zi /I$(VCDIR)\INCLUDE /I$(SDKDIR)\Include
 
-DRUNTIME_BASE=druntime
+DRUNTIME_BASE=druntime64
 DRUNTIME=lib\$(DRUNTIME_BASE).lib
-GCSTUB=lib\gcstub.obj
+GCSTUB=lib\gcstub64.obj
 
 DOCFMT=-version=CoreDdoc
 
-target : import copydir copy $(DRUNTIME) doc $(GCSTUB)
+target : import copydir copy $(DRUNTIME) $(GCSTUB)
 
 MANIFEST= \
 	LICENSE \
@@ -299,7 +306,7 @@ SRCS= \
 	src\rt\cast_.d \
 	src\rt\cover.d \
 	src\rt\critical_.d \
-	src\rt\deh.d \
+	src\rt\deh2.d \
 	src\rt\dmain2.d \
 	src\rt\invariant.d \
 	src\rt\invariant_.d \
@@ -361,7 +368,7 @@ SRCS= \
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= errno_c.obj complex.obj src\rt\minit.obj
+OBJS= errno_c.obj complex.obj
 OBJS_TO_DELETE= errno_c.obj complex.obj
 
 DOCS=\
@@ -858,7 +865,7 @@ $(IMPDIR)\core\sys\windows\windows.d : src\core\sys\windows\windows.d
 ################### C\ASM Targets ############################
 
 errno_c.obj : src\core\stdc\errno.c
-	$(CC) -c $(CFLAGS) src\core\stdc\errno.c -oerrno_c.obj
+	$(CC) -c $(CFLAGS) src\core\stdc\errno.c -Foerrno_c.obj
 
 complex.obj : src\rt\complex.c
 	$(CC) -c $(CFLAGS) src\rt\complex.c
