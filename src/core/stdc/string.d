@@ -36,7 +36,7 @@ pure int    strncmp(in char* s1, in char* s2, size_t n);
 size_t strxfrm(char* s1, in char* s2, size_t n);
 pure char*  strchr(in char* s, int c);
 pure size_t strcspn(in char* s1, in char* s2);
-char*  strpbrk(in char* s1, in char* s2);
+pure char*  strpbrk(in char* s1, in char* s2);
 pure char*  strrchr(in char* s, int c);
 pure size_t strspn(in char* s1, in char* s2);
 pure char*  strstr(in char* s1, in char* s2);
