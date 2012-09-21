@@ -707,4 +707,5 @@ struct UnitTest
     string fileName;
     uint line;
     void function() testFunc;
+    bool disabled;
 }

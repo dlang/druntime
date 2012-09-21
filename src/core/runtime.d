@@ -336,6 +336,8 @@ extern (C) bool runModuleUnitTests()
                     {
                         foreach(test; m.unitTests)
                         {
+                            if(test.disabled)
+                                continue;
                             test.testFunc();
                         }
                     }
