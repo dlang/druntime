@@ -432,7 +432,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                 numframes = 0; //backtrace( callstack, MAXFRAMES );
                 if (numframes < 2) // backtrace() failed, do it ourselves
                 {
-                    static void** getBasePtr()
+                    static void** getBasePtr() nothrow
                     {
                         version( D_InlineAsm_X86 )
                             asm { naked; mov EAX, EBP; ret; }
