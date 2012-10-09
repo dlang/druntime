@@ -19,6 +19,8 @@ public import core.stdc.inttypes; // for uint32_t, uint16_t
 public import core.sys.posix.sys.socket; // for socklen_t
 
 extern (C):
+@system:
+nothrow:
 
 //
 // Required
@@ -60,10 +62,13 @@ version( linux )
 
     enum INET_ADDRSTRLEN = 16;
 
+@trusted
+{
     uint32_t htonl(uint32_t);
     uint16_t htons(uint16_t);
     uint32_t ntohl(uint32_t);
     uint16_t ntohs(uint16_t);
+}
 
     in_addr_t       inet_addr(in char*);
     char*           inet_ntoa(in_addr);
@@ -82,10 +87,13 @@ else version( OSX )
 
     enum INET_ADDRSTRLEN = 16;
 
+@trusted
+{
     uint32_t htonl(uint32_t);
     uint16_t htons(uint16_t);
     uint32_t ntohl(uint32_t);
     uint16_t ntohs(uint16_t);
+}
 
     in_addr_t       inet_addr(in char*);
     char*           inet_ntoa(in_addr);
@@ -104,10 +112,13 @@ else version( FreeBSD )
 
     enum INET_ADDRSTRLEN = 16;
 
+@trusted
+{
     uint32_t htonl(uint32_t);
     uint16_t htons(uint16_t);
     uint32_t ntohl(uint32_t);
     uint16_t ntohs(uint16_t);
+}
 
     in_addr_t       inet_addr(in char*);
     char*           inet_ntoa(in_addr);

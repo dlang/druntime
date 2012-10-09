@@ -17,6 +17,8 @@ import core.stdc.stdint;    // intptr_t, uintptr_t
 import core.sys.posix.time; // timespec
 
 extern(C):
+@system:
+nothrow:
 
 enum
 {
@@ -123,7 +125,7 @@ enum
     NOTE_CHILD      = 0x00000004, /* am a child process */
 }
 
-int kqueue();
+@trusted int kqueue();
 int kevent(int kq, const kevent_t *changelist, int nchanges,
            kevent_t *eventlist, int nevents,
            const timespec *timeout);

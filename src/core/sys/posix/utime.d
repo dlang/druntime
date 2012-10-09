@@ -18,6 +18,8 @@ private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for time_t
 
 extern (C):
+@system:
+nothrow:
 
 //
 // Required

@@ -12,9 +12,12 @@ private import core.stdc.config;
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types;
 
-extern (C) :
+extern (C):
+@system:
+nothrow:
 
-version(linux) {
+version(linux)
+{
     static if(__WORDSIZE == 32) 
     {
         version=_STATVFSBUF_F_UNUSED;

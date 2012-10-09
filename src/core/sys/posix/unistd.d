@@ -20,6 +20,8 @@ public import core.sys.posix.inttypes;  // for intptr_t
 public import core.sys.posix.sys.types; // for size_t, ssize_t, uid_t, gid_t, off_t, pid_t, useconds_t
 
 extern (C):
+@system: // TODO: Some functions in here can be @trusted.
+nothrow:
 
 version( Posix )
 {

@@ -19,6 +19,8 @@ public import core.sys.posix.time;
 public import core.sys.posix.sys.types;
 
 extern (C):
+@trusted:
+nothrow:
 
 //
 // Required

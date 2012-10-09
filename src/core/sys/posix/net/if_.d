@@ -17,6 +17,8 @@ module core.sys.posix.net.if_;
 private import core.sys.posix.config;
 
 extern (C):
+@system:
+nothrow:
 
 //
 // Required

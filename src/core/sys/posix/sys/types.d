@@ -20,6 +20,8 @@ public import core.stdc.stddef; // for size_t
 public import core.stdc.time;   // for clock_t, time_t
 
 extern (C):
+@trusted: // Types only.
+nothrow:
 
 //
 // Required

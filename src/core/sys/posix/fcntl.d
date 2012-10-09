@@ -21,6 +21,8 @@ public import core.sys.posix.sys.types; // for off_t, mode_t
 public import core.sys.posix.sys.stat;  // for S_IFMT, etc.
 
 extern (C):
+nothrow:
+@system:
 
 //
 // Required

@@ -14,6 +14,8 @@
 
 module core.sys.windows.threadaux;
 
+nothrow:
+
 version( Windows )
 {
     import core.sys.windows.windows;

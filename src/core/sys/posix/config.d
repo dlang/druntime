@@ -17,6 +17,8 @@ module core.sys.posix.config;
 public import core.stdc.config;
 
 extern (C):
+@trusted: // Constants only.
+nothrow:
 
 version (Posix)
 {

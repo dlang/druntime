@@ -21,7 +21,9 @@ public import core.sys.posix.time;
 
 import core.stdc.stdint;
 
-extern (C) nothrow:
+extern (C):
+@system:
+nothrow:
 
 //
 // Required

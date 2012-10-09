@@ -75,31 +75,32 @@
  */
 module core.memory;
 
+nothrow:
 
 private
 {
     extern (C) void gc_init();
     extern (C) void gc_term();
 
-    extern (C) void gc_enable() nothrow;
-    extern (C) void gc_disable() nothrow;
-    extern (C) void gc_collect() nothrow;
-    extern (C) void gc_minimize() nothrow;
+    extern (C) void gc_enable();
+    extern (C) void gc_disable();
+    extern (C) void gc_collect();
+    extern (C) void gc_minimize();
 
-    extern (C) uint gc_getAttr( void* p ) pure nothrow;
-    extern (C) uint gc_setAttr( void* p, uint a ) pure nothrow;
-    extern (C) uint gc_clrAttr( void* p, uint a ) pure nothrow;
+    extern (C) uint gc_getAttr( void* p ) pure;
+    extern (C) uint gc_setAttr( void* p, uint a ) pure;
+    extern (C) uint gc_clrAttr( void* p, uint a ) pure;
 
-    extern (C) void*    gc_malloc( size_t sz, uint ba = 0 ) pure nothrow;
-    extern (C) void*    gc_calloc( size_t sz, uint ba = 0 ) pure nothrow;
-    extern (C) BlkInfo_ gc_qalloc( size_t sz, uint ba = 0 ) pure nothrow;
-    extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0 ) pure nothrow;
-    extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz ) pure nothrow;
-    extern (C) size_t   gc_reserve( size_t sz ) nothrow;
-    extern (C) void     gc_free( void* p ) pure nothrow;
+    extern (C) void*    gc_malloc( size_t sz, uint ba = 0 ) pure;
+    extern (C) void*    gc_calloc( size_t sz, uint ba = 0 ) pure;
+    extern (C) BlkInfo_ gc_qalloc( size_t sz, uint ba = 0 ) pure;
+    extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0 ) pure;
+    extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz ) pure;
+    extern (C) size_t   gc_reserve( size_t sz );
+    extern (C) void     gc_free( void* p ) pure;
 
-    extern (C) void*   gc_addrOf( void* p ) pure nothrow;
-    extern (C) size_t  gc_sizeOf( void* p ) pure nothrow;
+    extern (C) void*   gc_addrOf( void* p ) pure;
+    extern (C) size_t  gc_sizeOf( void* p ) pure;
 
     struct BlkInfo_
     {
@@ -108,13 +109,13 @@ private
         uint   attr;
     }
 
-    extern (C) BlkInfo_ gc_query( void* p ) pure nothrow;
+    extern (C) BlkInfo_ gc_query( void* p ) pure;
 
-    extern (C) void gc_addRoot( in void* p ) nothrow;
-    extern (C) void gc_addRange( in void* p, size_t sz ) nothrow;
+    extern (C) void gc_addRoot( in void* p );
+    extern (C) void gc_addRange( in void* p, size_t sz );
 
-    extern (C) void gc_removeRoot( in void* p ) nothrow;
-    extern (C) void gc_removeRange( in void* p ) nothrow;
+    extern (C) void gc_removeRoot( in void* p );
+    extern (C) void gc_removeRange( in void* p );
 }
 
 
@@ -132,7 +133,7 @@ struct GC
      * reentrant, and must be called once for every call to disable before
      * automatic collections are enabled.
      */
-    static void enable() nothrow /* FIXME pure */
+    static void enable() /* FIXME pure */
     {
         gc_enable();
     }
@@ -145,7 +146,7 @@ struct GC
      * such as during an out of memory condition.  This function is reentrant,
      * but enable must be called once for each call to disable.
      */
-    static void disable() nothrow /* FIXME pure */
+    static void disable() /* FIXME pure */
     {
         gc_disable();
     }
@@ -158,7 +159,7 @@ struct GC
      * and then to reclaim free space.  This action may need to suspend all
      * running threads for at least part of the collection process.
      */
-    static void collect() nothrow /* FIXME pure */
+    static void collect() /* FIXME pure */
     {
         gc_collect();
     }
@@ -168,7 +169,7 @@ struct GC
      * physical memory to the operating system.  The amount of free memory
      * returned depends on the allocator design and on program behavior.
      */
-    static void minimize() nothrow /* FIXME pure */
+    static void minimize() /* FIXME pure */
     {
         gc_minimize();
     }
@@ -221,14 +222,14 @@ struct GC
      *  A bit field containing any bits set for the memory block referenced by
      *  p or zero on error.
      */
-    static uint getAttr( in void* p ) nothrow
+    static uint getAttr( in void* p )
     {
         return getAttr(cast()p);
     }
 
 
     /// ditto
-    static uint getAttr(void* p) pure nothrow
+    static uint getAttr(void* p) pure
     {
         return gc_getAttr( p );
     }
@@ -248,14 +249,14 @@ struct GC
      *  The result of a call to getAttr after the specified bits have been
      *  set.
      */
-    static uint setAttr( in void* p, uint a ) nothrow
+    static uint setAttr( in void* p, uint a )
     {
         return setAttr(cast()p, a);
     }
 
 
     /// ditto
-    static uint setAttr(void* p, uint a) pure nothrow
+    static uint setAttr(void* p, uint a) pure
     {
         return gc_setAttr( p, a );
     }
@@ -275,14 +276,14 @@ struct GC
      *  The result of a call to getAttr after the specified bits have been
      *  cleared.
      */
-    static uint clrAttr( in void* p, uint a ) nothrow
+    static uint clrAttr( in void* p, uint a )
     {
         return clrAttr(cast()p, a);
     }
 
 
     /// ditto
-    static uint clrAttr(void* p, uint a) pure nothrow
+    static uint clrAttr(void* p, uint a) pure
     {
         return gc_clrAttr( p, a );
     }
@@ -306,7 +307,7 @@ struct GC
      * Throws:
      *  OutOfMemoryError on allocation failure.
      */
-    static void* malloc( size_t sz, uint ba = 0 ) pure nothrow
+    static void* malloc( size_t sz, uint ba = 0 ) pure
     {
         return gc_malloc( sz, ba );
     }
@@ -330,7 +331,7 @@ struct GC
      * Throws:
      *  OutOfMemoryError on allocation failure.
      */
-    static BlkInfo qalloc( size_t sz, uint ba = 0 ) pure nothrow
+    static BlkInfo qalloc( size_t sz, uint ba = 0 ) pure
     {
         return gc_qalloc( sz, ba );
     }
@@ -355,7 +356,7 @@ struct GC
      * Throws:
      *  OutOfMemoryError on allocation failure.
      */
-    static void* calloc( size_t sz, uint ba = 0 ) pure nothrow
+    static void* calloc( size_t sz, uint ba = 0 ) pure
     {
         return gc_calloc( sz, ba );
     }
@@ -393,7 +394,7 @@ struct GC
      * Throws:
      *  OutOfMemoryError on allocation failure.
      */
-    static void* realloc( void* p, size_t sz, uint ba = 0 ) pure nothrow
+    static void* realloc( void* p, size_t sz, uint ba = 0 ) pure
     {
         return gc_realloc( p, sz, ba );
     }
@@ -414,7 +415,7 @@ struct GC
      *  The size in bytes of the extended memory block referenced by p or zero
      *  if no extension occurred.
      */
-    static size_t extend( void* p, size_t mx, size_t sz ) pure nothrow
+    static size_t extend( void* p, size_t mx, size_t sz ) pure
     {
         return gc_extend( p, mx, sz );
     }
@@ -430,7 +431,7 @@ struct GC
      * Returns:
      *  The actual number of bytes reserved or zero on error.
      */
-    static size_t reserve( size_t sz ) nothrow /* FIXME pure */
+    static size_t reserve( size_t sz ) /* FIXME pure */
     {
         return gc_reserve( sz );
     }
@@ -447,7 +448,7 @@ struct GC
      * Params:
      *  p = A pointer to the root of a valid memory block or to null.
      */
-    static void free( void* p ) pure nothrow
+    static void free( void* p ) pure
     {
         gc_free( p );
     }
@@ -468,14 +469,14 @@ struct GC
      * Returns:
      *  The base address of the memory block referenced by p or null on error.
      */
-    static inout(void)* addrOf( inout(void)* p ) nothrow /* FIXME pure */
+    static inout(void)* addrOf( inout(void)* p ) /* FIXME pure */
     {
         return cast(inout(void)*)gc_addrOf(cast(void*)p);
     }
 
 
     /// ditto
-    static void* addrOf(void* p) pure nothrow
+    static void* addrOf(void* p) pure
     {
         return gc_addrOf(p);
     }
@@ -494,14 +495,14 @@ struct GC
      * Returns:
      *  The size in bytes of the memory block referenced by p or zero on error.
      */
-    static size_t sizeOf( in void* p ) nothrow
+    static size_t sizeOf( in void* p )
     {
         return gc_sizeOf(cast(void*)p);
     }
 
 
     /// ditto
-    static size_t sizeOf(void* p) pure nothrow
+    static size_t sizeOf(void* p) pure
     {
         return gc_sizeOf( p );
     }
@@ -522,14 +523,14 @@ struct GC
      *  Information regarding the memory block referenced by p or BlkInfo.init
      *  on error.
      */
-    static BlkInfo query( in void* p ) nothrow
+    static BlkInfo query( in void* p )
     {
         return gc_query(cast(void*)p);
     }
 
 
     /// ditto
-    static BlkInfo query(void* p) pure nothrow
+    static BlkInfo query(void* p) pure
     {
         return gc_query( p );
     }
@@ -543,7 +544,7 @@ struct GC
      * Params:
      *  p = A pointer to a valid memory address or to null.
      */
-    static void addRoot( in void* p ) nothrow /* FIXME pure */
+    static void addRoot( in void* p ) /* FIXME pure */
     {
         gc_addRoot( p );
     }
@@ -559,7 +560,7 @@ struct GC
      *  sz = The size in bytes of the block to add.  If sz is zero then the
      *       no operation will occur.  If p is null then sz must be zero.
      */
-    static void addRange( in void* p, size_t sz ) nothrow /* FIXME pure */
+    static void addRange( in void* p, size_t sz ) /* FIXME pure */
     {
         gc_addRange( p, sz );
     }
@@ -572,7 +573,7 @@ struct GC
      *
      *  p  = A pointer to a valid memory address or to null.
      */
-    static void removeRoot( in void* p ) nothrow /* FIXME pure */
+    static void removeRoot( in void* p ) /* FIXME pure */
     {
         gc_removeRoot( p );
     }
@@ -587,7 +588,7 @@ struct GC
      * Params:
      *  p  = A pointer to a valid memory address or to null.
      */
-    static void removeRange( in void* p ) nothrow /* FIXME pure */
+    static void removeRange( in void* p ) /* FIXME pure */
     {
         gc_removeRange( p );
     }

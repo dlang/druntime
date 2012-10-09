@@ -19,6 +19,8 @@ public import core.sys.posix.pthread;
 public import core.sys.osx.mach.port;
 
 extern (C):
+@system:
+nothrow:
 
 int pthread_is_threaded_np();
 int pthread_threadid_np(pthread_t, ulong*);

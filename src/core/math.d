@@ -25,7 +25,9 @@
  */
 module core.math;
 
-public:
+@safe:
+pure:
+nothrow:
 
 /***********************************
  * Returns cosine of x. x is in radians.
@@ -39,7 +41,7 @@ public:
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
-real cos(real x) @safe pure nothrow;       /* intrinsic */
+real cos(real x);       /* intrinsic */
 
 /***********************************
  * Returns sine of x. x is in radians.
@@ -54,7 +56,7 @@ real cos(real x) @safe pure nothrow;       /* intrinsic */
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
-real sin(real x) @safe pure nothrow;       /* intrinsic */
+real sin(real x);       /* intrinsic */
 
 /*****************************************
  * Returns x rounded to a long value using the current rounding mode.
@@ -62,7 +64,7 @@ real sin(real x) @safe pure nothrow;       /* intrinsic */
  * greater than long.max, the result is
  * indeterminate.
  */
-long rndtol(real x) @safe pure nothrow;    /* intrinsic */
+long rndtol(real x);    /* intrinsic */
 
 
 /*****************************************
@@ -84,19 +86,16 @@ extern (C) real rndtonl(real x);
  *      )
  */
 
-@safe pure nothrow
-{
-    float sqrt(float x);    /* intrinsic */
-    double sqrt(double x);  /* intrinsic */ /// ditto
-    real sqrt(real x);      /* intrinsic */ /// ditto
-}
+float sqrt(float x);    /* intrinsic */
+double sqrt(double x);  /* intrinsic */ /// ditto
+real sqrt(real x);      /* intrinsic */ /// ditto
 
 /*******************************************
  * Compute n * 2$(SUP exp)
  * References: frexp
  */
 
-real ldexp(real n, int exp) @safe pure nothrow;    /* intrinsic */
+real ldexp(real n, int exp);    /* intrinsic */
 
 unittest {
     assert(ldexp(1, -16384) == 0x1p-16384L);
@@ -112,7 +111,7 @@ unittest {
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD +$(INFIN)) )
  *      )
  */
-real fabs(real x) @safe pure nothrow;      /* intrinsic */
+real fabs(real x);      /* intrinsic */
 
 /**********************************
  * Rounds x to the nearest integer value, using the current rounding
@@ -122,15 +121,15 @@ real fabs(real x) @safe pure nothrow;      /* intrinsic */
  * $(B nearbyint) performs
  * the same operation, but does not set the FE_INEXACT exception.
  */
-real rint(real x) @safe pure nothrow;      /* intrinsic */
+real rint(real x);      /* intrinsic */
 
 /***********************************
  * Building block functions, they
  * translate to a single x87 instruction.
  */
 
-real yl2x(real x, real y)   @safe pure nothrow;       // y * log2(x)
-real yl2xp1(real x, real y) @safe pure nothrow;       // y * log2(x + 1)
+real yl2x(real x, real y);       // y * log2(x)
+real yl2xp1(real x, real y);       // y * log2(x + 1)
 
 unittest
 {

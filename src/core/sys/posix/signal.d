@@ -21,6 +21,8 @@ public import core.sys.posix.sys.types; // for pid_t
 //public import core.sys.posix.time;      // for timespec, now defined here
 
 extern (C):
+@system:
+nothrow:
 
 //
 // Required

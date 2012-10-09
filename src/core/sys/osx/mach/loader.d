@@ -14,6 +14,10 @@ module core.sys.osx.mach.loader;
 
 version (OSX):
 
+extern (C):
+@trusted: // Constants and structs only.
+nothrow:
+
 struct mach_header
 {
     uint magic;

@@ -12,6 +12,9 @@ version (FreeBSD):
 
 import core.sys.freebsd.dlfcn;
 
+@system:
+nothrow:
+
 // Use extern (D) so that these functions don't collide with libexecinfo.
 
 extern (D) int backtrace(void** buffer, int size)
@@ -40,7 +43,7 @@ extern (D) int backtrace(void** buffer, int size)
 
 extern (D) char** backtrace_symbols(const(void*)* buffer, int size)
 {
-    static void* realloc(void* p, size_t len)
+    static void* realloc(void* p, size_t len) nothrow
     {
         static import cstdlib=core.stdc.stdlib;
         auto res = cstdlib.realloc(p, len);

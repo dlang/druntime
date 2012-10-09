@@ -18,6 +18,8 @@ private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for ino_t
 
 extern (C):
+@trusted:
+nothrow:
 
 //
 // Required
@@ -146,7 +148,7 @@ else version( Posix )
 version( Posix )
 {
     int     closedir(DIR*);
-    DIR*    opendir(in char*);
+    @system DIR*    opendir(in char*);
     //dirent* readdir(DIR*);
     void    rewinddir(DIR*);
 }

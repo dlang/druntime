@@ -14,8 +14,8 @@
  */
 module core.bitop;
 
-nothrow:
 @safe:
+nothrow:
 
 version( D_InlineAsm_X86_64 )
     version = AsmX86;

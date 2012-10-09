@@ -19,6 +19,8 @@ public import core.stdc.stdio;
 public import core.sys.posix.sys.types; // for off_t
 
 extern (C):
+@system: // TODO: Some functions here can be @trusted.
+nothrow:
 
 //
 // Required (defined in core.stdc.stdio)

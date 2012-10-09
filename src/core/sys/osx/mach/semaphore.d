@@ -19,6 +19,8 @@ public import core.sys.osx.mach.kern_return;
 public import core.sys.osx.mach.port;
 
 extern (C):
+@trusted:
+nothrow:
 
 alias mach_port_t   task_t;
 alias mach_port_t   thread_t;

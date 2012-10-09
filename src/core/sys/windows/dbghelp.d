@@ -17,6 +17,8 @@ module core.sys.windows.dbghelp;
 
 import core.sys.windows.windows;
 
+@system:
+nothrow:
 
 alias CHAR TCHAR;
 

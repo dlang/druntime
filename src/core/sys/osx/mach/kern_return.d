@@ -16,6 +16,8 @@ module core.sys.osx.mach.kern_return;
 version (OSX):
 
 extern (C):
+@trusted: // Constants only.
+nothrow:
 
 alias int kern_return_t;
 

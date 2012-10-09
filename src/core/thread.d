@@ -447,14 +447,14 @@ else version( Posix )
         __gshared sem_t suspendCount;
 
 
-        extern (C) void thread_suspendHandler( int sig )
+        extern (C) void thread_suspendHandler( int sig ) nothrow
         in
         {
             assert( sig == SIGUSR1 );
         }
         body
         {
-            void op(void* sp)
+            void op(void* sp) nothrow
             {
                 // NOTE: Since registers are being pushed and popped from the
                 //       stack, any other stack data used by this function should
@@ -492,11 +492,11 @@ else version( Posix )
                 }
             }
 
-            callWithStackShell(&op);
+            callWithStackShell!(op)();
         }
 
 
-        extern (C) void thread_resumeHandler( int sig )
+        extern (C) void thread_resumeHandler( int sig ) nothrow
         in
         {
             assert( sig == SIGUSR2 );
@@ -1123,7 +1123,7 @@ class Thread
      *  deleting this object is undefined.  If the current thread is not
      *  attached to the runtime, a null reference is returned.
      */
-    static Thread getThis()
+    static Thread getThis() nothrow
     {
         // NOTE: This function may not be called until thread_init has
         //       completed.  See thread_suspendAll for more information
@@ -1421,7 +1421,7 @@ private:
     }
 
 
-    final Context* topContext()
+    final Context* topContext() nothrow
     in
     {
         assert( m_curr );
@@ -2140,12 +2140,7 @@ private __gshared bool multiThreadedFlag = false;
 
 
 // Calls the given delegate, passing the current thread's stack pointer to it.
-private void callWithStackShell(scope void delegate(void* sp) fn)
-in
-{
-    assert(fn);
-}
-body
+private void callWithStackShell(alias fn)() nothrow
 {
     // The purpose of the 'shell' is to ensure all the registers
     // get put on the stack so they'll be scanned
@@ -2635,7 +2630,7 @@ in
 }
 body
 {
-    callWithStackShell(sp => scanAllTypeImpl(scan, sp));
+    callWithStackShell!(sp => scanAllTypeImpl(scan, sp))();
 }
 
 
@@ -2838,12 +2833,13 @@ extern(C) void thread_processGCMarks(scope rt.tlsgc.IsMarkedDg dg)
 
 extern (C)
 {
-    version (linux) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
-    version (FreeBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
+    // TODO: Move to core.sys.freebsd.pthread.
+    version (linux) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr) nothrow;
+    version (FreeBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr) nothrow;
 }
 
 
-private void* getStackTop()
+private void* getStackTop() nothrow
 {
     version (D_InlineAsm_X86)
         asm { naked; mov EAX, ESP; ret; }
@@ -2856,7 +2852,7 @@ private void* getStackTop()
 }
 
 
-private void* getStackBottom()
+private void* getStackBottom() nothrow
 {
     version (Windows)
     {
@@ -2903,7 +2899,7 @@ private void* getStackBottom()
 }
 
 
-extern (C) void* thread_stackTop()
+extern (C) void* thread_stackTop() nothrow
 in
 {
     // Not strictly required, but it gives us more flexibility.
@@ -2915,7 +2911,7 @@ body
 }
 
 
-extern (C) void* thread_stackBottom()
+extern (C) void* thread_stackBottom() nothrow
 in
 {
     assert(Thread.getThis());

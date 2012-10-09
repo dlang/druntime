@@ -24,6 +24,8 @@ public import core.sys.posix.signal;    // for sigset_t
 version(unittest) import core.stdc.stdio: printf;
 
 extern (C):
+@system:
+nothrow:
 
 //
 // Required

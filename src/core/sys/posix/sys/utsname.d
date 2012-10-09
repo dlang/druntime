@@ -1,6 +1,6 @@
 module core.sys.posix.sys.utsname;
 
-extern (C)
+extern (C) @trusted nothrow
 {
     version(linux)
     {

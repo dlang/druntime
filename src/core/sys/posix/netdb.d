@@ -21,6 +21,8 @@ public import core.sys.posix.sys.types;   // for ino_t
 public import core.sys.posix.sys.socket;  // for socklen_t
 
 extern (C):
+@system: // TODO: Some things here can be @trusted.
+nothrow:
 
 //
 // Required

@@ -20,6 +20,8 @@ public import core.sys.posix.arpa.inet;
 public import core.sys.posix.sys.socket; // for sa_family_t
 
 extern (C):
+@trusted:
+nothrow:
 
 //
 // Required
