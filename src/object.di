@@ -23,7 +23,7 @@ version (D_LP64)
     alias long ssize_t;
     alias long ptrdiff_t;
 }
-else version (D_ILP32)
+else version (D_X32)
 {
     alias uint size_t;
     alias int ssize_t;
