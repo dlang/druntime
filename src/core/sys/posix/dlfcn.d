@@ -46,7 +46,7 @@ version( linux )
     void* dlopen(in char*, int);
     void* dlsym(void*, in char*);
     int   dladdr(void* addr, Dl_info* info);
-    void* dlvsym(void* handle, in char* symbol, in char* version);
+    void* dlvsym(void* handle, in char* symbol, in char* version_);
 
     struct Dl_info
     {
