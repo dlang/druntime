@@ -66,7 +66,7 @@ class TypeInfo_AC : TypeInfo_Array
     {
         Object[] s1 = *cast(Object[]*)p1;
         Object[] s2 = *cast(Object[]*)p2;
-        auto     c  = cast(sizediff_t)(s1.length - s2.length);
+        auto     c  = cast(ssize_t)(s1.length - s2.length);
         if (c == 0)
         {
             for (size_t u = 0; u < s1.length; u++)

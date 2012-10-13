@@ -63,7 +63,7 @@ version( linux )
     alias c_ulong   nlink_t;
     alias int       pid_t;
     //size_t (defined in core.stdc.stddef)
-    alias c_long    ssize_t;
+    //alias c_long    ssize_t; (defined in object)
     //time_t (defined in core.stdc.time)
     alias uint      uid_t;
 }
@@ -79,7 +79,7 @@ else version( OSX )
     alias long      off_t;
     alias int       pid_t;
     //size_t (defined in core.stdc.stddef)
-    alias c_long    ssize_t;
+    //alias c_long    ssize_t; (defined in object)
     //time_t (defined in core.stdc.time)
     alias uint      uid_t;
 }
@@ -95,7 +95,7 @@ else version( FreeBSD )
     alias long      off_t;
     alias int       pid_t;
     //size_t (defined in core.stdc.stddef)
-    alias c_long    ssize_t;
+    //alias c_long    ssize_t; (defined in object)
     //time_t (defined in core.stdc.time)
     alias uint      uid_t;
     alias uint      fflags_t;
@@ -138,7 +138,7 @@ else version (Solaris)
     alias uint mode_t;
     alias uint nlink_t;
     alias int pid_t;
-    alias c_long ssize_t;
+    //alias c_long ssize_t; (defined in object)
     alias uint uid_t;
 }
 else

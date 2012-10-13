@@ -118,7 +118,7 @@ body
         {
             auto mid = (low + high) >> 1;
             auto pca = table[mid];
-            auto c   = cast(sizediff_t)(ca.length - pca.length);
+            auto c   = cast(ssize_t)(ca.length - pca.length);
             if (c == 0)
             {
                 c = cast(ubyte)c1 - cast(ubyte)pca[0];
@@ -256,7 +256,7 @@ body
     {
         auto mid = (low + high) >> 1;
         auto pca = table[mid];
-        auto c = cast(sizediff_t)(ca.length - pca.length);
+        auto c = cast(ssize_t)(ca.length - pca.length);
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * wchar.sizeof);
@@ -382,7 +382,7 @@ body
     {
         auto mid = (low + high) >> 1;
         auto pca = table[mid];
-        auto c = cast(sizediff_t)(ca.length - pca.length);
+        auto c = cast(ssize_t)(ca.length - pca.length);
         if (c == 0)
         {
             c = memcmp(ca.ptr, pca.ptr, ca.length * dchar.sizeof);

@@ -3,7 +3,7 @@
  *
  * Copyright: Copyright Digital Mars 2000 - 2011.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
- * Authors:   Walter Bright, Sean Kelly
+ * Authors:   Walter Bright, Sean Kelly, Alex Rønne Petersen
  *
  *          Copyright Digital Mars 2000 - 2011.
  * Distributed under the Boost Software License, Version 1.0.
@@ -17,9 +17,26 @@ private
     extern(C) void rt_finalize(void *ptr, bool det=true);
 }
 
-alias typeof(int.sizeof)                    size_t;
-alias typeof(cast(void*)0 - cast(void*)0)   ptrdiff_t;
-alias ptrdiff_t                             sizediff_t;
+version (D_LP64)
+{
+    alias ulong size_t;
+    alias long ssize_t;
+    alias long ptrdiff_t;
+}
+else version (D_X32)
+{
+    alias uint size_t;
+    alias int ssize_t;
+    alias int ptrdiff_t;
+}
+else
+{
+    alias uint size_t;
+    alias int ssize_t;
+    alias int ptrdiff_t;
+}
+
+alias ptrdiff_t sizediff_t;
 
 alias size_t hash_t;
 alias bool equals_t;

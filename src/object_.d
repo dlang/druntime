@@ -43,24 +43,26 @@ version (druntime_unittest)
     string __unittest_toString(T)(T) { return T.stringof; }
 }
 
-// NOTE: For some reason, this declaration method doesn't work
-//       in this particular file (and this file only).  It must
-//       be a DMD thing.
-//alias typeof(int.sizeof)                    size_t;
-//alias typeof(cast(void*)0 - cast(void*)0)   ptrdiff_t;
-
-version(D_LP64)
+version (D_LP64)
 {
     alias ulong size_t;
-    alias long  ptrdiff_t;
-    alias long  sizediff_t;
+    alias long ssize_t;
+    alias long ptrdiff_t;
+}
+else version (D_X32)
+{
+    alias uint size_t;
+    alias int ssize_t;
+    alias int ptrdiff_t;
 }
 else
 {
-    alias uint  size_t;
-    alias int   ptrdiff_t;
-    alias int   sizediff_t;
+    alias uint size_t;
+    alias int ssize_t;
+    alias int ptrdiff_t;
 }
+
+alias ptrdiff_t sizediff_t;
 
 alias size_t hash_t;
 alias bool equals_t;
