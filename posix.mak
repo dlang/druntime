@@ -114,6 +114,7 @@ MANIFEST= \
 	\
 	src/core/sys/linux/execinfo.d \
 	src/core/sys/linux/epoll.d \
+	src/core/sys/linux/sys/signalfd.d \
 	src/core/sys/linux/sys/xattr.d \
 	\
 	src/core/sys/osx/execinfo.d \
@@ -153,6 +154,7 @@ MANIFEST= \
 	src/core/sys/posix/netinet/in_.d \
 	src/core/sys/posix/netinet/tcp.d \
 	\
+	src/core/sys/posix/sys/ioctl.d \
 	src/core/sys/posix/sys/ipc.d \
 	src/core/sys/posix/sys/mman.d \
 	src/core/sys/posix/sys/select.d \
@@ -479,6 +481,7 @@ COPY=\
 	\
 	$(IMPDIR)/core/sys/linux/execinfo.d \
 	$(IMPDIR)/core/sys/linux/epoll.d \
+	$(IMPDIR)/core/sys/linux/sys/signalfd.d \
 	$(IMPDIR)/core/sys/linux/sys/xattr.d \
 	\
 	$(IMPDIR)/core/sys/osx/execinfo.d \
@@ -515,6 +518,7 @@ COPY=\
 	$(IMPDIR)/core/sys/posix/netinet/in_.d \
 	$(IMPDIR)/core/sys/posix/netinet/tcp.d \
 	\
+	$(IMPDIR)/core/sys/posix/sys/ioctl.d \
 	$(IMPDIR)/core/sys/posix/sys/ipc.d \
 	$(IMPDIR)/core/sys/posix/sys/mman.d \
 	$(IMPDIR)/core/sys/posix/sys/select.d \
