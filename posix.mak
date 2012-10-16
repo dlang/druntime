@@ -3,6 +3,8 @@
 #    pkg_add -r gmake
 # and then run as gmake rather than make.
 
+# To enable compillation of PIC code use "make PIC=true"
+
 ifeq (,$(OS))
     OS:=$(shell uname)
     ifeq (Darwin,$(OS))
@@ -14,19 +16,7 @@ ifeq (,$(OS))
             ifeq (FreeBSD,$(OS))
                 OS:=freebsd
             else
-                ifeq (OpenBSD,$(OS))
-                    TARGET=OPENBSD
-                else
-                    ifeq (Solaris,$(OS))
-                        TARGET=SOLARIS
-                    else
-                        ifeq (SunOS,$(OS))
-                            TARGET=SOLARIS
-                        else
-                            $(error Unrecognized or unsupported OS for uname: $(OS))
-                        endif
-                    endif
-                endif
+                $(error Unrecognized or unsupported OS for uname: $(OS))
             endif
         endif
     endif
@@ -39,17 +29,22 @@ IMPDIR=import
 
 MODEL=32
 
-DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property
-UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property
+PICFLAG=
+ifeq ($(PIC),true)
+	PICFLAG=-fPIC
+endif
+
+DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property $(PICFLAG)
+UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property $(PICFLAG)
 DDOCFLAGS=-m$(MODEL) -c -w -o- -Isrc -Iimport
 
-CFLAGS=-m$(MODEL) -O
+CFLAGS=-m$(MODEL) -O $(PICFLAG)
 
 OBJDIR=obj/$(MODEL)
 DRUNTIME_BASE=druntime-$(OS)$(MODEL)
 DRUNTIME=lib/lib$(DRUNTIME_BASE).a
 
-DOCFMT=-version=CoreDdoc
+DOCFMT=
 
 target : copydir import copy $(DRUNTIME) doc
 
@@ -58,7 +53,6 @@ MANIFEST= \
 	README.txt \
 	posix.mak \
 	win32.mak \
-	win64.mak \
 	\
 	src/object_.d \
 	src/object.di \
@@ -108,17 +102,8 @@ MANIFEST= \
 	src/core/sync/rwmutex.d \
 	src/core/sync/semaphore.d \
 	\
-	src/core/sys/freebsd/dlfcn.d \
-	src/core/sys/freebsd/execinfo.d \
 	src/core/sys/freebsd/sys/event.d \
 	\
-	src/core/sys/linux/execinfo.d \
-	src/core/sys/linux/epoll.d \
-	src/core/sys/linux/sys/signalfd.d \
-	src/core/sys/linux/sys/xattr.d \
-	\
-	src/core/sys/osx/execinfo.d \
-	src/core/sys/osx/pthread.d \
 	src/core/sys/osx/mach/dyld.d \
 	src/core/sys/osx/mach/getsect.d \
 	src/core/sys/osx/mach/kern_return.d \
@@ -154,14 +139,12 @@ MANIFEST= \
 	src/core/sys/posix/netinet/in_.d \
 	src/core/sys/posix/netinet/tcp.d \
 	\
-	src/core/sys/posix/sys/ioctl.d \
 	src/core/sys/posix/sys/ipc.d \
 	src/core/sys/posix/sys/mman.d \
 	src/core/sys/posix/sys/select.d \
 	src/core/sys/posix/sys/shm.d \
 	src/core/sys/posix/sys/socket.d \
 	src/core/sys/posix/sys/stat.d \
-	src/core/sys/posix/sys/statvfs.d \
 	src/core/sys/posix/sys/time.d \
 	src/core/sys/posix/sys/types.d \
 	src/core/sys/posix/sys/uio.d \
@@ -300,11 +283,9 @@ SRC_D_MODULES = \
 	core/stdc/time \
 	core/stdc/wchar_ \
 	\
-	core/sys/freebsd/execinfo \
 	core/sys/freebsd/sys/event \
 	\
 	core/sys/posix/signal \
-	core/sys/posix/dirent \
 	core/sys/posix/sys/select \
 	core/sys/posix/sys/socket \
 	core/sys/posix/sys/stat \
@@ -475,17 +456,8 @@ COPY=\
 	$(IMPDIR)/core/stdc/wchar_.d \
 	$(IMPDIR)/core/stdc/wctype.d \
 	\
-	$(IMPDIR)/core/sys/freebsd/dlfcn.d \
-	$(IMPDIR)/core/sys/freebsd/execinfo.d \
 	$(IMPDIR)/core/sys/freebsd/sys/event.d \
 	\
-	$(IMPDIR)/core/sys/linux/execinfo.d \
-	$(IMPDIR)/core/sys/linux/epoll.d \
-	$(IMPDIR)/core/sys/linux/sys/signalfd.d \
-	$(IMPDIR)/core/sys/linux/sys/xattr.d \
-	\
-	$(IMPDIR)/core/sys/osx/execinfo.d \
-	$(IMPDIR)/core/sys/osx/pthread.d \
 	$(IMPDIR)/core/sys/osx/mach/kern_return.d \
 	$(IMPDIR)/core/sys/osx/mach/port.d \
 	$(IMPDIR)/core/sys/osx/mach/semaphore.d \
@@ -518,14 +490,12 @@ COPY=\
 	$(IMPDIR)/core/sys/posix/netinet/in_.d \
 	$(IMPDIR)/core/sys/posix/netinet/tcp.d \
 	\
-	$(IMPDIR)/core/sys/posix/sys/ioctl.d \
 	$(IMPDIR)/core/sys/posix/sys/ipc.d \
 	$(IMPDIR)/core/sys/posix/sys/mman.d \
 	$(IMPDIR)/core/sys/posix/sys/select.d \
 	$(IMPDIR)/core/sys/posix/sys/shm.d \
 	$(IMPDIR)/core/sys/posix/sys/socket.d \
 	$(IMPDIR)/core/sys/posix/sys/stat.d \
-	$(IMPDIR)/core/sys/posix/sys/statvfs.d \
 	$(IMPDIR)/core/sys/posix/sys/time.d \
 	$(IMPDIR)/core/sys/posix/sys/types.d \
 	$(IMPDIR)/core/sys/posix/sys/uio.d \
@@ -585,7 +555,6 @@ copydir:
 	-mkdir -p $(IMPDIR)/core/sys/posix/netinet
 	-mkdir -p $(IMPDIR)/core/sys/osx/mach
 	-mkdir -p $(IMPDIR)/core/sys/freebsd/sys
-	-mkdir -p $(IMPDIR)/core/sys/linux/sys
 
 copy: $(COPY)
 
