@@ -1526,6 +1526,7 @@ enum
     MIunitTest   = 0x200,
     MIimportedModules = 0x400,
     MIlocalClasses = 0x800,
+    MInewUnitTest = 0x1000,
     MInew        = 0x80000000        // it's the "new" layout
 }
 
@@ -1702,6 +1703,10 @@ struct ModuleInfo
         return o.ictor;
     }
 
+    /**
+     * Deprecated:
+     * Please use unitTests instead.
+     */
     @property void function() unitTest() nothrow pure
     {
         if (isNew)
@@ -1728,6 +1733,36 @@ struct ModuleInfo
         return o.unitTest;
     }
 
+    @property UnitTest[] unitTests() nothrow pure
+    {
+        if (isNew)
+        {
+            if (n.flags & MInewUnitTest)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                if (n.flags & MIxgetMembers)
+                    off += o.xgetMembers.sizeof;
+                if (n.flags & MIctor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIdtor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIictor)
+                    off += o.ictor.sizeof;
+                if (n.flags & MIictor)
+                    off += o.ictor.sizeof;
+                if (n.flags & MIunitTest)
+                    off += o.unitTest.sizeof;
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+            return [];
+        }
+        return [];
+    }
+
     @property ModuleInfo*[] importedModules() nothrow pure
     {
         if (isNew)
@@ -1749,6 +1784,8 @@ struct ModuleInfo
                     off += o.ictor.sizeof;
                 if (n.flags & MIunitTest)
                     off += o.unitTest.sizeof;
+                if (n.flags & MInewUnitTest)
+                    off += (UnitTest[]).sizeof;
                 auto plength = cast(size_t*)(cast(void*)(&this) + off);
                 ModuleInfo** pm = cast(ModuleInfo**)(plength + 1);
                 return pm[0 .. *plength];
@@ -1779,6 +1816,8 @@ struct ModuleInfo
                     off += o.ictor.sizeof;
                 if (n.flags & MIunitTest)
                     off += o.unitTest.sizeof;
+                if (n.flags & MInewUnitTest)
+                    off += (UnitTest[]).sizeof;
                 if (n.flags & MIimportedModules)
                 {
                     auto plength = cast(size_t*)(cast(void*)(&this) + off);
@@ -1812,6 +1851,8 @@ struct ModuleInfo
                 off += o.ictor.sizeof;
             if (n.flags & MIunitTest)
                 off += o.unitTest.sizeof;
+            if (n.flags & MInewUnitTest)
+                off += (UnitTest[]).sizeof;
             if (n.flags & MIimportedModules)
             {
                 auto plength = cast(size_t*)(cast(void*)(&this) + off);
@@ -2563,4 +2604,17 @@ bool _xopEquals(in void*, in void*)
 template RTInfo(T)
 {
     enum RTInfo = null;
+}
+
+/******************************************
+ * UnitTest info type
+ */
+struct UnitTest
+{
+    ushort ver; //version of this struct, currently = 1
+    string name; //Not used yet
+    string fileName;
+    uint line;
+    void function() testFunc;
+    bool disabled;
 }
