@@ -281,6 +281,10 @@ alias void delegate(Throwable) ExceptionHandler;
 
 extern (C) bool rt_init(ExceptionHandler dg = null)
 {
+    import rt.dso;
+    static if (USE_DSO)
+        static dummy_ref = &_d_dso_registry;
+
     version (OSX)
         _d_osx_image_init2();
     _d_criticalInit();
