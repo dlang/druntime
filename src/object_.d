@@ -2311,19 +2311,28 @@ unittest
 alias destroy clear;
 
 /++
-    Destroys the given object and puts it in an invalid state. It's used to
+    Destroys the given class instance and puts it in an invalid state. It's used to
     destroy an object so that any cleanup which its destructor or finalizer
     does is done and so that it no longer references any other objects. It does
     $(I not) initiate a GC cycle or free any GC memory.
   +/
-void destroy(T)(T obj) if (is(T == class))
+void finalizeClassInstance(T)(T t)
 {
-    rt_finalize(cast(void*)obj);
+    static if(is(T == class))
+        alias t obj;
+    else static if(is(T == interface))
+        auto obj = cast(Object) t;
+    else
+        static assert(0, "Can only finalize class or interface, not " ~ T.stringof);
+
+    rt_finalize(cast(void*) obj);
 }
 
-void destroy(T)(T obj) if (is(T == interface))
+/// $(RED Scheduled for deprecation.
+/// Please use $(LREF finalizeClassInstance) instead.)
+void destroy(T)(T obj) if (is(T == class) || is(T == interface))
 {
-    destroy(cast(Object)obj);
+    finalizeClassInstance(obj);
 }
 
 version(unittest) unittest
@@ -2381,6 +2390,8 @@ version(unittest) unittest
    }
 }
 
+/// $(RED Scheduled for deprecation.
+/// Please use $(XREF typecons, destruct) instead.)
 void destroy(T)(ref T obj) if (!is(T == class) && !is(T == interface))
 {
     static assert(!is(T == const), "`destroy` doesn't work for `const` types");
