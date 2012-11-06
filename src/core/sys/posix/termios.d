@@ -16,6 +16,7 @@ module core.sys.posix.termios;
 
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for pid_t
+private import std.conv;
 
 version (Posix):
 extern (C):
@@ -161,58 +162,58 @@ version( linux )
     enum VSUSP      = 10;
     enum VTIME      = 5;
 
-    enum BRKINT     = 0000002;
-    enum ICRNL      = 0000400;
-    enum IGNBRK     = 0000001;
-    enum IGNCR      = 0000200;
-    enum IGNPAR     = 0000004;
-    enum INLCR      = 0000100;
-    enum INPCK      = 0000020;
-    enum ISTRIP     = 0000040;
-    enum IXOFF      = 0010000;
-    enum IXON       = 0002000;
-    enum PARMRK     = 0000010;
+    enum BRKINT     = octal!2;
+    enum ICRNL      = octal!400;
+    enum IGNBRK     = octal!1;
+    enum IGNCR      = octal!200;
+    enum IGNPAR     = octal!4;
+    enum INLCR      = octal!100;
+    enum INPCK      = octal!20;
+    enum ISTRIP     = octal!40;
+    enum IXOFF      = octal!10000;
+    enum IXON       = octal!2000;
+    enum PARMRK     = octal!10;
 
-    enum OPOST      = 0000001;
+    enum OPOST      = octal!1;
 
-    enum B0         = 0000000;
-    enum B50        = 0000001;
-    enum B75        = 0000002;
-    enum B110       = 0000003;
-    enum B134       = 0000004;
-    enum B150       = 0000005;
-    enum B200       = 0000006;
-    enum B300       = 0000007;
-    enum B600       = 0000010;
-    enum B1200      = 0000011;
-    enum B1800      = 0000012;
-    enum B2400      = 0000013;
-    enum B4800      = 0000014;
-    enum B9600      = 0000015;
-    enum B19200     = 0000016;
-    enum B38400     = 0000017;
+    enum B0         = octal!0;
+    enum B50        = octal!1;
+    enum B75        = octal!2;
+    enum B110       = octal!3;
+    enum B134       = octal!4;
+    enum B150       = octal!5;
+    enum B200       = octal!6;
+    enum B300       = octal!7;
+    enum B600       = octal!10;
+    enum B1200      = octal!11;
+    enum B1800      = octal!12;
+    enum B2400      = octal!13;
+    enum B4800      = octal!14;
+    enum B9600      = octal!15;
+    enum B19200     = octal!16;
+    enum B38400     = octal!17;
 
-    enum CSIZE      = 0000060;
-    enum   CS5      = 0000000;
-    enum   CS6      = 0000020;
-    enum   CS7      = 0000040;
-    enum   CS8      = 0000060;
-    enum CSTOPB     = 0000100;
-    enum CREAD      = 0000200;
-    enum PARENB     = 0000400;
-    enum PARODD     = 0001000;
-    enum HUPCL      = 0002000;
-    enum CLOCAL     = 0004000;
+    enum CSIZE      = octal!60;
+    enum   CS5      = octal!0;
+    enum   CS6      = octal!20;
+    enum   CS7      = octal!40;
+    enum   CS8      = octal!60;
+    enum CSTOPB     = octal!100;
+    enum CREAD      = octal!200;
+    enum PARENB     = octal!400;
+    enum PARODD     = octal!1000;
+    enum HUPCL      = octal!2000;
+    enum CLOCAL     = octal!4000;
 
-    enum ECHO       = 0000010;
-    enum ECHOE      = 0000020;
-    enum ECHOK      = 0000040;
-    enum ECHONL     = 0000100;
-    enum ICANON     = 0000002;
-    enum IEXTEN     = 0100000;
-    enum ISIG       = 0000001;
-    enum NOFLSH     = 0000200;
-    enum TOSTOP     = 0000400;
+    enum ECHO       = octal!10;
+    enum ECHOE      = octal!20;
+    enum ECHOK      = octal!40;
+    enum ECHONL     = octal!100;
+    enum ICANON     = octal!2;
+    enum IEXTEN     = octal!100000;
+    enum ISIG       = octal!1;
+    enum NOFLSH     = octal!200;
+    enum TOSTOP     = octal!400;
 
     enum TCSANOW    = 0;
     enum TCSADRAIN  = 1;
@@ -496,35 +497,35 @@ pid_t   tcgetsid(int);
 
 version( linux )
 {
-    enum IXANY      = 0004000;
+    enum IXANY      = octal!4000;
 
-    enum ONLCR      = 0000004;
-    enum OCRNL      = 0000010;
-    enum ONOCR      = 0000020;
-    enum ONLRET     = 0000040;
-    enum OFILL      = 0000100;
-    enum NLDLY      = 0000400;
-    enum   NL0      = 0000000;
-    enum   NL1      = 0000400;
-    enum CRDLY      = 0003000;
-    enum   CR0      = 0000000;
-    enum   CR1      = 0001000;
-    enum   CR2      = 0002000;
-    enum   CR3      = 0003000;
-    enum TABDLY     = 0014000;
-    enum   TAB0     = 0000000;
-    enum   TAB1     = 0004000;
-    enum   TAB2     = 0010000;
-    enum   TAB3     = 0014000;
-    enum BSDLY      = 0020000;
-    enum   BS0      = 0000000;
-    enum   BS1      = 0020000;
-    enum VTDLY      = 0040000;
-    enum   VT0      = 0000000;
-    enum   VT1      = 0040000;
-    enum FFDLY      = 0100000;
-    enum   FF0      = 0000000;
-    enum   FF1      = 0100000;
+    enum ONLCR      = octal!4;
+    enum OCRNL      = octal!10;
+    enum ONOCR      = octal!20;
+    enum ONLRET     = octal!40;
+    enum OFILL      = octal!100;
+    enum NLDLY      = octal!400;
+    enum   NL0      = octal!0;
+    enum   NL1      = octal!400;
+    enum CRDLY      = octal!3000;
+    enum   CR0      = octal!0;
+    enum   CR1      = octal!1000;
+    enum   CR2      = octal!2000;
+    enum   CR3      = octal!3000;
+    enum TABDLY     = octal!14000;
+    enum   TAB0     = octal!0;
+    enum   TAB1     = octal!4000;
+    enum   TAB2     = octal!10000;
+    enum   TAB3     = octal!14000;
+    enum BSDLY      = octal!20000;
+    enum   BS0      = octal!0;
+    enum   BS1      = octal!20000;
+    enum VTDLY      = octal!40000;
+    enum   VT0      = octal!0;
+    enum   VT1      = octal!40000;
+    enum FFDLY      = octal!100000;
+    enum   FF0      = octal!0;
+    enum   FF1      = octal!100000;
 
     pid_t   tcgetsid(int);
 }
