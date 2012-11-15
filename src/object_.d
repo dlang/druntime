@@ -35,7 +35,7 @@ private
     extern (C) Object _d_newclass(const TypeInfo_Class ci);
     extern (C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr);
     extern (C) size_t _d_arraysetcapacity(const TypeInfo ti, size_t newcapacity, void *arrptr) pure nothrow;
-    extern (C) void rt_finalize(void *data, bool det=true);
+    extern (C) void rt_finalize2(void* p, bool det, bool resetMemory);
 }
 
 version (druntime_unittest)
@@ -2313,10 +2313,13 @@ alias destroy clear;
 /++
     Destroys the given class instance and puts it in an invalid state. It's used to
     destroy an object so that any cleanup which its destructor or finalizer
-    does is done and so that it no longer references any other objects. It does
-    $(I not) initiate a GC cycle or free any GC memory.
+    does is done.
+    It does $(I not) initiate a GC cycle or free any GC memory.
+    It $(I always) zero class instance $(D __vptr).
+    If $(D resetMemory) is $(D true) it will also set class instance memory to
+    its initial state so that it no longer references any other objects.
   +/
-void finalizeClassInstance(T)(T t)
+void finalizeClassInstance(T)(T t, bool resetMemory = true)
 {
     static if(is(T == class))
         alias t obj;
@@ -2325,7 +2328,7 @@ void finalizeClassInstance(T)(T t)
     else
         static assert(0, "Can only finalize class or interface, not " ~ T.stringof);
 
-    rt_finalize(cast(void*) obj);
+    rt_finalize2(cast(void*) obj, true, resetMemory);
 }
 
 /// $(RED Scheduled for deprecation.

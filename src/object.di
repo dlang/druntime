@@ -14,7 +14,7 @@ module object;
 
 private
 {
-    extern(C) void rt_finalize(void *ptr, bool det=true);
+    extern (C) void rt_finalize2(void* p, bool det, bool resetMemory);
 }
 
 alias typeof(int.sizeof)                    size_t;
@@ -564,7 +564,7 @@ unittest
 // Please use destroy instead of clear.
 alias destroy clear;
 
-void finalizeClassInstance(T)(T t)
+void finalizeClassInstance(T)(T t, bool resetMemory = true)
 {
     static if(is(T == class))
         alias t obj;
@@ -573,7 +573,7 @@ void finalizeClassInstance(T)(T t)
     else
         static assert(0, "Can only finalize class or interface, not " ~ T.stringof);
 
-    rt_finalize(cast(void*) obj);
+    rt_finalize2(cast(void*) obj, true, resetMemory);
 }
 
 /// $(RED Scheduled for deprecation.
