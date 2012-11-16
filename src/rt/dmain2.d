@@ -507,42 +507,13 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
             console("\n");
         }
 
-        void printMsgLine(Throwable t)
-        {
-            if (t.file)
-            {
-               console(t.classinfo.name)("@")(t.file)("(")(t.line)(")");
-            }
-            else
-            {
-                console(t.classinfo.name);
-            }
-            if (t.msg)
-            {
-                console(": ")(t.msg);
-            }
-            console("\n");
-        }
-
-        void printInfoBlock(Throwable t)
-        {
-            if (t.info)
-            {
-                console("----------------\n");
-                foreach (i; t.info)
-                    console(i)("\n");
-                console("----------------\n");
-            }
-        }
-
         void print(Throwable t)
         {
             Throwable firstWithBypass = null;
 
             for (; t; t = t.next)
             {
-                printMsgLine(t);
-                printInfoBlock(t);
+                console(t.toString());
                 auto e = cast(Error) t;
                 if (e && e.bypassedException)
                 {
@@ -618,3 +589,4 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 
     return result;
 }
+
