@@ -717,43 +717,45 @@ class Thread
         //       app without ever knowing that it should have waited for this
         //       starting thread.  In effect, not doing the add here risks
         //       having thread being treated like a daemon thread.
-        synchronized( slock )
+        slock.lock();
+
+        scope (exit)
+            slock.unlock();
+
+        version( Windows )
         {
-            version( Windows )
-            {
-                if( ResumeThread( m_hndl ) == -1 )
-                    throw new ThreadException( "Error resuming thread" );
-            }
-            else version( Posix )
-            {
-                // NOTE: This is also set to true by thread_entryPoint, but set it
-                //       here as well so the calling thread will see the isRunning
-                //       state immediately.
-                m_isRunning = true;
-                scope( failure ) m_isRunning = false;
-
-                if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
-                    throw new ThreadException( "Error creating thread" );
-            }
-            version( OSX )
-            {
-                m_tmach = pthread_mach_thread_np( m_addr );
-                if( m_tmach == m_tmach.init )
-                    throw new ThreadException( "Error creating thread" );
-            }
-
-            // NOTE: when creating threads from inside a DLL, DllMain(THREAD_ATTACH)
-            //       might be called before ResumeThread returns, but the dll
-            //       helper functions need to know whether the thread is created
-            //       from the runtime itself or from another DLL or the application
-            //       to just attach to it
-            //       as a consequence, the new Thread object is added before actual
-            //       creation of the thread. There should be no problem with the GC
-            //       calling thread_suspendAll, because of the slock synchronization
-            //
-            // VERIFY: does this actually also apply to other platforms?
-            add( this );
+            if( ResumeThread( m_hndl ) == -1 )
+                throw new ThreadException( "Error resuming thread" );
         }
+        else version( Posix )
+        {
+            // NOTE: This is also set to true by thread_entryPoint, but set it
+            //       here as well so the calling thread will see the isRunning
+            //       state immediately.
+            m_isRunning = true;
+            scope( failure ) m_isRunning = false;
+
+            if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
+                throw new ThreadException( "Error creating thread" );
+        }
+        version( OSX )
+        {
+            m_tmach = pthread_mach_thread_np( m_addr );
+            if( m_tmach == m_tmach.init )
+                throw new ThreadException( "Error creating thread" );
+        }
+
+        // NOTE: when creating threads from inside a DLL, DllMain(THREAD_ATTACH)
+        //       might be called before ResumeThread returns, but the dll
+        //       helper functions need to know whether the thread is created
+        //       from the runtime itself or from another DLL or the application
+        //       to just attach to it
+        //       as a consequence, the new Thread object is added before actual
+        //       creation of the thread. There should be no problem with the GC
+        //       calling thread_suspendAll, because of the slock synchronization
+        //
+        // VERIFY: does this actually also apply to other platforms?
+        add( this );
     }
 
 
@@ -1165,17 +1167,19 @@ class Thread
      */
     static Thread[] getAll()
     {
-        synchronized( slock )
-        {
-            size_t   pos = 0;
-            Thread[] buf = new Thread[sm_tlen];
+        slock.lock();
 
-            foreach( Thread t; Thread )
-            {
-                buf[pos++] = t;
-            }
-            return buf;
+        scope (exit)
+            slock.unlock();
+
+        size_t   pos = 0;
+        Thread[] buf = new Thread[sm_tlen];
+
+        foreach( Thread t; Thread )
+        {
+            buf[pos++] = t;
         }
+        return buf;
     }
 
 
@@ -1191,18 +1195,20 @@ class Thread
      */
     static int opApply( scope int delegate( ref Thread ) dg )
     {
-        synchronized( slock )
-        {
-            int ret = 0;
+        slock.lock();
 
-            for( Thread t = sm_tbeg; t; t = t.next )
-            {
-                ret = dg( t );
-                if( ret )
-                    break;
-            }
-            return ret;
+        scope (exit)
+            slock.unlock();
+
+        int ret = 0;
+
+        for( Thread t = sm_tbeg; t; t = t.next )
+        {
+            ret = dg( t );
+            if( ret )
+                break;
         }
+        return ret;
     }
 
 
@@ -1518,22 +1524,26 @@ private:
     //       on construction/deletion.
 
 
+    // Devirtualize function calls.
+    static final class ThreadMutex : Mutex {}
+
+
     //
     // All use of the global lists should synchronize on this lock.
     //
-    @property static Mutex slock()
+    @property private static ThreadMutex slock()
     {
-        __gshared Mutex m = null;
+        __gshared ThreadMutex m;
+        __gshared byte[__traits(classInstanceSize, ThreadMutex)] ms;
 
         if( m !is null )
             return m;
         else
         {
-            auto ci = Mutex.classinfo;
-            auto p  = malloc( ci.init.length );
-            (cast(byte*) p)[0 .. ci.init.length] = ci.init[];
-            m = cast(Mutex) p;
+            ms[] = ThreadMutex.classinfo.init[];
+            m = cast(ThreadMutex)ms.ptr;
             m.__ctor();
+
             return m;
         }
     }
@@ -1577,20 +1587,23 @@ private:
 
         while( true )
         {
-            synchronized( slock )
+            slock.lock();
+
+            scope (exit)
+                slock.unlock();
+
+            if( !suspendDepth )
             {
-                if( !suspendDepth )
+                if( sm_cbeg )
                 {
-                    if( sm_cbeg )
-                    {
-                        c.next = sm_cbeg;
-                        sm_cbeg.prev = c;
-                    }
-                    sm_cbeg = c;
-                    ++sm_clen;
-                   return;
+                    c.next = sm_cbeg;
+                    sm_cbeg.prev = c;
                 }
+                sm_cbeg = c;
+                ++sm_clen;
+                return;
             }
+
             yield();
         }
     }
@@ -1607,16 +1620,19 @@ private:
     }
     body
     {
-        synchronized( slock )
-        {
-            if( c.prev )
-                c.prev.next = c.next;
-            if( c.next )
-                c.next.prev = c.prev;
-            if( sm_cbeg == c )
-                sm_cbeg = c.next;
-            --sm_clen;
-        }
+        slock.lock();
+
+        scope (exit)
+            slock.unlock();
+
+        if( c.prev )
+            c.prev.next = c.next;
+        if( c.next )
+            c.next.prev = c.prev;
+        if( sm_cbeg == c )
+            sm_cbeg = c.next;
+        --sm_clen;
+
         // NOTE: Don't null out c.next or c.prev because opApply currently
         //       follows c.next after removing a node.  This could be easily
         //       addressed by simply returning the next node from this
@@ -1670,20 +1686,23 @@ private:
 
         while( true )
         {
-            synchronized( slock )
+            slock.lock();
+
+            scope (exit)
+                slock.unlock();
+
+            if( !suspendDepth )
             {
-                if( !suspendDepth )
+                if( sm_tbeg )
                 {
-                    if( sm_tbeg )
-                    {
-                        t.next = sm_tbeg;
-                        sm_tbeg.prev = t;
-                    }
-                    sm_tbeg = t;
-                    ++sm_tlen;
-                    return;
+                    t.next = sm_tbeg;
+                    sm_tbeg.prev = t;
                 }
+                sm_tbeg = t;
+                ++sm_tlen;
+                return;
             }
+
             yield();
         }
     }
@@ -1700,27 +1719,30 @@ private:
     }
     body
     {
-        synchronized( slock )
-        {
-            // NOTE: When a thread is removed from the global thread list its
-            //       main context is invalid and should be removed as well.
-            //       It is possible that t.m_curr could reference more
-            //       than just the main context if the thread exited abnormally
-            //       (if it was terminated), but we must assume that the user
-            //       retains a reference to them and that they may be re-used
-            //       elsewhere.  Therefore, it is the responsibility of any
-            //       object that creates contexts to clean them up properly
-            //       when it is done with them.
-            remove( &t.m_main );
+        slock.lock();
 
-            if( t.prev )
-                t.prev.next = t.next;
-            if( t.next )
-                t.next.prev = t.prev;
-            if( sm_tbeg == t )
-                sm_tbeg = t.next;
-            --sm_tlen;
-        }
+        scope (exit)
+            slock.unlock();
+
+        // NOTE: When a thread is removed from the global thread list its
+        //       main context is invalid and should be removed as well.
+        //       It is possible that t.m_curr could reference more
+        //       than just the main context if the thread exited abnormally
+        //       (if it was terminated), but we must assume that the user
+        //       retains a reference to them and that they may be re-used
+        //       elsewhere.  Therefore, it is the responsibility of any
+        //       object that creates contexts to clean them up properly
+        //       when it is done with them.
+        remove( &t.m_main );
+
+        if( t.prev )
+            t.prev.next = t.next;
+        if( t.next )
+            t.next.prev = t.prev;
+        if( sm_tbeg == t )
+            sm_tbeg = t.next;
+        --sm_tlen;
+
         // NOTE: Don't null out t.next or t.prev because opApply currently
         //       follows t.next after removing a node.  This could be easily
         //       addressed by simply returning the next node from this
@@ -2060,14 +2082,17 @@ extern (C) void thread_detachByAddr( Thread.ThreadAddr addr )
  */
 static Thread thread_findByAddr( Thread.ThreadAddr addr )
 {
-    synchronized( Thread.slock )
+    Thread.slock.lock();
+
+    scope (exit)
+        Thread.slock.unlock();
+
+    foreach( t; Thread )
     {
-        foreach( t; Thread )
-        {
-                if( t.m_addr == addr )
-                    return t;
-        }
+        if( t.m_addr == addr )
+            return t;
     }
+
     return null;
 }
 
