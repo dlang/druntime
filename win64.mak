@@ -150,6 +150,7 @@ MANIFEST= \
 	src\core\sys\windows\stacktrace.d \
 	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\windows.d \
+	src\core\sys\windows\c\stdio.d \
 	\
 	src\gc\gc.d \
 	src\gc\gcalloc.d \
@@ -278,6 +279,7 @@ SRCS= \
 	src\core\sys\windows\stacktrace.d \
 	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\windows.d \
+	src\core\sys\windows\c\stdio.d \
 	\
 	src\core\sync\barrier.d \
 	src\core\sync\condition.d \
@@ -503,7 +505,8 @@ COPY=\
 	$(IMPDIR)\core\sys\windows\dll.d \
 	$(IMPDIR)\core\sys\windows\stacktrace.d \
 	$(IMPDIR)\core\sys\windows\threadaux.d \
-	$(IMPDIR)\core\sys\windows\windows.d
+	$(IMPDIR)\core\sys\windows\windows.d \
+	$(IMPDIR)\core\sys\windows\c\stdio.d
 
 ######################## Doc .html file generation ##############################
 
@@ -597,7 +600,7 @@ $(IMPDIR)\core\sync\semaphore.di : src\core\sync\semaphore.d
 ######################## Header .di file copy ##############################
 
 copydir: $(IMPDIR)
-	mkdir $(IMPDIR)\core\sys\windows
+	mkdir $(IMPDIR)\core\sys\windows\c
 	mkdir $(IMPDIR)\core\sys\posix\arpa
 	mkdir $(IMPDIR)\core\sys\posix\sys
 	mkdir $(IMPDIR)\core\sys\posix\net
@@ -865,6 +868,9 @@ $(IMPDIR)\core\sys\windows\threadaux.d : src\core\sys\windows\threadaux.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\windows\windows.d : src\core\sys\windows\windows.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\windows\c\stdio.d : src\core\sys\windows\c\stdio.d
 	copy $** $@
 
 ################### C\ASM Targets ############################

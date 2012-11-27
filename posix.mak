@@ -175,6 +175,7 @@ MANIFEST= \
 	src/core/sys/windows/stacktrace.d \
 	src/core/sys/windows/threadaux.d \
 	src/core/sys/windows/windows.d \
+	src/core/sys/windows/c/stdio.d \
 	\
 	src/gc/gc.d \
 	src/gc/gcalloc.d \
@@ -538,13 +539,14 @@ COPY=\
 	$(IMPDIR)/core/sys/windows/dll.d \
 	$(IMPDIR)/core/sys/windows/stacktrace.d \
 	$(IMPDIR)/core/sys/windows/threadaux.d \
-	$(IMPDIR)/core/sys/windows/windows.d
+	$(IMPDIR)/core/sys/windows/windows.d \
+	$(IMPDIR)/core/sys/windows/c/stdio.d
 
 SRCS=$(addprefix src/,$(addsuffix .d,$(SRC_D_MODULES)))
 
 COPYDIRS=\
 	$(IMPDIR)/core/stdc \
-	$(IMPDIR)/core/sys/windows \
+	$(IMPDIR)/core/sys/windows/c \
 	$(IMPDIR)/core/sys/posix/arpa \
 	$(IMPDIR)/core/sys/posix/sys \
 	$(IMPDIR)/core/sys/posix/net \
@@ -579,7 +581,7 @@ $(IMPDIR)/core/sync/%.di : src/core/sync/%.d
 
 copydir:
 	-mkdir -p $(IMPDIR)/core/stdc
-	-mkdir -p $(IMPDIR)/core/sys/windows
+	-mkdir -p $(IMPDIR)/core/sys/windows/c
 	-mkdir -p $(IMPDIR)/core/sys/posix/arpa
 	-mkdir -p $(IMPDIR)/core/sys/posix/sys
 	-mkdir -p $(IMPDIR)/core/sys/posix/net
