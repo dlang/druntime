@@ -14,7 +14,7 @@ module object;
 
 private
 {
-    extern(C) void rt_finalize(void *ptr, bool det=true);
+    extern (C) void rt_finalize2(void* p, bool det, bool resetMemory);
 }
 
 alias typeof(int.sizeof)                    size_t;
@@ -564,46 +564,68 @@ unittest
 // Please use destroy instead of clear.
 alias destroy clear;
 
-void destroy(T)(T obj) if (is(T == class))
+void finalizeClassInstance(T)(T t, bool resetMemory = true)
 {
-    rt_finalize(cast(void*)obj);
-}
-
-void destroy(T)(T obj) if (is(T == interface))
-{
-    destroy(cast(Object)obj);
-}
-
-void destroy(T)(ref T obj) if (is(T == struct))
-{
-    typeid(T).destroy(&obj);
-    auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
-    auto init = cast(ubyte[])typeid(T).init();
-    if(init.ptr is null) // null ptr means initialize to 0s
-        buf[] = 0;
+    static if(is(T == class))
+        alias t obj;
+    else static if(is(T == interface))
+        auto obj = cast(Object) t;
     else
-        buf[] = init[];
+        static assert(0, "Can only finalize class or interface, not " ~ T.stringof);
+
+    rt_finalize2(cast(void*) obj, true, resetMemory);
 }
 
-void destroy(T : U[n], U, size_t n)(ref T obj)
+/// $(RED Scheduled for deprecation.
+/// Please use $(LREF finalizeClassInstance) instead.)
+void destroy(T)(T obj) if (is(T == class) || is(T == interface))
 {
-    obj = T.init;
+    finalizeClassInstance(obj);
 }
 
-void destroy(T)(ref T obj)
-if (!is(T == struct) && !is(T == interface) && !is(T == class) && !_isStaticArray!T)
+/// $(RED Scheduled for deprecation.
+/// Please use $(XREF typecons, destruct) instead.)
+void destroy(T)(ref T obj) if (!is(T == class) && !is(T == interface))
 {
-    obj = T.init;
-}
+    static assert(!is(T == const), "`destroy` doesn't work for `const` types");
 
-template _isStaticArray(T : U[N], U, size_t N)
-{
-    enum bool _isStaticArray = true;
-}
+    static if(is(T == struct) || is(T U : U[n], size_t n))
+    {
+        // Note: old `destroy` version just fills shared static arrays with its `init`,
+        // now they are rejected just like shared structs.
+        static assert(!is(T == shared),
+            "`destroy` doesn't work for `shared` structs or `shared` static arrays");
 
-template _isStaticArray(T)
-{
-    enum bool _isStaticArray = false;
+        // Ensure we call one of these two `TypeInfo`s with nontrivial `destroy`.
+        static assert(is(typeof(typeid(T)) == TypeInfo_Struct) ||
+                      is(typeof(typeid(T)) == TypeInfo_StaticArray));
+        typeid(T).destroy(&obj);
+
+        auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
+        auto init = cast(ubyte[]) typeid(T).init();
+
+        if(init.ptr is null) // null ptr means initialize to 0s
+            buf[] = 0;
+        else
+        {
+            TypeInfo el = typeid(T), info = el;
+            for(;;)
+            {
+                info = cast(TypeInfo_StaticArray) info;
+                if(!info)
+                    break;
+                el = info = cast() info.next; // ugly cast as `next` returns const(TypeInfo)
+            }
+            immutable sz = el.tsize();
+            if(sz == 1)
+                buf[] = init[0];
+            else
+                for(size_t i = 0; i < T.sizeof; i += sz)
+                    buf[i .. i + sz] = init[];
+        }
+    }
+    else
+        obj = T.init;
 }
 
 private
