@@ -615,6 +615,13 @@ void destroy(T)(ref T obj) if (!is(T == class) && !is(T == interface))
                     buf[i .. i + sz] = init[];
         }
     }
+    else static if(is(T U : U[]) &&
+                   (is(U == struct) || is(U V : V[n], size_t n)))
+    {
+        foreach_reverse(ref el; obj)
+            destroy(el);
+        obj = null;
+    }
     else
     {
         obj = T.init;

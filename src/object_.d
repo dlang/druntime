@@ -2428,6 +2428,13 @@ void destroy(T)(ref T obj) if (!is(T == class) && !is(T == interface))
                     buf[i .. i + sz] = init[];
         }
     }
+    else static if(is(T U : U[]) &&
+                   (is(U == struct) || is(U V : V[n], size_t n)))
+    {
+        foreach_reverse(ref el; obj)
+            destroy(el);
+        obj = null;
+    }
     else
     {
         obj = T.init;
@@ -2484,6 +2491,22 @@ unittest // with nested static array
     S[3] sarr = S(1);
     i = 0;
     destroy(sarr);
+    assert(i == 3);
+}
+
+unittest // with dynamic array
+{
+    static int i;
+
+    static struct S
+    {
+        int t = 0;
+        ~this () { ++i; }
+    }
+
+    S[] darr = new S[3];
+    i = 0;
+    destroy(darr);
     assert(i == 3);
 }
 
