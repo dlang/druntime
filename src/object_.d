@@ -2387,15 +2387,127 @@ version(unittest) unittest
    }
 }
 
-void destroy(T)(ref T obj) if (is(T == struct))
+void destroy(T)(ref T obj) if (!is(T == class) && !is(T == interface))
 {
-    typeid(T).destroy( &obj );
-    auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
-    auto init = cast(ubyte[])typeid(T).init();
-    if(init.ptr is null) // null ptr means initialize to 0s
-        buf[] = 0;
+    static assert(!is(T == const), "`destroy` doesn't work for `const` types");
+
+    static if(is(T == struct) || is(T U : U[n], size_t n))
+    {
+        // Note: old `destroy` version just fills shared static arrays with its `init`,
+        // now they are rejected just like shared structs.
+        static assert(!is(T == shared),
+            "`destroy` doesn't work for `shared` structs or `shared` static arrays");
+
+        // Ensure we call one of these two `TypeInfo`s with nontrivial `destroy`.
+        static assert(is(typeof(typeid(T)) == TypeInfo_Struct) ||
+                      is(typeof(typeid(T)) == TypeInfo_StaticArray));
+        typeid(T).destroy(&obj);
+
+        auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
+        auto init = cast(ubyte[]) typeid(T).init();
+
+        if(init.ptr is null) // null ptr means initialize to 0s
+        {
+            buf[] = 0;
+        }
+        else
+        {
+            TypeInfo el = typeid(T), info = el;
+            for(;;)
+            {
+                info = cast(TypeInfo_StaticArray) info;
+                if(!info)
+                    break;
+                el = info = cast() info.next; // ugly cast as `next` returns const(TypeInfo)
+            }
+            immutable sz = el.tsize();
+            if(sz == 1)
+                buf[] = init[0];
+            else
+                for(size_t i = 0; i < T.sizeof; i += sz)
+                    buf[i .. i + sz] = init[];
+        }
+    }
+    else static if(is(T U : U[]) &&
+                   (is(U == struct) || is(U V : V[n], size_t n)))
+    {
+        foreach_reverse(ref el; obj)
+            destroy(el);
+        obj = null;
+    }
     else
-        buf[] = init[];
+    {
+        obj = T.init;
+    }
+}
+
+unittest // with `shared`
+{
+    shared int i = 5;
+    destroy(i);
+    assert(i == 0);
+
+    static struct S { }
+    shared S s;
+    static assert(!__traits(compiles, destroy(s)));
+
+    shared S[1] sArr;
+    static assert(!__traits(compiles, destroy(sArr)));
+
+    static struct SDtor
+    { ~this () { assert(0); } }
+
+    shared SDtor[1] sDtorArr;
+    static assert(!__traits(compiles, destroy(sDtorArr)));
+}
+
+unittest // with `const`
+{
+    const int i = 5;
+    static assert(!__traits(compiles, destroy(i)));
+
+    static struct S { }
+    const S s = S();
+    static assert(!__traits(compiles, destroy(s)));
+
+    const S[1] sArr;
+    static assert(!__traits(compiles, destroy(sArr)));
+
+    static struct S2 { const int i; }
+    S s2;
+    destroy(s2);
+}
+
+unittest // with nested static array
+{
+    int i;
+
+    struct S
+    {
+        int t = 0;
+        ~this () { this == S.init || ++i; }
+    }
+
+    S[3] sarr = S(1);
+    i = 0;
+    destroy(sarr);
+    assert(i == 3);
+}
+
+unittest // with dynamic array
+{
+    static int i;
+
+    static struct S
+    {
+        int t = 0;
+        ~this () { ++i; }
+    }
+
+    S[] darr = new S[3];
+    i = 0;
+    destroy(darr);
+    assert(i == 3);
 }
 
 version(unittest) unittest
@@ -2437,11 +2549,6 @@ version(unittest) unittest
    }
 }
 
-void destroy(T : U[n], U, size_t n)(ref T obj)
-{
-    obj = T.init;
-}
-
 version(unittest) unittest
 {
     int[2] a;
@@ -2449,22 +2556,6 @@ version(unittest) unittest
     a[1] = 2;
     destroy(a);
     assert(a == [ 0, 0 ]);
-}
-
-void destroy(T)(ref T obj)
-    if (!is(T == struct) && !is(T == interface) && !is(T == class) && !_isStaticArray!T)
-{
-    obj = T.init;
-}
-
-template _isStaticArray(T : U[N], U, size_t N)
-{
-    enum bool _isStaticArray = true;
-}
-
-template _isStaticArray(T)
-{
-    enum bool _isStaticArray = false;
 }
 
 version(unittest) unittest
