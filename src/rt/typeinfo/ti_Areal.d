@@ -76,6 +76,8 @@ class TypeInfo_Ae : TypeInfo_Array
     {
         return typeid(real);
     }
+
+    @property override Type type() { return Type.Array; }
 }
 
 // ireal[]
@@ -93,4 +95,6 @@ class TypeInfo_Aj : TypeInfo_Ae
     {
         return typeid(ireal);
     }
+
+    @property override Type type() { return Type.Array; }
 }

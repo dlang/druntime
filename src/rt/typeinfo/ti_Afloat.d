@@ -76,6 +76,8 @@ class TypeInfo_Af : TypeInfo_Array
     {
         return typeid(float);
     }
+
+    @property override Type type() const nothrow pure { return Type.Array; }
 }
 
 // ifloat[]
@@ -93,4 +95,6 @@ class TypeInfo_Ao : TypeInfo_Af
     {
         return typeid(ifloat);
     }
+	
+    @property override Type type() const nothrow pure { return Type.Array; }
 }

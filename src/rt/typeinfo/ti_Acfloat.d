@@ -76,4 +76,6 @@ class TypeInfo_Aq : TypeInfo_Array
     {
         return typeid(cfloat);
     }
+
+    @property override Type type() const nothrow pure { return Type.Array; }
 }

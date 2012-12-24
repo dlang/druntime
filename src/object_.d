@@ -193,12 +193,10 @@ bool opEquals(TypeInfo lhs, TypeInfo rhs)
 
     // Factor out top level const
     // (This still isn't right, should follow same rules as compiler does for type equality.)
-    TypeInfo_Const c = cast(TypeInfo_Const) lhs;
-    if (c)
-        lhs = c.base;
-    c = cast(TypeInfo_Const) rhs;
-    if (c)
-        rhs = c.base;
+    if (lhs.type == TypeInfo.Type.Const)
+        lhs = (cast(TypeInfo_Const)cast(void*)lhs).base;
+    if (lhs.type == TypeInfo.Type.Const)
+        rhs = (cast(TypeInfo_Const)cast(void*)rhs).base;
 
     // General case => symmetric calls to method opEquals
     return lhs.opEquals(rhs) && rhs.opEquals(lhs);
@@ -240,6 +238,51 @@ struct OffsetTypeInfo
  */
 class TypeInfo
 {
+    enum Type 
+    {
+	    Info,
+	    Vector,
+        Typedef,
+	    Enum,
+	    Pointer,
+	    Array,
+	    StaticArray,
+	    AssociativeArray,
+	    Function,
+	    Delegate,
+		Object,
+	    Class,
+	    Interface,
+	    Struct,
+	    Tuple,
+	    Const,
+	    Immutable,
+ 	    Shared,
+	    Inout,
+	    Byte,
+ 	    UByte,
+	    Short,
+	    UShort,
+	    Int,
+	    UInt,
+	    Long,
+ 	    ULong,
+	    Float,
+	    IFloat,
+	    CFloat,
+	    Double,
+	    IDouble,
+	    CDouble,
+	    Real,
+	    IReal,
+	    CReal,
+	    Char,
+	    WChar,
+	    DChar,
+	    Void,
+	    Bool
+    }
+
     override string toString() const
     {
         // hack to keep const qualifiers for TypeInfo member functions
@@ -281,7 +324,56 @@ class TypeInfo
         if (this is o)
             return true;
         auto ti = cast(const TypeInfo)o;
-        return ti && this.toString() == ti.toString();
+		if(ti is null)
+			return false;
+			
+		bool compareTypeInfo(const TypeInfo lhs, const TypeInfo rhs)
+		{
+			if(lhs is null && rhs is null) //compare complete
+				return true;
+				
+			if(lhs is null || rhs is null) //type info chains have different length
+				return false;
+				
+		    auto lhsType = lhs.type;
+		    auto rhsType = rhs.type;
+		    if(lhsType != rhsType)
+			    return false;
+			
+			switch(lhsType)
+			{
+				case TypeInfo.Type.Struct:
+					{
+						auto lhsStruct = cast(const(TypeInfo_Struct))cast(void*)lhs;
+						auto rhsStruct = cast(const(TypeInfo_Struct))cast(void*)rhs;
+						return lhsStruct.name == rhsStruct.name;
+					}
+				case TypeInfo.Type.Class:
+					{
+						auto lhsClass = cast(const(TypeInfo_Class))cast(void*)lhs;
+						auto rhsClass = cast(const(TypeInfo_Class))cast(void*)rhs;
+						return lhsClass.name == rhsClass.name;
+					}
+				case TypeInfo.Type.Interface:
+					{
+						auto lhsInterface = cast(const(TypeInfo_Interface))cast(void*)lhs;
+						auto rhsInterface = cast(const(TypeInfo_Interface))cast(void*)rhs;
+						return lhsInterface.info.name == rhsInterface.info.name;
+					}
+				case TypeInfo.Type.Typedef:
+				case TypeInfo.Type.Enum:
+					{
+						auto lhsTypedef = cast(const(TypeInfo_Typedef))cast(void*)lhs;
+						auto rhsTypedef = cast(const(TypeInfo_Typedef))cast(void*)rhs;
+						return lhsTypedef.name == rhsTypedef.name;
+					}
+				default:
+			}
+			
+			return compareTypeInfo(lhs.next(), rhs.next());
+		}
+		
+        return compareTypeInfo(this, ti);
     }
 
     /// Returns a hash of the instance of a type.
@@ -343,6 +435,7 @@ class TypeInfo
     /** Return info used by the garbage collector to do precise collection.
      */
     @property immutable(void)* rtInfo() nothrow pure const @safe { return null; }
+	@property Type type() nothrow pure const @safe { return Type.Info; }
 }
 
 class TypeInfo_Vector : TypeInfo
@@ -363,11 +456,13 @@ class TypeInfo_Vector : TypeInfo
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void* p1, void* p2) const { return base.swap(p1, p2); }
 
-    override @property const(TypeInfo) next() nothrow pure const { return base.next; }
+    override @property const(TypeInfo) next() nothrow pure const { return base; }
     override @property uint flags() nothrow pure const { return base.flags; }
     override const(void)[] init() nothrow pure const { return base.init(); }
 
     override @property size_t talign() nothrow pure const { return 16; }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Vector; }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
     {
@@ -396,7 +491,7 @@ class TypeInfo_Typedef : TypeInfo
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void* p1, void* p2) const { return base.swap(p1, p2); }
 
-    override @property const(TypeInfo) next() nothrow pure const { return base.next; }
+    override @property const(TypeInfo) next() nothrow pure const { return base; }
     override @property uint flags() nothrow pure const { return base.flags; }
     override const(void)[] init() nothrow pure const @safe { return m_init.length ? m_init : base.init(); }
 
@@ -408,6 +503,8 @@ class TypeInfo_Typedef : TypeInfo
     }
 
     override @property immutable(void)* rtInfo() const { return base.rtInfo; }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Typedef; }
 
     TypeInfo base;
     string   name;
@@ -416,7 +513,7 @@ class TypeInfo_Typedef : TypeInfo
 
 class TypeInfo_Enum : TypeInfo_Typedef
 {
-
+	@property override Type type() nothrow pure const @safe { return Type.Enum; }
 }
 
 class TypeInfo_Pointer : TypeInfo
@@ -465,6 +562,7 @@ class TypeInfo_Pointer : TypeInfo
 
     override @property const(TypeInfo) next() nothrow pure const { return m_next; }
     override @property uint flags() nothrow pure const { return 1; }
+	@property override Type type() nothrow pure const @safe { return Type.Pointer; }
 
     TypeInfo m_next;
 }
@@ -552,6 +650,8 @@ class TypeInfo_Array : TypeInfo
         arg2 = typeid(void*);
         return 0;
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Array; }
 }
 
 class TypeInfo_StaticArray : TypeInfo
@@ -671,6 +771,8 @@ class TypeInfo_StaticArray : TypeInfo
         arg1 = typeid(void*);
         return 0;
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.StaticArray; }
 }
 
 class TypeInfo_AssociativeArray : TypeInfo
@@ -719,6 +821,8 @@ class TypeInfo_AssociativeArray : TypeInfo
         arg1 = typeid(void*);
         return 0;
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.AssociativeArray; }
 }
 
 class TypeInfo_Function : TypeInfo
@@ -742,6 +846,8 @@ class TypeInfo_Function : TypeInfo
     {
         return 0;       // no size for functions
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Function; }
 
     TypeInfo next;
     string deco;
@@ -787,6 +893,8 @@ class TypeInfo_Delegate : TypeInfo
         arg2 = typeid(void*);
         return 0;
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Delegate; }
 }
 
 /**
@@ -848,6 +956,8 @@ class TypeInfo_Class : TypeInfo
     }
 
     override @property uint flags() nothrow pure const { return 1; }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Class; }
 
     override @property const(OffsetTypeInfo)[] offTi() nothrow pure const
     {
@@ -981,6 +1091,8 @@ class TypeInfo_Interface : TypeInfo
     }
 
     override @property uint flags() nothrow pure const { return 1; }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Interface; }
 
     TypeInfo_Class info;
 }
@@ -1055,6 +1167,8 @@ class TypeInfo_Struct : TypeInfo
     override @property uint flags() nothrow pure const { return m_flags; }
 
     override @property size_t talign() nothrow pure const { return m_align; }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Struct; }
 
     override void destroy(void* p) const
     {
@@ -1193,6 +1307,8 @@ class TypeInfo_Tuple : TypeInfo
     {
         assert(0);
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Tuple; }
 }
 
 class TypeInfo_Const : TypeInfo
@@ -1221,7 +1337,7 @@ class TypeInfo_Const : TypeInfo
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void *p1, void *p2) const { return base.swap(p1, p2); }
 
-    override @property const(TypeInfo) next() nothrow pure const { return base.next; }
+    override @property const(TypeInfo) next() nothrow pure const { return base; }
     override @property uint flags() nothrow pure const { return base.flags; }
     override const(void)[] init() nothrow pure const { return base.init(); }
 
@@ -1231,6 +1347,8 @@ class TypeInfo_Const : TypeInfo
     {
         return base.argTypes(arg1, arg2);
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Const; }
 
     TypeInfo base;
 }
@@ -1241,6 +1359,8 @@ class TypeInfo_Invariant : TypeInfo_Const
     {
         return cast(string) ("immutable(" ~ base.toString() ~ ")");
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Immutable; }
 }
 
 class TypeInfo_Shared : TypeInfo_Const
@@ -1249,6 +1369,8 @@ class TypeInfo_Shared : TypeInfo_Const
     {
         return cast(string) ("shared(" ~ base.toString() ~ ")");
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Shared; }
 }
 
 class TypeInfo_Inout : TypeInfo_Const
@@ -1257,6 +1379,8 @@ class TypeInfo_Inout : TypeInfo_Const
     {
         return cast(string) ("inout(" ~ base.toString() ~ ")");
     }
+	
+	@property override Type type() nothrow pure const @safe { return Type.Inout; }
 }
 
 abstract class MemberInfo

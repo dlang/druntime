@@ -67,6 +67,51 @@ struct OffsetTypeInfo
 
 class TypeInfo
 {
+    enum Type 
+    {
+	    Info,
+	    Vector,
+        Typedef,
+	    Enum,
+	    Pointer,
+	    Array,
+	    StaticArray,
+	    AssociativeArray,
+	    Function,
+	    Delegate,
+		Object,
+	    Class,
+ 	    Obj,
+	    Interface,
+	    Struct,
+	    Tuple,
+	    Const,
+	    Immutable,
+ 	    Shared,
+	    Inout,
+	    Byte,
+ 	    UByte,
+	    Short,
+	    UShort,
+	    Int,
+	    UInt,
+	    Long,
+ 	    ULong,
+	    Float,
+	    IFloat,
+	    CFloat,
+	    Double,
+	    IDouble,
+	    CDouble,
+	    Real,
+	    IReal,
+	    CReal,
+	    Char,
+	    WChar,
+	    DChar,
+	    Void,
+	    Bool
+    }
     size_t   getHash(in void* p) @trusted nothrow const;
     bool     equals(in void* p1, in void* p2) const;
     int      compare(in void* p1, in void* p2) const;
@@ -82,6 +127,7 @@ class TypeInfo
     @property size_t talign() nothrow pure const @safe;
     version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe nothrow;
     @property immutable(void)* rtInfo() nothrow pure const @safe;
+	@property Type type() nothrow pure const @safe;
 }
 
 class TypeInfo_Typedef : TypeInfo

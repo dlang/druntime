@@ -70,6 +70,8 @@ class TypeInfo_Ag : TypeInfo_Array
     {
         return typeid(byte);
     }
+
+    @property override Type type() const nothrow pure { return Type.Array; }
 }
 
 
@@ -96,6 +98,8 @@ class TypeInfo_Ah : TypeInfo_Ag
     {
         return typeid(ubyte);
     }
+
+    @property override Type type() nothrow pure { return Type.Array; }
 }
 
 // void[]
@@ -113,6 +117,8 @@ class TypeInfo_Av : TypeInfo_Ah
     {
         return typeid(void);
     }
+
+    @property override Type type() const nothrow pure { return Type.Array; }
 }
 
 // bool[]
@@ -130,6 +136,8 @@ class TypeInfo_Ab : TypeInfo_Ah
     {
         return typeid(bool);
     }
+
+    @property override Type type() const nothrow pure { return Type.Array; }
 }
 
 // char[]
@@ -197,6 +205,8 @@ else
     {
         return typeid(char);
     }
+
+    @property override Type type() { return Type.Array; }
 }
 
 // string
@@ -214,5 +224,7 @@ class TypeInfo_Aya : TypeInfo_Aa
     {
         return typeid(immutable(char));
     }
+
+    @property override Type type() { return Type.Array; }
 }
 

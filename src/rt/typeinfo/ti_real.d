@@ -88,4 +88,6 @@ class TypeInfo_e : TypeInfo
     {
         return real.alignof;
     }
+
+    @property override Type type() { return Type.Real; }
 }

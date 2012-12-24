@@ -100,4 +100,6 @@ class TypeInfo_AC : TypeInfo_Array
     {
         return typeid(Object);
     }
+
+    @property override Type type() const nothrow pure { return Type.Array; }
 }

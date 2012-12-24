@@ -54,4 +54,6 @@ class TypeInfo_D : TypeInfo
     {
         return 1;
     }
+
+    @property override Type type() { return Type.Delegate; }
 }

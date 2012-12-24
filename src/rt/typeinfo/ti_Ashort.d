@@ -69,6 +69,8 @@ class TypeInfo_As : TypeInfo_Array
     {
         return typeid(short);
     }
+
+    @property override Type type() { return Type.Array; }
 }
 
 
@@ -108,6 +110,8 @@ class TypeInfo_At : TypeInfo_As
     {
         return typeid(ushort);
     }
+
+    @property override Type type() { return Type.Array; }
 }
 
 // wchar[]
@@ -125,4 +129,6 @@ class TypeInfo_Au : TypeInfo_At
     {
         return typeid(wchar);
     }
+
+    @property override Type type() { return Type.Array; }
 }
