@@ -342,32 +342,24 @@ class TypeInfo
             
             switch(lhsType)
             {
-                case TypeInfo.Type.Struct:
-                    {
-                        auto lhsStruct = cast(const(TypeInfo_Struct))cast(void*)lhs;
-                        auto rhsStruct = cast(const(TypeInfo_Struct))cast(void*)rhs;
-                        return lhsStruct.name == rhsStruct.name;
-                    }
-                case TypeInfo.Type.Class:
-                    {
-                        auto lhsClass = cast(const(TypeInfo_Class))cast(void*)lhs;
-                        auto rhsClass = cast(const(TypeInfo_Class))cast(void*)rhs;
-                        return lhsClass.name == rhsClass.name;
-                    }
-                case TypeInfo.Type.Interface:
-                    {
-                        auto lhsInterface = cast(const(TypeInfo_Interface))cast(void*)lhs;
-                        auto rhsInterface = cast(const(TypeInfo_Interface))cast(void*)rhs;
-                        return lhsInterface.info.name == rhsInterface.info.name;
-                    }
-                case TypeInfo.Type.Typedef:
-                case TypeInfo.Type.Enum:
-                    {
-                        auto lhsTypedef = cast(const(TypeInfo_Typedef))cast(void*)lhs;
-                        auto rhsTypedef = cast(const(TypeInfo_Typedef))cast(void*)rhs;
-                        return lhsTypedef.name == rhsTypedef.name;
-                    }
-                default:
+			case TypeInfo.Type.Struct:
+				auto lhsStruct = cast(const(TypeInfo_Struct))cast(void*)lhs;
+				auto rhsStruct = cast(const(TypeInfo_Struct))cast(void*)rhs;
+				return lhsStruct.name == rhsStruct.name;
+			case TypeInfo.Type.Class:
+				auto lhsClass = cast(const(TypeInfo_Class))cast(void*)lhs;
+				auto rhsClass = cast(const(TypeInfo_Class))cast(void*)rhs;
+				return lhsClass.name == rhsClass.name;
+			case TypeInfo.Type.Interface:
+				auto lhsInterface = cast(const(TypeInfo_Interface))cast(void*)lhs;
+				auto rhsInterface = cast(const(TypeInfo_Interface))cast(void*)rhs;
+				return lhsInterface.info.name == rhsInterface.info.name;
+			case TypeInfo.Type.Typedef:
+			case TypeInfo.Type.Enum:
+					auto lhsTypedef = cast(const(TypeInfo_Typedef))cast(void*)lhs;
+					auto rhsTypedef = cast(const(TypeInfo_Typedef))cast(void*)rhs;
+					return lhsTypedef.name == rhsTypedef.name;
+			default:
             }
             
             return compareTypeInfo(lhs.next(), rhs.next());
