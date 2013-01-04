@@ -14,7 +14,19 @@ ifeq (,$(OS))
             ifeq (FreeBSD,$(OS))
                 OS:=freebsd
             else
-                $(error Unrecognized or unsupported OS for uname: $(OS))
+                ifeq (OpenBSD,$(OS))
+                    TARGET=OPENBSD
+                else
+                    ifeq (Solaris,$(OS))
+                        TARGET=SOLARIS
+                    else
+                        ifeq (SunOS,$(OS))
+                            TARGET=SOLARIS
+                        else
+                            $(error Unrecognized or unsupported OS for uname: $(OS))
+                        endif
+                    endif
+                endif
             endif
         endif
     endif
@@ -26,18 +38,19 @@ DOCDIR=doc
 IMPDIR=import
 
 MODEL=32
+override PIC:=$(if $(PIC),-fPIC,)
 
-DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property
-UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property
+DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property $(PIC)
+UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property $(PIC)
 DDOCFLAGS=-m$(MODEL) -c -w -o- -Isrc -Iimport
 
-CFLAGS=-m$(MODEL) -O
+CFLAGS=-m$(MODEL) -O $(PIC)
 
 OBJDIR=obj/$(MODEL)
 DRUNTIME_BASE=druntime-$(OS)$(MODEL)
 DRUNTIME=lib/lib$(DRUNTIME_BASE).a
 
-DOCFMT=
+DOCFMT=-version=CoreDdoc
 
 target : copydir import copy $(DRUNTIME) doc
 
@@ -46,6 +59,7 @@ MANIFEST= \
 	README.txt \
 	posix.mak \
 	win32.mak \
+	win64.mak \
 	\
 	src/object_.d \
 	src/object.di \
@@ -95,7 +109,19 @@ MANIFEST= \
 	src/core/sync/rwmutex.d \
 	src/core/sync/semaphore.d \
 	\
+	src/core/sys/freebsd/dlfcn.d \
+	src/core/sys/freebsd/execinfo.d \
+	\
 	src/core/sys/freebsd/sys/event.d \
+	\
+	src/core/sys/linux/execinfo.d \
+	src/core/sys/linux/epoll.d \
+	\
+	src/core/sys/linux/sys/signalfd.d \
+	src/core/sys/linux/sys/xattr.d \
+	\
+	src/core/sys/osx/execinfo.d \
+	src/core/sys/osx/pthread.d \
 	\
 	src/core/sys/osx/mach/dyld.d \
 	src/core/sys/osx/mach/getsect.d \
@@ -110,7 +136,6 @@ MANIFEST= \
 	src/core/sys/posix/dlfcn.d \
 	src/core/sys/posix/fcntl.d \
 	src/core/sys/posix/inttypes.d \
-	src/core/sys/posix/net/if_.d \
 	src/core/sys/posix/netdb.d \
 	src/core/sys/posix/poll.d \
 	src/core/sys/posix/pthread.d \
@@ -129,21 +154,25 @@ MANIFEST= \
 	\
 	src/core/sys/posix/arpa/inet.d \
 	\
+	src/core/sys/posix/net/if_.d \
+	\
 	src/core/sys/posix/netinet/in_.d \
 	src/core/sys/posix/netinet/tcp.d \
 	\
+	src/core/sys/posix/sys/ioctl.d \
 	src/core/sys/posix/sys/ipc.d \
 	src/core/sys/posix/sys/mman.d \
 	src/core/sys/posix/sys/select.d \
 	src/core/sys/posix/sys/shm.d \
 	src/core/sys/posix/sys/socket.d \
 	src/core/sys/posix/sys/stat.d \
+	src/core/sys/posix/sys/statvfs.d \
 	src/core/sys/posix/sys/time.d \
 	src/core/sys/posix/sys/types.d \
 	src/core/sys/posix/sys/uio.d \
 	src/core/sys/posix/sys/un.d \
-	src/core/sys/posix/sys/wait.d \
 	src/core/sys/posix/sys/utsname.d \
+	src/core/sys/posix/sys/wait.d \
 	\
 	src/core/sys/windows/dbghelp.d \
 	src/core/sys/windows/dll.d \
@@ -175,7 +204,6 @@ MANIFEST= \
 	src/rt/arrayshort.d \
 	src/rt/cast_.d \
 	src/rt/cmath2.d \
-	src/rt/compiler.d \
 	src/rt/complex.c \
 	src/rt/cover.d \
 	src/rt/critical_.d \
@@ -242,7 +270,9 @@ MANIFEST= \
 	src/rt/util/console.d \
 	src/rt/util/hash.d \
 	src/rt/util/string.d \
-	src/rt/util/utf.d
+	src/rt/util/utf.d \
+	\
+	src/etc/linux/memoryerror.d
 
 GC_MODULES = gc/gc gc/gcalloc gc/gcbits gc/gcstats gc/gcx
 
@@ -276,14 +306,17 @@ SRC_D_MODULES = \
 	core/stdc/time \
 	core/stdc/wchar_ \
 	\
+	core/sys/freebsd/execinfo \
 	core/sys/freebsd/sys/event \
 	\
 	core/sys/posix/signal \
+	core/sys/posix/dirent \
 	core/sys/posix/sys/select \
 	core/sys/posix/sys/socket \
 	core/sys/posix/sys/stat \
 	core/sys/posix/sys/wait \
 	core/sys/posix/netdb \
+	core/sys/posix/sys/ioctl \
 	core/sys/posix/sys/utsname \
 	core/sys/posix/netinet/in_ \
 	\
@@ -371,7 +404,9 @@ SRC_D_MODULES = \
 	rt/typeinfo/ti_ulong \
 	rt/typeinfo/ti_ushort \
 	rt/typeinfo/ti_void \
-	rt/typeinfo/ti_wchar
+	rt/typeinfo/ti_wchar \
+	\
+	etc/linux/memoryerror
 
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
@@ -449,8 +484,17 @@ COPY=\
 	$(IMPDIR)/core/stdc/wchar_.d \
 	$(IMPDIR)/core/stdc/wctype.d \
 	\
+	$(IMPDIR)/core/sys/freebsd/dlfcn.d \
+	$(IMPDIR)/core/sys/freebsd/execinfo.d \
 	$(IMPDIR)/core/sys/freebsd/sys/event.d \
 	\
+	$(IMPDIR)/core/sys/linux/execinfo.d \
+	$(IMPDIR)/core/sys/linux/epoll.d \
+	$(IMPDIR)/core/sys/linux/sys/signalfd.d \
+	$(IMPDIR)/core/sys/linux/sys/xattr.d \
+	\
+	$(IMPDIR)/core/sys/osx/execinfo.d \
+	$(IMPDIR)/core/sys/osx/pthread.d \
 	$(IMPDIR)/core/sys/osx/mach/kern_return.d \
 	$(IMPDIR)/core/sys/osx/mach/port.d \
 	$(IMPDIR)/core/sys/osx/mach/semaphore.d \
@@ -483,12 +527,14 @@ COPY=\
 	$(IMPDIR)/core/sys/posix/netinet/in_.d \
 	$(IMPDIR)/core/sys/posix/netinet/tcp.d \
 	\
+	$(IMPDIR)/core/sys/posix/sys/ioctl.d \
 	$(IMPDIR)/core/sys/posix/sys/ipc.d \
 	$(IMPDIR)/core/sys/posix/sys/mman.d \
 	$(IMPDIR)/core/sys/posix/sys/select.d \
 	$(IMPDIR)/core/sys/posix/sys/shm.d \
 	$(IMPDIR)/core/sys/posix/sys/socket.d \
 	$(IMPDIR)/core/sys/posix/sys/stat.d \
+	$(IMPDIR)/core/sys/posix/sys/statvfs.d \
 	$(IMPDIR)/core/sys/posix/sys/time.d \
 	$(IMPDIR)/core/sys/posix/sys/types.d \
 	$(IMPDIR)/core/sys/posix/sys/uio.d \
@@ -500,19 +546,21 @@ COPY=\
 	$(IMPDIR)/core/sys/windows/dll.d \
 	$(IMPDIR)/core/sys/windows/stacktrace.d \
 	$(IMPDIR)/core/sys/windows/threadaux.d \
-	$(IMPDIR)/core/sys/windows/windows.d
+	$(IMPDIR)/core/sys/windows/windows.d \
+	\
+	$(IMPDIR)/etc/linux/memoryerror.d
 
 SRCS=$(addprefix src/,$(addsuffix .d,$(SRC_D_MODULES)))
 
 COPYDIRS=\
 	$(IMPDIR)/core/stdc \
-	$(IMPDIR)/core/sys/windows \
+	$(IMPDIR)/core/sys/freebsd/sys \
+	$(IMPDIR)/core/sys/osx/mach \
 	$(IMPDIR)/core/sys/posix/arpa \
-	$(IMPDIR)/core/sys/posix/sys \
 	$(IMPDIR)/core/sys/posix/net \
 	$(IMPDIR)/core/sys/posix/netinet \
-	$(IMPDIR)/core/sys/osx/mach \
-	$(IMPDIR)/core/sys/freebsd/sys \
+	$(IMPDIR)/core/sys/posix/sys \
+	$(IMPDIR)/core/sys/windows \
 
 ######################## Doc .html file generation ##############################
 
@@ -548,6 +596,8 @@ copydir:
 	-mkdir -p $(IMPDIR)/core/sys/posix/netinet
 	-mkdir -p $(IMPDIR)/core/sys/osx/mach
 	-mkdir -p $(IMPDIR)/core/sys/freebsd/sys
+	-mkdir -p $(IMPDIR)/core/sys/linux/sys
+	-mkdir -p $(IMPDIR)/etc/linux
 
 copy: $(COPY)
 

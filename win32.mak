@@ -1,3 +1,6 @@
+# Makefile to build D runtime library druntime.lib for Win32
+
+MODEL=32
 
 DMD=dmd
 
@@ -6,8 +9,8 @@ CC=dmc
 DOCDIR=doc
 IMPDIR=import
 
-DFLAGS=-O -release -inline -w -Isrc -Iimport -property
-UDFLAGS=-O -release -w -Isrc -Iimport -property
+DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property
+UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property
 DDOCFLAGS=-c -w -o- -Isrc -Iimport
 
 CFLAGS=
@@ -25,6 +28,7 @@ MANIFEST= \
 	README \
 	posix.mak \
 	win32.mak \
+	win64.mak \
 	\
 	src\object_.d \
 	src\object.di \
@@ -74,9 +78,20 @@ MANIFEST= \
 	src\core\sync\rwmutex.d \
 	src\core\sync\semaphore.d \
 	\
+	src\core\sys\freebsd\dlfcn.d \
+	src\core\sys\freebsd\execinfo.d \
+	\
 	src\core\sys\freebsd\sys\event.d \
 	\
+	src\core\sys\linux\execinfo.d \
+	src\core\sys\linux\epoll.d \
+	\
+	src\core\sys\linux\sys\signalfd.d \
+	src\core\sys\linux\sys\xattr.d \
+	\
+	src\core\sys\osx\execinfo.d \
 	src\core\sys\osx\pthread.d \
+	\
 	src\core\sys\osx\mach\dyld.d \
 	src\core\sys\osx\mach\getsect.d \
 	src\core\sys\osx\mach\kern_return.d \
@@ -90,7 +105,6 @@ MANIFEST= \
 	src\core\sys\posix\dlfcn.d \
 	src\core\sys\posix\fcntl.d \
 	src\core\sys\posix\inttypes.d \
-	src\core\sys\posix\net\if_.d \
 	src\core\sys\posix\netdb.d \
 	src\core\sys\posix\poll.d \
 	src\core\sys\posix\pthread.d \
@@ -109,9 +123,12 @@ MANIFEST= \
 	\
 	src\core\sys\posix\arpa\inet.d \
 	\
+	src\core\sys\posix\net\if_.d \
+	\
 	src\core\sys\posix\netinet\in_.d \
 	src\core\sys\posix\netinet\tcp.d \
 	\
+	src\core\sys\posix\sys\ioctl.d \
 	src\core\sys\posix\sys\ipc.d \
 	src\core\sys\posix\sys\mman.d \
 	src\core\sys\posix\sys\select.d \
@@ -122,8 +139,8 @@ MANIFEST= \
 	src\core\sys\posix\sys\types.d \
 	src\core\sys\posix\sys\uio.d \
 	src\core\sys\posix\sys\un.d \
-	src\core\sys\posix\sys\wait.d \
 	src\core\sys\posix\sys\utsname.d \
+	src\core\sys\posix\sys\wait.d \
 	\
 	src\core\sys\windows\dbghelp.d \
 	src\core\sys\windows\dll.d \
@@ -157,7 +174,6 @@ MANIFEST= \
 	src\rt\cmath2.d \
 	src\rt\complex.c \
 	src\rt\cover.d \
-	src\rt\critical.c \
 	src\rt\critical_.d \
 	src\rt\deh.d \
 	src\rt\deh2.d \
@@ -174,7 +190,6 @@ MANIFEST= \
 	src\rt\memset.d \
 	src\rt\minfo.d \
 	src\rt\minit.asm \
-	src\rt\monitor.c \
 	src\rt\monitor_.d \
 	src\rt\obj.d \
 	src\rt\qsort.d \
@@ -223,7 +238,9 @@ MANIFEST= \
 	src\rt\util\console.d \
 	src\rt\util\hash.d \
 	src\rt\util\string.d \
-	src\rt\util\utf.d
+	src\rt\util\utf.d \
+	\
+	src\etc\linux\memoryerror.d
 
 SRCS= \
 	src\object_.d \
@@ -290,6 +307,7 @@ SRCS= \
 	src\rt\arrayshort.d \
 	src\rt\cast_.d \
 	src\rt\cover.d \
+	src\rt\critical_.d \
 	src\rt\deh.d \
 	src\rt\dmain2.d \
 	src\rt\invariant.d \
@@ -299,6 +317,7 @@ SRCS= \
 	src\rt\memory.d \
 	src\rt\memset.d \
 	src\rt\minfo.d \
+	src\rt\monitor_.d \
 	src\rt\obj.d \
 	src\rt\qsort.d \
 	src\rt\switch_.d \
@@ -351,8 +370,8 @@ SRCS= \
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= errno_c.obj complex.obj src\rt\minit.obj monitor.obj critical.obj
-OBJS_TO_DELETE= errno_c.obj complex.obj monitor.obj critical.obj
+OBJS= errno_c.obj complex.obj src\rt\minit.obj
+OBJS_TO_DELETE= errno_c.obj complex.obj
 
 DOCS=\
 	$(DOCDIR)\object.html \
@@ -378,7 +397,6 @@ DOCS=\
 	$(DOCDIR)\core_sync_semaphore.html
 
 IMPORTS=\
-	$(IMPDIR)\object.di \
 	$(IMPDIR)\core\sync\barrier.di \
 	$(IMPDIR)\core\sync\condition.di \
 	$(IMPDIR)\core\sync\config.di \
@@ -424,8 +442,15 @@ COPY=\
 	$(IMPDIR)\core\stdc\wchar_.d \
 	$(IMPDIR)\core\stdc\wctype.d \
 	\
+	$(IMPDIR)\core\sys\freebsd\dlfcn.d \
+	$(IMPDIR)\core\sys\freebsd\execinfo.d \
 	$(IMPDIR)\core\sys\freebsd\sys\event.d \
 	\
+	$(IMPDIR)\core\sys\linux\execinfo.d \
+	$(IMPDIR)\core\sys\linux\sys\xattr.d \
+	\
+	$(IMPDIR)\core\sys\osx\execinfo.d \
+	$(IMPDIR)\core\sys\osx\pthread.d \
 	$(IMPDIR)\core\sys\osx\mach\kern_return.d \
 	$(IMPDIR)\core\sys\osx\mach\port.d \
 	$(IMPDIR)\core\sys\osx\mach\semaphore.d \
@@ -475,7 +500,9 @@ COPY=\
 	$(IMPDIR)\core\sys\windows\dll.d \
 	$(IMPDIR)\core\sys\windows\stacktrace.d \
 	$(IMPDIR)\core\sys\windows\threadaux.d \
-	$(IMPDIR)\core\sys\windows\windows.d
+	$(IMPDIR)\core\sys\windows\windows.d \
+	\
+	$(IMPDIR)\etc\linux\memoryerror.d
 
 ######################## Doc .html file generation ##############################
 
@@ -569,14 +596,16 @@ $(IMPDIR)\core\sync\semaphore.di : src\core\sync\semaphore.d
 ######################## Header .di file copy ##############################
 
 copydir: $(IMPDIR)
-	mkdir $(IMPDIR)\core\sys\windows
+	mkdir $(IMPDIR)\core\stdc
+	mkdir $(IMPDIR)\core\sys\freebsd\sys
+	mkdir $(IMPDIR)\core\sys\linux\sys
+	mkdir $(IMPDIR)\core\sys\osx\mach
 	mkdir $(IMPDIR)\core\sys\posix\arpa
-	mkdir $(IMPDIR)\core\sys\posix\sys
 	mkdir $(IMPDIR)\core\sys\posix\net
 	mkdir $(IMPDIR)\core\sys\posix\netinet
-	mkdir $(IMPDIR)\core\sys\osx\mach
-	mkdir $(IMPDIR)\core\sys\freebsd\sys
-	mkdir $(IMPDIR)\core\stdc
+	mkdir $(IMPDIR)\core\sys\posix\sys
+	mkdir $(IMPDIR)\core\sys\windows
+	mkdir $(IMPDIR)\etc\linux
 
 copy: $(COPY)
 
@@ -682,7 +711,25 @@ $(IMPDIR)\core\stdc\wchar_.d : src\core\stdc\wchar_.d
 $(IMPDIR)\core\stdc\wctype.d : src\core\stdc\wctype.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\freebsd\dlfcn.d : src\core\sys\freebsd\dlfcn.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\freebsd\execinfo.d : src\core\sys\freebsd\execinfo.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\freebsd\sys\event.d : src\core\sys\freebsd\sys\event.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\execinfo.d : src\core\sys\linux\execinfo.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\sys\xattr.d : src\core\sys\linux\sys\xattr.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\osx\execinfo.d : src\core\sys\osx\execinfo.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\osx\pthread.d : src\core\sys\osx\pthread.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\osx\mach\kern_return.d : src\core\sys\osx\mach\kern_return.d
@@ -820,6 +867,9 @@ $(IMPDIR)\core\sys\windows\threadaux.d : src\core\sys\windows\threadaux.d
 $(IMPDIR)\core\sys\windows\windows.d : src\core\sys\windows\windows.d
 	copy $** $@
 
+$(IMPDIR)\etc\linux\memoryerror.d : src\etc\linux\memoryerror.d
+	copy $** $@
+
 ################### C\ASM Targets ############################
 
 errno_c.obj : src\core\stdc\errno.c
@@ -831,20 +881,14 @@ complex.obj : src\rt\complex.c
 src\rt\minit.obj : src\rt\minit.asm
 	$(CC) -c $(CFLAGS) src\rt\minit.asm
 
-critical.obj : src\rt\critical.c
-	$(CC) -c $(CFLAGS) src\rt\critical.c
-
-monitor.obj : src\rt\monitor.c
-	$(CC) -c $(CFLAGS) src\rt\monitor.c
-
 ################### gcstub generation #########################
 
-$(GCSTUB) : src\gcstub\gc.d win32.mak
+$(GCSTUB) : src\gcstub\gc.d win$(MODEL).mak
 	$(DMD) -c -of$(GCSTUB) src\gcstub\gc.d $(DFLAGS)
 
 ################### Library generation #########################
 
-$(DRUNTIME): $(OBJS) $(SRCS) win32.mak
+$(DRUNTIME): $(OBJS) $(SRCS) win$(MODEL).mak
 	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
 unittest : $(SRCS) $(DRUNTIME) src\unittest.d
