@@ -1957,8 +1957,10 @@ struct Gcx
 
         void usePools()
         {
-            foreach(pool; gcx.pooltable[0 .. NPOOLS])
+            foreach(i, pool; gcx.pooltable[0 .. NPOOLS])
             {
+                pool.baseAddr = cast(byte*)(1 + i * NPAGES * PAGESIZE);
+                pool.topAddr = pool.baseAddr + NPAGES * PAGESIZE;
                 pool.pagetable = cast(ubyte*)cstdlib.malloc(NPAGES);
                 memset(pool.pagetable, B_UNCOMMITTED, NPAGES);
                 pool.npages = NPAGES;
