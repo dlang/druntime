@@ -35,7 +35,21 @@ DOCDIR=doc
 IMPDIR=import
 
 MODEL=32
-override PIC:=$(if $(PIC),-fPIC,)
+override SHARED:=$(if $(SHARED),1,)
+override PIC:=$(if $(or $(PIC), $(SHARED)),-fPIC,)
+
+# Set platform extensions
+ifeq (,$(findstring win,$(OS)))
+	DOTOBJ:=.o
+	DOTEXE:=
+	DOTDLL:=.so
+	DOTLIB:=.a
+else
+	DOTOBJ:=.obj
+	DOTEXE:=.exe
+	DOTDLL:=.dll
+	DOTLIB:=.lib
+endif
 
 DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property $(PIC)
 UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property $(PIC)
@@ -49,9 +63,17 @@ else
     ASMFLAGS = -Wa,--noexecstack
 endif
 
+ifeq ($(SHARED),1)
+	LIB_EXT:=$(DOTDLL)
+	LIB_FLAGS:=-shared -debuglib= -defaultlib=
+else
+	LIB_EXT:=$(DOTLIB)
+	LIB_FLAGS:=-lib
+endif
+
 OBJDIR=obj/$(MODEL)
 DRUNTIME_BASE=druntime-$(OS)$(MODEL)
-DRUNTIME=lib/lib$(DRUNTIME_BASE).a
+DRUNTIME=lib/lib$(DRUNTIME_BASE)$(LIB_EXT)
 
 DOCFMT=-version=CoreDdoc
 
@@ -134,7 +156,7 @@ $(OBJDIR)/threadasm.o : src/core/threadasm.S
 ################### Library generation #########################
 
 $(DRUNTIME): $(OBJS) $(SRCS)
-	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
+	$(DMD) $(LIB_FLAGS) -of$@ -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
 UT_MODULES:=$(patsubst src/%.d,$(OBJDIR)/%,$(SRCS))
 
