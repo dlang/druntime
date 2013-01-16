@@ -158,10 +158,6 @@ $(OBJDIR)/threadasm.o : src/core/threadasm.S
 $(DRUNTIME): $(OBJS) $(SRCS)
 	$(DMD) $(LIB_FLAGS) -of$@ -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
-UT_MODULES:=$(patsubst src/%.d,$(OBJDIR)/%,$(SRCS))
-
-unittest : $(UT_MODULES) $(DRUNTIME) $(OBJDIR)/emptymain.d
-	@echo done
 
 ifeq ($(OS),freebsd)
 DISABLED_TESTS =
@@ -169,8 +165,35 @@ else
 DISABLED_TESTS =
 endif
 
+UT_MODULES:=$(patsubst src/%.d,$(OBJDIR)/%,$(SRCS))
+
 $(addprefix $(OBJDIR)/,$(DISABLED_TESTS)) :
 	@echo $@ - disabled
+
+ifeq ($(SHARED),1)
+
+# macro that returns the module name given the src path
+moduleName=$(subst /,.,$(subst object_,object,$(1)))
+UT_DRUNTIME:=$(OBJDIR)/lib$(DRUNTIME_BASE)-ut$(DOTDLL)
+
+unittest : $(UT_MODULES)
+	@echo done
+
+$(UT_DRUNTIME): $(OBJS) $(SRCS)
+	$(DMD) $(LIB_FLAGS) $(UDFLAGS) -version=druntime_unittest -unittest -of$@ $(SRCS) $(OBJS)
+
+$(OBJDIR)/test_runner: $(UT_DRUNTIME) src/dso_unittest_runner.d
+	@$(DMD) -of$@ $(UDFLAGS) src/dso_unittest_runner.d -L-L$(OBJDIR) -L--rpath=$(OBJDIR) -defaultlib=$(DRUNTIME_BASE)-ut -debuglib=$(DRUNTIME_BASE)-ut
+
+$(OBJDIR)/% : $(OBJDIR)/test_runner
+	@$(RUN) $< $(call moduleName,$*)
+	@mkdir -p $(dir $@)
+	@touch $@
+else # SHARED
+
+
+unittest : $(UT_MODULES) $(DRUNTIME) $(OBJDIR)/emptymain.d
+	@echo done
 
 $(OBJDIR)/% : src/%.d $(DRUNTIME) $(OBJDIR)/emptymain.d
 	@echo Testing $@
@@ -181,6 +204,8 @@ $(OBJDIR)/% : src/%.d $(DRUNTIME) $(OBJDIR)/emptymain.d
 	$(QUIET)$(RUN) $@
 # succeeded, render the file new again
 	@touch $@
+
+endif # SHARED
 
 $(OBJDIR)/emptymain.d :
 	@mkdir -p $(OBJDIR)
