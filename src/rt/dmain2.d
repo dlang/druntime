@@ -40,6 +40,12 @@ version (Windows)
         int        IsDebuggerPresent();
     }
     pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
+
+    version( LDC )
+        version = MSVCRT;
+    else version( DigitalMars )
+        version( Win64 )
+            version = MSVCRT;
 }
 
 version (all)
@@ -415,10 +421,10 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         }
     }
 
-    version (Win64)
+    version (MSVCRT)
     {
         auto fp = __iob_func();
-        stdin = &fp[0];
+        stdin  = &fp[0];
         stdout = &fp[1];
         stderr = &fp[2];
     }

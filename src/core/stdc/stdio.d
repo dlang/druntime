@@ -27,11 +27,24 @@ private
   }
 }
 
+version( Windows )
+{
+    version( LDC )
+        version = MSVCRT;
+    else version( DigitalMars )
+    {
+        version( Win32 )
+            version = DigitalMarsWin32;
+        else version( Win64 )
+            version = MSVCRT;
+    }
+}
+
 extern (C):
 @system:
 nothrow:
 
-version( Win32 )
+version( DigitalMarsWin32 )
 {
     enum
     {
@@ -48,7 +61,7 @@ version( Win32 )
     enum wstring _wP_tmpdir = "\\"; // non-standard
     enum int     L_tmpnam   = _P_tmpdir.length + 12;
 }
-else version( Win64 )
+else version( MSVCRT )
 {
     enum
     {
@@ -60,7 +73,7 @@ else version( Win64 )
         _SYS_OPEN    = 20,      // non-standard
     }
 
-    enum int     _NFILE     = 512;       // non-standard
+    enum int     _NFILE     = 512;  // non-standard
     enum string  _P_tmpdir  = "\\"; // non-standard
     enum wstring _wP_tmpdir = "\\"; // non-standard
     enum int     L_tmpnam   = _P_tmpdir.length + 12;
@@ -157,7 +170,7 @@ enum
     SEEK_END
 }
 
-version( Win32 )
+version( DigitalMarsWin32 )
 {
     struct _iobuf
     {
@@ -171,7 +184,7 @@ version( Win32 )
         char* __tmpnum;
     }
 }
-else version( Win64 )
+else version( MSVCRT )
 {
     struct _iobuf
     {
@@ -319,7 +332,7 @@ enum
     _F_TERM = 0x0200, // non-standard
 }
 
-version( Win32 )
+version( DigitalMarsWin32 )
 {
     enum
     {
@@ -347,27 +360,23 @@ version( Win32 )
     shared stdaux = &_iob[3];
     shared stdprn = &_iob[4];
 }
-else version( Win64 )
+else version( MSVCRT )
 {
     enum
     {
-        _IOFBF   = 0,
-        _IOLBF   = 0x40,
-        _IONBF   = 4,
-        _IOREAD  = 1,     // non-standard
-        _IOWRT   = 2,     // non-standard
-        _IOMYBUF = 8,     // non-standard
-        _IOEOF   = 0x10,  // non-standard
-        _IOERR   = 0x20,  // non-standard
-        _IOSTRG  = 0x40,  // non-standard
-        _IORW    = 0x80,  // non-standard
-        _IOAPP   = 0x200, // non-standard
+        _IOFBF    = 0,
+        _IOLBF    = 0x40,
+        _IONBF    = 4,
+        _IOREAD   = 1,     // non-standard
+        _IOWRT    = 2,     // non-standard
+        _IOMYBUF  = 8,     // non-standard
+        _IOEOF    = 0x10,  // non-standard
+        _IOERR    = 0x20,  // non-standard
+        _IOSTRG   = 0x40,  // non-standard
+        _IORW     = 0x80,  // non-standard
+        _IOAPP    = 0x200, // non-standard
         _IOAPPEND = 0x200, // non-standard
     }
-
-    extern shared void function() _fcloseallp;
-
-    private extern shared FILE[_NFILE] _iob;
 
     shared(FILE)* __iob_func();
 
@@ -519,7 +528,7 @@ size_t fwrite(in void* ptr, size_t size, size_t nmemb, FILE* stream);
     c_long ftell(FILE* stream);
 }
 
-version( Win32 )
+version( DigitalMarsWin32 )
 {
   // No unsafe pointer manipulation.
   extern (D) @trusted
@@ -535,35 +544,28 @@ version( Win32 )
     int   _vsnprintf(char* s, size_t n, in char* format, va_list arg);
     alias _vsnprintf vsnprintf;
 }
-else version( Win64 )
+else version( MSVCRT )
 {
   // No unsafe pointer manipulation.
   extern (D) @trusted
   {
-    void rewind(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag&=~_IOERR; }
-    pure void clearerr(FILE* stream) { stream._flag &= ~(_IOERR|_IOEOF);                 }
-    pure int  feof(FILE* stream)     { return stream._flag&_IOEOF;                       }
-    pure int  ferror(FILE* stream)   { return stream._flag&_IOERR;                       }
-    pure int  fileno(FILE* stream)   { return stream._file;                              }
+    // custom unlocked implementations of rewind() and clearerr():
+         void rewind(FILE* stream)   { fseek(stream, 0, SEEK_SET); clearerr(stream); }
+    pure void clearerr(FILE* stream) { stream._flag &= ~(_IOERR | _IOEOF);           }
+    // unlocked implementations of C macros:
+    pure int  feof(FILE* stream)     { return stream._flag & _IOEOF;                 }
+    pure int  ferror(FILE* stream)   { return stream._flag & _IOERR;                 }
+    pure int  fileno(FILE* stream)   { return stream._file;                          }
   }
-    int   _snprintf(char* s, size_t n, in char* fmt, ...);
+
+    int   _snprintf(char* s, size_t n, in char* format, ...);
     alias _snprintf snprintf;
 
     int   _vsnprintf(char* s, size_t n, in char* format, va_list arg);
     alias _vsnprintf vsnprintf;
 
-    int _filbuf(FILE *fp);
-    int _flsbuf(int c, FILE *fp);
-
-    int _fputc_nolock(int c, FILE *fp)
-    {
-        if (--fp._cnt >= 0)
-            return *fp._ptr++ = cast(char)c;
-        else
-            return _flsbuf(c, fp);
-    }
-
-    int _fgetc_nolock(FILE *fp)
+    private int _filbuf(FILE*);
+    int _fgetc_nolock(FILE* fp)        // defined as C macro
     {
         if (--fp._cnt >= 0)
             return *fp._ptr++;
@@ -571,8 +573,14 @@ else version( Win64 )
             return _filbuf(fp);
     }
 
-    int _lock_file(FILE *fp);
-    int _unlock_file(FILE *fp);
+    private int _flsbuf(int, FILE*);
+    int _fputc_nolock(int c, FILE* fp) // defined as C macro
+    {
+        if (--fp._cnt >= 0)
+            return *fp._ptr++ = cast(char) c;
+        else
+            return _flsbuf(c, fp);
+    }
 }
 else version( linux )
 {
@@ -641,7 +649,7 @@ else
 
 void perror(in char* s);
 
-version (DigitalMars) version (Win32)
+version ( DigitalMarsWin32 )
 {
     import core.sys.windows.windows;
 
