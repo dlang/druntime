@@ -564,6 +564,9 @@ else version( MSVCRT )
     int   _vsnprintf(char* s, size_t n, in char* format, va_list arg);
     alias _vsnprintf vsnprintf;
 
+    // FIXME: currently not defined but used in std.stdio
+    //        remove the following functions when Phobos defines them
+    //        (Phobos pull request 1093)
     private int _filbuf(FILE*);
     int _fgetc_nolock(FILE* fp)        // defined as C macro
     {

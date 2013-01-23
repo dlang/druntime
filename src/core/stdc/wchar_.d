@@ -14,6 +14,15 @@
  */
 module core.stdc.wchar_;
 
+version( Windows )
+{
+    version( LDC )
+        version = MSVCRT;
+    else version( DigitalMars )
+        version( Win64 )
+            version = MSVCRT;
+}
+
 private import core.stdc.config;
 private import core.stdc.stdarg; // for va_list
 private import core.stdc.stdio;  // for FILE, not exposed per spec
@@ -66,15 +75,13 @@ extern (D) @trusted
 @trusted
 {
     wint_t ungetwc(wint_t c, FILE* stream);
-    version( Win64 )
+    version( MSVCRT )
     {
-        // MSVC defines this as an inline function.
+        // MSVCRT defines this as an inline function.
         int fwide(FILE* stream, int mode) { return mode; }
     }
     else
-    {
-        int    fwide(FILE* stream, int mode);
-    }
+        int fwide(FILE* stream, int mode);
 }
 
 double  wcstod(in wchar_t* nptr, wchar_t** endptr);
