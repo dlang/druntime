@@ -14,25 +14,22 @@
  */
 module core.stdc.tgmath;
 
-version (DigitalMars)
-{
-    version (Win64)
-        version = MSVCRT;
-}
-
-version (LDC)
-{
-    version (Windows)
-        version = MSVCRT;
-}
-
-version (MSVCRT) {}
-else
-    version = NO_MSVCRT;
-
 private import core.stdc.config;
 private static import core.stdc.math;
 private static import core.stdc.complex;
+
+version( Windows )
+{
+    version( LDC )
+        version = MSVCRT;
+    else version( DigitalMars )
+        version( Win64 )
+            version = MSVCRT;
+}
+
+version( MSVCRT ) {}
+else
+    version = NO_MSVCRT;
 
 extern (C):
 @trusted: // Everything here operates on floating point and integer values.
@@ -90,7 +87,7 @@ alias core.stdc.complex.ctan       tan;
 alias core.stdc.complex.ctanf      tan;
 alias core.stdc.complex.ctanl      tan;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.acosh         acosh;
 alias core.stdc.math.acoshf        acosh;
@@ -149,7 +146,7 @@ alias core.stdc.complex.cexp       exp;
 alias core.stdc.complex.cexpf      exp;
 alias core.stdc.complex.cexpl      exp;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.exp2          exp2;
 alias core.stdc.math.exp2f         exp2;
@@ -164,7 +161,7 @@ alias core.stdc.math.frexp         frexp;
 alias core.stdc.math.frexpf        frexp;
 alias core.stdc.math.frexpl        frexp;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.ilogb         ilogb;
 alias core.stdc.math.ilogbf        ilogb;
@@ -187,7 +184,7 @@ alias core.stdc.math.log10         log10;
 alias core.stdc.math.log10f        log10;
 alias core.stdc.math.log10l        log10;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.log1p         log1p;
 alias core.stdc.math.log1pf        log1p;
@@ -214,7 +211,7 @@ alias core.stdc.math.scalbln       scalbln;
 alias core.stdc.math.scalblnf      scalbln;
 alias core.stdc.math.scalblnl      scalbln;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.cbrt          cbrt;
 alias core.stdc.math.cbrtf         cbrt;
@@ -249,7 +246,7 @@ alias core.stdc.complex.csqrt      sqrt;
 alias core.stdc.complex.csqrtf     sqrt;
 alias core.stdc.complex.csqrtl     sqrt;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.erf           erf;
 alias core.stdc.math.erff          erf;
@@ -276,7 +273,7 @@ alias core.stdc.math.floor         floor;
 alias core.stdc.math.floorf        floor;
 alias core.stdc.math.floorl        floor;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.nearbyint     nearbyint;
 alias core.stdc.math.nearbyintf    nearbyint;
@@ -315,7 +312,7 @@ alias core.stdc.math.fmod          fmod;
 alias core.stdc.math.fmodf         fmod;
 alias core.stdc.math.fmodl         fmod;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.remainder     remainder;
 alias core.stdc.math.remainderf    remainder;
@@ -330,7 +327,7 @@ alias core.stdc.math.copysign      copysign;
 alias core.stdc.math.copysignf     copysign;
 alias core.stdc.math.copysignl     copysign;
 
-version (NO_MSVCRT)
+version( NO_MSVCRT )
 {
 alias core.stdc.math.nan           nan;
 alias core.stdc.math.nanf          nan;

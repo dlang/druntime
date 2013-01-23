@@ -14,6 +14,13 @@
  */
 module core.stdc.wchar_;
 
+private import core.stdc.config;
+private import core.stdc.stdarg; // for va_list
+private import core.stdc.stdio;  // for FILE, not exposed per spec
+public import core.stdc.stddef;  // for size_t, wchar_t
+public import core.stdc.time;    // for tm
+public import core.stdc.stdint;  // for WCHAR_MIN, WCHAR_MAX
+
 version( Windows )
 {
     version( LDC )
@@ -22,13 +29,6 @@ version( Windows )
         version( Win64 )
             version = MSVCRT;
 }
-
-private import core.stdc.config;
-private import core.stdc.stdarg; // for va_list
-private import core.stdc.stdio;  // for FILE, not exposed per spec
-public import core.stdc.stddef;  // for size_t, wchar_t
-public import core.stdc.time;    // for tm
-public import core.stdc.stdint;  // for WCHAR_MIN, WCHAR_MAX
 
 extern (C):
 @system:

@@ -24,6 +24,12 @@ private
 
 version (Windows)
 {
+    version( LDC )
+        version = MSVCRT;
+    else version( DigitalMars )
+        version( Win64 )
+            version = MSVCRT;
+
     private import core.stdc.wchar_;
 
     extern (Windows)
@@ -40,12 +46,6 @@ version (Windows)
         int        IsDebuggerPresent();
     }
     pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
-
-    version( LDC )
-        version = MSVCRT;
-    else version( DigitalMars )
-        version( Win64 )
-            version = MSVCRT;
 }
 
 version (all)
