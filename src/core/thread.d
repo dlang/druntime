@@ -2625,13 +2625,24 @@ body
 
 enum ScanType
 {
-    stack,
-    tls,
+    stack, /// The stack and/or registers are being scanned.
+    tls,   /// TLS data is being scanned.
 }
 
-alias void delegate(void*, void*) ScanAllThreadsFn;
-alias void delegate(ScanType, void*, void*) ScanAllThreadsTypeFn;
+alias void delegate(void*, void*) ScanAllThreadsFn; /// The scanning function.
+alias void delegate(ScanType, void*, void*) ScanAllThreadsTypeFn; /// ditto
 
+
+/**
+ * The main entry point for garbage collection.  The supplied delegate
+ * will be passed ranges representing both stack and register values.
+ *
+ * Params:
+ *  scan        = The scanner function.  It should scan from p1 through p2 - 1.
+ *
+ * In:
+ *  This routine must be preceded by a call to thread_suspendAll.
+ */
 extern (C) void thread_scanAllType( scope ScanAllThreadsTypeFn scan )
 in
 {
@@ -2640,6 +2651,13 @@ in
 body
 {
     callWithStackShell(sp => scanAllTypeImpl(scan, sp));
+}
+
+
+/// ditto
+extern (C) void thread_scanAll( scope ScanAllThreadsFn scan )
+{
+    thread_scanAllType((type, p1, p2) => scan(p1, p2));
 }
 
 
@@ -2704,11 +2722,30 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
 }
 
 
-extern (C) void thread_scanAll( scope ScanAllThreadsFn scan )
-{
-    thread_scanAllType((type, p1, p2) => scan(p1, p2));
-}
-
+/*
+ * Signals that the code following this call is a critical region. Any code in
+ * this region must finish running before the calling thread can be suspended
+ * by a call to thread_suspendAll. If the world is stopped while the calling
+ * thread is in a critical region, it will be continually suspended and resumed
+ * until it is outside a critical region.
+ *
+ * This function is, in particular, meant to help maintain garbage collector
+ * invariants when a lock is not used.
+ *
+ * A critical region is exited with thread_exitCriticalRegion.
+ *
+ * $(RED Warning):
+ * Using critical regions is extremely error-prone. For instance, using a lock
+ * inside a critical region will most likely result in an application deadlocking
+ * because the stop-the-world routine will attempt to suspend and resume the thread
+ * forever, to no avail.
+ *
+ * The term and concept of a 'critical region' comes from
+ * $(LINK2 https://github.com/mono/mono/blob/521f4a198e442573c400835ef19bbb36b60b0ebb/mono/metadata/sgen-gc.h#L925 Mono's SGen garbage collector).
+ *
+ * In:
+ *  The calling thread must be attached to the runtime.
+ */
 extern (C) void thread_enterCriticalRegion()
 in
 {
@@ -2719,6 +2756,14 @@ body
     atomicStore(*cast(shared)&Thread.getThis().m_isInCriticalRegion, true);
 }
 
+
+/*
+ * Signals that the calling thread is no longer in a critical region. Following
+ * a call to this function, the thread can once again be suspended.
+ *
+ * In:
+ *  The calling thread must be attached to the runtime.
+ */
 extern (C) void thread_exitCriticalRegion()
 in
 {
@@ -2729,6 +2774,13 @@ body
     atomicStore(*cast(shared)&Thread.getThis().m_isInCriticalRegion, false);
 }
 
+
+/*
+ * Returns true if the current thread is in a critical region; otherwise, false.
+ *
+ * In:
+ *  The calling thread must be attached to the runtime.
+ */
 extern (C) bool thread_inCriticalRegion()
 in
 {
@@ -2814,6 +2866,7 @@ unittest
 
     thr.join();
 }
+
 
 /**
  * This routine allows the runtime to process any special per-thread handling

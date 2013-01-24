@@ -542,7 +542,7 @@ $(DOCDIR)\core_runtime.html : src\core\runtime.d
 $(DOCDIR)\core_simd.html : src\core\simd.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
-$(DOCDIR)\core_thread.html : $(IMPDIR)\core\thread.di
+$(DOCDIR)\core_thread.html : $(IMPDIR)\core\thread.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 $(DOCDIR)\core_time.html : src\core\time.d
