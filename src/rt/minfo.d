@@ -15,6 +15,8 @@ module rt.minfo;
 import core.stdc.stdlib;  // alloca
 import core.stdc.string;  // memcpy
 
+static import rt.dso;
+
 enum
 {
     MIctorstart  = 1,   // we've started constructing it
@@ -98,180 +100,260 @@ private:
     ModuleInfo*[] _tlsctors;
 }
 
-__gshared ModuleGroup _moduleGroup;
+static if (!rt.dso.USE_DSO)
+    __gshared ModuleGroup _moduleGroup;
 
 /********************************************
  * Iterate over all module infos.
  */
 
-int moduleinfos_apply(scope int delegate(ref ModuleInfo*) dg)
+static if (rt.dso.USE_DSO)
 {
-    int ret = 0;
-
-    foreach (m; _moduleGroup._modules)
+    int moduleinfos_apply(scope int delegate(ref ModuleInfo*) dg)
     {
-        // TODO: Should null ModuleInfo be allowed?
-        if (m !is null)
+        foreach(dso; rt.dso.DSO)
         {
-            ret = dg(m);
-            if (ret)
-                break;
+            foreach(m; dso.modules)
+            {
+                // TODO: Should null ModuleInfo be allowed?
+                if (m !is null)
+                {
+                    if (auto res = dg(m))
+                        return res;
+                }
+            }
         }
+        return 0;
     }
-    return ret;
+}
+else
+{
+    int moduleinfos_apply(scope int delegate(ref ModuleInfo*) dg)
+    {
+        int ret = 0;
+
+        foreach (m; _moduleGroup._modules)
+        {
+            // TODO: Should null ModuleInfo be allowed?
+            if (m !is null)
+            {
+                ret = dg(m);
+                if (ret)
+                    break;
+            }
+        }
+        return ret;
+    }
 }
 
 /********************************************
  * Module constructor and destructor routines.
  */
 
-extern (C) void rt_moduleCtor()
+static if (rt.dso.USE_DSO)
 {
-    _moduleGroup = ModuleGroup(getModuleInfos());
-    _moduleGroup.sortCtors();
-    _moduleGroup.runCtors();
-}
-
-extern (C) void rt_moduleTlsCtor()
-{
-    _moduleGroup.runTlsCtors();
-}
-
-extern (C) void rt_moduleTlsDtor()
-{
-    _moduleGroup.runTlsDtors();
-}
-
-extern (C) void rt_moduleDtor()
-{
-    _moduleGroup.runDtors();
-    version (Win32) {} else
-        .free(_moduleGroup._modules.ptr);
-    _moduleGroup.free();
-}
-
-/********************************************
- * Access compiler generated list of modules.
- */
-
-version (Win32)
-{
-    // Windows: this gets initialized by minit.asm
-    // Posix: this gets initialized in _moduleCtor()
-    extern(C) __gshared ModuleInfo*[] _moduleinfo_array;
-    extern(C) void _minit();
-}
-else version (Win64)
-{
-    extern (C)
+    extern (C) void rt_moduleCtor()
     {
-        extern __gshared void* _minfo_beg;
-        extern __gshared void* _minfo_end;
-
-        // Dummy so Win32 code can still call it
-        extern(C) void _minit() { }
-    }
-}
-else version (OSX)
-{
-    extern (C) __gshared ModuleInfo*[] _moduleinfo_array;
-}
-else version (Posix)
-{
-    // This linked list is created by a compiler generated function inserted
-    // into the .ctor list by the compiler.
-    struct ModuleReference
-    {
-        ModuleReference* next;
-        ModuleInfo*      mod;
-    }
-
-    extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
-}
-else
-{
-    static assert(0);
-}
-
-ModuleInfo*[] getModuleInfos()
-out (result)
-{
-    foreach(m; result)
-        assert(m !is null);
-}
-body
-{
-    typeof(return) result = void;
-
-    version (OSX)
-    {
-        // _moduleinfo_array is set by src.rt.memory_osx.onAddImage()
-        // but we need to throw out any null pointers
-        auto p = _moduleinfo_array.ptr;
-        auto pend = _moduleinfo_array.ptr + _moduleinfo_array.length;
-
-        // count non-null pointers
-        size_t cnt;
-        for (; p < pend; ++p)
-            if (*p !is null) ++cnt;
-
-        result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
-
-        p = _moduleinfo_array.ptr;
-        cnt = 0;
-        for (; p < pend; ++p)
-            if (*p !is null) result[cnt++] = *p;
-    }
-    // all other Posix variants (FreeBSD, Solaris, Linux)
-    else version (Posix)
-    {
-        size_t len;
-        ModuleReference *mr;
-
-        for (mr = _Dmodule_ref; mr; mr = mr.next)
-            len++;
-        result = (cast(ModuleInfo**).malloc(len * size_t.sizeof))[0 .. len];
-        len = 0;
-        for (mr = _Dmodule_ref; mr; mr = mr.next)
-        {   result[len] = mr.mod;
-            len++;
+        foreach(ref dso; rt.dso.DSO)
+        {
+            dso.moduleGroup.sortCtors();
+            dso.moduleGroup.runCtors();
         }
     }
-    else version (Win32)
+
+    extern (C) void rt_moduleTlsCtor()
     {
-        // _minit directly alters the global _moduleinfo_array
-        _minit();
-        result = _moduleinfo_array;
+        foreach(dso; rt.dso.DSO)
+        {
+            dso.moduleGroup.runTlsCtors();
+        }
+    }
+
+    extern (C) void rt_moduleTlsDtor()
+    {
+        foreach_reverse(dso; rt.dso.DSO)
+        {
+            dso.moduleGroup.runTlsDtors();
+        }
+    }
+
+    extern (C) void rt_moduleDtor()
+    {
+        foreach_reverse(ref dso; rt.dso.DSO)
+        {
+            dso.moduleGroup.runDtors();
+            dso.moduleGroup.free();
+        }
+    }
+
+    version (OSX) {}
+    else version (Posix)
+    {
+        // Need to keep _Dmodule_ref until the compiler no longer
+        // references it.
+        deprecated:
+
+        // This linked list is created by a compiler generated function inserted
+        // into the .ctor list by the compiler.
+        struct ModuleReference
+        {
+            ModuleReference* next;
+            ModuleInfo*      mod;
+        }
+
+        extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
+    }
+}
+else // rt.dso.USE_DSO
+{
+    extern (C) void rt_moduleCtor()
+    {
+        _moduleGroup = ModuleGroup(getModuleInfos());
+        _moduleGroup.sortCtors();
+        _moduleGroup.runCtors();
+    }
+
+    extern (C) void rt_moduleTlsCtor()
+    {
+        _moduleGroup.runTlsCtors();
+    }
+
+    extern (C) void rt_moduleTlsDtor()
+    {
+        _moduleGroup.runTlsDtors();
+    }
+
+    extern (C) void rt_moduleDtor()
+    {
+        _moduleGroup.runDtors();
+        version (Win32) {} else
+            .free(_moduleGroup._modules.ptr);
+        _moduleGroup.free();
+    }
+
+    /********************************************
+     * Access compiler generated list of modules.
+     */
+
+    version (Win32)
+    {
+        // Windows: this gets initialized by minit.asm
+        // Posix: this gets initialized in _moduleCtor()
+        extern(C) __gshared ModuleInfo*[] _moduleinfo_array;
+        extern(C) void _minit();
     }
     else version (Win64)
     {
-        auto m = (cast(ModuleInfo**)&_minfo_beg)[1 .. &_minfo_end - &_minfo_beg];
-        /* Because of alignment inserted by the linker, various null pointers
-         * are there. We need to filter them out.
-         */
-        auto p = m.ptr;
-        auto pend = m.ptr + m.length;
-
-        // count non-null pointers
-        size_t cnt;
-        for (; p < pend; ++p)
+        extern (C)
         {
-            if (*p !is null) ++cnt;
+            extern __gshared void* _minfo_beg;
+            extern __gshared void* _minfo_end;
+
+            // Dummy so Win32 code can still call it
+            extern(C) void _minit() { }
+        }
+    }
+    else version (OSX)
+    {
+        extern (C) __gshared ModuleInfo*[] _moduleinfo_array;
+    }
+    else version (Posix)
+    {
+        // This linked list is created by a compiler generated function inserted
+        // into the .ctor list by the compiler.
+        struct ModuleReference
+        {
+            ModuleReference* next;
+            ModuleInfo*      mod;
         }
 
-        result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
-
-        p = m.ptr;
-        cnt = 0;
-        for (; p < pend; ++p)
-            if (*p !is null) result[cnt++] = *p;
+        extern (C) __gshared ModuleReference* _Dmodule_ref;   // start of linked list
     }
     else
     {
         static assert(0);
     }
-    return result;
-}
+
+    ModuleInfo*[] getModuleInfos()
+    out (result)
+    {
+        foreach(m; result)
+            assert(m !is null);
+    }
+    body
+    {
+        typeof(return) result = void;
+
+        version (OSX)
+        {
+            // _moduleinfo_array is set by src.rt.memory_osx.onAddImage()
+            // but we need to throw out any null pointers
+            auto p = _moduleinfo_array.ptr;
+            auto pend = _moduleinfo_array.ptr + _moduleinfo_array.length;
+
+            // count non-null pointers
+            size_t cnt;
+            for (; p < pend; ++p)
+                if (*p !is null) ++cnt;
+
+            result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
+
+            p = _moduleinfo_array.ptr;
+            cnt = 0;
+            for (; p < pend; ++p)
+                if (*p !is null) result[cnt++] = *p;
+        }
+        // all other Posix variants (FreeBSD, Solaris, Linux)
+        else version (Posix)
+        {
+            size_t len;
+            ModuleReference *mr;
+
+            for (mr = _Dmodule_ref; mr; mr = mr.next)
+                len++;
+            result = (cast(ModuleInfo**).malloc(len * size_t.sizeof))[0 .. len];
+            len = 0;
+            for (mr = _Dmodule_ref; mr; mr = mr.next)
+            {   result[len] = mr.mod;
+                len++;
+            }
+        }
+        else version (Win32)
+        {
+            // _minit directly alters the global _moduleinfo_array
+            _minit();
+            result = _moduleinfo_array;
+        }
+        else version (Win64)
+        {
+            auto m = (cast(ModuleInfo**)&_minfo_beg)[1 .. &_minfo_end - &_minfo_beg];
+            /* Because of alignment inserted by the linker, various null pointers
+             * are there. We need to filter them out.
+             */
+            auto p = m.ptr;
+            auto pend = m.ptr + m.length;
+
+            // count non-null pointers
+            size_t cnt;
+            for (; p < pend; ++p)
+            {
+                if (*p !is null) ++cnt;
+            }
+
+            result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
+
+            p = m.ptr;
+            cnt = 0;
+            for (; p < pend; ++p)
+                if (*p !is null) result[cnt++] = *p;
+        }
+        else
+        {
+            static assert(0);
+        }
+        return result;
+    }
+} // rt.dso.USE_DSO
 
 
 /********************************************

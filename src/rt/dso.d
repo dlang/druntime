@@ -55,6 +55,16 @@ struct DSO
         return 0;
     }
 
+    static int opApplyReverse(scope int delegate(ref DSO) dg)
+    {
+        foreach_reverse(dso; _static_dsos[])
+        {
+            if (auto res = dg(*dso))
+                return res;
+        }
+        return 0;
+    }
+
     @property inout(ModuleInfo*)[] modules() inout
     {
         return _moduleGroup.modules;
