@@ -636,6 +636,8 @@ $(OBJDIR)/% : src/%.d $(DRUNTIME) $(OBJDIR)/emptymain.d
 # succeeded, render the file new again
 	@touch $@
 
+.PRECIOUS: $(OBJDIR)/%
+
 $(OBJDIR)/emptymain.d :
 	@mkdir -p $(OBJDIR)
 	@echo 'void main(){}' >$@
