@@ -21,13 +21,10 @@ public import core.stdc.stddef;  // for size_t, wchar_t
 public import core.stdc.time;    // for tm
 public import core.stdc.stdint;  // for WCHAR_MIN, WCHAR_MAX
 
-version( Windows )
+version( DigitalMars )
 {
-    version( LDC )
+    version( Win64 )
         version = MSVCRT;
-    else version( DigitalMars )
-        version( Win64 )
-            version = MSVCRT;
 }
 
 extern (C):

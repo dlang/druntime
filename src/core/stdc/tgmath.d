@@ -18,18 +18,19 @@ private import core.stdc.config;
 private static import core.stdc.math;
 private static import core.stdc.complex;
 
-version( Windows )
+version( DigitalMars )
 {
-    version( LDC )
+    version( Win64 )
         version = MSVCRT;
-    else version( DigitalMars )
-        version( Win64 )
-            version = MSVCRT;
 }
 
-version( MSVCRT ) {}
+version( MSVCRT )
+{
+}
 else
+{
     version = NO_MSVCRT;
+}
 
 extern (C):
 @trusted: // Everything here operates on floating point and integer values.

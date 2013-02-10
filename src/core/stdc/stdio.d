@@ -27,17 +27,12 @@ private
   }
 }
 
-version( Windows )
+version( DigitalMars )
 {
-    version( LDC )
+    version( Win32 )
+        version = DigitalMarsWin32;
+    else version( Win64 )
         version = MSVCRT;
-    else version( DigitalMars )
-    {
-        version( Win32 )
-            version = DigitalMarsWin32;
-        else version( Win64 )
-            version = MSVCRT;
-    }
 }
 
 extern (C):

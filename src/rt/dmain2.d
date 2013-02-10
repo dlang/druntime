@@ -24,11 +24,11 @@ private
 
 version (Windows)
 {
-    version( LDC )
-        version = MSVCRT;
-    else version( DigitalMars )
+    version( DigitalMars )
+    {
         version( Win64 )
             version = MSVCRT;
+    }
 
     private import core.stdc.wchar_;
 

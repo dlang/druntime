@@ -15,13 +15,10 @@ module core.stdc.stdlib;
 private import core.stdc.config;
 public import core.stdc.stddef; // for size_t, wchar_t
 
-version( Windows )
+version( DigitalMars )
 {
-    version( LDC )
+    version( Win64 )
         version = MSVCRT;
-    else version( DigitalMars )
-        version( Win64 )
-            version = MSVCRT;
 }
 
 extern (C):

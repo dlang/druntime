@@ -13,19 +13,6 @@ module core.stdc.math;
 
 private import core.stdc.config;
 
-version( Windows )
-{
-    version( LDC )
-        version = MSVCRT;
-    else version( DigitalMars )
-    {
-        version( Win32 )
-            version = DigitalMarsWin32;
-        else version( Win64 )
-            version = MSVCRT;
-    }
-}
-
 extern (C):
 @trusted: // All functions here operate on floating point and integer values only.
 nothrow:
@@ -112,6 +99,14 @@ version( none )
     int isunordered(float x, float y);
     int isunordered(double x, double y);
     int isunordered(real x, real y);
+}
+
+version( DigitalMars )
+{
+    version( Win32 )
+        version = DigitalMarsWin32;
+    version( Win64 )
+        version = MSVCRT;
 }
 
 version( DigitalMarsWin32 )
