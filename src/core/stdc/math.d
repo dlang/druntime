@@ -104,12 +104,12 @@ version( none )
 version( DigitalMars )
 {
     version( Win32 )
-        version = DigitalMarsWin32;
+        version = DMCRT;
     version( Win64 )
         version = MSVCRT;
 }
 
-version( DigitalMarsWin32 )
+version( DMCRT )
 {
     enum
     {
@@ -732,15 +732,59 @@ else // !MSVCRT
     double  log1p(double x);
     float   log1pf(float x);
 
+  // FIXME: remove when dropping support for FreeBSD < 8.3
   version( FreeBSD )
   {
-    // missing log2 function (available since FreeBSD 8.3-RELEASE)
+    // FreeBSD < 8.3-RELEASE: log2 function is missing
+    version( D_InlineAsm_X86 )
+        version = InlineAsm_X86_Any;
+    else version( D_InlineAsm_X86_64 )
+        version = InlineAsm_X86_Any;
+
     private enum real ONE_LN2 = 1 / 0x1.62e42fefa39ef35793c7673007e5fp-1L;
-    deprecated("unoptimized")
+
+    double  log2(double x)
     {
-        double  log2(double x) { return log(x)  * cast(double) ONE_LN2; }
-        float   log2f(float x) { return logf(x) * cast(float)  ONE_LN2; }
-        real    log2l(real x)  { return logl(x) *              ONE_LN2; }
+      version( InlineAsm_X86_Any )
+        return cast(double) log2l(x);
+      else
+        return log(x) * cast(double) ONE_LN2;
+    }
+
+    float   log2f(float x)
+    {
+      version( InlineAsm_X86_Any )
+        return cast(float) log2l(x);
+      else
+        return logf(x) * cast(float) ONE_LN2;
+    }
+
+    real    log2l(real x)
+    {
+      version( D_InlineAsm_X86 )
+      {
+        asm
+        {
+            naked;
+            fld1;                 // push 1
+            fld real ptr [ESP+4]; // push x
+            fyl2x;                // ST(1) := ST(1) * log2(ST(0)); pop
+            ret;                  // 1 * log2(x) in ST(0)
+        }
+      }
+      else version( D_InlineAsm_X86_64 )
+      {
+        asm
+        {
+            naked;
+            fld1;                 // push 1
+            fld real ptr [RSP+8]; // push x
+            fyl2x;                // ST(1) := ST(1) * log2(ST(0)); pop
+            ret;                  // 1 * log2(x) in ST(0)
+        }
+      }
+      else
+        return logl(x) * ONE_LN2;
     }
   }
   else
@@ -845,16 +889,9 @@ else // !MSVCRT
     real    cosl(real x);
     real    sinl(real x);
     real    tanl(real x);
-    real    coshl(real x)        { return cosh(x);   }
-    real    sinhl(real x)        { return sinh(x);   }
-    real    tanhl(real x)        { return tanh(x);   }
-    real    expl(real x)         { return exp(x);    }
     real    frexpl(real value, int* exp);
     real    ldexpl(real x, int exp);
-    real    logl(real x)         { return log(x);    }
-    real    log10l(real x)       { return log10(x);  }
     real    modfl(real value, real* iptr);
-    real    powl(real x, real y) { return pow(x, y); }
     real    sqrtl(real x);
     real    fabsl(real x);
     real    ceill(real x);
@@ -862,23 +899,13 @@ else // !MSVCRT
     real    fmodl(real x, real y);
 
     // C99
-    real    acoshl(real x)       { return acosh(x);  }
-    real    asinhl(real x)       { return asinh(x);  }
-    real    atanhl(real x)       { return atanh(x);  }
     real    exp2l(real x);
-    real    expm1l(real x)       { return expm1(x);  }
     int     ilogbl(real x);
-    real    log1pl(real x)       { return log1p(x);  }
 //  real    log2l(real x); // already implemented above
     real    logbl(real x);
     real    scalbnl(real x, int n);
     real    scalblnl(real x, c_long n);
-    real    cbrtl(real x)        { return cbrt(x);   }
     real    hypotl(real x, real y);
-    real    erfl(real x)         { return erf(x);    }
-    real    erfcl(real x)        { return erfc(x);   }
-    real    lgammal(real x)      { return lgamma(x); }
-    real    tgammal(real x)      { return tgamma(x); }
     real    nearbyintl(real x);
     real    rintl(real x);
     c_long  lrintl(real x);
@@ -897,6 +924,28 @@ else // !MSVCRT
     real    fmaxl(real x, real y);
     real    fminl(real x, real y);
     real    fmal(real x, real y, real z);
+
+    deprecated("wrapper for double precision")
+    {
+        real    coshl(real x)        { return cosh(x);   }
+        real    sinhl(real x)        { return sinh(x);   }
+        real    tanhl(real x)        { return tanh(x);   }
+        real    expl(real x)         { return exp(x);    }
+        real    logl(real x)         { return log(x);    }
+        real    log10l(real x)       { return log10(x);  }
+        real    powl(real x, real y) { return pow(x, y); }
+
+        real    acoshl(real x)       { return acosh(x);  }
+        real    asinhl(real x)       { return asinh(x);  }
+        real    atanhl(real x)       { return atanh(x);  }
+        real    expm1l(real x)       { return expm1(x);  }
+        real    log1pl(real x)       { return log1p(x);  }
+        real    cbrtl(real x)        { return cbrt(x);   }
+        real    erfl(real x)         { return erf(x);    }
+        real    erfcl(real x)        { return erfc(x);   }
+        real    lgammal(real x)      { return lgamma(x); }
+        real    tgammal(real x)      { return tgamma(x); }
+    }
   }
   else // !FreeBSD
   {

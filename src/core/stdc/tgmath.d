@@ -24,13 +24,7 @@ version( DigitalMars )
         version = MSVCRT;
 }
 
-version( MSVCRT )
-{
-}
-else
-{
-    version = NO_MSVCRT;
-}
+version( MSVCRT ) {} else version = NO_MSVCRT;
 
 extern (C):
 @trusted: // Everything here operates on floating point and integer values.
