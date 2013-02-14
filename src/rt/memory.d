@@ -96,7 +96,19 @@ private
 
 void initStaticDataGC()
 {
-    version( Win32 )
+    import rt.dso;
+
+    static if (USE_DSO)
+    {
+        foreach( dso; DSO )
+        {
+            foreach( range; dso.gcRanges )
+            {
+                gc_addRange( range.ptr, range.length );
+            }
+        }
+    }
+    else version( Win32 )
     {
         gc_addRange( &_xi_a, cast(size_t) &_end - cast(size_t) &_xi_a );
     }

@@ -26,12 +26,17 @@ else version (Win64)
 version (deh2)
 {
 
+static import rt.dso;
+
 //debug=1;
 debug import core.stdc.stdio : printf;
 
 extern (C)
 {
-    version (OSX)
+    static if ( rt.dso.USE_DSO )
+    {
+    }
+    else version (OSX)
     {
         // Set by rt.memory_osx.onAddImage()
         __gshared ubyte[] _deh_eh_array;
@@ -128,23 +133,8 @@ void terminate()
  * Return DHandlerTable if there is one, NULL if not.
  */
 
-FuncTable *__eh_finddata(void *address)
+FuncTable *__eh_finddata_common(void *address, FuncTable *pstart, FuncTable *pend)
 {
-    debug printf("FuncTable.sizeof = %p\n", FuncTable.sizeof);
-    debug printf("__eh_finddata(address = %p)\n", address);
-
-    version (OSX)
-    {
-        auto pstart = cast(FuncTable *)_deh_eh_array.ptr;
-        auto pend   = cast(FuncTable *)(_deh_eh_array.ptr + _deh_eh_array.length);
-    }
-    else
-    {
-        auto pstart = cast(FuncTable *)&_deh_beg;
-        auto pend   = cast(FuncTable *)&_deh_end;
-    }
-    debug printf("_deh_beg = %p, _deh_end = %p\n", pstart, pend);
-
     for (auto ft = pstart; 1; ft++)
     {
      Lagain:
@@ -189,6 +179,38 @@ FuncTable *__eh_finddata(void *address)
     }
     debug printf("\tnot found\n");
     return null;
+}
+
+static if (rt.dso.USE_DSO)
+{
+    FuncTable *__eh_finddata(void *address)
+    {
+        foreach(ref dso; rt.dso.DSO)
+        {
+            auto pstart = dso.ehtables.ptr;
+            auto pend = pstart + dso.ehtables.length;
+            if (auto ft = __eh_finddata_common(address, pstart, pend))
+                return ft;
+        }
+        return null;
+    }
+}
+else
+{
+    FuncTable *__eh_finddata(void *address)
+    {
+        version (OSX)
+        {
+            auto pstart = cast(FuncTable*)_deh_eh_array.ptr;
+            auto pend   = cast(FuncTable*)(_deh_eh_array.ptr + _deh_eh_array.length);
+        }
+        else
+        {
+            auto pstart = cast(FuncTable *)&_deh_beg;
+            auto pend   = cast(FuncTable *)&_deh_end;
+        }
+        return __eh_finddata_common(address, pstart, pend);
+    }
 }
 
 
