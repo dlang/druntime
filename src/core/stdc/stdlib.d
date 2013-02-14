@@ -71,10 +71,13 @@ version( MSVCRT )
     float strtof  (in char* nptr, char** endptr) { return strtod(nptr, endptr); }
     real  strtold (in char* nptr, char** endptr) { return strtod(nptr, endptr); }
 
-    private long  _strtoi64 (in char* nptr, char** endptr, int base);
-    private ulong _strtoui64(in char* nptr, char** endptr, int base);
+    long  _strtoi64 (in char* nptr, char** endptr, int base);
+    ulong _strtoui64(in char* nptr, char** endptr, int base);
     long  strtoll (in char* nptr, char** endptr, int base) { return _strtoi64 (nptr, endptr, base); }
     ulong strtoull(in char* nptr, char** endptr, int base) { return _strtoui64(nptr, endptr, base); }
+
+    long  _wcstoi64 (in wchar* nptr, wchar** endptr, int base);
+    ulong _wcstoui64(in wchar* nptr, wchar** endptr, int base);
 }
 else
 {
@@ -146,13 +149,4 @@ version( DigitalMars )
 else version( GNU )
 {
     void* alloca(size_t size); // compiler intrinsic
-}
-
-version (Win64)
-{
-    ulong  _strtoui64(in char *,char **,int);
-    ulong  _wcstoui64(in wchar *,wchar **,int);
-
-    long  _strtoi64(in char *,char **,int);
-    long  _wcstoi64(in wchar *,wchar **,int);
 }
