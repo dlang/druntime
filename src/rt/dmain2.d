@@ -46,14 +46,14 @@ version (all)
 {
     extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null);
 
-    extern (C) void _d_createTrace(Object *o)
+    extern (C) void _d_createTrace(Object *o, void* context)
     {
         auto t = cast(Throwable) o;
 
         if (t !is null && t.info is null &&
             cast(byte*) t !is t.classinfo.init.ptr)
         {
-            t.info = _d_traceContext();
+            t.info = _d_traceContext(context);
         }
     }
 }
@@ -281,6 +281,12 @@ alias void delegate(Throwable) ExceptionHandler;
 
 extern (C) bool rt_init(ExceptionHandler dg = null)
 {
+    // reference _d_dso_registry in every executable/shared
+    // library for weak linkage support
+    import rt.dso;
+    static if (USE_DSO)
+        __gshared dummy_ref = &_d_dso_registry;
+
     version (OSX)
         _d_osx_image_init2();
     _d_criticalInit();

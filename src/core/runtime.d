@@ -75,6 +75,15 @@ static this()
 // Runtime
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Stores the unprocessed arguments supplied when the
+ * process was started.
+ */
+struct CArgs
+{
+    int argc; /// The argument count.
+    char** argv; /// The arguments as a C array of strings.
+}
 
 /**
  * This struct encapsulates all functionality related to the underlying runtime
@@ -136,7 +145,7 @@ struct Runtime
      * started. Use this when you need to supply argc and argv to C libraries.
      *
      * Returns:
-     *  The arguments supplied when this process was started.
+     *  A $(LREF CArgs) struct with the arguments supplied when this process was started.
      */
     static @property CArgs cArgs()
     {
@@ -194,7 +203,7 @@ struct Runtime
      * Gets the current trace handler.
      *
      * Returns:
-     *  The current trace handler or null if no trace handler is set.
+     *  The current trace handler or null if none has been set.
      */
     static @property TraceHandler traceHandler()
     {
@@ -222,7 +231,7 @@ struct Runtime
      * Gets the current collect handler.
      *
      * Returns:
-     *  The current collect handler or null if no trace handler is set.
+     *  The current collect handler or null if none has been set.
      */
     static @property CollectHandler collectHandler()
     {
@@ -249,8 +258,7 @@ struct Runtime
      * Gets the current module unit tester.
      *
      * Returns:
-     *  The current module unit tester handler or null if no trace handler is
-     *  set.
+     *  The current module unit tester handler or null if none has been set.
      */
     static @property ModuleUnitTester moduleUnitTester()
     {
@@ -263,16 +271,6 @@ private:
     //       never occur within any but the main thread, so it is safe to
     //       make it __gshared.
     __gshared ModuleUnitTester sm_moduleUnitTester = null;
-}
-
-/**
- * This struct stores the unprocessed arguments supplied when the
- * process was started.
- */
-struct CArgs
-{
-    int argc;
-    char** argv;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -584,20 +582,18 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
         return new DefaultTraceInfo;
     }
-    else static if( __traits( compiles, new StackTrace ) )
+    else static if( __traits( compiles, new StackTrace(0, null) ) )
     {
         version (Win64)
         {
-            /* Disabled for the moment, because DbgHelp's stack walking code
-             * does not work with dmd's stack frame.
-             */
-            return null;
+            static enum FIRSTFRAME = 4;
         }
         else
         {
-            auto s = new StackTrace;
-            return s;
+            static enum FIRSTFRAME = 0;
         }
+        auto s = new StackTrace(FIRSTFRAME, cast(CONTEXT*)ptr);
+        return s;
     }
     else
     {

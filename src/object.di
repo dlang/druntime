@@ -112,6 +112,10 @@ class TypeInfo
         Void,
         Bool
     }
+    override string toString() const;
+    override size_t toHash() @trusted const;
+    override int opCmp(Object o);
+    override bool opEquals(Object o);
     size_t   getHash(in void* p) @trusted nothrow const;
     bool     equals(in void* p1, in void* p2) const;
     int      compare(in void* p1, in void* p2) const;
@@ -443,7 +447,8 @@ private:
         Slot *next;
         size_t hash;
         Key key;
-        Value value;
+        version(D_LP64) align(16) Value value; // c.f. rt/aaA.d, aligntsize()
+        else align(4) Value value;
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);

@@ -138,7 +138,8 @@ version( CoreDdoc )
         seq,    /// Fully sequenced (acquire + release).
     }
 
-    deprecated alias MemoryOrder msync; /// Deprecated. Please use MemoryOrder instead.
+    deprecated("Please use MemoryOrder instead.")
+    alias MemoryOrder msync;
 
     /**
      * Inserts a full load/store memory fence (on platforms that need it). This ensures
@@ -318,7 +319,8 @@ else version( AsmX86_32 )
         seq,
     }
 
-    deprecated alias MemoryOrder msync;
+    deprecated("Please use MemoryOrder instead.")
+    alias MemoryOrder msync;
 
 
     private
@@ -369,7 +371,11 @@ else version( AsmX86_32 )
     HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) nothrow
     if(!__traits(isFloating, T))
     {
-        static if( T.sizeof == byte.sizeof )
+        static if (!__traits(isPOD, T))
+        {
+            static assert( false, "argument to atomicLoad() must be POD" );
+        }
+        else static if( T.sizeof == byte.sizeof )
         {
             //////////////////////////////////////////////////////////////////
             // 1 Byte Load
@@ -784,7 +790,8 @@ else version( AsmX86_64 )
         seq,
     }
 
-    deprecated alias MemoryOrder msync;
+    deprecated("Please use MemoryOrder instead.")
+    alias MemoryOrder msync;
 
 
     private

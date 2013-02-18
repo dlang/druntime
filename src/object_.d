@@ -651,7 +651,7 @@ class TypeInfo_StaticArray : TypeInfo
     override string toString() const
     {
         char[20] tmp = void;
-        return cast(string)(value.toString() ~ "[" ~ tmp.intToString(len) ~ "]");
+        return cast(string)(value.toString() ~ "[" ~ tmp.uintToString(len) ~ "]");
     }
 
     override bool opEquals(Object o)
@@ -1491,7 +1491,7 @@ class Throwable : Object
 
         if (file)
         {
-           buf ~= this.classinfo.name ~ "@" ~ file ~ "(" ~ tmp.intToString(line) ~ ")";
+           buf ~= this.classinfo.name ~ "@" ~ file ~ "(" ~ tmp.uintToString(line) ~ ")";
         }
         else
         {
@@ -2233,7 +2233,8 @@ private:
         Slot *next;
         size_t hash;
         Key key;
-        Value value;
+        version(D_LP64) align(16) Value value; // c.f. rt/aaA.d, aligntsize()
+        else align(4) Value value;
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);
@@ -2445,8 +2446,23 @@ unittest
     }
 }
 
-// Scheduled for deprecation in December 2012.
-// Please use destroy instead of clear.
+unittest
+{
+    // test for bug 8583: ensure Slot and aaA are on the same page wrt value alignment
+    string[byte]    aa0 = [0: "zero"];
+    string[uint[3]] aa1 = [[1,2,3]: "onetwothree"];
+    ushort[uint[3]] aa2 = [[9,8,7]: 987];
+    ushort[uint[4]] aa3 = [[1,2,3,4]: 1234];
+    string[uint[5]] aa4 = [[1,2,3,4,5]: "onetwothreefourfive"];
+
+    assert(aa0.byValue.front == "zero");
+    assert(aa1.byValue.front == "onetwothree");
+    assert(aa2.byValue.front == 987);
+    assert(aa3.byValue.front == 1234);
+    assert(aa4.byValue.front == "onetwothreefourfive");
+}
+
+deprecated("Please use destroy instead of clear.")
 alias destroy clear;
 
 /++
