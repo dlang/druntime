@@ -428,6 +428,13 @@ class TypeInfo
      */
     @property immutable(void)* rtInfo() nothrow pure const @safe { return null; }
     @property Type type() nothrow pure const @safe { return Type.info; }
+    @property const(TypeInfo) unqalified() nothrow pure const
+    {
+      auto t = type;
+      if(t != Type.const_ && t != Type.shared_ && t != Type.immutable_)
+        return this;
+      return next;
+    }
 }
 
 @property T staticCast(T)(TypeInfo obj) { return cast(T)cast(void*)obj; }

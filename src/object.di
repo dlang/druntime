@@ -131,6 +131,7 @@ class TypeInfo
     version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe nothrow;
     @property immutable(void)* rtInfo() nothrow pure const @safe;
     @property Type type() nothrow pure const @safe;
+	@property const(TypeInfo) unqalified() nothrow pure const;
 }
 
 class TypeInfo_Typedef : TypeInfo
