@@ -97,5 +97,5 @@ class TypeInfo_r : TypeInfo
         return 0;
     }
 
-    @property override Type type() { return Type.CDouble; }
+    override @property Type type() { return Type.cdouble_; }
 }

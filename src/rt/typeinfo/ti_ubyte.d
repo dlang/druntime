@@ -53,7 +53,7 @@ class TypeInfo_h : TypeInfo
         *cast(ubyte *)p2 = t;
     }
 
-    @property override Type type() { return Type.UByte; }
+    override @property Type type() { return Type.ubyte_; }
 }
 
 class TypeInfo_b : TypeInfo_h
@@ -65,5 +65,5 @@ class TypeInfo_b : TypeInfo_h
 
     override string toString() const pure nothrow @safe { return "bool"; }
 
-	@property override Type type() { return Type.Bool; }
+    override @property Type type() { return Type.bool_; }
 }

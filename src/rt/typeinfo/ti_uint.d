@@ -57,5 +57,5 @@ class TypeInfo_k : TypeInfo
         *cast(uint *)p2 = t;
     }
 
-    @property override Type type() { return Type.UInt; }
+    override @property Type type() { return Type.uint_; }
 }

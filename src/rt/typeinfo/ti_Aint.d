@@ -69,8 +69,6 @@ class TypeInfo_Ai : TypeInfo_Array
     {
         return typeid(int);
     }
-
-    @property override Type type() { return Type.Array; }
 }
 
 unittest
@@ -120,8 +118,6 @@ class TypeInfo_Ak : TypeInfo_Ai
     {
         return typeid(uint);
     }
-
-    @property override Type type() { return Type.Array; }
 }
 
 // dchar[]
@@ -139,6 +135,4 @@ class TypeInfo_Aw : TypeInfo_Ak
     {
         return typeid(dchar);
     }
-
-    @property override Type type() { return Type.Array; }
 }

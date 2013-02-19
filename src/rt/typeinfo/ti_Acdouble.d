@@ -76,6 +76,4 @@ class TypeInfo_Ar : TypeInfo_Array
     {
         return typeid(cdouble);
     }
-
-    @property override Type type() const nothrow pure { return Type.Array; }
 }

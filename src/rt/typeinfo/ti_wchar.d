@@ -60,5 +60,5 @@ class TypeInfo_u : TypeInfo
         return (cast(wchar *)&c)[0 .. 1];
     }
 
-    @property override Type type() { return Type.WChar; }
+    override @property Type type() { return Type.wchar_; }
 }

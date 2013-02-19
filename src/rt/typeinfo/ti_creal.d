@@ -97,5 +97,5 @@ class TypeInfo_c : TypeInfo
         return 0;
     }
 
-    @property override Type type() { return Type.Real; }
+    override @property Type type() { return Type.real_; }
 }

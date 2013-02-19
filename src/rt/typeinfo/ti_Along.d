@@ -70,8 +70,6 @@ class TypeInfo_Al : TypeInfo_Array
     {
         return typeid(long);
     }
-
-    @property override Type type() { return Type.Array; }
 }
 
 
@@ -112,6 +110,4 @@ class TypeInfo_Am : TypeInfo_Al
     {
         return typeid(ulong);
     }
-
-    @property override Type type() { return Type.Array; }
 }

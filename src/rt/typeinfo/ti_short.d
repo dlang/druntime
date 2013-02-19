@@ -53,5 +53,5 @@ class TypeInfo_s : TypeInfo
         *cast(short *)p2 = t;
     }
 
-    @property override Type type() { return Type.Short; }
+    override @property Type type() { return Type.short_; }
 }

@@ -82,5 +82,5 @@ class TypeInfo_f : TypeInfo
         return (cast(float *)&r)[0 .. 1];
     }
 
-    @property override Type type() { return Type.Float; }
+    override @property Type type() { return Type.float_; }
 }

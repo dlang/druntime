@@ -64,5 +64,5 @@ class TypeInfo_m : TypeInfo
         return ulong.alignof;
     }
 
-    @property override Type type() { return Type.ULong; }
+    override @property Type type() { return Type.ulong_; }
 }

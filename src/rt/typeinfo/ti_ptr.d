@@ -61,5 +61,5 @@ class TypeInfo_P : TypeInfo
         return 1;
     }
 
-    @property override Type type() { return Type.Pointer; }
+    override @property Type type() { return Type.pointer; }
 }

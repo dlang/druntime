@@ -96,5 +96,5 @@ class TypeInfo_q : TypeInfo
         return 0;
     }
 
-    @property override Type type() { return Type.CFloat; }
+    override @property Type type() { return Type.cfloat_; }
 }

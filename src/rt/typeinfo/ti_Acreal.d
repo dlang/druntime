@@ -76,6 +76,4 @@ class TypeInfo_Ac : TypeInfo_Array
     {
         return typeid(creal);
     }
-
-    @property override Type type() const nothrow pure { return Type.Array; }
 }

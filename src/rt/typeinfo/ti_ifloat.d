@@ -26,5 +26,5 @@ class TypeInfo_o : TypeInfo_f
 
     override string toString() const pure nothrow @safe { return "ifloat"; }
 
-    @property override Type type() { return Type.IFloat; }
+    override @property Type type() { return Type.ifloat_; }
 }

@@ -26,5 +26,5 @@ class TypeInfo_p : TypeInfo_d
 
     override string toString() const pure nothrow @safe { return "idouble"; }
 
-	@property override Type type() { return Type.IDouble; }
+    override @property Type type() { return Type.idouble_; }
 }

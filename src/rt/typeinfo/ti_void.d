@@ -58,5 +58,5 @@ class TypeInfo_v : TypeInfo
         return 1;
     }
 
-    @property override Type type() { return Type.Void; }
+    override @property Type type() { return Type.void_; }
 }

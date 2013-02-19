@@ -93,6 +93,4 @@ class TypeInfo_Ap : TypeInfo_Ad
     {
         return typeid(idouble);
     }
-
-    @property override Type type() const nothrow pure { return Type.Array; }
 }

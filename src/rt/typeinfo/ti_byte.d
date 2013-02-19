@@ -53,5 +53,5 @@ class TypeInfo_g : TypeInfo
         *cast(byte *)p2 = t;
     }
 
-    @property override Type type() { return Type.Byte; }
+    override @property Type type() { return Type.byte_; }
 }
