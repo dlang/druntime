@@ -2143,6 +2143,58 @@ shared static ~this()
 private __gshared bool multiThreadedFlag = false;
 
 
+version (GNU)
+{
+    // Not used.
+}
+else
+{
+    // This struct is used on targets where we cannot use a
+    // compiler intrinsic to save the machine registers. This
+    // is the case for both DMD and LDC at the moment.
+    private struct MachineRegisters
+    {
+        version (X86_64)
+        {
+            void* rax,
+                  rcx,
+                  rdx,
+                  rbx,
+                  rsp,
+                  rbp,
+                  rsi,
+                  rdi,
+                  r8,
+                  r9,
+                  r10,
+                  r11,
+                  r12,
+                  r13,
+                  r14,
+                  r15;
+        }
+        else version (X86)
+        {
+            void* eax,
+                  ecx,
+                  edx,
+                  ebx,
+                  esp,
+                  ebp,
+                  esi,
+                  edi;
+        }
+        else
+        {
+            static assert(false, "MachineRegisters not defined for current architecture.");
+        }
+    }
+
+    // Registers are saved to this global so that
+    // the GC scans them all conservatively.
+    private __gshared MachineRegisters machineRegisters;
+}
+
 // Calls the given delegate, passing the current thread's stack pointer to it.
 private void callWithStackShell(scope void delegate(void* sp) fn)
 in
@@ -2152,88 +2204,76 @@ in
 body
 {
     // The purpose of the 'shell' is to ensure all the registers
-    // get put on the stack so they'll be scanned
-    void *sp;
+    // get put on the stack so they'll be scanned.
+    void* sp;
 
     version (GNU)
     {
         __builtin_unwind_init();
-        sp = & sp;
-    }
-    else version (D_InlineAsm_X86)
-    {
-        asm
-        {
-            pushad              ;
-            mov sp[EBP],ESP     ;
-        }
-    }
-    else version (D_InlineAsm_X86_64)
-    {
-        asm
-        {
-            push RAX ;
-            push RBX ;
-            push RCX ;
-            push RDX ;
-            push RSI ;
-            push RDI ;
-            push RBP ;
-            push R8  ;
-            push R9  ;
-            push R10  ;
-            push R11  ;
-            push R12  ;
-            push R13  ;
-            push R14  ;
-            push R15  ;
-            push RAX ;   // 16 byte align the stack
-            mov sp[RBP],RSP     ;
-        }
+        sp = &sp;
     }
     else
     {
-        static assert(false, "Architecture not supported.");
+        alias MR = MachineRegisters;
+        alias mr = machineRegisters;
+
+        version (D_InlineAsm_X86_64)
+        {
+            asm
+            {
+                mov mr[MR.rax.offsetof], RAX;
+                mov mr[MR.rcx.offsetof], RCX;
+                mov mr[MR.rdx.offsetof], RDX;
+                mov mr[MR.rbx.offsetof], RBX;
+                mov mr[MR.rsp.offsetof], RSP;
+                mov mr[MR.rbp.offsetof], RBP;
+                mov mr[MR.rsi.offsetof], RSI;
+                mov mr[MR.rdi.offsetof], RDI;
+                mov mr[MR.r8.offsetof], R8;
+                mov mr[MR.r9.offsetof], R9;
+                mov mr[MR.r10.offsetof], R10;
+                mov mr[MR.r11.offsetof], R11;
+                mov mr[MR.r12.offsetof], R12;
+                mov mr[MR.r13.offsetof], R13;
+                mov mr[MR.r14.offsetof], R14;
+                mov mr[MR.r15.offsetof], R15;
+
+                mov sp, RSP;
+            }
+        }
+        else version (D_InlineAsm_X86)
+        {
+            asm
+            {
+                mov mr[MR.eax.offsetof], EAX;
+                mov mr[MR.ecx.offsetof], ECX;
+                mov mr[MR.edx.offsetof], EDX;
+                mov mr[MR.ebx.offsetof], EBX;
+                mov mr[MR.esp.offsetof], ESP;
+                mov mr[MR.ebp.offsetof], EBP;
+                mov mr[MR.esi.offsetof], ESI;
+                mov mr[MR.edi.offsetof], EDI;
+
+                mov sp, ESP;
+            }
+        }
+        else
+        {
+            static assert(false, "Register saving not implemented for the current architecture.");
+        }
     }
 
     fn(sp);
 
     version (GNU)
     {
-        // registers will be popped automatically
-    }
-    else version (D_InlineAsm_X86)
-    {
-        asm
-        {
-            popad;
-        }
-    }
-    else version (D_InlineAsm_X86_64)
-    {
-        asm
-        {
-            pop RAX ;   // 16 byte align the stack
-            pop R15  ;
-            pop R14  ;
-            pop R13  ;
-            pop R12  ;
-            pop R11  ;
-            pop R10  ;
-            pop R9  ;
-            pop R8  ;
-            pop RBP ;
-            pop RDI ;
-            pop RSI ;
-            pop RDX ;
-            pop RCX ;
-            pop RBX ;
-            pop RAX ;
-        }
+        // No action needed.
     }
     else
     {
-        static assert(false, "Architecture not supported.");
+        // Zero out registers so that we don't accidentally keep
+        // objects alive when they've actually become dead.
+        machineRegisters = MachineRegisters.init;
     }
 }
 
