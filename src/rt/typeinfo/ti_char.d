@@ -59,4 +59,6 @@ class TypeInfo_a : TypeInfo
 
         return (cast(char *)&c)[0 .. 1];
     }
+
+    override @property Type type() { return Type.char_; }
 }

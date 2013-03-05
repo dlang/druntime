@@ -63,4 +63,6 @@ class TypeInfo_l : TypeInfo
     {
         return long.alignof;
     }
+
+    override @property Type type() { return Type.long_; }
 }

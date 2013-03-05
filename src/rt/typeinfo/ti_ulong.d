@@ -63,4 +63,6 @@ class TypeInfo_m : TypeInfo
     {
         return ulong.alignof;
     }
+
+    override @property Type type() { return Type.ulong_; }
 }

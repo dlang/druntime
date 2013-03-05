@@ -96,4 +96,6 @@ class TypeInfo_c : TypeInfo
         arg2 = typeid(real);
         return 0;
     }
+
+    override @property Type type() { return Type.real_; }
 }

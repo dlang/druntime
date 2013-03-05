@@ -54,4 +54,6 @@ class TypeInfo_D : TypeInfo
     {
         return 1;
     }
+
+    override @property Type type() { return Type.delegate_; }
 }

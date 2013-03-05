@@ -59,4 +59,6 @@ class TypeInfo_u : TypeInfo
 
         return (cast(wchar *)&c)[0 .. 1];
     }
+
+    override @property Type type() { return Type.wchar_; }
 }

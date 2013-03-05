@@ -56,4 +56,6 @@ class TypeInfo_i : TypeInfo
         *cast(int *)p1 = *cast(int *)p2;
         *cast(int *)p2 = t;
     }
+
+    override @property Type type() { return Type.int_; }
 }

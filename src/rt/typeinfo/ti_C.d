@@ -67,4 +67,6 @@ class TypeInfo_C : TypeInfo
     {
         return 1;
     }
+
+    override @property Type type() const pure nothrow @trusted { return Type.object; }
 }

@@ -67,6 +67,50 @@ struct OffsetTypeInfo
 
 class TypeInfo
 {
+    enum Type 
+    {
+        info,
+        vector,
+        typedef_,
+        enum_,
+        pointer,
+        array,
+        staticArray,
+        associativeArray,
+        function_,
+        delegate_,
+        object,
+        class_,
+        interface_,
+        struct_,
+        tuple_,
+        const_,
+        immutable_,
+        shared_,
+        inout_,
+        byte_,
+        ubyte_,
+        short_,
+        ushort_,
+        int_,
+        uint_,
+        long_,
+        ulong_,
+        float_,
+        ifloat_,
+        cfloat_,
+        double_,
+        idouble_,
+        cdouble_,
+        real_,
+        ireal_,
+        creal_,
+        char_,
+        wchar_,
+        dchar_,
+        void_,
+        bool_
+    }
     override string toString() const;
     override size_t toHash() @trusted const;
     override int opCmp(Object o);
@@ -86,6 +130,8 @@ class TypeInfo
     @property size_t talign() nothrow pure const @safe;
     version (X86_64) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe nothrow;
     @property immutable(void)* rtInfo() nothrow pure const @safe;
+    @property Type type() nothrow pure const @safe;
+	@property const(TypeInfo) unqalified() nothrow pure const;
 }
 
 class TypeInfo_Typedef : TypeInfo

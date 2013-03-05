@@ -25,4 +25,6 @@ class TypeInfo_j : TypeInfo_e
     nothrow:
 
     override string toString() const pure nothrow @safe { return "ireal"; }
+
+    override @property Type type() { return Type.ireal_; }
 }

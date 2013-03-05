@@ -2222,8 +2222,8 @@ struct Array2
 extern (C) void[] _adDupT(const TypeInfo ti, void[] a)
 out (result)
 {
-    auto sizeelem = ti.next.tsize;              // array element size
-    assert(memcmp((*cast(Array2*)&result).ptr, a.ptr, a.length * sizeelem) == 0);
+    auto sizeelem = ti.unqalified.next.tsize;              // array element size
+    assert(memcmp((*cast(Array2*)&result).ptr, a.ptr, a.length * sizeelem) == 0, ti.toString());
 }
 body
 {
@@ -2231,9 +2231,9 @@ body
 
     if (a.length)
     {
-        auto sizeelem = ti.next.tsize;                  // array element size
+        auto sizeelem = ti.unqalified.next.tsize;                  // array element size
         auto size = a.length * sizeelem;
-        auto info = gc_qalloc(size + __arrayPad(size), !(ti.next.flags & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
+        auto info = gc_qalloc(size + __arrayPad(size), !(ti.unqalified.next.flags & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE);
         auto isshared = ti.classinfo is TypeInfo_Shared.classinfo;
         __setArrayAllocLength(info, size, isshared);
         r.ptr = __arrayStart(info);
@@ -2241,7 +2241,7 @@ body
         memcpy(r.ptr, a.ptr, size);
 
         // do postblit processing
-        __doPostblit(r.ptr, size, ti.next);
+        __doPostblit(r.ptr, size, ti.unqalified.next);
     }
     return *cast(void[]*)(&r);
 }

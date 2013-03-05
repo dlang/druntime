@@ -88,4 +88,6 @@ class TypeInfo_d : TypeInfo
     {
         return double.alignof;
     }
+
+    override @property Type type() { return Type.double_; }
 }

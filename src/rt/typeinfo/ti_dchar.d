@@ -59,4 +59,6 @@ class TypeInfo_w : TypeInfo
 
         return (cast(dchar *)&c)[0 .. 1];
     }
+
+    override @property Type type() { return Type.dchar_; }
 }
