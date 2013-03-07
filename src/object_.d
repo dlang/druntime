@@ -2522,6 +2522,83 @@ version (unittest)
     }
 }
 
+/*@property */auto dup(E)(inout(E)[] arr) pure nothrow @trusted
+{
+    static struct X // dummy namespace
+    {
+        template Unqual(T)
+        {
+                 static if (is(T U == shared(const U))) alias U Unqual;
+            else static if (is(T U ==        const U )) alias U Unqual;
+            else static if (is(T U ==    immutable U )) alias U Unqual;
+            else static if (is(T U ==        inout U )) alias U Unqual;
+            else static if (is(T U ==       shared U )) alias U Unqual;
+            else                                        alias T Unqual;
+        }
+
+        template hasMutableIndirection(T)
+        {
+            enum hasMutableIndirection = !is(typeof({ Unqual!T t = void; immutable T u = t; }));
+        }
+    }
+
+    auto copy = new E[](arr.length);
+    immutable blen = arr.length * E.sizeof;
+    (cast(ubyte*)copy.ptr)[0 .. blen] = (cast(ubyte*)arr.ptr)[0 .. blen];
+
+    static if (X.hasMutableIndirection!E)
+    {
+        return cast(inout(E)[])copy;    // assume constant
+    }
+    else
+    {
+        return copy;
+    }
+}
+
+unittest
+{
+    void test(E, bool constConv)()
+    {
+                  E[] marr = [E.init, E.init, E.init];
+        immutable E[] iarr = [E.init, E.init, E.init];
+
+                  E[] m2m = marr.dup();    assert(m2m == marr);
+        immutable E[] i2i = iarr.dup();    assert(i2i == iarr);
+
+      static if (constConv)
+      { // If dup() hss strong purity, implicit conversion is allowed
+        immutable E[] m2i = marr.dup();    assert(m2i == marr);
+                  E[] i2m = iarr.dup();    assert(i2m == iarr);
+      }
+      else
+      {
+        static assert(!is(typeof({ immutable E[] m2i = marr.dup(); })));
+        static assert(!is(typeof({           E[] i2m = iarr.dup(); })));
+      }
+    }
+
+    class C {}
+    struct S1 { long n; }
+    struct S2 { int* p; }
+    struct S3 { immutable int x; }
+    struct S4 { immutable int x; int* p; }
+    struct T1 { S1 s; }
+    struct T2 { S2 s; }
+    struct T3 { S1 s1;  S2 s2; }
+
+    test!(int   , true )();
+    test!(int[3], true )();
+    test!(C     , false)();
+    test!(S1    , true )();
+    test!(S2    , false)();
+    test!(S3    , true )();
+    test!(S4    , false)();
+    test!(T1    , true )();
+    test!(T2    , false)();
+    test!(T3    , false)();
+}
+
 /**
  * (Property) Get the current capacity of an array.  The capacity is the number
  * of elements that the array can grow to before the array must be
