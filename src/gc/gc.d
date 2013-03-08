@@ -59,6 +59,11 @@ private
 
         extern (C) void function(void*) gc_removeRoot;
         extern (C) void function(void*) gc_removeRange;
+
+        extern (C) bool function() gc_getCollectStats;
+        extern (C) void function(bool) gc_setCollectStats;
+        extern (C) GCStats function() gc_stats;
+        extern (C) void function() gc_resetStats;
     }
 
     __gshared Proxy  pthis;
@@ -93,6 +98,11 @@ private
 
         pthis.gc_removeRoot = &gc_removeRoot;
         pthis.gc_removeRange = &gc_removeRange;
+
+        pthis.gc_getCollectStats = &gc_getCollectStats;
+        pthis.gc_setCollectStats = &gc_setCollectStats;
+        pthis.gc_stats = &gc_stats;
+        pthis.gc_resetStats = &gc_resetStats;
     }
 }
 
@@ -263,20 +273,46 @@ extern (C) BlkInfo gc_query( void* p )
     return proxy.gc_query( p );
 }
 
-// NOTE: This routine is experimental.  The stats or function name may change
-//       before it is made officially available.
+extern (C) bool gc_getCollectStats()
+{
+    if (proxy)
+        return proxy.gc_getCollectStats();
+
+    return _gc.getCollectStats();
+}
+
+extern (C) void gc_setCollectStats(bool b)
+{
+    if (proxy)
+    {
+        proxy.gc_setCollectStats(b);
+        return;
+    }
+
+    _gc.setCollectStats(b);
+}
+
 extern (C) GCStats gc_stats()
 {
     if( proxy is null )
     {
-        GCStats stats = void;
+        GCStats stats;
         _gc.getStats( stats );
         return stats;
     }
-    // TODO: Add proxy support for this once the layout of GCStats is
-    //       finalized.
-    //return proxy.gc_stats();
-    return GCStats.init;
+
+    return proxy.gc_stats();
+}
+
+extern (C) void gc_resetStats()
+{
+    if (proxy)
+    {
+        proxy.gc_resetStats();
+        return;
+    }
+
+    _gc.resetStats();
 }
 
 extern (C) void gc_addRoot( void* p )

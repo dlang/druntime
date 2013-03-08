@@ -19,9 +19,10 @@ module gc.gcstats;
  */
 struct GCStats
 {
-    size_t poolsize;        // total size of pool
-    size_t usedsize;        // bytes allocated
-    size_t freeblocks;      // number of blocks marked FREE
-    size_t freelistsize;    // total of memory on free lists
-    size_t pageblocks;      // number of blocks marked PAGE
+    size_t poolSize = size_t.min;        // total size of pool
+    size_t usedSize = size_t.min;        // bytes allocated
+    size_t freeBlocks = size_t.min;      // number of blocks marked FREE
+    size_t freeListSize = size_t.min;    // total of memory on free lists
+    size_t pageBlocks = size_t.min;      // number of blocks marked PAGE
+    size_t fullCollections = size_t.min; // number of full collections
 }

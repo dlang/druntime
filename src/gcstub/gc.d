@@ -39,6 +39,16 @@ private
         ALL_BITS    = 0b1111_1111
     }
 
+    struct GCStats
+    {
+        size_t poolSize = size_t.max;        // total size of pool
+        size_t usedSize = size_t.max;        // bytes allocated
+        size_t freeBlocks = size_t.max;      // number of blocks marked FREE
+        size_t freeListSize = size_t.max;    // total of memory on free lists
+        size_t pageBlocks = size_t.max;      // number of blocks marked PAGE
+        size_t fullCollections = size_t.max; // number of full collections
+    }
+
     struct BlkInfo
     {
         void*  base;
@@ -78,6 +88,11 @@ private
 
         extern (C) void function(void*) gc_removeRoot;
         extern (C) void function(void*) gc_removeRange;
+
+        extern (C) bool function() gc_getCollectStats;
+        extern (C) void function(bool) gc_setCollectStats;
+        extern (C) GCStats function() gc_stats;
+        extern (C) void function() gc_resetStats;
     }
 
     __gshared Proxy  pthis;
@@ -112,6 +127,11 @@ private
 
         pthis.gc_removeRoot = &gc_removeRoot;
         pthis.gc_removeRange = &gc_removeRange;
+
+        pthis.gc_getCollectStats = &gc_getCollectStats;
+        pthis.gc_setCollectStats = &gc_setCollectStats;
+        pthis.gc_stats = &gc_stats;
+        pthis.gc_resetStats = &gc_resetStats;
     }
 
     __gshared void** roots  = null;
@@ -125,6 +145,7 @@ private
 
     __gshared Range* ranges  = null;
     __gshared size_t nranges = 0;
+    __gshared bool collectStats = false;
 }
 
 extern (C) void gc_init()
@@ -282,6 +303,39 @@ extern (C) BlkInfo gc_query( void* p )
     if( proxy is null )
         return BlkInfo.init;
     return proxy.gc_query( p );
+}
+
+extern (C) bool gc_getCollectStats()
+{
+    if (proxy)
+        return proxy.gc_getCollectStats();
+
+    return collectStats;
+}
+
+extern (C) void gc_setCollectStats(bool b)
+{
+    if (proxy)
+    {
+        proxy.gc_setCollectStats(b);
+        return;
+    }
+
+    collectStats = b;
+}
+
+extern (C) GCStats gc_stats()
+{
+    if (proxy)
+        return proxy.gc_stats();
+
+    return GCStats.init;
+}
+
+extern (C) void gc_resetStats()
+{
+    if (proxy)
+        proxy.gc_resetStats();
 }
 
 extern (C) void gc_addRoot( void* p )

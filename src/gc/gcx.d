@@ -1244,6 +1244,33 @@ class GC
     }
 
 
+    bool getCollectStats()
+    {
+        gcLock.lock();
+        scope(exit) gcLock.unlock();
+        return getCollectStatsNoSync();
+    }
+
+    bool getCollectStatsNoSync()
+    {
+        return gcx.collectStats;
+    }
+
+
+    void setCollectStats(bool b)
+    {
+        gcLock.lock();
+        scope(exit) gcLock.unlock();
+        setCollectStatsNoSync(b);
+    }
+
+
+    void setCollectStatsNoSync(bool b)
+    {
+        gcx.collectStats = b;
+    }
+
+
     /**
      * Retrieve statistics about garbage collection.
      * Useful for debugging and tuning.
@@ -1269,7 +1296,6 @@ class GC
         size_t bsize = 0;
 
         //debug(PRINTF) printf("getStats()\n");
-        memset(&stats, 0, GCStats.sizeof);
 
         for (n = 0; n < gcx.npools; n++)
         {   Pool *pool = gcx.pooltable[n];
@@ -1279,9 +1305,9 @@ class GC
             {
                 Bins bin = cast(Bins)pool.pagetable[j];
                 if (bin == B_FREE)
-                    stats.freeblocks++;
+                    stats.freeBlocks++;
                 else if (bin == B_PAGE)
-                    stats.pageblocks++;
+                    stats.pageBlocks++;
                 else if (bin < B_PAGE)
                     bsize += PAGESIZE;
             }
@@ -1299,9 +1325,25 @@ class GC
 
         usize = bsize - flsize;
 
-        stats.poolsize = psize;
-        stats.usedsize = bsize - flsize;
-        stats.freelistsize = flsize;
+        stats.poolSize = psize;
+        stats.usedSize = bsize - flsize;
+        stats.freeListSize = flsize;
+
+        stats.fullCollections = gcx.fullCollections;
+    }
+
+
+    void resetStats()
+    {
+        gcLock.lock();
+        scope(exit) gcLock.unlock();
+        resetStatsNoSync();
+    }
+
+
+    private void resetStatsNoSync()
+    {
+        gcx.fullCollections = 0;
     }
 }
 
@@ -1386,6 +1428,10 @@ struct Gcx
     Pool **pooltable;
 
     List *bucket[B_MAX];        // free list for each size
+
+    size_t fullCollections;
+
+    bool collectStats;
 
 
     void initialize()
@@ -2427,6 +2473,9 @@ struct Gcx
         if (running)
             onInvalidMemoryOperationError();
         running = 1;
+
+        if (collectStats)
+            fullCollections++;
 
         thread_suspendAll();
 
