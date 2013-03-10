@@ -34,9 +34,17 @@ private
  */
 class RangeError : Error
 {
-    this( string file = __FILE__, size_t line = __LINE__, Throwable next = null )
+    this(string file = __FILE__, size_t line = __LINE__, Throwable next = null) @safe pure nothrow
     {
-        super( "Range violation", file, line, next );
+        super("Range violation", file, line, next);
+    }
+
+    this(size_t index, size_t length,
+         string file = __FILE__, size_t line = __LINE__, Throwable next = null) @safe pure nothrow
+    {
+        assert(index >= length, "index is supposed to be out of range");
+        super("Range violation: index [" ~ _numToString(index) ~ "], length [" ~ _numToString(length) ~ "]",
+              file, line, next);
     }
 }
 
@@ -57,6 +65,64 @@ unittest
         assert(re.next !is null);
         assert(re.msg == "Range violation");
     }
+
+    {
+        auto re = new RangeError(12, 4);
+        assert(re.file == __FILE__);
+        assert(re.line == __LINE__ - 2);
+        assert(re.next is null);
+        assert(re.msg == "Range violation: index [12], length [4]");
+    }
+
+    {
+        auto re = new RangeError(99, 12, "goodbye", 19, new Exception("It's an Exception!"));
+        assert(re.file == "goodbye");
+        assert(re.line == 19);
+        assert(re.next !is null);
+        assert(re.msg == "Range violation: index [99], length [12]");
+    }
+}
+
+// Unfortunately, snprintf is not pure, so here's a way to convert
+// a number to a string which is.
+private string _numToString(ulong value) @safe pure nothrow
+{
+    try
+    {
+        char[24] str;
+        size_t i = str.length;
+
+        while(1)
+        {
+            char digit = cast(char)('0' + value % 10);
+            value /= 10;
+
+            str[--i] = digit;
+            assert(i > 0);
+
+            if(value == 0)
+                break;
+        }
+
+        return str[i .. $].idup;
+    }
+    //@@@BUG@@@ 5700: Allow dup in nothrow functions
+    catch(Exception e)
+        assert(0, "It should be impossible for idup to throw.");
+}
+
+unittest
+{
+    assert(_numToString(0) == "0");
+    assert(_numToString(1) == "1");
+    assert(_numToString(10) == "10");
+    assert(_numToString(15) == "15");
+    assert(_numToString(99) == "99");
+    assert(_numToString(100) == "100");
+    assert(_numToString(int.max) == "2147483647");
+    assert(_numToString(uint.max) == "4294967295");
+    assert(_numToString(long.max) == "9223372036854775807");
+    assert(_numToString(ulong.max) == "18446744073709551615");
 }
 
 
