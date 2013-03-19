@@ -36,10 +36,8 @@ IMPDIR=import
 
 MODEL=32
 # default to SHARED on some platforms
-ifeq (linux,$(OS))
-	ifeq (64,$(MODEL))
-		SHARED:=1
-	endif
+ifneq (,$(findstring $(OS), linux))
+	SHARED:=1
 endif
 override PIC:=$(if $(or $(PIC), $(SHARED)),-fPIC,)
 
