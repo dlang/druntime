@@ -1,7 +1,7 @@
 /**
  * Contains all implicitly declared types and variables.
  *
- * Copyright: Copyright Digital Mars 2000 - 2011.
+ * Copyright: Copyright Digital Mars 2000 - 2014.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Walter Bright, Sean Kelly
  *
@@ -45,8 +45,42 @@ class Object
     static Object factory(string classname);
 }
 
-bool opEquals(const Object lhs, const Object rhs);
-bool opEquals(Object lhs, Object rhs);
+bool opEquals(T, U)(T lhs, U rhs)
+    if (is(T == class) && is(U == class) &&
+        is(typeof(lhs.opEquals(rhs)) == bool) &&
+        is(typeof(rhs.opEquals(lhs)) == bool))
+{
+    static if (is(T : U) || is(U : T))
+    {
+        // If aliased to the same object or both null => equal
+        if (lhs is rhs) return true;
+    }
+
+    // If either is null => non-equal
+    if (lhs is null || rhs is null) return false;
+
+    // If same exact type => one call to method opEquals
+    // General case => symmetric calls to method opEquals
+    return lhs.opEquals(rhs) &&
+           (typeid(lhs) is typeid(lhs) || typeid(lhs).opEquals(typeid(rhs)) || rhs.opEquals(lhs));
+}
+
+bool opEquals(T, U)(const T lhs, const U rhs)
+    if (is(T == class) && is(U == class) &&
+        !is(typeof(lhs.opEquals(rhs)) == bool) &&
+        !is(typeof(rhs.opEquals(lhs)) == bool))
+{
+    // FIXME. This is a hack.
+    // We shouldn't need to cast away const, and if either lhs' or rhs' opEquals
+    // mutates either object, it's undefined behavior. But before we can remove
+    // this, we need to make it so that TypeInfo and friends have the corect
+    // definitions for opEquals so that they work with the other overload. And
+    // any user code using const objects but which doesn't define opEquals such
+    // that it works with const with the other overload will also break once
+    // this is removed. So, we need to get rid of this, but we need to be
+    // careful about how and when we do it.
+    return opEquals(cast()lhs, cast()rhs);
+}
 
 void setSameMutex(shared Object ownee, shared Object owner);
 
