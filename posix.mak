@@ -94,7 +94,7 @@ OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o $(OBJDIR)/complex.o
 
 ######################## All of'em ##############################
 
-target : import copy $(DRUNTIME) doc
+target: import copy $(DRUNTIME) doc $(if $(SHARED),dll,)
 
 ######################## Doc .html file generation ##############################
 
