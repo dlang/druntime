@@ -37,7 +37,7 @@ DMD?=dmd
 DOCDIR=doc
 IMPDIR=import
 
-MODEL=32
+MODEL=64
 override PIC:=$(if $(PIC),-fPIC,)
 
 DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property $(PIC)
