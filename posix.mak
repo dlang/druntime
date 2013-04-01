@@ -35,13 +35,7 @@ DOCDIR=doc
 IMPDIR=import
 
 MODEL=32
-# default to SHARED on some platforms
-ifeq (linux,$(OS))
-	ifeq (64,$(MODEL))
-		SHARED:=1
-	endif
-endif
-override PIC:=$(if $(or $(PIC), $(SHARED)),-fPIC,)
+override PIC:=$(if $(PIC),-fPIC,)
 
 ifeq (osx,$(OS))
 	DOTDLL:=.dylib
@@ -63,10 +57,20 @@ else
     ASMFLAGS = -Wa,--noexecstack
 endif
 
-OBJDIR=obj/$(MODEL)
-DRUNTIME_BASE=druntime-$(OS)$(MODEL)
-DRUNTIME=lib/lib$(DRUNTIME_BASE).a
-DRUNTIMESO=lib/lib$(DRUNTIME_BASE).so
+OBJDIR:=obj/$(MODEL)
+OBJ_LIB_DIR:=$(OBJDIR)/lib
+OBJ_DLL_DIR:=$(OBJDIR)/dll
+DRUNTIME_BASE:=druntime-$(OS)$(MODEL)
+
+TARGET:=druntime_lib
+UNITTEST:=unittest_lib
+# default to dll targets on some platforms
+ifeq (linux,$(OS))
+	ifeq (64,$(MODEL))
+#		TARGET:=druntime_dll
+		UNITTEST:=unittest_dll
+	endif
+endif
 
 DOCFMT=-version=CoreDdoc
 
@@ -90,11 +94,13 @@ SRCS:=$(subst \,/,$(SRCS))
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32	 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o $(OBJDIR)/complex.o
+OBJS:=errno_c.o threadasm.o complex.o
+OBJS_LIB:=$(addprefix $(OBJ_LIB_DIR)/,$(OBJS))
+OBJS_DLL:=$(addprefix $(OBJ_DLL_DIR)/,$(OBJS))
 
 ######################## All of'em ##############################
 
-target : import copy $(DRUNTIME) doc
+target : import copy druntime doc
 
 ######################## Doc .html file generation ##############################
 
@@ -134,34 +140,48 @@ $(IMPDIR)/%.d : src/%.d
 
 ################### C/ASM Targets ############################
 
-$(OBJDIR)/%.o : src/rt/%.c
+$(OBJDIR)/%/complex.o : src/rt/complex.c
 	@mkdir -p `dirname $@`
 	$(CC) -c $(CFLAGS) $< -o$@
 
-$(OBJDIR)/errno_c.o : src/core/stdc/errno.c
+$(OBJDIR)/%/errno_c.o : src/core/stdc/errno.c
 	@mkdir -p `dirname $@`
 	$(CC) -c $(CFLAGS) $< -o$@
 
-$(OBJDIR)/threadasm.o : src/core/threadasm.S
+$(OBJDIR)/%/threadasm.o : src/core/threadasm.S
 	@mkdir -p $(OBJDIR)
 	$(CC) $(ASMFLAGS) -c $(CFLAGS) $< -o$@
 
+########################  ##############################
+
+.PHONY: druntime druntime_dll druntime_lib
+druntime: $(TARGET)
+
 ######################## Create a shared library ##############################
 
-dll: override PIC:=-fPIC
-dll: $(DRUNTIMESO)
+DRUNTIME_DLL:=lib/lib$(DRUNTIME_BASE)$(DOTDLL)
 
-$(DRUNTIMESO): $(OBJS) $(SRCS)
-	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
+druntime_dll: PIC:=-fPIC
+druntime_dll: $(DRUNTIME_DLL)
+
+$(DRUNTIME_DLL): $(OBJS_DLL) $(SRCS)
+	$(DMD) -shared -debuglib= -defaultlib= -of$@ -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS_DLL)
 
 ################### Library generation #########################
 
-$(DRUNTIME): $(OBJS) $(SRCS)
-	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
+DRUNTIME_LIB:=lib/lib$(DRUNTIME_BASE)$(DOTLIB)
 
-UT_MODULES:=$(patsubst src/%.d,$(OBJDIR)/%,$(SRCS))
+druntime_lib: $(DRUNTIME_LIB)
 
-unittest : $(UT_MODULES)
+$(DRUNTIME_LIB): $(OBJS_LIB) $(SRCS)
+	$(DMD) -lib -of$@ -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS_LIB)
+
+################### Unit tests #########################
+
+UT_MODULES:=$(patsubst src/%.d,%,$(SRCS))
+
+.PHONY: unittest unittest_dll unittest_lib
+unittest: $(UNITTEST)
 	@echo done
 
 ifeq ($(OS),freebsd)
@@ -170,37 +190,54 @@ else
 DISABLED_TESTS =
 endif
 
-$(addprefix $(OBJDIR)/,$(DISABLED_TESTS)) :
-	@echo $@ - disabled
-
-ifeq (,$(SHARED))
-
-$(OBJDIR)/test_runner: $(OBJS) $(SRCS) src/test_runner.d
-	$(DMD) $(UDFLAGS) -version=druntime_unittest -unittest -of$@ src/test_runner.d $(SRCS) $(OBJS) -debuglib= -defaultlib=
-
-else
-
-UT_DRUNTIME:=$(OBJDIR)/lib$(DRUNTIME_BASE)-ut$(DOTDLL)
-
-$(UT_DRUNTIME): $(OBJS) $(SRCS)
-	$(DMD) $(UDFLAGS) -shared -version=druntime_unittest -unittest -of$@ $(SRCS) $(OBJS) -debuglib= -defaultlib=
-
-$(OBJDIR)/test_runner: $(UT_DRUNTIME) src/test_runner.d
-	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L-L$(OBJDIR) -L-rpath=$(OBJDIR) -L-l$(DRUNTIME_BASE)-ut -debuglib= -defaultlib=
-
-endif
-
 # macro that returns the module name given the src path
 moduleName=$(subst rt.invariant,invariant,$(subst object_,object,$(subst /,.,$(1))))
 
-$(OBJDIR)/% : $(OBJDIR)/test_runner
+################### Unit tests with a shared druntime #########################
+
+UT_DLL_DIR:=$(OBJ_DLL_DIR)/unittest
+UT_DRUNTIME:=$(UT_DLL_DIR)/lib$(DRUNTIME_BASE)-ut$(DOTDLL)
+
+unittest_dll: PIC:=-fPIC
+unittest_dll: $(UT_DLL_DIR)/test_runner $(addprefix $(UT_DLL_DIR)/,$(UT_MODULES))
+
+$(UT_DRUNTIME): $(OBJS_DLL) $(SRCS)
+	$(DMD) $(UDFLAGS) -shared -version=druntime_unittest -unittest -of$@ $(SRCS) $(OBJS_DLL) -debuglib= -defaultlib=
+
+$(UT_DLL_DIR)/test_runner: $(UT_DRUNTIME) src/test_runner.d
+	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L-L$(UT_DLL_DIR) -L-rpath=$(UT_DLL_DIR) -L-l$(DRUNTIME_BASE)-ut -debuglib= -defaultlib=
+
+$(UT_DLL_DIR)/% : $(UT_DLL_DIR)/test_runner
 	@mkdir -p $(dir $@)
 # make the file very old so it builds and runs again if it fails
 	@touch -t 197001230123 $@
 # run unittest in its own directory
-	$(QUIET)$(RUN) $(OBJDIR)/test_runner $(call moduleName,$*)
+	$(QUIET)$(RUN) $< $(call moduleName,$*)
 # succeeded, render the file new again
 	@touch $@
+
+################### Unit tests with a static druntime #########################
+
+UT_LIB_DIR:=$(OBJ_LIB_DIR)/unittest
+
+unittest_lib: $(UT_LIB_DIR)/test_runner $(addprefix $(UT_LIB_DIR)/,$(UT_MODULES))
+
+$(UT_LIB_DIR)/test_runner: $(OBJS_LIB) $(SRCS) src/test_runner.d
+	$(DMD) $(UDFLAGS) -version=druntime_unittest -unittest -of$@ src/test_runner.d $(SRCS) $(OBJS_LIB) -debuglib= -defaultlib=
+
+$(addprefix $(UT_LIB_DIR)/,$(DISABLED_TESTS)) :
+	@echo $@ - disabled
+
+$(UT_LIB_DIR)/% : $(UT_LIB_DIR)/test_runner
+	@mkdir -p $(dir $@)
+# make the file very old so it builds and runs again if it fails
+	@touch -t 197001230123 $@
+# run unittest in its own directory
+	$(QUIET)$(RUN) $< $(call moduleName,$*)
+# succeeded, render the file new again
+	@touch $@
+
+###################  #########################
 
 detab:
 	detab $(MANIFEST)
