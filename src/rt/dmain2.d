@@ -353,7 +353,10 @@ extern (C) CArgs rt_cArgs()
  * As we need to deal with actual calling convention we have to mark it
  * as `extern(C)` and use its symbol name.
  */
-extern(C) int _Dmain(char[][] args);
+extern(C) int _Dmain(char[][] args)
+{
+    throw new Error("D main function is not defined");
+}
 alias extern(C) int function(char[][] args) MainFunc;
 
 /***********************************
