@@ -353,9 +353,30 @@ extern (C) CArgs rt_cArgs()
  * As we need to deal with actual calling convention we have to mark it
  * as `extern(C)` and use its symbol name.
  */
-extern(C) int _Dmain(char[][] args)
+
+/***********************************
+ * This makes druntime not to depend on _Dmain for supporting linking
+ * without this function (needed for dynamic libraries).
+ */
+
+version(druntime_unittest)
 {
-    throw new Error("D main function is not defined");
+    // _Dmain is defined in this version
+    extern(C) int _Dmain(char[][] args);
+} 
+else 
+{
+    version (unittest) 
+    {
+        extern(C) int _Dmain(char[][] args);
+    }
+    else 
+    {
+        extern(C) int _Dmain(char[][] args)
+        {
+            throw new Error("D main function is not defined");
+        }
+    }
 }
 alias extern(C) int function(char[][] args) MainFunc;
 
