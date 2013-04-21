@@ -206,7 +206,7 @@ size_t computeHash(T)(auto ref T val, size_t seed = 0)
     Compute hash value of associative array, when information of array static type is available.
     CTFE ready.
 */
-@trusted pure nothrow
+@trusted nothrow
 size_t aaGetHashStatic(T)(T aa) if(__traits(isAssociativeArray, T))
 {
     try
