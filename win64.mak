@@ -188,6 +188,9 @@ $(IMPDIR)\core\time.d : src\core\time.d
 $(IMPDIR)\core\vararg.d : src\core\vararg.d
 	copy $** $@
 
+$(IMPDIR)\core\util\hash.d : src\core\util\hash.d
+	copy $** $@
+
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d
 	copy $** $@
 
