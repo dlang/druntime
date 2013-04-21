@@ -125,8 +125,8 @@ size_t stringHash(in char[] arr)
 /**
     Compute hash value for different types.
 */
-@trusted nothrow
-size_t computeHash(T)(auto ref T val, size_t seed = 0)
+@trusted nothrow pure
+size_t computeHash(T)(auto ref T val, size_t seed = 0) if(!(is(T U: U[])&&is(Unqual!U: Object)) && !is(Unqual!U: Object))
 {
     static if(is(T: const(char)[]))
     {
@@ -152,7 +152,7 @@ size_t computeHash(T)(auto ref T val, size_t seed = 0)
     }
     else static if(__traits(compiles, val.toUbyte()))
     {
-        auto bytes = val[].toUbyte();
+        auto bytes = val.toUbyte();
         return hashOf(bytes.ptr, bytes.length);
     }
     else static if(__traits(isStaticArray, T))
@@ -163,16 +163,6 @@ size_t computeHash(T)(auto ref T val, size_t seed = 0)
             cur_hash = computeHash(cur, cur_hash);
         }
         return cur_hash;
-    }
-    else static if(is(T U: U[])&&is(Unqual!U: Object))
-    {
-        size_t hash = 0;
-        foreach (Object o; val)
-        {
-            if (o)
-                hash += o.toHash();
-        }
-        return hash;
     }
     else static if(is(T X : X[]))
     {
@@ -187,10 +177,6 @@ size_t computeHash(T)(auto ref T val, size_t seed = 0)
     {
         return val.toHash();
     }
-    else static if(is(Unqual!T == interface)||is(Unqual!T == class))
-    {
-        return val ? (cast(Object)val).toHash() : 0;
-    }
     else static if(__traits(isAssociativeArray, T))
     {
         return aaGetHashStatic(val);
@@ -199,6 +185,26 @@ size_t computeHash(T)(auto ref T val, size_t seed = 0)
     {
         const(ubyte)[] bytes = cast(const(ubyte)[])cast(const(void)[])((&val)[0..1]);
         return hashOf(bytes.ptr, bytes.length);
+    }
+}
+
+
+@trusted nothrow
+size_t computeHash(T)(auto ref T val, size_t seed = 0) if((is(T U: U[])&&is(Unqual!U: Object)) || is(Unqual!U: Object))
+{
+    static if(is(T U: U[])&&is(Unqual!U: Object))
+    {
+        size_t hash = 0;
+        foreach (Object o; val)
+        {
+            if (o)
+                hash += o.toHash();
+        }
+        return hash;
+    }
+    else
+    {
+        static assert(0);
     }
 }
 
@@ -266,7 +272,8 @@ size_t aaGetHash(in void* aa, const(TypeInfo) tiRaw)
 /**
     Compute hash value of static array, when information of array static type is unavailable.
 */
-size_t saGetHash(in void* p, const(TypeInfo) tiRaw) nothrow
+@trusted nothrow
+size_t saGetHash(in void* p, const(TypeInfo) tiRaw) 
 {
     TypeInfo_StaticArray ti = unqualTi!(TypeInfo_StaticArray)(tiRaw);
     assert(ti);
@@ -283,7 +290,8 @@ size_t saGetHash(in void* p, const(TypeInfo) tiRaw) nothrow
 /**
     Compute hash value of dynamic array, when information of array static type is unavailable.
 */
-size_t daGetHash(in void* p, const(TypeInfo) tiRaw) nothrow
+@trusted nothrow
+size_t daGetHash(in void* p, const(TypeInfo) tiRaw) 
 {
     TypeInfo_StaticArray ti = unqualTi!(TypeInfo_StaticArray)(tiRaw);
     assert(ti);
@@ -296,7 +304,8 @@ size_t daGetHash(in void* p, const(TypeInfo) tiRaw) nothrow
 /**
     Compute hash value of interface, when information of array static type is unavailable.
 */
-size_t interfaceGetHash(in void* p) nothrow
+@trusted nothrow
+size_t interfaceGetHash(in void* p) 
 {
     if(!*cast(void**)p) return 0;
     Interface* pi = **cast(Interface ***)*cast(void**)p;
@@ -307,7 +316,8 @@ size_t interfaceGetHash(in void* p) nothrow
 /**
     Compute hash value of struct, when information of array static type is unavailable.
 */
-size_t structGetHash(in void* p, const(TypeInfo_Struct) ti) nothrow @safe pure
+@safe nothrow pure
+size_t structGetHash(in void* p, const(TypeInfo_Struct) ti)  //pure
 {
     assert(p);
     if (ti.xtoHash)
@@ -404,7 +414,7 @@ private const(ubyte)[] toUbyte(T)(T[] arr) if(__traits(isFloating, T) || is(T[]:
 }
 
 @trusted pure nothrow
-private const(ubyte)[] toUbyte(T)(T val) if(__traits(isIntegral, T)) 
+private const(ubyte)[] toUbyte(T)(ref T val) if(__traits(isIntegral, T)) 
 {
     static if(T.sizeof == 1)
     {
@@ -444,7 +454,7 @@ private const(ubyte)[] toUbyte(T)(T val) if(__traits(isIntegral, T))
 }
 
 @trusted pure nothrow
-private const(ubyte)[] toUbyte(T)(T val) if(is(Unqual!T == float)||is(Unqual!T == ifloat)) 
+private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float)||is(Unqual!T == ifloat)) 
 {
     if(__ctfe)
     {
@@ -457,11 +467,11 @@ private const(ubyte)[] toUbyte(T)(T val) if(is(Unqual!T == float)||is(Unqual!T =
 }
 
 @trusted pure nothrow
-private const(ubyte)[] toUbyte(T)(T val) if(is(Unqual!T == double)||is(Unqual!T == idouble)) 
+private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == double)||is(Unqual!T == idouble)) 
 {
     if(__ctfe)
     {
-        return (*cast(int*)&val).toUbyte();
+        return (*cast(long*)&val).toUbyte();
     }
     else
     {
@@ -470,7 +480,7 @@ private const(ubyte)[] toUbyte(T)(T val) if(is(Unqual!T == double)||is(Unqual!T 
 }
 
 @trusted pure nothrow
-private const(ubyte)[] toUbyte(T)(T val) if(is(Unqual!T == real)||is(Unqual!T == ireal)) 
+private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == real)||is(Unqual!T == ireal)) 
 {
     if(__ctfe)
     {
@@ -490,11 +500,13 @@ private const(ubyte)[] toUbyte(T)(T val) if(is(Unqual!T == real)||is(Unqual!T ==
 }
 
 @trusted pure nothrow
-private const(ubyte)[] toUbyte(T)(T val) if(is(Unqual!T == cfloat)||is(Unqual!T == cdouble)||is(Unqual!T == creal)) 
+private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == cfloat)||is(Unqual!T == cdouble)||is(Unqual!T == creal)) 
 {
     if(__ctfe)
     {
-        return (val.re.toUbyte() ~ val.im.toUbyte());
+        auto re = val.re;
+        auto im = val.im;
+        return (re.toUbyte() ~ im.toUbyte());
     }
     else
     {
