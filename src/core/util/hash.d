@@ -297,7 +297,16 @@ size_t saGetHash(in void* p, const(TypeInfo) tiRaw)
 @trusted nothrow
 size_t daGetHash(in void* p, const(TypeInfo) tiRaw) 
 {
-    TypeInfo_StaticArray ti = unqualTi!(TypeInfo_StaticArray)(tiRaw);
+    TypeInfo_Array ti = unqualTi!(TypeInfo_Array)(tiRaw);
+    try
+    {   //TypeInfo.opEquals not nothrow
+        if(ti.next == typeid(const(char))||ti.next == typeid(shared(char)))
+            return typeid(string).getHash(p); //Use algorithm, optimized for strings
+    }
+    catch
+    {
+        assert(0);
+    }
     assert(ti);
     size_t vsz = ti.next.tsize;
     auto arr = *cast(ubyte[]*)p;

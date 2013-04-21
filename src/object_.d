@@ -695,7 +695,8 @@ class TypeInfo_Function : TypeInfo
 
     override size_t getHash(in void* p) @trusted const
     {
-        return computeHash(*cast(void**)p);
+        alias int function() fn;
+        return computeHash(*cast(fn*)p);
     }
     
     // BUG: need to add the rest of the functions
@@ -727,7 +728,7 @@ class TypeInfo_Delegate : TypeInfo
     override size_t getHash(in void* p) @trusted const
     {
         alias int delegate() dg;
-        return computeHash(*cast(dg**)p);
+        return computeHash(*cast(dg*)p);
     }
     
     // BUG: need to add the rest of the functions
