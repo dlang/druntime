@@ -2078,12 +2078,21 @@ private:
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);
-        this(Slot* next, size_t hash, Key key, Value value)
+        this(Slot* next, size_t hash, ref Key key, ref Value value)
         {
             this.next = next;
             this.hash = hash;
-            this.key = key;
-            this.value = value;
+            static if(__traits(compiles, {this.key = key; this.value = value;}))
+            {
+                this.key = key;
+                this.value = value;
+            }
+            else
+            {
+                import core.stdc.string;
+                memcpy(cast(void*)&this.key, cast(void*)&key, key.sizeof);
+                memcpy(cast(void*)&this.value, cast(void*)&value, value.sizeof);
+            }
         }
     }
 
