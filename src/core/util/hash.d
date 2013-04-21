@@ -126,7 +126,7 @@ size_t stringHash(in char[] arr)
     Compute hash value for different types.
 */
 @trusted nothrow pure
-size_t computeHash(T)(auto ref T val, size_t seed = 0) if(!(is(T U: U[])&&is(Unqual!U: Object)) && !is(Unqual!U: Object))
+size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) && !is(Unqual!T : Object))
 {
     static if(is(T: const(char)[]))
     {
@@ -190,7 +190,7 @@ size_t computeHash(T)(auto ref T val, size_t seed = 0) if(!(is(T U: U[])&&is(Unq
 
 
 @trusted nothrow
-size_t computeHash(T)(auto ref T val, size_t seed = 0) if((is(T U: U[])&&is(Unqual!U: Object)) || is(Unqual!U: Object))
+size_t computeHash(T)(auto ref T val) if((is(T U: U[])&&is(Unqual!U: Object)) || is(Unqual!T: Object))
 {
     static if(is(T U: U[])&&is(Unqual!U: Object))
     {
@@ -216,7 +216,7 @@ size_t computeHash(T)(auto ref T val, size_t seed = 0) if((is(T U: U[])&&is(Unqu
     Compute hash value of associative array, when information of array static type is available.
     CTFE ready.
 */
-@trusted nothrow
+@trusted /*pure*/ nothrow
 size_t aaGetHashStatic(T)(T aa) if(__traits(isAssociativeArray, T))
 {
     try
