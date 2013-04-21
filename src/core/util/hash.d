@@ -202,6 +202,10 @@ size_t computeHash(T)(auto ref T val, size_t seed = 0) if((is(T U: U[])&&is(Unqu
         }
         return hash;
     }
+    else static if(is(Unqual!T == interface)||is(Unqual!T == class))
+    {
+        return val ? (cast(Object)val).toHash() : 0;
+    } 
     else
     {
         static assert(0);
