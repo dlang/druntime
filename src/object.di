@@ -14,7 +14,6 @@ module object;
 
 private
 {
-    import core.util.hash;
     extern(C) void rt_finalize(void *ptr, bool det=true);
 }
 
@@ -394,20 +393,20 @@ extern (C)
 //CTFE-ready. CTFE allows to pass AA literal as argument but disallow to returns it
 AssociativeArray!(Key, Value) associativeArrayLiteral(Key, Value)(Value[Key] aa_lit) 
 {
-      alias AA = AssociativeArray!(Key, Value);
-      size_t magic = AA.chooseSize(aa_lit.length);
-      AA.Slot*[] nodes;
-      nodes.length = magic;
-      foreach(key, val; aa_lit)
-      {
-	  size_t hash = key.computeHash();
-	  size_t idx = hash % magic;
-	  auto slot = new AA.Slot(nodes[idx], hash, key, val);
-	  nodes[idx] = slot;
-	  
-      }
-      auto p = new AA.Hashtable(nodes, aa_lit.length, typeid(Key));
-      return AA(p);
+    import core.util.hash;
+    alias AA = AssociativeArray!(Key, Value);
+    size_t magic = AA.chooseSize(aa_lit.length);
+    AA.Slot*[] nodes;
+    nodes.length = magic;
+    foreach(key, val; aa_lit)
+    {
+        size_t hash = core.util.hash.computeHash(key);
+        size_t idx = hash % magic;
+        auto slot = new AA.Slot(nodes[idx], hash, key, val);
+        nodes[idx] = slot;
+    }
+    auto p = new AA.Hashtable(nodes, aa_lit.length, typeid(Key));
+    return AA(p);
 }
 
 unittest
