@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_ubyte;
 
+private import core.util.hash;
+
 // ubyte
 
 class TypeInfo_h : TypeInfo
@@ -26,7 +28,7 @@ class TypeInfo_h : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return *cast(ubyte *)p;
+        return computeHash(*cast(ubyte*)p);
     }
 
     override bool equals(in void* p1, in void* p2)

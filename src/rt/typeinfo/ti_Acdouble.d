@@ -14,7 +14,7 @@
 module rt.typeinfo.ti_Acdouble;
 
 private import rt.typeinfo.ti_cdouble;
-private import rt.util.hash;
+private import core.util.hash;
 
 // cdouble[]
 
@@ -27,7 +27,7 @@ class TypeInfo_Ar : TypeInfo_Array
     override size_t getHash(in void* p) @trusted const
     {
         cdouble[] s = *cast(cdouble[]*)p;
-        return hashOf(s.ptr, s.length * cdouble.sizeof);
+        return s.computeHash();
     }
 
     override bool equals(in void* p1, in void* p2) const

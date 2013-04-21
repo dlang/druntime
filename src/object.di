@@ -14,6 +14,7 @@ module object;
 
 private
 {
+    import core.util.hash;
     extern(C) void rt_finalize(void *ptr, bool det=true);
 }
 
@@ -404,6 +405,13 @@ private:
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);
+        this(Slot* next, size_t hash, Key key, Value value)
+        {
+            this.next = next;
+            this.hash = hash;
+            this.key = key;
+            this.value = value;
+        }
     }
 
     struct Hashtable
@@ -412,6 +420,13 @@ private:
         size_t nodes;
         TypeInfo keyti;
         Slot*[4] binit;
+        
+        this(Slot*[] b, size_t nodes, TypeInfo keyti)
+        {
+            this.b = b;
+            this.nodes = nodes;
+            this.keyti = keyti;
+        }
     }
 
     void* p; // really Hashtable*
@@ -465,8 +480,45 @@ private:
         }
     }
 
+    static immutable size_t[] prime_list = [
+                  31UL,
+                  97UL,            389UL,
+               1_543UL,          6_151UL,
+              24_593UL,         98_317UL,
+              393_241UL,      1_572_869UL,
+            6_291_469UL,     25_165_843UL,
+          100_663_319UL,    402_653_189UL,
+        1_610_612_741UL,  4_294_967_291UL,
+    //  8_589_934_513UL, 17_179_869_143UL
+    ];
+
+
+    size_t chooseSize(size_t s)
+    {
+        foreach(cur; prime_list)
+        {
+            if(cur> s) return cur;
+        }
+        return prime_list[$-1];
+    }
 public:
 
+    this(Value[Key] aa_lit) //CTFE-ready. CTFE allows to pass AA literal as argument but disallow to returns it
+    {
+        size_t magic = chooseSize(aa_lit.length);
+        Slot*[] nodes;
+        nodes.length = magic;
+        foreach(key, val; aa_lit)
+        {
+            size_t hash = key.computeHash();
+            size_t idx = hash % magic;
+            Slot* slot = new Slot(nodes[idx], hash, key, val);
+            nodes[idx] = slot;
+            
+        }
+        p = new Hashtable(nodes, aa_lit.length, typeid(Key));
+    }
+    
     @property size_t length() { return _aaLen(p); }
 
     Value[Key] rehash() @property

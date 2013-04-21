@@ -13,7 +13,7 @@
  */
 module rt.typeinfo.ti_cdouble;
 
-private import rt.util.hash;
+private import core.util.hash;
 
 // cdouble
 
@@ -51,7 +51,7 @@ class TypeInfo_r : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return hashOf(p, cdouble.sizeof);
+        return computeHash(*cast(cdouble*)p);
     }
 
     override bool equals(in void* p1, in void* p2)

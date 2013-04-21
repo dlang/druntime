@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_ptr;
 
+private import core.util.hash;
+
 // pointer
 
 class TypeInfo_P : TypeInfo
@@ -24,7 +26,7 @@ class TypeInfo_P : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return cast(uint)*cast(void* *)p;
+        return computeHash(*cast(void**)p);
     }
 
     override bool equals(in void* p1, in void* p2)
