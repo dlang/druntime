@@ -21,9 +21,6 @@ private
     import core.stdc.stdlib;
     import core.stdc.string;
     import rt.util.string;
-
-    version (Win64)
-        alias core.stdc.stdlib._strtoui64 strtoull;
 }
 
 extern (C):

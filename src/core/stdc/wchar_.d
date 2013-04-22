@@ -21,6 +21,12 @@ public import core.stdc.stddef;  // for size_t, wchar_t
 public import core.stdc.time;    // for tm
 public import core.stdc.stdint;  // for WCHAR_MIN, WCHAR_MAX
 
+version( DigitalMars )
+{
+    version( Win64 )
+        version = MSVCRT;
+}
+
 extern (C):
 @system:
 nothrow:
@@ -66,15 +72,13 @@ extern (D) @trusted
 @trusted
 {
     wint_t ungetwc(wint_t c, FILE* stream);
-    version( Win64 )
+    version( MSVCRT )
     {
-        // MSVC defines this as an inline function.
+        // MSVCRT defines this as an inline function.
         int fwide(FILE* stream, int mode) { return mode; }
     }
     else
-    {
-        int    fwide(FILE* stream, int mode);
-    }
+        int fwide(FILE* stream, int mode);
 }
 
 double  wcstod(in wchar_t* nptr, wchar_t** endptr);
