@@ -128,7 +128,12 @@ size_t stringHash(in char[] arr)
 @trusted nothrow pure
 size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) && !is(Unqual!T : Object) && !__traits(isAssociativeArray, T))
 {
-    static if(is(T: const(char)[]))
+    static if(is(Unqual!T EType == enum))
+    {
+        EType e_val = cast(EType)val;
+        return computeHash(e_val);
+    }
+    else static if(is(T: const(char)[]))
     {
         return stringHash(val);
     }
@@ -210,7 +215,7 @@ size_t computeHash(T)(auto ref T val) if((is(T U: U[])&&is(Unqual!U: Object)) ||
 
 unittest
 {
-    struct Foo
+    static struct Foo
     {
         int a = 99;
         float b = 4.0;
@@ -220,14 +225,14 @@ unittest
         }
     }
 
-    struct Bar
+    static struct Bar
     {
         char c = 'x';
         int a = 99;
         float b = 4.0;
     }
 
-    class Boo
+    static class Boo
     {
         override size_t toHash()
         {
@@ -664,7 +669,7 @@ private bool isNonReferenceStruct(T)() if(is(Unqual!T == struct) || is(Unqual!T 
 {
     foreach(cur; T.init.tupleof)
     {
-        static if(!isNonReference!(typeof(cur))) return false;
+        static if(!isNonReference!(typeof(cur))()) return false;
     }
     
     return true;
