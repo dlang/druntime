@@ -2074,7 +2074,7 @@ AssociativeArray!(Key, Value) associativeArrayLiteral(Key, Value)(Value[Key] aa_
       nodes.length = magic;
       foreach(key, val; aa_lit)
       {
-	  size_t hash = key.computeHash();
+	  size_t hash = computeHash(key);
 	  size_t idx = hash % magic;
 	  auto slot = new AA.Slot(nodes[idx], hash, key, val);
 	  nodes[idx] = slot;

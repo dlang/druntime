@@ -126,7 +126,7 @@ size_t stringHash(in char[] arr)
     Compute hash value for different types.
 */
 @trusted nothrow pure
-size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) && !is(Unqual!T : Object))
+size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) && !is(Unqual!T : Object) && !__traits(isAssociativeArray, T))
 {
     static if(is(T: const(char)[]))
     {
@@ -140,29 +140,19 @@ size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) &
     {
         return *cast(int*)&val;
     }
-    else static if(__traits(isArithmetic, T))
-    {
-        auto bytes = val.toUbyte();
-        return hashOf(bytes.ptr, bytes.length);
-    }
-    else static if(__traits(isStaticArray, T) && __traits(compiles, val.toUbyte()))
-    {
-        auto bytes = val[].toUbyte();
-        return hashOf(bytes.ptr, bytes.length);
-    }
-    else static if(__traits(compiles, val.toUbyte()))
-    {
-        auto bytes = val.toUbyte();
-        return hashOf(bytes.ptr, bytes.length);
-    }
     else static if(__traits(isStaticArray, T))
     {
         size_t cur_hash = 0;
         foreach(ref cur; val)
         {
-            cur_hash = computeHash(cur, cur_hash);
+            cur_hash += computeHash(cur);
         }
         return cur_hash;
+    }
+    else static if(is(typeof(toUbyte(val)) == const(ubyte)[]) && !is(Unqual!T == struct) && !is(Unqual!T == union))
+    {
+        auto bytes = toUbyte(val);
+        return hashOf(bytes.ptr, bytes.length);
     }
     else static if(is(T X : X[]))
     {
@@ -173,13 +163,15 @@ size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) &
     {
         return cast(size_t)val;
     }
-    else static if((is(Unqual!T == struct) || is(Unqual!T == union))  &&__traits(compiles, val.toHash()))
+    else static if((is(Unqual!T == struct) || is(Unqual!T == union))  && is(typeof(val.toHash()) == size_t))
     {
         return val.toHash();
     }
-    else static if(__traits(isAssociativeArray, T))
+    else static if(is(Unqual!T == struct) || is(Unqual!T == union))
     {
-        return aaGetHashStatic(val);
+
+        auto bytes = toUbyte(val);
+        return hashOf(bytes.ptr, bytes.length);
     }
     else
     {
@@ -190,7 +182,7 @@ size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) &
 
 
 @trusted nothrow
-size_t computeHash(T)(auto ref T val) if((is(T U: U[])&&is(Unqual!U: Object)) || is(Unqual!T: Object))
+size_t computeHash(T)(auto ref T val) if((is(T U: U[])&&is(Unqual!U: Object)) || is(Unqual!T: Object) || __traits(isAssociativeArray, T))
 {
     static if(is(T U: U[])&&is(Unqual!U: Object))
     {
@@ -206,10 +198,125 @@ size_t computeHash(T)(auto ref T val) if((is(T U: U[])&&is(Unqual!U: Object)) ||
     {
         return val ? (cast(Object)val).toHash() : 0;
     } 
+    else static if(__traits(isAssociativeArray, T))
+    {
+        return aaGetHashStatic(val);
+    }
     else
     {
         static assert(0);
     }
+}
+
+unittest
+{
+    struct Foo
+    {
+        int a = 99;
+        float b = 4.0;
+        size_t toHash() const pure @safe nothrow
+        {
+            return a;
+        }
+    }
+
+    struct Bar
+    {
+        char c = 'x';
+        int a = 99;
+        float b = 4.0;
+    }
+
+    class Boo
+    {
+        override size_t toHash()
+        {
+            return 1;
+        }
+    }
+
+    enum Gun: long
+    {
+        A = 99,
+        B = 17
+    }
+
+    enum double dexpr = 3.14;
+    enum float fexpr = 2.71;
+    enum wstring wsexpr = "abcdef"w;
+    enum string csexpr = "abcdef";
+    enum int iexpr = 7;
+    enum long lexpr = 42;
+    enum int[2][3] saexpr = [[1, 2], [3, 4], [5, 6]];
+    enum int[] daexpr = [7,8,9];
+    enum Foo thsexpr = Foo();
+    enum Bar vsexpr = Bar();
+    enum int[int] aaexpr = [1:2, 3:4, 5:6];
+    enum Gun eexpr = Gun.A;
+    enum cdouble coxpr = 7+4i;
+
+    //CTFE hashes
+    enum h1 = dexpr.computeHash();
+    enum h2 = fexpr.computeHash();
+    enum h3 = wsexpr.computeHash();
+    enum h4 = csexpr.computeHash();
+    enum h5 = iexpr.computeHash();
+    enum h6 = lexpr.computeHash();
+    enum h7 = saexpr.computeHash();
+    enum h8 = daexpr.computeHash();
+    enum h9 = thsexpr.computeHash();
+    enum h10 = vsexpr.computeHash();
+    enum h11 = aaexpr.computeHash();
+    enum h12 = eexpr.computeHash();
+    enum h13 = coxpr.computeHash();
+    enum h14 = computeHash(new Boo);
+    
+    
+    auto v1 = dexpr;
+    auto v2 = fexpr;
+    auto v3 = wsexpr;
+    auto v4 = csexpr;
+    auto v5 = iexpr;
+    auto v6 = lexpr;
+    auto v7 = saexpr;
+    auto v8 = daexpr;
+    auto v9 = thsexpr;
+    auto v10 = vsexpr;
+    auto v11 = aaexpr;
+    auto v12 = eexpr;
+    auto v13 = coxpr;    
+    auto v14 = new Boo;
+    
+    //runtime hashes
+    auto rth1 = typeid(typeof(v1)).getHash(&v1);
+    auto rth2 = typeid(typeof(v2)).getHash(&v2);
+    auto rth3 = typeid(typeof(v3)).getHash(&v3);
+    auto rth4 = typeid(typeof(v4)).getHash(&v4);
+    auto rth5 = typeid(typeof(v5)).getHash(&v5);
+    auto rth6 = typeid(typeof(v6)).getHash(&v6);
+    auto rth7 = typeid(typeof(v7)).getHash(&v7);
+    auto rth8 = typeid(typeof(v8)).getHash(&v8);
+    auto rth9 = typeid(typeof(v9)).getHash(&v9);
+    auto rth10 = typeid(typeof(v10)).getHash(&v10);
+    auto rth11 = typeid(typeof(v11)).getHash(&v11);
+    auto rth12 = typeid(typeof(v12)).getHash(&v12);
+    auto rth13 = typeid(typeof(v13)).getHash(&v13);
+    auto rth14 = typeid(typeof(v14)).getHash(&v14);
+    
+    assert(h1 == rth1);
+    assert(h2 == rth2);
+    assert(h3 == rth3);
+    assert(h4 == rth4);
+    assert(h5 == rth5);
+    assert(h6 == rth6);
+    assert(h7 == rth7);
+    assert(h8 == rth8);
+    assert(h9 == rth9);
+    assert(h10 == rth10);
+    assert(h11 == rth11);
+    assert(h12 == rth12);
+    assert(h13 == rth13);
+    assert(h14 == rth14);
 }
 
 /**
@@ -391,14 +498,14 @@ private const(ubyte)[] toUbyte(T)(T[] arr) if(T.sizeof == 1)
 }
 
 @trusted pure nothrow
-private const(ubyte)[] toUbyte(T)(T[] arr) if(__traits(isIntegral, T) && !is(T[] : const(wchar)[]) && !is(T[] : const(dchar)[]) && (T.sizeof != 1)) 
+private const(ubyte)[] toUbyte(T)(T[] arr) if(is(typeof(toUbyte(arr[0])) == const(ubyte)[])) 
 {
     if(__ctfe)
     {
         const(ubyte)[] ret;
         foreach(cur; arr)
         {
-            ret ~= cur.toUbyte();
+            ret ~= toUbyte(cur);
         }
         return ret;
     }
@@ -409,25 +516,7 @@ private const(ubyte)[] toUbyte(T)(T[] arr) if(__traits(isIntegral, T) && !is(T[]
 }
 
 @trusted pure nothrow
-private const(ubyte)[] toUbyte(T)(T[] arr) if(__traits(isFloating, T) || is(T[]: const(wchar)[]) || is(T[]: const(dchar)[])) 
-{
-    if(__ctfe)
-    {
-        const(ubyte)[] ret;
-        foreach(cur; arr)
-        {
-            ret ~= cur.toUbyte();
-        }
-        return ret;
-    }
-    else
-    {
-        return cast(const(ubyte)[])cast(const(void)[])arr;
-    }
-}
-
-@trusted pure nothrow
-private const(ubyte)[] toUbyte(T)(ref T val) if(__traits(isIntegral, T)) 
+private const(ubyte)[] toUbyte(T)(ref T val) if(__traits(isIntegral, T)&&!is(Unqual!T == enum)) 
 {
     static if(T.sizeof == 1)
     {
@@ -443,22 +532,18 @@ private const(ubyte)[] toUbyte(T)(ref T val) if(__traits(isIntegral, T))
     else if(__ctfe)
     {
         ubyte[T.sizeof] tmp;
+	Unqual!T val_ = val;
         for(size_t i=0; i<T.sizeof; ++i)
         {
             size_t idx;
             version(LittleEndian) idx = i;
             else idx = T.sizeof-i-1;
-            tmp[idx] = cast(ubyte)(val&0xff);
-            val >>= 8;
+            tmp[idx] = cast(ubyte)(val_&0xff);
+            val_ >>= 8;
         }
-        try
-        {
-            return tmp.dup; //nothrow in CTFE
-        }
-        catch
-        {
-            assert(0);
-        }
+
+        return tmp[];
+
     }
     else
     {
@@ -471,7 +556,7 @@ private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float)||is(Unqual
 {
     if(__ctfe)
     {
-        return (*cast(int*)&val).toUbyte();
+        return toUbyte(*cast(int*)&val);
     }
     else
     {
@@ -484,7 +569,7 @@ private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == double)||is(Unqua
 {
     if(__ctfe)
     {
-        return (*cast(long*)&val).toUbyte();
+        return toUbyte(*cast(long*)&val);
     }
     else
     {
@@ -497,20 +582,22 @@ private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == real)||is(Unqual!
 {
     if(__ctfe)
     {
-        try //CTFE .dup is nothrow
+        ubyte[T.sizeof] tmp;
+        for(size_t i=0; i<T.sizeof; ++i)
         {
-            return cast(const(ubyte)[])cast(const(void)[])[val].dup;
+            tmp[idx] = (cast(ubyte*)(&val))[i];
         }
-        catch
-        {
-            assert(0);
-        }
+
+        return tmp[];
+
     }
     else
     {
         return cast(const(ubyte)[])cast(const(void)[])((&val)[0..1]);
     }
 }
+
+
 
 @trusted pure nothrow
 private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == cfloat)||is(Unqual!T == cdouble)||is(Unqual!T == creal)) 
@@ -526,3 +613,81 @@ private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == cfloat)||is(Unqua
         return cast(const(ubyte)[])cast(const(void)[])((&val)[0..1]);
     }
 }
+
+
+@trusted pure nothrow
+private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == enum)) 
+{
+    if(__ctfe)
+    {
+        static if(is(Unqual!T V == enum)){}
+        V e_val = val;
+        return toUbyte(e_val);
+    }
+    else
+    {
+        return cast(const(ubyte)[])cast(const(void)[])((&val)[0..1]);
+    }
+}
+
+
+private bool isNonReference(T)()
+{
+    static if(is(Unqual!T == struct) || is(Unqual!T == union))
+    {
+        return isNonReferenceStruct!T();
+    }
+    else static if(__traits(isStaticArray, T))
+    {
+      return isNonReference!(typeof(T.init[0]))();
+    }
+    else static if(!__traits(isScalar, T))
+    {
+        return false;
+    }
+    else static if(is(T V : V*))
+    {
+        return false;
+    }
+    else static if(is(T == function))
+    {
+        return false;
+    }
+    else
+    {
+        return true;
+    }
+}
+
+
+private bool isNonReferenceStruct(T)() if(is(Unqual!T == struct) || is(Unqual!T == union))
+{
+    foreach(cur; T.init.tupleof)
+    {
+        static if(!isNonReference!(typeof(cur))) return false;
+    }
+    
+    return true;
+}
+
+
+@trusted pure nothrow
+private const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == struct) || is(Unqual!T == union)) 
+{  
+    static assert(isNonReferenceStruct!T(), "Unable to represent "~T.stringof~" as const(ubyte)[]");
+    if(__ctfe)
+    {
+        ubyte[T.sizeof] bytes;
+        foreach(key, cur; val.tupleof)
+        {
+            bytes[val.tupleof[key].offsetof .. val.tupleof[key].offsetof + cur.sizeof] = toUbyte(cur)[];
+        }
+        return bytes[];
+    }
+    else
+    {
+        return cast(const(ubyte)[])cast(const(void)[])((&val)[0..1]);
+    }
+}
+
+
