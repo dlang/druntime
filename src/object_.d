@@ -2087,7 +2087,7 @@ AssociativeArray!(Key, Value) associativeArrayLiteral(Key, Value)(Value[Key] aa_
 unittest
 {
     static straa = associativeArrayLiteral(["key1":"val1", "key2":"val2", "key3":"val3"]); //CTFE
-    string[string] aa = cast(string[string]) straa;
+    auto aa = cast(string[string]) straa;
     assert(aa["key1"] == "val1");
     assert(aa["key2"] == "val2");
     assert(aa["key3"] == "val3");
@@ -2108,21 +2108,12 @@ private:
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);
-        this(Slot* next, size_t hash, ref Key key, ref Value value)
+        this(Slot* next, size_t hash, ref Key k, ref Value v)
         {
             this.next = next;
             this.hash = hash;
-            static if(__traits(compiles, {this.key = key; this.value = value;}))
-            {
-                this.key = key;
-                this.value = value;
-            }
-            else
-            {
-                import core.stdc.string;
-                memcpy(cast(void*)&this.key, cast(void*)&key, key.sizeof);
-                memcpy(cast(void*)&this.value, cast(void*)&value, value.sizeof);
-            }
+            cast()key = cast()k;
+            cast()value = cast()v;
         }
     }
 
@@ -2359,6 +2350,13 @@ unittest
         // this.value = p.value would actually fail, because both side types of the assignment
         // are const(Json).
     }
+    
+    static straa = associativeArrayLiteral(["key1":Json(), "key2":Json(), "key3":Json()]); //CTFE
+    auto aa = cast(const(Json)[string]) straa;
+    assert(aa["key1"] == Json());
+    assert(aa["key2"] == Json());
+    assert(aa["key3"] == Json());
+    assert(aa == ["key1":const(Json)(), "key2":const(Json)(), "key3":const(Json)()]);
 }
 
 unittest
