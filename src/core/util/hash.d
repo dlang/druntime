@@ -126,7 +126,7 @@ size_t stringHash(in char[] arr)
     Compute hash value for different types.
 */
 @trusted nothrow pure
-size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) && !is(Unqual!T : Object) && !__traits(isAssociativeArray, T))
+size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&(is(Unqual!U == interface)||is(Unqual!U == class))) && !is(Unqual!T : Object) && !__traits(isAssociativeArray, T))
 {
     static if(is(Unqual!T EType == enum))
     {
@@ -153,6 +153,15 @@ size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) &
             cur_hash += computeHash(cur);
         }
         return cur_hash;
+    }
+    else static if(is(T S: S[])&&(is(Unqual!S == struct)||is(Unqual!S == union)) && is(typeof(val[0].toHash()) == size_t))
+    {
+        size_t hash = 0;
+        foreach (o; val)
+        {
+            hash += o.toHash();
+        }
+        return hash;
     }
     else static if(is(typeof(toUbyte(val)) == const(ubyte)[]) && !is(Unqual!T == struct) && !is(Unqual!T == union))
     {
@@ -187,15 +196,15 @@ size_t computeHash(T)(auto ref T val) if(!(is(T U: U[])&&is(Unqual!U: Object)) &
 
 
 @trusted nothrow
-size_t computeHash(T)(auto ref T val) if((is(T U: U[])&&is(Unqual!U: Object)) || is(Unqual!T: Object) || __traits(isAssociativeArray, T))
+size_t computeHash(T)(auto ref T val) if((is(T U: U[])&&(is(Unqual!U == interface)||is(Unqual!U == class))) || is(Unqual!T: Object) || __traits(isAssociativeArray, T))
 {
-    static if(is(T U: U[])&&is(Unqual!U: Object))
+    static if(is(T U: U[])&&(is(Unqual!U == interface)||is(Unqual!U == class)))
     {
         size_t hash = 0;
-        foreach (Object o; val)
+        foreach (o; val)
         {
             if (o)
-                hash += o.toHash();
+                hash += (cast(Object)o).toHash();
         }
         return hash;
     }
@@ -232,8 +241,16 @@ unittest
         float b = 4.0;
     }
 
-    static class Boo
+    interface IBoo
     {
+        void boo();
+    }
+    static class Boo: IBoo
+    {
+        override void boo()
+        {
+        }
+        
         override size_t toHash()
         {
             return 1;
@@ -259,6 +276,7 @@ unittest
     enum int[int] aaexpr = [1:2, 3:4, 5:6];
     enum Gun eexpr = Gun.A;
     enum cdouble coxpr = 7+4i;
+    enum Foo[] staexpr = [Foo(), Foo(), Foo()];
 
     //CTFE hashes
     enum h1 = dexpr.computeHash();
@@ -275,7 +293,9 @@ unittest
     enum h12 = eexpr.computeHash();
     enum h13 = coxpr.computeHash();
     enum h14 = computeHash(new Boo);
-    
+    enum h15 = staexpr.computeHash();
+    enum h16 = computeHash([new Boo, new Boo, new Boo]);
+    enum h17 = computeHash([cast(IBoo)new Boo, cast(IBoo)new Boo, cast(IBoo)new Boo]);
     
     auto v1 = dexpr;
     auto v2 = fexpr;
@@ -291,6 +311,9 @@ unittest
     auto v12 = eexpr;
     auto v13 = coxpr;    
     auto v14 = new Boo;
+    auto v15 = staexpr;
+    auto v16 = [new Boo, new Boo, new Boo];
+    auto v17 = [cast(IBoo)new Boo, cast(IBoo)new Boo, cast(IBoo)new Boo];
     
     //runtime hashes
     auto rth1 = typeid(typeof(v1)).getHash(&v1);
@@ -307,6 +330,11 @@ unittest
     auto rth12 = typeid(typeof(v12)).getHash(&v12);
     auto rth13 = typeid(typeof(v13)).getHash(&v13);
     auto rth14 = typeid(typeof(v14)).getHash(&v14);
+    auto rth15 = typeid(typeof(v15)).getHash(&v15);
+    auto rth16 = typeid(typeof(v16)).getHash(&v16);
+    auto rth17 = typeid(typeof(v17)).getHash(&v17);
+    
+    import core.stdc.stdio;
     
     assert(h1 == rth1);
     assert(h2 == rth2);
@@ -322,6 +350,9 @@ unittest
     assert(h12 == rth12);
     assert(h13 == rth13);
     assert(h14 == rth14);
+    assert(h15 == rth15);
+    assert(h16 == rth16);
+    assert(h17 == rth17);
 }
 
 /**
@@ -410,20 +441,65 @@ size_t saGetHash(in void* p, const(TypeInfo) tiRaw)
 size_t daGetHash(in void* p, const(TypeInfo) tiRaw) 
 {
     TypeInfo_Array ti = unqualTi!(TypeInfo_Array)(tiRaw);
+    assert(ti);
     try
     {   //TypeInfo.opEquals not nothrow
         if(ti.next == typeid(const(char))||ti.next == typeid(shared(char)))
+        {
             return typeid(string).getHash(p); //Use algorithm, optimized for strings
+        }
+        else if(cast(TypeInfo_Class)ti.next) //is class object
+        {
+            auto arr = *cast(Object[]*)p;
+            size_t hash = 0;
+            foreach(o; arr)
+            {
+                if(o)
+                    hash += o.toHash(); //can throw exception
+            }
+            return hash;
+        }
+        else if(cast(TypeInfo_Interface)ti.next) //is class object
+        {
+            auto arr = *cast(void*[]*)p;
+            size_t hash = 0;
+            foreach(cur; arr)
+            {
+                if(cur)
+                {
+                    Interface* pi = **cast(Interface ***)cur;
+                    Object o = cast(Object)(cur - pi.offset);
+                    hash += o.toHash();
+                }
+            }
+            return hash;
+        }
+        else if(cast(TypeInfo_Struct)ti.next && (cast(TypeInfo_Struct)ti.next).xtoHash) //is class object
+        {
+            auto struct_ti = cast(TypeInfo_Struct)ti.next;
+            auto arr = *cast(void[]*)p;
+            size_t hash = 0;
+            size_t sz = struct_ti.tsize;
+            auto xtoHash = struct_ti.xtoHash;
+            for(size_t i=0; i<arr.length; i++)
+            {
+                void* cur = arr.ptr + i*sz;
+                hash += xtoHash(cur);
+            }
+            return hash;
+        }
     }
     catch
     {
         assert(0);
     }
-    assert(ti);
+    
+
     size_t vsz = ti.next.tsize;
     auto arr = *cast(ubyte[]*)p;
     ubyte[] ubarr = arr.ptr[0 .. arr.length*vsz];
     return ubarr.computeHash();
+
 }
 
 /**
@@ -645,6 +721,10 @@ private bool isNonReference(T)()
     else static if(__traits(isStaticArray, T))
     {
       return isNonReference!(typeof(T.init[0]))();
+    }
+    else static if(is(Unqual!T E == enum))
+    {
+      return isNonReference!(E)();
     }
     else static if(!__traits(isScalar, T))
     {
