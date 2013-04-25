@@ -13,74 +13,10 @@
  */
 module rt.typeinfo.ti_float;
 
-private import core.util.hash;
+private import rt.typeinfo.ti_common;
 
 // float
 
-class TypeInfo_f : TypeInfo
+class TypeInfo_f : TypeInfoFloat!(float)
 {
-    @trusted:
-    pure:
-    nothrow:
-
-    static bool _equals(float f1, float f2)
-    {
-        return f1 == f2 ||
-                (f1 !<>= f1 && f2 !<>= f2);
-    }
-
-    static int _compare(float d1, float d2)
-    {
-        if (d1 !<>= d2)         // if either are NaN
-        {
-            if (d1 !<>= d1)
-            {
-                if (d2 !<>= d2)
-                    return 0;
-                return -1;
-            }
-            return 1;
-        }
-        return (d1 == d2) ? 0 : ((d1 < d2) ? -1 : 1);
-    }
-
-    const:
-
-    override string toString() const pure nothrow @safe { return "float"; }
-
-    override size_t getHash(in void* p)
-    {
-        return computeHash(*cast(float*)p);
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        return _equals(*cast(float *)p1, *cast(float *)p2);
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        return _compare(*cast(float *)p1, *cast(float *)p2);
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return float.sizeof;
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        float t;
-
-        t = *cast(float *)p1;
-        *cast(float *)p1 = *cast(float *)p2;
-        *cast(float *)p2 = t;
-    }
-
-    override const(void)[] init() nothrow pure
-    {
-        static immutable float r;
-
-        return (cast(float *)&r)[0 .. 1];
-    }
 }

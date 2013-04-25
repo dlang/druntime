@@ -13,9 +13,10 @@
  */
 module rt.typeinfo.ti_void;
 
+private import rt.typeinfo.ti_common;
 // void
 
-class TypeInfo_v : TypeInfo
+class TypeInfo_v: TypeInfoInteger!(byte)
 {
     @trusted:
     const:
@@ -29,28 +30,9 @@ class TypeInfo_v : TypeInfo
         assert(0);
     }
 
-    override bool equals(in void* p1, in void* p2)
-    {
-        return *cast(byte *)p1 == *cast(byte *)p2;
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        return *cast(byte *)p1 - *cast(byte *)p2;
-    }
-
     override @property size_t tsize() nothrow pure
     {
         return void.sizeof;
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        byte t;
-
-        t = *cast(byte *)p1;
-        *cast(byte *)p1 = *cast(byte *)p2;
-        *cast(byte *)p2 = t;
     }
 
     override @property uint flags() nothrow pure

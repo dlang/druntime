@@ -13,79 +13,10 @@
  */
 module rt.typeinfo.ti_double;
 
-private import core.util.hash;
+private import rt.typeinfo.ti_common;
 
 // double
 
-class TypeInfo_d : TypeInfo
+class TypeInfo_d : TypeInfoFloat!(double)
 {
-    @trusted:
-    pure:
-    nothrow:
-
-    static bool _equals(double f1, double f2)
-    {
-        return f1 == f2 ||
-                (f1 !<>= f1 && f2 !<>= f2);
-    }
-
-    static int _compare(double d1, double d2)
-    {
-        if (d1 !<>= d2)         // if either are NaN
-        {
-            if (d1 !<>= d1)
-            {
-                if (d2 !<>= d2)
-                    return 0;
-                return -1;
-            }
-            return 1;
-        }
-        return (d1 == d2) ? 0 : ((d1 < d2) ? -1 : 1);
-    }
-
-    const:
-
-    override string toString() const pure nothrow @safe { return "double"; }
-
-    override size_t getHash(in void* p)
-    {
-        return computeHash(*cast(double*)p);
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        return _equals(*cast(double *)p1, *cast(double *)p2);
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        return _compare(*cast(double *)p1, *cast(double *)p2);
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return double.sizeof;
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        double t;
-
-        t = *cast(double *)p1;
-        *cast(double *)p1 = *cast(double *)p2;
-        *cast(double *)p2 = t;
-    }
-
-    override const(void)[] init() nothrow pure
-    {
-        static immutable double r;
-
-        return (cast(double *)&r)[0 .. 1];
-    }
-
-    override @property size_t talign() nothrow pure
-    {
-        return double.alignof;
-    }
 }

@@ -13,16 +13,10 @@
  */
 module rt.typeinfo.ti_idouble;
 
-private import rt.typeinfo.ti_double;
+private import rt.typeinfo.ti_common;
 
 // idouble
 
-class TypeInfo_p : TypeInfo_d
+class TypeInfo_p : TypeInfoFloat!(idouble)
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
-
-    override string toString() const pure nothrow @safe { return "idouble"; }
 }

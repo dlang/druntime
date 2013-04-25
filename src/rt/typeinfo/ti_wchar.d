@@ -13,52 +13,10 @@
  */
 module rt.typeinfo.ti_wchar;
 
-private import core.util.hash;
+private import rt.typeinfo.ti_common;
 
 // wchar
 
-class TypeInfo_u : TypeInfo
+class TypeInfo_u : TypeInfoShort!(wchar)
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
-
-    override string toString() { return "wchar"; }
-
-    override size_t getHash(in void* p)
-    {
-        return computeHash(*cast(wchar*)p);
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        return *cast(wchar *)p1 == *cast(wchar *)p2;
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        return *cast(wchar *)p1 - *cast(wchar *)p2;
-    }
-
-    override @property size_t tsize()
-    {
-        return wchar.sizeof;
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        wchar t;
-
-        t = *cast(wchar *)p1;
-        *cast(wchar *)p1 = *cast(wchar *)p2;
-        *cast(wchar *)p2 = t;
-    }
-
-    override const(void)[] init()
-    {
-        static immutable wchar c;
-
-        return (cast(wchar *)&c)[0 .. 1];
-    }
 }

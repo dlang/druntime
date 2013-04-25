@@ -13,45 +13,10 @@
  */
 module rt.typeinfo.ti_ushort;
 
-private import core.util.hash;
+private import rt.typeinfo.ti_common;
 
 // ushort
 
-class TypeInfo_t : TypeInfo
+class TypeInfo_t : TypeInfoShort!(ushort)
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
-
-    override string toString() const pure nothrow @safe { return "ushort"; }
-
-    override size_t getHash(in void* p)
-    {
-        return computeHash(*cast(ushort*)p);
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        return *cast(ushort *)p1 == *cast(ushort *)p2;
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        return *cast(ushort *)p1 - *cast(ushort *)p2;
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return ushort.sizeof;
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        ushort t;
-
-        t = *cast(ushort *)p1;
-        *cast(ushort *)p1 = *cast(ushort *)p2;
-        *cast(ushort *)p2 = t;
-    }
 }

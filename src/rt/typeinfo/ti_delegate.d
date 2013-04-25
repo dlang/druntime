@@ -13,44 +13,15 @@
  */
 module rt.typeinfo.ti_delegate;
 
-private import core.util.hash;
+private import rt.typeinfo.ti_common;
 
 // delegate
 
 alias void delegate(int) dg;
 
-class TypeInfo_D : TypeInfo
+class TypeInfo_D : TypeInfoCommonScalar!(dg)
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
-
-    override size_t getHash(in void* p)
-    {
-        return computeHash(*cast(dg*)p);
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        return *cast(dg *)p1 == *cast(dg *)p2;
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return dg.sizeof;
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        dg t;
-
-        t = *cast(dg *)p1;
-        *cast(dg *)p1 = *cast(dg *)p2;
-        *cast(dg *)p2 = t;
-    }
-
-    override @property uint flags() nothrow pure
+    override @property uint flags() const nothrow pure @trusted
     {
         return 1;
     }

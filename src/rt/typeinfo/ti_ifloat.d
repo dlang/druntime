@@ -13,16 +13,10 @@
  */
 module rt.typeinfo.ti_ifloat;
 
-private import rt.typeinfo.ti_float;
+private import rt.typeinfo.ti_common;
 
 // ifloat
 
-class TypeInfo_o : TypeInfo_f
+class TypeInfo_o : TypeInfoFloat!(ifloat)
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
-
-    override string toString() const pure nothrow @safe { return "ifloat"; }
 }
