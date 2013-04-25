@@ -19,7 +19,7 @@ private import rt.typeinfo.ti_common;
 
 class TypeInfo_q : TypeInfoComplex!(cfloat)
 {
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe pure nothrow const
     {
         arg1 = typeid(double);
         return 0;
