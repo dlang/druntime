@@ -548,7 +548,7 @@ private T unqualTi(T=TypeInfo)(const(TypeInfo) tiRaw) nothrow if(is(T:TypeInfo))
     {
         if(auto ti_const = cast(TypeInfo_Const)ti) 
         {
-            static if(is(typeof(&tiConst.base) == TypeInfo*))
+            static if(is(typeof(&ti_const.base) == TypeInfo*))
                 ti = ti_const.base;
             else
                 ti = ti_const.next;
@@ -613,7 +613,7 @@ private const(ubyte)[] toUbyte(T)(ref T val) if(__traits(isIntegral, T)&&!is(Unq
     else if(__ctfe)
     {
         ubyte[T.sizeof] tmp;
-	Unqual!T val_ = val;
+        Unqual!T val_ = val;
         for(size_t i=0; i<T.sizeof; ++i)
         {
             size_t idx;
