@@ -10,7 +10,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sync.condition;
@@ -20,7 +20,7 @@ public import core.sync.exception;
 public import core.sync.mutex;
 public import core.time;
 
-version( Win32 )
+version( Windows )
 {
     private import core.sync.semaphore;
     private import core.sys.windows.windows;
@@ -31,6 +31,10 @@ else version( Posix )
     private import core.stdc.errno;
     private import core.sys.posix.pthread;
     private import core.sys.posix.time;
+}
+else
+{
+    static assert(false, "Platform not supported");
 }
 
 
@@ -44,7 +48,7 @@ else version( Posix )
 
 
 /**
- * This class represents a condition variable as concieved by C.A.R. Hoare.  As
+ * This class represents a condition variable as conceived by C.A.R. Hoare.  As
  * per Mesa type monitors however, "signal" has been replaced with "notify" to
  * indicate that control is not transferred to the waiter when a notification
  * is sent.
@@ -54,7 +58,6 @@ class Condition
     ////////////////////////////////////////////////////////////////////////////
     // Initialization
     ////////////////////////////////////////////////////////////////////////////
-
 
     /**
      * Initializes a condition object which is associated with the supplied
@@ -68,7 +71,7 @@ class Condition
      */
     this( Mutex m )
     {
-        version( Win32 )
+        version( Windows )
         {
             m_blockLock = CreateSemaphoreA( null, 1, 1, null );
             if( m_blockLock == m_blockLock.init )
@@ -85,8 +88,7 @@ class Condition
         }
         else version( Posix )
         {
-            m_mutexAddr = m.handleAddr();
-
+            m_assocMutex = m;
             int rc = pthread_cond_init( &m_hndl, null );
             if( rc )
                 throw new SyncException( "Unable to initialize condition" );
@@ -96,7 +98,7 @@ class Condition
 
     ~this()
     {
-        version( Win32 )
+        version( Windows )
         {
             BOOL rc = CloseHandle( m_blockLock );
             assert( rc, "Unable to destroy condition" );
@@ -113,6 +115,23 @@ class Condition
 
 
     ////////////////////////////////////////////////////////////////////////////
+    // General Properties
+    ////////////////////////////////////////////////////////////////////////////
+
+
+    /**
+     * Gets the mutex associated with this condition.
+     *
+     * Returns:
+     *  The mutex associated with this condition.
+     */
+    @property Mutex mutex()
+    {
+        return m_assocMutex;
+    }
+
+
+    ////////////////////////////////////////////////////////////////////////////
     // General Actions
     ////////////////////////////////////////////////////////////////////////////
 
@@ -125,13 +144,13 @@ class Condition
      */
     void wait()
     {
-        version( Win32 )
+        version( Windows )
         {
             timedWait( INFINITE );
         }
         else version( Posix )
         {
-            int rc = pthread_cond_wait( &m_hndl, m_mutexAddr );
+            int rc = pthread_cond_wait( &m_hndl, m_assocMutex.handleAddr() );
             if( rc )
                 throw new SyncException( "Unable to wait for condition" );
         }
@@ -161,63 +180,33 @@ class Condition
     }
     body
     {
-        version( Win32 )
+        version( Windows )
         {
             auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
 
             while( val > maxWaitMillis )
             {
                 if( timedWait( cast(uint)
-                               maxWaitMillis.total!("msecs")() ) )
+                               maxWaitMillis.total!"msecs" ) )
                     return true;
                 val -= maxWaitMillis;
             }
-            return timedWait( cast(uint) val.total!("msecs")() );
+            return timedWait( cast(uint) val.total!"msecs" );
         }
         else version( Posix )
         {
             timespec t = void;
             mktspec( t, val );
 
-            int rc = pthread_cond_timedwait( &m_hndl, m_mutexAddr, &t );
+            int rc = pthread_cond_timedwait( &m_hndl,
+                                             m_assocMutex.handleAddr(),
+                                             &t );
             if( !rc )
                 return true;
             if( rc == ETIMEDOUT )
                 return false;
             throw new SyncException( "Unable to wait for condition" );
         }
-    }
-
-
-    /**
-     * $(RED Scheduled for deprecation in January 2012. Please use the version
-     *       which takes a $(D Duration) instead.)
-     *
-     * Suspends the calling thread until a notification occurs or until the
-     * supplied time period has elapsed.
-     *
-     * Params:
-     *  period = The time to wait, in 100 nanosecond intervals.  This value may
-     *           be adjusted to equal to the maximum wait period supported by
-     *           the target platform if it is too large.
-     *
-     * In:
-     *  period must be non-negative.
-     *
-     * Throws:
-     *  SyncException on error.
-     *
-     * Returns:
-     *  true if notified before the timeout and false if not.
-     */
-    bool wait( long period )
-    in
-    {
-        assert( period >= 0 );
-    }
-    body
-    {
-        return wait( dur!"hnsecs"( period ) );
     }
 
 
@@ -229,7 +218,7 @@ class Condition
      */
     void notify()
     {
-        version( Win32 )
+        version( Windows )
         {
             notify( false );
         }
@@ -250,7 +239,7 @@ class Condition
      */
     void notifyAll()
     {
-        version( Win32 )
+        version( Windows )
         {
             notify( true );
         }
@@ -264,7 +253,7 @@ class Condition
 
 
 private:
-    version( Win32 )
+    version( Windows )
     {
         bool timedWait( DWORD timeout )
         {
@@ -429,8 +418,8 @@ private:
     }
     else version( Posix )
     {
+        Mutex               m_assocMutex;
         pthread_cond_t      m_hndl;
-        pthread_mutex_t*    m_mutexAddr;
     }
 }
 
@@ -573,7 +562,9 @@ version( unittest )
             synchronized( mutex )
             {
                 waiting    = true;
-                alertedOne = condReady.wait( dur!"seconds"(1) );
+                // we never want to miss the notification (30s)
+                alertedOne = condReady.wait( dur!"seconds"(30) );
+                // but we don't want to wait long for the timeout (1s)
                 alertedTwo = condReady.wait( dur!"seconds"(1) );
             }
         }
@@ -594,7 +585,9 @@ version( unittest )
             Thread.yield();
         }
         thread.join();
-        assert( waiting && alertedOne && !alertedTwo );
+        assert( waiting );
+        assert( alertedOne );
+        assert( !alertedTwo );
     }
 
 

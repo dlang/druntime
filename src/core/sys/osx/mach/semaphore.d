@@ -8,17 +8,16 @@
 
 /*          Copyright Sean Kelly 2008 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.osx.mach.semaphore;
 
 version (OSX):
+extern (C):
 
 public import core.sys.osx.mach.kern_return;
 public import core.sys.osx.mach.port;
-
-extern (C):
 
 alias mach_port_t   task_t;
 alias mach_port_t   thread_t;

@@ -3,19 +3,20 @@
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
- * Authors:   Sean Kelly
+ * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.posix.dlfcn;
 
 private import core.sys.posix.config;
 
+version (Posix):
 extern (C):
 
 //
@@ -35,15 +36,48 @@ void* dlsym(void*, in char*);
 
 version( linux )
 {
-    enum RTLD_LAZY      = 0x00001;
-    enum RTLD_NOW       = 0x00002;
-    enum RTLD_GLOBAL    = 0x00100;
-    enum RTLD_LOCAL     = 0x00000;
+    version (X86)
+    {
+        enum RTLD_LAZY      = 0x00001;
+        enum RTLD_NOW       = 0x00002;
+        enum RTLD_GLOBAL    = 0x00100;
+        enum RTLD_LOCAL     = 0x00000;
+    }
+    else version (X86_64)
+    {
+        enum RTLD_LAZY      = 0x00001;
+        enum RTLD_NOW       = 0x00002;
+        enum RTLD_GLOBAL    = 0x00100;
+        enum RTLD_LOCAL     = 0x00000;
+    }
+    else version (MIPS32)
+    {
+        enum RTLD_LAZY      = 0x0001;
+        enum RTLD_NOW       = 0x0002;
+        enum RTLD_GLOBAL    = 0x0004;
+        enum RTLD_LOCAL     = 0;
+    }
+    else
+        static assert(0, "unimplemented");
 
     int   dlclose(void*);
     char* dlerror();
     void* dlopen(in char*, int);
     void* dlsym(void*, in char*);
+
+    deprecated("Please use core.sys.linux.dlfcn for non-POSIX extensions")
+    {
+        int   dladdr(void* addr, Dl_info* info);
+        void* dlvsym(void* handle, in char* symbol, in char* version_);
+
+        struct Dl_info
+        {
+            const(char)* dli_fname;
+            void*        dli_fbase;
+            const(char)* dli_sname;
+            void*        dli_saddr;
+        }
+    }
 }
 else version( OSX )
 {
@@ -56,6 +90,15 @@ else version( OSX )
     char* dlerror();
     void* dlopen(in char*, int);
     void* dlsym(void*, in char*);
+    int   dladdr(void* addr, Dl_info* info);
+
+    struct Dl_info
+    {
+        const(char)* dli_fname;
+        void*        dli_fbase;
+        const(char)* dli_sname;
+        void*        dli_saddr;
+    }
 }
 else version( FreeBSD )
 {
@@ -68,4 +111,13 @@ else version( FreeBSD )
     char* dlerror();
     void* dlopen(in char*, int);
     void* dlsym(void*, in char*);
+    int   dladdr(const(void)* addr, Dl_info* info);
+
+    struct Dl_info
+    {
+        const(char)* dli_fname;
+        void*        dli_fbase;
+        const(char)* dli_sname;
+        void*        dli_saddr;
+    }
 }

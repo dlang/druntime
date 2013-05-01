@@ -9,7 +9,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sync.semaphore;
@@ -18,7 +18,7 @@ module core.sync.semaphore;
 public import core.sync.exception;
 public import core.time;
 
-version( Win32 )
+version( Windows )
 {
     private import core.sys.windows.windows;
 }
@@ -35,6 +35,10 @@ else version( Posix )
     private import core.stdc.errno;
     private import core.sys.posix.pthread;
     private import core.sys.posix.semaphore;
+}
+else
+{
+    static assert(false, "Platform not supported");
 }
 
 
@@ -71,7 +75,7 @@ class Semaphore
      */
     this( uint count = 0 )
     {
-        version( Win32 )
+        version( Windows )
         {
             m_hndl = CreateSemaphoreA( null, count, int.max, null );
             if( m_hndl == m_hndl.init )
@@ -94,7 +98,7 @@ class Semaphore
 
     ~this()
     {
-        version( Win32 )
+        version( Windows )
         {
             BOOL rc = CloseHandle( m_hndl );
             assert( rc, "Unable to destroy semaphore" );
@@ -126,7 +130,7 @@ class Semaphore
      */
     void wait()
     {
-        version( Win32 )
+        version( Windows )
         {
             DWORD rc = WaitForSingleObject( m_hndl, INFINITE );
             if( rc != WAIT_OBJECT_0 )
@@ -182,14 +186,14 @@ class Semaphore
     }
     body
     {
-        version( Win32 )
+        version( Windows )
         {
             auto maxWaitMillis = dur!("msecs")( uint.max - 1 );
 
             while( val > maxWaitMillis )
             {
                 auto rc = WaitForSingleObject( m_hndl, cast(uint)
-                                                       maxWaitMillis.total!("msecs")() );
+                                                       maxWaitMillis.total!"msecs" );
                 switch( rc )
                 {
                 case WAIT_OBJECT_0:
@@ -201,7 +205,7 @@ class Semaphore
                     throw new SyncException( "Unable to wait for semaphore" );
                 }
             }
-            switch( WaitForSingleObject( m_hndl, cast(uint) val.total!("msecs")() ) )
+            switch( WaitForSingleObject( m_hndl, cast(uint) val.total!"msecs" ) )
             {
             case WAIT_OBJECT_0:
                 return true;
@@ -216,18 +220,15 @@ class Semaphore
             mach_timespec_t t = void;
             (cast(byte*) &t)[0 .. t.sizeof] = 0;
 
-            if( dur!("nsecs")( 0 ) == val )
+            if( val.total!"seconds" > t.tv_sec.max )
             {
-                if( val.total!("seconds")() > t.tv_sec.max )
-                {
-                    t.tv_sec  = t.tv_sec.max;
-                    t.tv_nsec = cast(typeof(t.tv_nsec)) val.fracSec.nsecs;
-                }
-                else
-                {
-                    t.tv_sec  = cast(typeof(t.tv_sec)) val.total!("seconds")();
-                    t.tv_nsec = cast(typeof(t.tv_nsec)) val.fracSec.nsecs;
-                }
+                t.tv_sec  = t.tv_sec.max;
+                t.tv_nsec = cast(typeof(t.tv_nsec)) val.fracSec.nsecs;
+            }
+            else
+            {
+                t.tv_sec  = cast(typeof(t.tv_sec)) val.total!"seconds";
+                t.tv_nsec = cast(typeof(t.tv_nsec)) val.fracSec.nsecs;
             }
             while( true )
             {
@@ -259,40 +260,6 @@ class Semaphore
 
 
     /**
-     * $(RED Scheduled for deprecation in January 2012. Please use the version
-     *       which takes a $(D Duration) instead.)
-     *
-     * Suspends the calling thread until the current count moves above zero or
-     * until the supplied time period has elapsed.  If the count moves above
-     * zero in this interval, then atomically decrement the count by one and
-     * return true.  Otherwise, return false.
-     *
-     * Params:
-     *  period = The time to wait, in 100 nanosecond intervals.  This value may
-     *           be adjusted to equal to the maximum wait period supported by
-     *           the target platform if it is too large.
-     *
-     * In:
-     *  period must be non-negative.
-     *
-     * Throws:
-     *  SyncException on error.
-     *
-     * Returns:
-     *  true if notified before the timeout and false if not.
-     */
-    bool wait( long period )
-    in
-    {
-        assert( period >= 0 );
-    }
-    body
-    {
-        return wait( dur!("hnsecs")( period ) );
-    }
-
-
-    /**
      * Atomically increment the current count by one.  This will notify one
      * waiter, if there are any in the queue.
      *
@@ -301,7 +268,7 @@ class Semaphore
      */
     void notify()
     {
-        version( Win32 )
+        version( Windows )
         {
             if( !ReleaseSemaphore( m_hndl, 1, null ) )
                 throw new SyncException( "Unable to notify semaphore" );
@@ -333,7 +300,7 @@ class Semaphore
      */
     bool tryWait()
     {
-        version( Win32 )
+        version( Windows )
         {
             switch( WaitForSingleObject( m_hndl, 0 ) )
             {
@@ -347,7 +314,7 @@ class Semaphore
         }
         else version( OSX )
         {
-            return wait( 0 );
+            return wait( dur!"hnsecs"(0) );
         }
         else version( Posix )
         {
@@ -365,7 +332,7 @@ class Semaphore
 
 
 private:
-    version( Win32 )
+    version( Windows )
     {
         HANDLE  m_hndl;
     }
@@ -435,7 +402,7 @@ version( unittest )
                 semaphore.notify();
                 Thread.yield();
             }
-            Thread.sleep( 10_000_000 ); // 1s
+            Thread.sleep( dur!"seconds"(1) );
             synchronized( synProduced )
             {
                 allProduced = true;
@@ -447,7 +414,10 @@ version( unittest )
                 Thread.yield();
             }
 
-            for( int i = numConsumers * 10000; i > 0; --i )
+            version (FreeBSD) enum factor = 500_000;
+            else enum factor = 10_000;
+
+            for( int i = numConsumers * factor; i > 0; --i )
             {
                 synchronized( synComplete )
                 {
@@ -457,14 +427,22 @@ version( unittest )
                 Thread.yield();
             }
 
-            synchronized( synComplete )
             {
-                assert( numComplete == numConsumers );
+                bool cond;
+                synchronized( synComplete )
+                {
+                    cond = numComplete == numConsumers;
+                }
+                assert(cond);
             }
 
-            synchronized( synConsumed )
             {
-                assert( numConsumed == numToProduce );
+                bool cond;
+                synchronized( synConsumed )
+                {
+                    cond = numConsumed == numToProduce;
+                }
+                assert(cond);
             }
 
             assert( !semaphore.tryWait() );
@@ -505,8 +483,8 @@ version( unittest )
                 }
                 Thread.yield();
             }
-            alertedOne = semReady.wait( dur!"msecs"(200) );
-            alertedTwo = semReady.wait( dur!"msecs"(200) );
+            alertedOne = semReady.wait( dur!"msecs"(100) );
+            alertedTwo = semReady.wait( dur!"msecs"(100) );
         }
 
         auto thread = new Thread( &waiter );

@@ -8,7 +8,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.util.console;
@@ -34,8 +34,9 @@ struct Console
     {
         version( Windows )
         {
-            uint count = void;
-            WriteFile( GetStdHandle( 0xfffffff5 ), val.ptr, val.length, &count, null );
+            DWORD count = void;
+            assert(val.length <= uint.max, "val length cannot exceed uint.max");
+            WriteFile( GetStdHandle( 0xfffffff5 ), val.ptr, cast(uint)val.length, &count, null );
         }
         else version( Posix )
         {
@@ -47,8 +48,8 @@ struct Console
 
     Console opCall( ulong val )
     {
-            char[10] tmp = void;
-            return opCall( tmp.intToString( val ) );
+            char[20] tmp = void;
+            return opCall( tmp.uintToString( val ) );
     }
 }
 

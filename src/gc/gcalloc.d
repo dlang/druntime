@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module gc.gcalloc;
@@ -163,7 +163,7 @@ else static if (is(typeof(malloc))) // else version (GC_Use_Alloc_Malloc)
     //       after PAGESIZE bytes used by the GC.
 
 
-    private import gcx : PAGESIZE;
+    private import gc.gcx;
 
 
     const size_t PAGE_MASK = PAGESIZE - 1;

@@ -1,15 +1,15 @@
 /**
  * Contains support code for code profiling.
  *
- * Copyright: Copyright Digital Mars 1995 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 1995 - 2012.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Walter Bright, Sean Kelly
+ * Source: $(DRUNTIMESRC src/rt/_trace.d)
  */
 
-/*          Copyright Digital Mars 1995 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
+/*          Copyright Digital Mars 1995 - 2011.
  */
 module rt.trace;
 
@@ -21,6 +21,9 @@ private
     import core.stdc.stdlib;
     import core.stdc.string;
     import rt.util.string;
+
+    version (Win64)
+        alias core.stdc.stdlib._strtoui64 strtoull;
 }
 
 extern (C):
@@ -48,6 +51,7 @@ struct Symbol
         timer_t totaltime;      // aggregate time
         timer_t functime;       // time excluding subfunction calls
         ubyte Sflags;
+        uint recursion;         // call recursion level
         char[] Sident;          // name of symbol
 }
 
@@ -224,12 +228,7 @@ static void trace_place(Symbol *s, uint count)
 }
 
 /////////////////////////////////////
-// Initialize and terminate.
-
-shared static this()
-{
-    trace_init();
-}
+// Terminate.
 
 shared static ~this()
 {
@@ -356,22 +355,17 @@ static void trace_init()
         trace_inited = 1;
 
         {   // See if we can determine the overhead.
-            uint u;
             timer_t starttime;
             timer_t endtime;
-            Stack *st;
 
-            st = trace_tos;
+            auto st = trace_tos;
             trace_tos = null;
             QueryPerformanceCounter(&starttime);
+            uint u;
             for (u = 0; u < 100; u++)
             {
-                asm
-                {
-                    call _trace_pro_n   ;
-                    db   0              ;
-                    call _trace_epi_n   ;
-                }
+                _c_trace_pro(0,null);
+                _c_trace_epi();
             }
             QueryPerformanceCounter(&endtime);
             trace_ohd = (endtime - starttime) / u;
@@ -518,6 +512,8 @@ static void trace_sympair_add(SymPair** psp, Symbol* s, uint count)
 
 static void trace_pro(char[] id)
 {
+    //printf("trace_pro(ptr = %p, length = %lld)\n", id.ptr, id.length);
+    //printf("trace_pro(id = '%.*s')\n", id.length, id.ptr);
     Stack* n;
     Symbol* s;
     timer_t starttime;
@@ -547,20 +543,27 @@ static void trace_pro(char[] id)
     trace_tos.starttime = starttime;
     trace_tos.ohd = trace_ohd + t - starttime;
     trace_tos.subtime = 0;
+    s.recursion++;
     //printf("trace_tos.ohd=%lld, trace_ohd=%lld + t=%lld - starttime=%lld\n",
     //  trace_tos.ohd,trace_ohd,t,starttime);
+}
+
+void _c_trace_pro(size_t idlen, char* idptr)
+{
+    char[] id = idptr[0 .. idlen];
+    trace_pro(id);
 }
 
 /////////////////////////////////////////
 //
 
-static void trace_epi()
+void _c_trace_epi()
 {   Stack* n;
     timer_t endtime;
     timer_t t;
     timer_t ohd;
 
-    //printf("trace_epi()\n");
+    //printf("_c_trace_epi()\n");
     if (trace_tos)
     {
         timer_t starttime;
@@ -577,7 +580,9 @@ static void trace_epi()
 
         // totaltime is time spent in this function + all time spent in
         // subfunctions - bookkeeping overhead.
-        trace_tos.sym.totaltime += totaltime;
+        trace_tos.sym.recursion--;
+        if(trace_tos.sym.recursion == 0)
+            trace_tos.sym.totaltime += totaltime;
 
         //if (totaltime < trace_tos.subtime)
         //printf("totaltime=%lld < trace_tos.subtime=%lld\n",totaltime,trace_tos.subtime);
@@ -753,133 +758,6 @@ static void trace_merge()
 /////////////////////////////////////////////
 // Function called by trace code in function prolog.
 
-void _trace_pro_n()
-{
-    /* Length of string is either:
-     *  db      length
-     *  ascii   string
-     * or:
-     *  db      0x0FF
-     *  db      0
-     *  dw      length
-     *  ascii   string
-     */
-
-    version (OSX)
-    {
-        // 16 byte align stack
-        version (D_InlineAsm_X86)
-        {
-            asm
-            {
-                naked                           ;
-                pushad                          ;
-                mov     ECX,8*4[ESP]            ;
-                xor     EAX,EAX                 ;
-                mov     AL,[ECX]                ;
-                cmp     AL,0xFF                 ;
-                jne     L1                      ;
-                cmp     byte ptr 1[ECX],0       ;
-                jne     L1                      ;
-                mov     AX,2[ECX]               ;
-                add     8*4[ESP],3              ;
-                add     ECX,3                   ;
-            L1: inc     EAX                     ;
-                inc     ECX                     ;
-                add     8*4[ESP],EAX            ;
-                dec     EAX                     ;
-                sub     ESP,4                   ;
-                push    ECX                     ;
-                push    EAX                     ;
-                call    trace_pro               ;
-                add     ESP,12                  ;
-                popad                           ;
-                ret                             ;
-            }
-        }
-        else version (D_InlineAsm_X86_64)
-            static assert(0);
-        else
-            static assert(0);
-    }
-    else
-    {
-        version (D_InlineAsm_X86)
-        {
-            asm
-            {
-                naked                           ;
-                pushad                          ;
-                mov     ECX,8*4[ESP]            ;
-                xor     EAX,EAX                 ;
-                mov     AL,[ECX]                ;
-                cmp     AL,0xFF                 ;
-                jne     L1                      ;
-                cmp     byte ptr 1[ECX],0       ;
-                jne     L1                      ;
-                mov     AX,2[ECX]               ;
-                add     8*4[ESP],3              ;
-                add     ECX,3                   ;
-            L1: inc     EAX                     ;
-                inc     ECX                     ;
-                add     8*4[ESP],EAX            ;
-                dec     EAX                     ;
-                push    ECX                     ;
-                push    EAX                     ;
-                call    trace_pro               ;
-                add     ESP,8                   ;
-                popad                           ;
-                ret                             ;
-            }
-        }
-        else version (D_InlineAsm_X86_64)
-        {
-            asm
-            {
-                naked                           ;
-                push    RAX                     ;
-                push    RCX                     ;
-                push    RDX                     ;
-                push    RSI                     ;
-                push    RDI                     ;
-                push    R8                      ;
-                push    R9                      ;
-                push    R10                     ;
-                push    R11                     ;
-                mov     RCX,9*8[RSP]            ;
-                xor     RAX,RAX                 ;
-                mov     AL,[RCX]                ;
-                cmp     AL,0xFF                 ;
-                jne     L1                      ;
-                cmp     byte ptr 1[RCX],0       ;
-                jne     L1                      ;
-                mov     AX,2[RCX]               ;
-                add     9*8[RSP],3              ;
-                add     RCX,3                   ;
-            L1: inc     RAX                     ;
-                inc     RCX                     ;
-                add     9*8[RSP],RAX            ;
-                dec     RAX                     ;
-                push    RCX                     ;
-                push    RAX                     ;
-                call    trace_pro               ;
-                add     RSP,16                  ;
-                pop     R11                     ;
-                pop     R10                     ;
-                pop     R8                      ;
-                pop     R9                      ;
-                pop     RDI                     ;
-                pop     RSI                     ;
-                pop     RDX                     ;
-                pop     RCX                     ;
-                pop     RAX                     ;
-                ret                             ;
-            }
-        }
-        else
-            static assert(0);
-    }
-}
 
 /////////////////////////////////////////////
 // Function called by trace code in function epilog.
@@ -897,7 +775,7 @@ void _trace_epi_n()
                 pushad          ;
                 sub     ESP,12  ;
             }
-            trace_epi();
+            _c_trace_epi();
             asm
             {
                 add     ESP,12  ;
@@ -906,7 +784,43 @@ void _trace_epi_n()
             }
         }
         else version (D_InlineAsm_X86_64)
-            static assert(0);
+        {
+            asm
+            {   naked           ;
+                push    RAX     ;
+                push    RCX     ;
+                push    RDX     ;
+                push    RSI     ;
+                push    RDI     ;
+                push    R8      ;
+                push    R9      ;
+                push    R10     ;
+                push    R11     ;
+                sub     RSP, 2*16 ;
+                movdqu  0*16[RSP], XMM0;
+                movdqu  1*16[RSP], XMM1;
+                /* Don't worry about saving ST0/1
+                 * Hope _c_trace_epi() doesn't change them
+                 */
+            }
+            _c_trace_epi();
+            asm
+            {
+                movdqu  XMM0, 0*16[RSP];
+                movdqu  XMM1, 1*16[RSP];
+                add     RSP, 2*16 ;
+                pop     R11     ;
+                pop     R10     ;
+                pop     R9      ;
+                pop     R8      ;
+                pop     RDI     ;
+                pop     RSI     ;
+                pop     RDX     ;
+                pop     RCX     ;
+                pop     RAX     ;
+                ret             ;
+            }
+        }
         else
             static assert(0);
     }
@@ -919,7 +833,7 @@ void _trace_epi_n()
                 naked           ;
                 pushad          ;
             }
-            trace_epi();
+            _c_trace_epi();
             asm
             {
                 popad           ;
@@ -940,13 +854,19 @@ void _trace_epi_n()
                 push    R9      ;
                 push    R10     ;
                 push    R11     ;
-                /* Don't worry about saving XMM0/1 or ST0/1
-                 * Hope trace_epi() doesn't change them
+                sub     RSP, 2*16 ;
+                movdqu  0*16[RSP], XMM0;
+                movdqu  1*16[RSP], XMM1;
+                /* Don't worry about saving ST0/1
+                 * Hope _c_trace_epi() doesn't change them
                  */
             }
-            trace_epi();
+            _c_trace_epi();
             asm
             {
+                movdqu  XMM0, 0*16[RSP];
+                movdqu  XMM1, 1*16[RSP];
+                add     RSP, 2*16 ;
                 pop     R11     ;
                 pop     R10     ;
                 pop     R9      ;
@@ -965,7 +885,7 @@ void _trace_epi_n()
 }
 
 
-version (Win32)
+version (Windows)
 {
     extern (Windows)
     {

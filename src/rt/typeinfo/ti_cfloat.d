@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_cfloat;
@@ -19,20 +19,18 @@ private import rt.util.hash;
 
 class TypeInfo_q : TypeInfo
 {
-    override string toString() { return "cfloat"; }
+    @trusted:
+    pure:
+    nothrow:
 
-    override hash_t getHash(in void* p)
-    {
-        return hashOf(p, cfloat.sizeof);
-    }
-
-    static equals_t _equals(cfloat f1, cfloat f2)
+    static bool _equals(cfloat f1, cfloat f2)
     {
         return f1 == f2;
     }
 
     static int _compare(cfloat f1, cfloat f2)
-    {   int result;
+    {
+        int result;
 
         if (f1.re < f2.re)
             result = -1;
@@ -47,7 +45,16 @@ class TypeInfo_q : TypeInfo
         return result;
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    const:
+
+    override string toString() const pure nothrow @safe { return "cfloat"; }
+
+    override size_t getHash(in void* p)
+    {
+        return hashOf(p, cfloat.sizeof);
+    }
+
+    override bool equals(in void* p1, in void* p2)
     {
         return _equals(*cast(cfloat *)p1, *cast(cfloat *)p2);
     }
@@ -57,7 +64,7 @@ class TypeInfo_q : TypeInfo
         return _compare(*cast(cfloat *)p1, *cast(cfloat *)p2);
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return cfloat.sizeof;
     }
@@ -71,19 +78,21 @@ class TypeInfo_q : TypeInfo
         *cast(cfloat *)p2 = t;
     }
 
-    override void[] init()
-    {   static immutable cfloat r;
+    override const(void)[] init() nothrow pure
+    {
+        static immutable cfloat r;
 
         return (cast(cfloat *)&r)[0 .. 1];
     }
 
-    override size_t talign()
+    override @property size_t talign() nothrow pure
     {
         return cfloat.alignof;
     }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {   arg1 = typeid(double);
+    {
+        arg1 = typeid(double);
         return 0;
     }
 }

@@ -1,6 +1,5 @@
 /**
- * The exception module defines all system-level exceptions and provides a
- * mechanism to alter system-level error handling.
+ * String manipulation and comparison utilities.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
@@ -9,15 +8,18 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.util.string;
 
 private import core.stdc.string;
 
-// This should be renamed to uintToString()
-char[] intToString( char[] buf, uint val )
+@trusted:
+pure:
+nothrow:
+
+char[] uintToString( char[] buf, uint val )
 {
     assert( buf.length > 9 );
     auto p = buf.ptr + buf.length;
@@ -30,7 +32,7 @@ char[] intToString( char[] buf, uint val )
     return buf[p - buf.ptr .. $];
 }
 
-char[] intToString( char[] buf, ulong val )
+char[] uintToString( char[] buf, ulong val )
 {
     assert( buf.length >= 20 );
     auto p = buf.ptr + buf.length;

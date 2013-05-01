@@ -20,6 +20,7 @@ private
     debug(adi) import core.stdc.stdio;
     import core.stdc.string;
     import core.stdc.stdlib;
+    import core.memory;
     import rt.util.utf;
 
     enum BlkAttr : uint
@@ -36,12 +37,6 @@ private
     extern (C) void  gc_free( void* p );
 }
 
-
-struct Array
-{
-    size_t  length;
-    void*   ptr;
-}
 
 /**********************************************
  * Reverse array of chars.
@@ -148,7 +143,8 @@ extern (C) wchar[] _adReverseWchar(wchar[] a)
 {
     if (a.length > 1)
     {
-        wchar[2] tmp;
+        wchar[2] tmplo = void;
+        wchar[2] tmphi = void;
         wchar* lo = a.ptr;
         wchar* hi = &a[$ - 1];
 
@@ -193,10 +189,11 @@ extern (C) wchar[] _adReverseWchar(wchar[] a)
 
             /* Shift the whole array. This is woefully inefficient
              */
-            memcpy(tmp.ptr, hi, stridehi * wchar.sizeof);
-            memcpy(hi + stridehi - stridelo, lo, stridelo * wchar.sizeof);
+            memcpy(tmplo.ptr, lo, stridelo * wchar.sizeof);
+            memcpy(tmphi.ptr, hi, stridehi * wchar.sizeof);
             memmove(lo + stridehi, lo + stridelo , (hi - (lo + stridelo)) * wchar.sizeof);
-            memcpy(lo, tmp.ptr, stridehi * wchar.sizeof);
+            memcpy(lo, tmphi.ptr, stridehi * wchar.sizeof);
+            memcpy(hi + (stridehi - stridelo), tmplo.ptr, stridelo * wchar.sizeof);
 
             lo += stridehi;
             hi = hi - 1 + (stridehi - stridelo);
@@ -207,6 +204,7 @@ extern (C) wchar[] _adReverseWchar(wchar[] a)
 
 unittest
 {
+  {
     wstring a = "abcd";
 
     auto r = a.dup.reverse;
@@ -219,6 +217,15 @@ unittest
     a = "ab\U00012345c";
     r = a.dup.reverse;
     assert(r == "c\U00012345ba");
+  }
+  {
+    wstring a = "a\U00000081b\U00002000c\U00010000";
+    wchar[] b = a.dup;
+
+    b.reverse;
+    b.reverse;
+    assert(b == "a\U00000081b\U00002000c\U00010000");
+  }
 }
 
 
@@ -226,10 +233,10 @@ unittest
  * Support for array.reverse property.
  */
 
-extern (C) void[] _adReverse(Array a, size_t szelem)
+extern (C) void[] _adReverse(void[] a, size_t szelem)
 out (result)
 {
-    assert(result is *cast(void[]*)(&a));
+    assert(result is a);
 }
 body
 {
@@ -268,7 +275,7 @@ body
                 //gc_free(tmp);
         }
     }
-    return *cast(void[]*)(&a);
+    return a;
 }
 
 unittest
@@ -324,7 +331,7 @@ extern (C) char[] _adSortChar(char[] a)
             a[i .. i + t.length] = t[];
             i += t.length;
         }
-        delete da;
+        GC.free(da.ptr);
     }
     return a;
 }
@@ -346,7 +353,7 @@ extern (C) wchar[] _adSortWchar(wchar[] a)
             a[i .. i + t.length] = t[];
             i += t.length;
         }
-        delete da;
+        GC.free(da.ptr);
     }
     return a;
 }
@@ -358,12 +365,12 @@ extern (C) wchar[] _adSortWchar(wchar[] a)
  *      0       not equal
  */
 
-extern (C) int _adEq(Array a1, Array a2, TypeInfo ti)
+extern (C) int _adEq(void[] a1, void[] a2, TypeInfo ti)
 {
     debug(adi) printf("_adEq(a1.length = %d, a2.length = %d)\n", a1.length, a2.length);
     if (a1.length != a2.length)
         return 0; // not equal
-    auto sz = ti.tsize();
+    auto sz = ti.tsize;
     auto p1 = a1.ptr;
     auto p2 = a2.ptr;
 
@@ -379,7 +386,7 @@ extern (C) int _adEq(Array a1, Array a2, TypeInfo ti)
     return 1; // equal
 }
 
-extern (C) int _adEq2(Array a1, Array a2, TypeInfo ti)
+extern (C) int _adEq2(void[] a1, void[] a2, TypeInfo ti)
 {
     debug(adi) printf("_adEq2(a1.length = %d, a2.length = %d)\n", a1.length, a2.length);
     if (a1.length != a2.length)
@@ -405,13 +412,13 @@ unittest
  * Support for array compare test.
  */
 
-extern (C) int _adCmp(Array a1, Array a2, TypeInfo ti)
+extern (C) int _adCmp(void[] a1, void[] a2, TypeInfo ti)
 {
     debug(adi) printf("adCmp()\n");
     auto len = a1.length;
     if (a2.length < len)
         len = a2.length;
-    auto sz = ti.tsize();
+    auto sz = ti.tsize;
     void *p1 = a1.ptr;
     void *p2 = a2.ptr;
 
@@ -435,7 +442,7 @@ extern (C) int _adCmp(Array a1, Array a2, TypeInfo ti)
     return (a1.length > a2.length) ? 1 : -1;
 }
 
-extern (C) int _adCmp2(Array a1, Array a2, TypeInfo ti)
+extern (C) int _adCmp2(void[] a1, void[] a2, TypeInfo ti)
 {
     debug(adi) printf("_adCmp2(a1.length = %d, a2.length = %d)\n", a1.length, a2.length);
     return ti.compare(&a1, &a2);
@@ -461,9 +468,9 @@ unittest
  * Support for array compare test.
  */
 
-extern (C) int _adCmpChar(Array a1, Array a2)
+extern (C) int _adCmpChar(void[] a1, void[] a2)
 {
-  version (X86)
+  version (D_InlineAsm_X86)
   {
     asm
     {   naked                   ;

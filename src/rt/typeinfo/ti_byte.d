@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_byte;
@@ -17,14 +17,19 @@ module rt.typeinfo.ti_byte;
 
 class TypeInfo_g : TypeInfo
 {
-    override string toString() { return "byte"; }
+    @trusted:
+    const:
+    pure:
+    nothrow:
 
-    override hash_t getHash(in void* p)
+    override string toString() const pure nothrow @safe { return "byte"; }
+
+    override size_t getHash(in void* p)
     {
         return *cast(byte *)p;
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2)
     {
         return *cast(byte *)p1 == *cast(byte *)p2;
     }
@@ -34,7 +39,7 @@ class TypeInfo_g : TypeInfo
         return *cast(byte *)p1 - *cast(byte *)p2;
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return byte.sizeof;
     }

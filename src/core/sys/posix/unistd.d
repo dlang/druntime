@@ -9,7 +9,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.posix.unistd;
@@ -19,6 +19,7 @@ private import core.stdc.stddef;
 public import core.sys.posix.inttypes;  // for intptr_t
 public import core.sys.posix.sys.types; // for size_t, ssize_t, uid_t, gid_t, off_t, pid_t, useconds_t
 
+version (Posix):
 extern (C):
 
 version( Posix )
@@ -547,7 +548,7 @@ version( linux )
     int        usleep(useconds_t);
     pid_t      vfork();
 
-  static if( __USE_LARGEFILE64 )
+  static if( __USE_FILE_OFFSET64 )
   {
     int        lockf64(int, int, off_t);
     alias      lockf64 lockf;

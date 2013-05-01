@@ -1,21 +1,20 @@
 /**
  * Contains main program entry point and support routines.
  *
- * Copyright: Copyright Digital Mars 2000 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 2000 - 2012.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Walter Bright, Sean Kelly
+ * Source: $(DRUNTIMESRC src/rt/_dmain2.d)
  */
 
-/*          Copyright Digital Mars 2000 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.dmain2;
 
 private
 {
     import rt.memory;
+    import rt.sections;
     import rt.util.console;
     import rt.util.string;
     import core.stdc.stddef;
@@ -28,14 +27,19 @@ version (Windows)
 {
     private import core.stdc.wchar_;
 
-    extern (Windows) alias int function() FARPROC;
-    extern (Windows) FARPROC    GetProcAddress(void*, in char*);
-    extern (Windows) void*      LoadLibraryA(in char*);
-    extern (Windows) int        FreeLibrary(void*);
-    extern (Windows) void*      LocalFree(void*);
-    extern (Windows) wchar_t*   GetCommandLineW();
-    extern (Windows) wchar_t**  CommandLineToArgvW(wchar_t*, int*);
-    extern (Windows) export int WideCharToMultiByte(uint, uint, wchar_t*, int, char*, int, char*, int);
+    extern (Windows)
+    {
+        alias int function() FARPROC;
+        FARPROC    GetProcAddress(void*, in char*);
+        void*      LoadLibraryW(in wchar_t*);
+        int        FreeLibrary(void*);
+        void*      LocalFree(void*);
+        wchar_t*   GetCommandLineW();
+        wchar_t**  CommandLineToArgvW(in wchar_t*, int*);
+        export int WideCharToMultiByte(uint, uint, in wchar_t*, int, char*, int, in char*, int*);
+        export int MultiByteToWideChar(uint, uint, in char*, int, wchar_t*, int);
+        int        IsDebuggerPresent();
+    }
     pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
 }
 
@@ -43,14 +47,14 @@ version (all)
 {
     extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null);
 
-    extern (C) void _d_createTrace(Object *o)
+    extern (C) void _d_createTrace(Object *o, void* context)
     {
         auto t = cast(Throwable) o;
 
         if (t !is null && t.info is null &&
             cast(byte*) t !is t.classinfo.init.ptr)
         {
-            t.info = _d_traceContext();
+            t.info = _d_traceContext(context);
         }
     }
 }
@@ -66,10 +70,32 @@ extern (C) void _STI_critical_init();
 extern (C) void _STD_critical_term();
 extern (C) void gc_init();
 extern (C) void gc_term();
-extern (C) void _minit();
-extern (C) void _moduleCtor();
-extern (C) void _moduleDtor();
+extern (C) void rt_moduleCtor();
+extern (C) void rt_moduleTlsCtor();
+extern (C) void rt_moduleDtor();
+extern (C) void rt_moduleTlsDtor();
 extern (C) void thread_joinAll();
+
+// NOTE: This is to preserve compatibility with old Windows DLLs.
+extern (C) void _moduleCtor()
+{
+    rt_moduleCtor();
+}
+
+extern (C) void _moduleDtor()
+{
+    rt_moduleDtor();
+}
+
+extern (C) void _moduleTlsCtor()
+{
+    rt_moduleTlsCtor();
+}
+
+extern (C) void _moduleTlsDtor()
+{
+    rt_moduleTlsDtor();
+}
 
 version (OSX)
 {
@@ -96,20 +122,37 @@ extern (C) void* rt_loadLibrary(in char[] name)
 {
     version (Windows)
     {
+        if (name.length == 0) return null;
         // Load a DLL at runtime
-        char[260] temp = void;
-        temp[0 .. name.length] = name[];
-        temp[name.length] = cast(char) 0;
-        // BUG: LoadLibraryA() call calls rt_init(), which fails if proxy is not set!
-        void* ptr = LoadLibraryA(temp.ptr);
-        if (ptr is null)
-            return ptr;
-        gcSetFn gcSet = cast(gcSetFn) GetProcAddress(ptr, "gc_setProxy");
+        enum CP_UTF8 = 65001;
+        auto len = MultiByteToWideChar(
+            CP_UTF8, 0, name.ptr, cast(int)name.length, null, 0);
+        if (len == 0)
+            return null;
+
+        auto buf = cast(wchar_t*)malloc((len+1) * wchar_t.sizeof);
+        if (buf is null)
+            return null;
+        scope (exit)
+            free(buf);
+
+        len = MultiByteToWideChar(
+            CP_UTF8, 0, name.ptr, cast(int)name.length, buf, len);
+        if (len == 0)
+            return null;
+
+        buf[len] = '\0';
+
+        // BUG: LoadLibraryW() call calls rt_init(), which fails if proxy is not set!
+        auto mod = LoadLibraryW(buf);
+        if (mod is null)
+            return mod;
+        gcSetFn gcSet = cast(gcSetFn) GetProcAddress(mod, "gc_setProxy");
         if (gcSet !is null)
         {   // BUG: Set proxy, but too late
             gcSet(gc_getProxy());
         }
-        return ptr;
+        return mod;
 
     }
     else version (Posix)
@@ -195,18 +238,17 @@ extern (C)
     {
         onSwitchError(m.name, line);
     }
-
 }
 
 extern (C) void _d_hidden_func()
 {
     Object o;
-    version(X86)
+    version(D_InlineAsm_X86)
         asm
         {
             mov o, EAX;
         }
-    else version(X86_64)
+    else version(D_InlineAsm_X86_64)
         asm
         {
             mov o, RDI;
@@ -215,13 +257,6 @@ extern (C) void _d_hidden_func()
         static assert(0, "unknown os");
 
     onHiddenFuncError(o);
-}
-
-shared bool _d_isHalting = false;
-
-extern (C) bool rt_isHalting()
-{
-    return _d_isHalting;
 }
 
 __gshared string[] _d_args = null;
@@ -237,11 +272,8 @@ extern (C) __gshared bool rt_trapExceptions = true;
 
 void _d_criticalInit()
 {
-    version (Posix)
-    {
-        _STI_monitor_staticctor();
-        _STI_critical_init();
-    }
+  _STI_monitor_staticctor();
+  _STI_critical_init();
 }
 
 alias void delegate(Throwable) ExceptionHandler;
@@ -252,12 +284,11 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
 
     try
     {
+        initSections();
         gc_init();
         initStaticDataGC();
-        version (Windows)
-            _minit();
-        _moduleCtor();
-        _moduleTlsCtor();
+        rt_moduleCtor();
+        rt_moduleTlsCtor();
         runModuleUnitTests();
         return true;
     }
@@ -274,22 +305,19 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
 
 void _d_criticalTerm()
 {
-    version (Posix)
-    {
-        _STD_critical_term();
-        _STD_monitor_staticdtor();
-    }
+  _STD_critical_term();
+  _STD_monitor_staticdtor();
 }
 
 extern (C) bool rt_term(ExceptionHandler dg = null)
 {
     try
     {
-        _moduleTlsDtor();
+        rt_moduleTlsDtor();
         thread_joinAll();
-        _d_isHalting = true;
-        _moduleDtor();
+        rt_moduleDtor();
         gc_term();
+        finiSections();
         return true;
     }
     catch (Throwable e)
@@ -304,20 +332,59 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
     return false;
 }
 
+struct CArgs
+{
+    int argc;
+    char** argv;
+}
+
+__gshared CArgs _cArgs;
+
+extern (C) CArgs rt_cArgs()
+{
+    return _cArgs;
+}
+
 /***********************************
  * The D main() function supplied by the user's program
+ *
+ * It always has `_Dmain` symbol name and uses C calling convention.
+ * But DMD frontend returns its type as `extern(D)` because of Issue @@@9028@@@.
+ * As we need to deal with actual calling convention we have to mark it
+ * as `extern(C)` and use its symbol name.
  */
-int main(char[][] args);
+extern(C) int _Dmain(char[][] args);
+alias extern(C) int function(char[][] args) MainFunc;
 
 /***********************************
  * Substitutes for the C main() function.
- * It's purpose is to wrap the call to the D main()
+ * Just calls into d_run_main with the default main function.
+ * Applications are free to implement their own
+ * main function and call the _d_run_main function
+ * themselves with any main function.
+ */
+extern (C) int main(int argc, char **argv)
+{
+    return _d_run_main(argc, argv, &_Dmain);
+}
+
+version (Solaris) extern (C) int _main(int argc, char** argv)
+{
+    // This is apparently needed on Solaris because the
+    // C tool chain seems to expect the main function
+    // to be called _main. It needs both not just one!
+    return main(argc, argv);
+}
+
+/***********************************
+ * Run the given main function.
+ * Its purpose is to wrap the D main()
  * function and catch any unhandled exceptions.
  */
-
-extern (C) int main(int argc, char** argv)
+extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 {
-    char[][] args;
+    _cArgs.argc = argc;
+    _cArgs.argv = argv;
     int result;
 
     version (OSX)
@@ -345,33 +412,45 @@ extern (C) int main(int argc, char** argv)
         }
     }
 
-    version (Posix)
+    version (Win64)
     {
-        _STI_monitor_staticctor();
-        _STI_critical_init();
+        auto fp = __iob_func();
+        stdin = &fp[0];
+        stdout = &fp[1];
+        stderr = &fp[2];
     }
 
+    _STI_monitor_staticctor();
+    _STI_critical_init();
+
+    char[][] args = (cast(char[]*) alloca(argc * (char[]).sizeof))[0 .. argc];
     version (Windows)
     {
-        wchar_t*  wcbuf = GetCommandLineW();
-        size_t    wclen = wcslen(wcbuf);
-        int       wargc = 0;
-        wchar_t** wargs = CommandLineToArgvW(wcbuf, &wargc);
+        const wchar_t* wCommandLine = GetCommandLineW();
+        immutable size_t wCommandLineLength = wcslen(wCommandLine);
+        int wargc;
+        wchar_t** wargs = CommandLineToArgvW(wCommandLine, &wargc);
         assert(wargc == argc);
 
-        char*     cargp = null;
-        size_t    cargl = WideCharToMultiByte(65001, 0, wcbuf, wclen, null, 0, null, 0);
+        // This is required because WideCharToMultiByte requires int as input.
+        assert(wCommandLineLength <= cast(size_t) int.max, "Wide char command line length must not exceed int.max");
 
-        cargp = cast(char*) alloca(cargl);
-        args  = ((cast(char[]*) alloca(wargc * (char[]).sizeof)))[0 .. wargc];
-
-        for (size_t i = 0, p = 0; i < wargc; i++)
+        immutable size_t totalArgsLength = WideCharToMultiByte(65001, 0, wCommandLine, cast(int)wCommandLineLength, null, 0, null, null);
         {
-            int wlen = wcslen(wargs[i]);
-            int clen = WideCharToMultiByte(65001, 0, &wargs[i][0], wlen, null, 0, null, 0);
-            args[i]  = cargp[p .. p+clen];
-            p += clen; assert(p <= cargl);
-            WideCharToMultiByte(65001, 0, &wargs[i][0], wlen, &args[i][0], clen, null, 0);
+            char* totalArgsBuff = cast(char*) alloca(totalArgsLength);
+            int j = 0;
+            foreach (i; 0 .. wargc)
+            {
+                immutable size_t wlen = wcslen(wargs[i]);
+                assert(wlen <= cast(size_t) int.max, "wlen cannot exceed int.max");
+                immutable int len = WideCharToMultiByte(65001, 0, &wargs[i][0], cast(int) wlen, null, 0, null, null);
+                args[i] = totalArgsBuff[j .. j + len];
+                if (len == 0)
+                    continue;
+                j += len;
+                assert(j <= totalArgsLength);
+                WideCharToMultiByte(65001, 0, &wargs[i][0], cast(int) wlen, &args[i][0], len, null, null);
+            }
         }
         LocalFree(wargs);
         wargs = null;
@@ -379,19 +458,36 @@ extern (C) int main(int argc, char** argv)
     }
     else version (Posix)
     {
-        char[]* am = cast(char[]*) malloc(argc * (char[]).sizeof);
-        scope(exit) free(am);
-
-        for (size_t i = 0; i < argc; i++)
+        size_t totalArgsLength = 0;
+        foreach(i, ref arg; args)
         {
-            auto len = strlen(argv[i]);
-            am[i] = argv[i][0 .. len];
+            arg = argv[i][0 .. strlen(argv[i])];
+            totalArgsLength += arg.length;
         }
-        args = am[0 .. argc];
     }
-    _d_args = cast(string[]) args;
+    else
+        static assert(0);
+
+    {
+        auto buff = cast(char[]*) alloca(argc * (char[]).sizeof + totalArgsLength);
+
+        char[][] argsCopy = buff[0 .. argc];
+        auto argBuff = cast(char*) (buff + argc);
+        foreach(i, arg; args)
+        {
+            argsCopy[i] = (argBuff[0 .. arg.length] = arg[]);
+            argBuff += arg.length;
+        }
+        _d_args = cast(string[]) argsCopy;
+    }
 
     bool trapExceptions = rt_trapExceptions;
+
+    version (Windows)
+    {
+        if (IsDebuggerPresent())
+            trapExceptions = false;
+    }
 
     void tryExec(scope void delegate() dg)
     {
@@ -493,34 +589,31 @@ extern (C) int main(int argc, char** argv)
 
     void runMain()
     {
-        result = main(args);
+        result = mainFunc(args);
     }
 
     void runAll()
     {
+        initSections();
         gc_init();
         initStaticDataGC();
-        version (Windows)
-            _minit();
-        _moduleCtor();
-        _moduleTlsCtor();
+        rt_moduleCtor();
+        rt_moduleTlsCtor();
         if (runModuleUnitTests())
             tryExec(&runMain);
         else
             result = EXIT_FAILURE;
-        _moduleTlsDtor();
+        rt_moduleTlsDtor();
         thread_joinAll();
-        _d_isHalting = true;
-        _moduleDtor();
+        rt_moduleDtor();
         gc_term();
+        finiSections();
     }
 
     tryExec(&runAll);
 
-    version (Posix)
-    {
-        _STD_critical_term();
-        _STD_monitor_staticdtor();
-    }
+    _STD_critical_term();
+    _STD_monitor_staticdtor();
+
     return result;
 }

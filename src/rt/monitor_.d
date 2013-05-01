@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2000 - 2011.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.monitor_;
@@ -43,6 +43,8 @@ private
 
     version( Windows )
     {
+        version (Win32)
+            pragma(lib, "snn.lib");
         import core.sys.windows.windows;
 
         struct Monitor
@@ -88,7 +90,6 @@ private
 
 version( Windows )
 {
-    /+
     static __gshared CRITICAL_SECTION _monitor_critsec;
 
     extern (C) void _STI_monitor_staticctor()
@@ -166,7 +167,6 @@ version( Windows )
         LeaveCriticalSection(&getMonitor(h).mon);
         debug(PRINTF) printf("-_d_monitor_release(%p)\n", h);
     }
-    +/
 }
 
 /* =============================== linux ============================ */

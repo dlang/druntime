@@ -9,12 +9,14 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.stdc.fenv;
 
 extern (C):
+@system:
+nothrow:
 
 version( Windows )
 {
@@ -104,7 +106,7 @@ enum
 
 version( Windows )
 {
-    private extern fenv_t _FE_DFL_ENV;
+    private extern __gshared fenv_t _FE_DFL_ENV;
     fenv_t* FE_DFL_ENV = &_FE_DFL_ENV;
 }
 else version( linux )
@@ -113,7 +115,7 @@ else version( linux )
 }
 else version( OSX )
 {
-    private extern fenv_t _FE_DFL_ENV;
+    private extern __gshared fenv_t _FE_DFL_ENV;
     fenv_t* FE_DFL_ENV = &_FE_DFL_ENV;
 }
 else version( FreeBSD )

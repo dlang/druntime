@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_double;
@@ -19,14 +19,11 @@ private import rt.util.hash;
 
 class TypeInfo_d : TypeInfo
 {
-    override string toString() { return "double"; }
+    @trusted:
+    pure:
+    nothrow:
 
-    override hash_t getHash(in void* p)
-    {
-        return hashOf(p, double.sizeof);
-    }
-
-    static equals_t _equals(double f1, double f2)
+    static bool _equals(double f1, double f2)
     {
         return f1 == f2 ||
                 (f1 !<>= f1 && f2 !<>= f2);
@@ -37,7 +34,8 @@ class TypeInfo_d : TypeInfo
         if (d1 !<>= d2)         // if either are NaN
         {
             if (d1 !<>= d1)
-            {   if (d2 !<>= d2)
+            {
+                if (d2 !<>= d2)
                     return 0;
                 return -1;
             }
@@ -46,7 +44,16 @@ class TypeInfo_d : TypeInfo
         return (d1 == d2) ? 0 : ((d1 < d2) ? -1 : 1);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    const:
+
+    override string toString() const pure nothrow @safe { return "double"; }
+
+    override size_t getHash(in void* p)
+    {
+        return hashOf(p, double.sizeof);
+    }
+
+    override bool equals(in void* p1, in void* p2)
     {
         return _equals(*cast(double *)p1, *cast(double *)p2);
     }
@@ -56,7 +63,7 @@ class TypeInfo_d : TypeInfo
         return _compare(*cast(double *)p1, *cast(double *)p2);
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return double.sizeof;
     }
@@ -70,13 +77,14 @@ class TypeInfo_d : TypeInfo
         *cast(double *)p2 = t;
     }
 
-    override void[] init()
-    {   static immutable double r;
+    override const(void)[] init() nothrow pure
+    {
+        static immutable double r;
 
         return (cast(double *)&r)[0 .. 1];
     }
 
-    override size_t talign()
+    override @property size_t talign() nothrow pure
     {
         return double.alignof;
     }

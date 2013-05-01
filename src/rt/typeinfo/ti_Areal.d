@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Areal;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // real[]
 
-class TypeInfo_Ae : TypeInfo
+class TypeInfo_Ae : TypeInfo_Array
 {
-    override string toString() { return "real[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   real[] s = *cast(real[]*)p;
+    override string toString() const { return "real[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        real[] s = *cast(real[]*)p;
         return hashOf(s.ptr, s.length * real.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         real[] s1 = *cast(real[]*)p1;
         real[] s2 = *cast(real[]*)p2;
@@ -43,7 +46,7 @@ class TypeInfo_Ae : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         real[] s1 = *cast(real[]*)p1;
         real[] s2 = *cast(real[]*)p2;
@@ -64,31 +67,9 @@ class TypeInfo_Ae : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (real[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(real);
-    }
-
-    override size_t talign()
-    {
-        return (real[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        //arg1 = typeid(size_t);
-        //arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(real);
     }
 }
 
@@ -96,10 +77,10 @@ class TypeInfo_Ae : TypeInfo
 
 class TypeInfo_Aj : TypeInfo_Ae
 {
-    override string toString() { return "ireal[]"; }
+    override string toString() const { return "ireal[]"; }
 
-    override TypeInfo next()
+    override @property inout(TypeInfo) next() inout
     {
-        return typeid(ireal);
+        return cast(inout)typeid(ireal);
     }
 }

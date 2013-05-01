@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Aint;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // int[]
 
-class TypeInfo_Ai : TypeInfo
+class TypeInfo_Ai : TypeInfo_Array
 {
-    override string toString() { return "int[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   int[] s = *cast(int[]*)p;
+    override string toString() const { return "int[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        int[] s = *cast(int[]*)p;
         return hashOf(s.ptr, s.length * int.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         int[] s1 = *cast(int[]*)p1;
         int[] s2 = *cast(int[]*)p2;
@@ -36,7 +39,7 @@ class TypeInfo_Ai : TypeInfo
                memcmp(cast(void *)s1, cast(void *)s2, s1.length * int.sizeof) == 0;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         int[] s1 = *cast(int[]*)p1;
         int[] s2 = *cast(int[]*)p2;
@@ -57,31 +60,9 @@ class TypeInfo_Ai : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (int[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(int);
-    }
-
-    override size_t talign()
-    {
-        return (int[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        //arg1 = typeid(size_t);
-        //arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(int);
     }
 }
 
@@ -100,9 +81,9 @@ unittest
 
 class TypeInfo_Ak : TypeInfo_Ai
 {
-    override string toString() { return "uint[]"; }
+    override string toString() const { return "uint[]"; }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         uint[] s1 = *cast(uint[]*)p1;
         uint[] s2 = *cast(uint[]*)p2;
@@ -123,9 +104,9 @@ class TypeInfo_Ak : TypeInfo_Ai
         return 0;
     }
 
-    override TypeInfo next()
+    override @property inout(TypeInfo) next() inout
     {
-        return typeid(uint);
+        return cast(inout)typeid(uint);
     }
 }
 
@@ -133,10 +114,10 @@ class TypeInfo_Ak : TypeInfo_Ai
 
 class TypeInfo_Aw : TypeInfo_Ak
 {
-    override string toString() { return "dchar[]"; }
+    override string toString() const { return "dchar[]"; }
 
-    override TypeInfo next()
+    override @property inout(TypeInfo) next() inout
     {
-        return typeid(dchar);
+        return cast(inout)typeid(dchar);
     }
 }

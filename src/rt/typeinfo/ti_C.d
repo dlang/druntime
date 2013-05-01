@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_C;
@@ -17,13 +17,18 @@ module rt.typeinfo.ti_C;
 
 class TypeInfo_C : TypeInfo
 {
-    override hash_t getHash(in void* p)
+    @trusted:
+    const:
+    //pure:
+    //nothrow:
+
+    override size_t getHash(in void* p)
     {
         Object o = *cast(Object*)p;
         return o ? o.toHash() : 0;
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2)
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;
@@ -41,7 +46,8 @@ class TypeInfo_C : TypeInfo
         if (!(o1 is o2))
         {
             if (o1)
-            {   if (!o2)
+            {
+                if (!o2)
                     c = 1;
                 else
                     c = o1.opCmp(o2);
@@ -52,12 +58,12 @@ class TypeInfo_C : TypeInfo
         return c;
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return Object.sizeof;
     }
 
-    override uint flags()
+    override @property uint flags() nothrow pure
     {
         return 1;
     }

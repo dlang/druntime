@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_char;
@@ -17,14 +17,19 @@ module rt.typeinfo.ti_char;
 
 class TypeInfo_a : TypeInfo
 {
-    override string toString() { return "char"; }
+    @trusted:
+    const:
+    pure:
+    nothrow:
 
-    override hash_t getHash(in void* p)
+    override string toString() const pure nothrow @safe { return "char"; }
+
+    override size_t getHash(in void* p)
     {
         return *cast(char *)p;
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2)
     {
         return *cast(char *)p1 == *cast(char *)p2;
     }
@@ -34,7 +39,7 @@ class TypeInfo_a : TypeInfo
         return *cast(char *)p1 - *cast(char *)p2;
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return char.sizeof;
     }
@@ -48,8 +53,9 @@ class TypeInfo_a : TypeInfo
         *cast(char *)p2 = t;
     }
 
-    override void[] init()
-    {   static immutable char c;
+    override const(void)[] init() nothrow pure
+    {
+        static immutable char c;
 
         return (cast(char *)&c)[0 .. 1];
     }

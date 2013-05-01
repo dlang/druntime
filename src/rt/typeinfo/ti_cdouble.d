@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_cdouble;
@@ -19,20 +19,18 @@ private import rt.util.hash;
 
 class TypeInfo_r : TypeInfo
 {
-    override string toString() { return "cdouble"; }
+    @trusted:
+    pure:
+    nothrow:
 
-    override hash_t getHash(in void* p)
-    {
-        return hashOf(p, cdouble.sizeof);
-    }
-
-    static equals_t _equals(cdouble f1, cdouble f2)
+    static bool _equals(cdouble f1, cdouble f2)
     {
         return f1 == f2;
     }
 
     static int _compare(cdouble f1, cdouble f2)
-    {   int result;
+    {
+        int result;
 
         if (f1.re < f2.re)
             result = -1;
@@ -47,7 +45,16 @@ class TypeInfo_r : TypeInfo
         return result;
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+  const:
+
+    override string toString() const pure nothrow @safe { return "cdouble"; }
+
+    override size_t getHash(in void* p)
+    {
+        return hashOf(p, cdouble.sizeof);
+    }
+
+    override bool equals(in void* p1, in void* p2)
     {
         return _equals(*cast(cdouble *)p1, *cast(cdouble *)p2);
     }
@@ -57,7 +64,7 @@ class TypeInfo_r : TypeInfo
         return _compare(*cast(cdouble *)p1, *cast(cdouble *)p2);
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return cdouble.sizeof;
     }
@@ -71,19 +78,21 @@ class TypeInfo_r : TypeInfo
         *cast(cdouble *)p2 = t;
     }
 
-    override void[] init()
-    {   static immutable cdouble r;
+    override const(void)[] init() nothrow pure
+    {
+        static immutable cdouble r;
 
         return (cast(cdouble *)&r)[0 .. 1];
     }
 
-    override size_t talign()
+    override @property size_t talign() nothrow pure
     {
         return cdouble.alignof;
     }
 
     version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {   arg1 = typeid(double);
+    {
+        arg1 = typeid(double);
         arg2 = typeid(double);
         return 0;
     }

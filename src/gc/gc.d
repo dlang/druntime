@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module gc.gc;
@@ -37,7 +37,6 @@ private
         extern (C) void function() gc_collect;
         extern (C) void function() gc_minimize;
 
-        extern (C) bool function(void*) gc_isCollecting;
         extern (C) uint function(void*) gc_getAttr;
         extern (C) uint function(void*, uint) gc_setAttr;
         extern (C) uint function(void*, uint) gc_clrAttr;
@@ -73,7 +72,6 @@ private
         pthis.gc_minimize = &gc_minimize;
 
         pthis.gc_getAttr = &gc_getAttr;
-        pthis.gc_isCollecting = &gc_isCollecting;
         pthis.gc_setAttr = &gc_setAttr;
         pthis.gc_clrAttr = &gc_clrAttr;
 
@@ -133,6 +131,9 @@ extern (C) void gc_term()
     _gc.fullCollectNoStack(); // not really a 'collect all' -- still scans
                               // static data area, roots, and ranges.
     _gc.Dtor();
+
+    free(cast(void*)_gc);
+    _gc = null;
 }
 
 extern (C) void gc_enable()
@@ -158,14 +159,6 @@ extern (C) void gc_collect()
     }
     return proxy.gc_collect();
 }
-
-extern(C) bool gc_isCollecting(void *p)
-{
-    if( proxy is null )
-        return _gc.isCollecting(p);
-    return proxy.gc_isCollecting(p);
-}
-
 
 extern (C) void gc_minimize()
 {

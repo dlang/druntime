@@ -9,7 +9,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.posix.stdio;
@@ -18,6 +18,7 @@ private import core.sys.posix.config;
 public import core.stdc.stdio;
 public import core.sys.posix.sys.types; // for off_t
 
+version (Posix):
 extern (C):
 
 //
@@ -94,7 +95,12 @@ int    vsscanf(in char*, in char*, va_list arg);
 
 version( linux )
 {
-    static if( __USE_LARGEFILE64 )
+    /*
+     * actually, if __USE_FILE_OFFSET64 && !_LARGEFILE64_SOURCE
+     * the *64 functions shouldn't be visible, but the aliases should
+     * still be supported
+     */
+    static if( __USE_FILE_OFFSET64 )
     {
         int   fgetpos64(FILE*, fpos_t *);
         alias fgetpos64 fgetpos;
@@ -105,8 +111,7 @@ version( linux )
         FILE* freopen64(in char*, in char*, FILE*);
         alias freopen64 freopen;
 
-        int   fseek64(FILE*, c_long, int);
-        alias fseek64 fseek;
+        int   fseek(FILE*, c_long, int);
 
         int   fsetpos64(FILE*, in fpos_t*);
         alias fsetpos64 fsetpos;
@@ -155,7 +160,7 @@ version( linux )
     int   fseeko(FILE*, off_t, int);
   }
 
-  static if( __USE_LARGEFILE64 )
+  static if( __USE_FILE_OFFSET64 )
   {
     off_t ftello64(FILE*);
     alias ftello64 ftello;

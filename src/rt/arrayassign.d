@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.arrayassign;
@@ -29,17 +29,19 @@ private
  */
 extern (C) void[] _d_arrayassign(TypeInfo ti, void[] from, void[] to)
 {
-    debug(PRINTF) printf("_d_arrayassign(from = %p,%d, to = %p,%d) size = %d\n", from.ptr, from.length, to.ptr, to.length, ti.tsize());
+    debug(PRINTF) printf("_d_arrayassign(from = %p,%d, to = %p,%d) size = %d\n", from.ptr, from.length, to.ptr, to.length, ti.tsize);
 
     if (to.length != from.length)
     {
-        char[10] tmp = void;
-        string msg = "lengths don't match for array copy,"c;
-        msg ~= tmp.intToString(to.length) ~ " = " ~ tmp.intToString(from.length);
-        throw new Exception(msg);
+        enum len = is(size_t == uint) ? 10 : 20;
+        char[len] tmp1 = void;
+        char[len] tmp2 = void;
+        string msg = "lengths don't match for array copy, "c;
+        msg ~= tmp1.uintToString(to.length) ~ " = " ~ tmp2.uintToString(from.length);
+        throw new Error(msg);
     }
 
-    auto element_size = ti.tsize();
+    auto element_size = ti.tsize;
 
     /* Need a temporary buffer tmp[] big enough to hold one element
      */
@@ -48,7 +50,7 @@ extern (C) void[] _d_arrayassign(TypeInfo ti, void[] from, void[] to)
     if (element_size > buf.sizeof)
         tmp = alloca(element_size)[0 .. element_size];
     else
-        tmp = buf;
+        tmp = buf[];
 
 
     if (to.ptr <= from.ptr)
@@ -85,19 +87,20 @@ extern (C) void[] _d_arrayassign(TypeInfo ti, void[] from, void[] to)
  */
 extern (C) void[] _d_arrayctor(TypeInfo ti, void[] from, void[] to)
 {
-    debug(PRINTF) printf("_d_arrayctor(from = %p,%d, to = %p,%d) size = %d\n", from.ptr, from.length, to.ptr, to.length, ti.tsize());
+    debug(PRINTF) printf("_d_arrayctor(from = %p,%d, to = %p,%d) size = %d\n", from.ptr, from.length, to.ptr, to.length, ti.tsize);
 
     if (to.length != from.length)
     {
-        char[10] tmp = void;
+        enum len = is(size_t == uint) ? 10 : 20;
+        char[len] tmp = void;
         string msg = "lengths don't match for array initialization,"c;
-        msg ~= tmp.intToString(to.length) ~ " = " ~ tmp.intToString(from.length);
-        throw new Exception(msg);
+        msg ~= tmp.uintToString(to.length) ~ " = " ~ tmp.uintToString(from.length);
+        throw new Error(msg);
     }
 
-    auto element_size = ti.tsize();
+    auto element_size = ti.tsize;
 
-    int i;
+    size_t i;
     try
     {
         for (i = 0; i < to.length; i++)
@@ -130,7 +133,7 @@ extern (C) void* _d_arraysetassign(void* p, void* value, int count, TypeInfo ti)
 {
     void* pstart = p;
 
-    auto element_size = ti.tsize();
+    auto element_size = ti.tsize;
 
     //Need a temporary buffer tmp[] big enough to hold one element
     void[16] buf = void;
@@ -140,7 +143,7 @@ extern (C) void* _d_arraysetassign(void* p, void* value, int count, TypeInfo ti)
         tmp = alloca(element_size)[0 .. element_size];
     }
     else
-        tmp = buf;
+        tmp = buf[];
 
     foreach (i; 0 .. count)
     {
@@ -160,7 +163,7 @@ extern (C) void* _d_arraysetassign(void* p, void* value, int count, TypeInfo ti)
 extern (C) void* _d_arraysetctor(void* p, void* value, int count, TypeInfo ti)
 {
     void* pstart = p;
-    auto element_size = ti.tsize();
+    auto element_size = ti.tsize;
 
     try
     {

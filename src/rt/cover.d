@@ -1,16 +1,14 @@
 /**
  * Implementation of code coverage analyzer.
  *
- * Copyright: Copyright Digital Mars 2000 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 1995 - 2013.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Walter Bright, Sean Kelly
+ * Source: $(DRUNTIMESRC src/rt/_cover.d)
  */
 
-/*          Copyright Digital Mars 2000 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.cover;
 
 private
@@ -22,8 +20,8 @@ private
         import core.sys.posix.fcntl;
         import core.sys.posix.unistd;
     }
-    import core.bitop;
     import core.stdc.stdio;
+    import core.stdc.stdlib;
     import rt.util.utf;
 
     struct BitArray
@@ -38,15 +36,21 @@ private
         }
         body
         {
-            return cast(bool) bt( ptr, i );
+            static if (size_t.sizeof == 8)
+                return ((ptr[i >> 6] & (1L << (i & 63)))) != 0;
+            else static if (size_t.sizeof == 4)
+                return ((ptr[i >> 5] & (1  << (i & 31)))) != 0;
+            else
+                static assert(0);
         }
     }
 
-    struct Cover
+    struct Cover                // one of these for each module being analyzed
     {
         string      filename;
-        BitArray    valid;
-        uint[]      data;
+        BitArray    valid;      // bit array of which source lines are executable code lines
+        uint[]      data;       // array of line execution counts
+        ubyte       minPercent; // minimum percentage coverage required
     }
 
     __gshared
@@ -104,19 +108,31 @@ extern (C) void dmd_coverSetMerge( bool flag )
  *  valid    = ???
  *  data     = ???
  */
-extern (C) void _d_cover_register( string filename, BitArray valid, uint[] data )
+extern (C) void _d_cover_register2(string filename, size_t[] valid, uint[] data, ubyte minPercent)
 {
+    assert(minPercent <= 100);
+
     Cover c;
 
     c.filename  = filename;
-    c.valid     = valid;
+    c.valid.ptr = valid.ptr;
+    c.valid.len = valid.length;
     c.data      = data;
+    c.minPercent = minPercent;
     gdata      ~= c;
 }
 
+/* Kept for the moment for backwards compatibility.
+ */
+extern (C) void _d_cover_register( string filename, size_t[] valid, uint[] data )
+{
+    _d_cover_register2(filename, valid, data, 0);
+}
 
 shared static ~this()
 {
+    if (!gdata.length) return;
+
     const NUMLINES = 16384 - 1;
     const NUMCHARS = 16384 * 16 - 1;
 
@@ -170,7 +186,7 @@ shared static ~this()
         uint nno;
         uint nyes;
 
-        for( int i = 0; i < c.data.length; i++ )
+        foreach (i; 0..c.data.length)
         {
             if( i < srclines.length )
             {
@@ -184,23 +200,31 @@ shared static ~this()
                     if( c.valid[i] )
                     {
                         nno++;
-                        fprintf( flst, "0000000|%.*s\n", line.length, line.ptr );
+                        fprintf( flst, "0000000|%.*s\n", cast(int)line.length, line.ptr );
                     }
                     else
                     {
-                        fprintf( flst, "       |%.*s\n", line.length, line.ptr );
+                        fprintf( flst, "       |%.*s\n", cast(int)line.length, line.ptr );
                     }
                 }
                 else
                 {
                     nyes++;
-                    fprintf( flst, "%7u|%.*s\n", n, line.length, line.ptr );
+                    fprintf( flst, "%7u|%.*s\n", n, cast(int)line.length, line.ptr );
                 }
             }
         }
         if( nyes + nno ) // no divide by 0 bugs
         {
-            fprintf( flst, "%.*s is %d%% covered\n", c.filename.length, c.filename.ptr, ( nyes * 100 ) / ( nyes + nno ) );
+            uint percent = ( nyes * 100 ) / ( nyes + nno );
+            fprintf( flst, "%.*s is %d%% covered\n", cast(int)c.filename.length, c.filename.ptr, percent );
+            if (percent < c.minPercent)
+            {
+                fclose(flst);
+                fprintf(stderr, "Error: %.*s is %d%% covered, less than required %d%%\n",
+                    cast(int)c.filename.length, c.filename.ptr, percent, c.minPercent);
+                exit(EXIT_FAILURE);
+            }
         }
         fclose( flst );
     }
@@ -326,7 +350,6 @@ bool readFile( string name, ref char[] buf )
                                        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
                                        cast(HANDLE) null );
 
-        delete wnamez;
         if( file == INVALID_HANDLE_VALUE )
             return false;
         scope( exit ) CloseHandle( file );
@@ -350,11 +373,10 @@ bool readFile( string name, ref char[] buf )
     else version( Posix )
     {
         char[]  namez = new char[name.length + 1];
-                        namez[0 .. name.length] = name;
+                        namez[0 .. name.length] = name[];
                         namez[$ - 1] = 0;
         int     file = open( namez.ptr, O_RDONLY );
 
-        delete namez;
         if( file == -1 )
             return false;
         scope( exit ) close( file );

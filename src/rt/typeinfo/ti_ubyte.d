@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_ubyte;
@@ -17,14 +17,19 @@ module rt.typeinfo.ti_ubyte;
 
 class TypeInfo_h : TypeInfo
 {
-    override string toString() { return "ubyte"; }
+    @trusted:
+    const:
+    pure:
+    nothrow:
 
-    override hash_t getHash(in void* p)
+    override string toString() const pure nothrow @safe { return "ubyte"; }
+
+    override size_t getHash(in void* p)
     {
         return *cast(ubyte *)p;
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2)
     {
         return *cast(ubyte *)p1 == *cast(ubyte *)p2;
     }
@@ -34,7 +39,7 @@ class TypeInfo_h : TypeInfo
         return *cast(ubyte *)p1 - *cast(ubyte *)p2;
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return ubyte.sizeof;
     }
@@ -51,5 +56,10 @@ class TypeInfo_h : TypeInfo
 
 class TypeInfo_b : TypeInfo_h
 {
-    override string toString() { return "bool"; }
+    @trusted:
+    const:
+    pure:
+    nothrow:
+
+    override string toString() const pure nothrow @safe { return "bool"; }
 }

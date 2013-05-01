@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2008 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.arrayreal;
@@ -24,10 +24,10 @@ version (unittest)
      */
     int cpuid;
     const int CPUID_MAX = 1;
-    bool mmx()      { return cpuid == 1 && core.cpuid.mmx(); }
-    bool sse()      { return cpuid == 2 && core.cpuid.sse(); }
-    bool sse2()     { return cpuid == 3 && core.cpuid.sse2(); }
-    bool amd3dnow() { return cpuid == 4 && core.cpuid.amd3dnow(); }
+    @property bool mmx()      { return cpuid == 1 && core.cpuid.mmx; }
+    @property bool sse()      { return cpuid == 2 && core.cpuid.sse; }
+    @property bool sse2()     { return cpuid == 3 && core.cpuid.sse2; }
+    @property bool amd3dnow() { return cpuid == 4 && core.cpuid.amd3dnow; }
 }
 else
 {
@@ -39,6 +39,7 @@ else
 
 //version = log;
 
+@trusted pure nothrow
 bool disjoint(T)(T[] a, T[] b)
 {
     return (a.ptr + a.length <= b.ptr || b.ptr + b.length <= a.ptr);
@@ -46,7 +47,7 @@ bool disjoint(T)(T[] a, T[] b)
 
 alias real T;
 
-extern (C):
+extern (C) @trusted nothrow:
 
 /* ======================================================================== */
 
@@ -65,7 +66,7 @@ in
 }
 body
 {
-    for (int i = 0; i < a.length; i++)
+    foreach (i; 0..a.length)
         a[i] = b[i] + c[i];
     return a;
 }
@@ -124,7 +125,7 @@ in
 }
 body
 {
-    for (int i = 0; i < a.length; i++)
+    foreach (i; 0..a.length)
         a[i] = b[i] - c[i];
     return a;
 }

@@ -10,7 +10,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2011.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.exception;
@@ -151,7 +151,7 @@ class FinalizeError : Error
         info = ci;
     }
 
-    override string toString()
+    @safe override const string toString()
     {
         return "An exception was thrown while finalizing an instance of class " ~ info.name;
     }
@@ -234,9 +234,9 @@ class OutOfMemoryError : Error
         super( "Memory allocation failed", file, line, next );
     }
 
-    override string toString()
+    @trusted override const string toString()
     {
-        return msg ? super.toString() : "Memory allocation failed";
+        return msg ? (cast()super).toString() : "Memory allocation failed";
     }
 }
 
@@ -256,6 +256,47 @@ unittest
         assert(oome.line == 42);
         assert(oome.next !is null);
         assert(oome.msg == "Memory allocation failed");
+    }
+}
+
+
+/**
+ * Thrown on an invalid memory operation.
+ *
+ * An invalid memory operation error occurs in circumstances when the garbage
+ * collector has detected an operation it cannot reliably handle. The default
+ * D GC is not re-entrant, so this can happen due to allocations done from
+ * within finalizers called during a garbage collection cycle.
+ */
+class InvalidMemoryOperationError : Error
+{
+    this(string file = __FILE__, size_t line = __LINE__, Throwable next = null )
+    {
+        super( "Invalid memory operation", file, line, next );
+    }
+
+    @trusted override const string toString()
+    {
+        return msg ? (cast()super).toString() : "Invalid memory operation";
+    }
+}
+
+unittest
+{
+    {
+        auto oome = new InvalidMemoryOperationError();
+        assert(oome.file == __FILE__);
+        assert(oome.line == __LINE__ - 2);
+        assert(oome.next is null);
+        assert(oome.msg == "Invalid memory operation");
+    }
+
+    {
+        auto oome = new InvalidMemoryOperationError("hello", 42, new Exception("It's an Exception!"));
+        assert(oome.file == "hello");
+        assert(oome.line == 42);
+        assert(oome.next !is null);
+        assert(oome.msg == "Invalid memory operation");
     }
 }
 
@@ -338,7 +379,7 @@ unittest
  * Params:
  *  h = The new assert handler.  Set to null to use the default handler.
  */
-deprecated void setAssertHandler( errorHandlerType h )
+void setAssertHandler( errorHandlerType h )
 {
     assertHandler = h;
 }
@@ -459,6 +500,22 @@ extern (C) void onOutOfMemoryError()
     // NOTE: Since an out of memory condition exists, no allocation must occur
     //       while generating this object.
     throw cast(OutOfMemoryError) cast(void*) OutOfMemoryError.classinfo.init;
+}
+
+
+/**
+ * A callback for invalid memory operations in D.  An
+ * InvalidMemoryOperationError will be thrown.
+ *
+ * Throws:
+ *  InvalidMemoryOperationError.
+ */
+extern (C) void onInvalidMemoryOperationError()
+{
+    // The same restriction applies as for onOutOfMemoryError. The GC is in an
+    // undefined state, thus no allocation must occur while generating this object.
+    throw cast(InvalidMemoryOperationError)
+        cast(void*) InvalidMemoryOperationError.classinfo.init;
 }
 
 

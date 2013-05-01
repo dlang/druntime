@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Acreal;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // creal[]
 
-class TypeInfo_Ac : TypeInfo
+class TypeInfo_Ac : TypeInfo_Array
 {
-    override string toString() { return "creal[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   creal[] s = *cast(creal[]*)p;
+    override string toString() const { return "creal[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        creal[] s = *cast(creal[]*)p;
         return hashOf(s.ptr, s.length * creal.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         creal[] s1 = *cast(creal[]*)p1;
         creal[] s2 = *cast(creal[]*)p2;
@@ -43,7 +46,7 @@ class TypeInfo_Ac : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         creal[] s1 = *cast(creal[]*)p1;
         creal[] s2 = *cast(creal[]*)p2;
@@ -64,30 +67,8 @@ class TypeInfo_Ac : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (creal[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(creal);
-    }
-
-    override size_t talign()
-    {
-        return (real[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        //arg1 = typeid(size_t);
-        //arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(creal);
     }
 }

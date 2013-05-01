@@ -10,7 +10,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sync.mutex;
@@ -18,13 +18,17 @@ module core.sync.mutex;
 
 public import core.sync.exception;
 
-version( Win32 )
+version( Windows )
 {
     private import core.sys.windows.windows;
 }
 else version( Posix )
 {
     private import core.sys.posix.pthread;
+}
+else
+{
+    static assert(false, "Platform not supported");
 }
 
 
@@ -56,7 +60,7 @@ class Mutex :
      */
     this()
     {
-        version( Win32 )
+        version( Windows )
         {
             InitializeCriticalSection( &m_hndl );
         }
@@ -99,7 +103,7 @@ class Mutex :
 
     ~this()
     {
-        version( Win32 )
+        version( Windows )
         {
             DeleteCriticalSection( &m_hndl );
         }
@@ -124,9 +128,9 @@ class Mutex :
      * Throws:
      *  SyncException on error.
      */
-    void lock()
+    @trusted void lock()
     {
-        version( Win32 )
+        version( Windows )
         {
             EnterCriticalSection( &m_hndl );
         }
@@ -146,9 +150,9 @@ class Mutex :
      * Throws:
      *  SyncException on error.
      */
-    void unlock()
+    @trusted void unlock()
     {
-        version( Win32 )
+        version( Windows )
         {
             LeaveCriticalSection( &m_hndl );
         }
@@ -174,7 +178,7 @@ class Mutex :
      */
     bool tryLock()
     {
-        version( Win32 )
+        version( Windows )
         {
             return TryEnterCriticalSection( &m_hndl ) != 0;
         }
@@ -186,7 +190,7 @@ class Mutex :
 
 
 private:
-    version( Win32 )
+    version( Windows )
     {
         CRITICAL_SECTION    m_hndl;
     }

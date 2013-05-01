@@ -7,7 +7,7 @@
 
 /*          Copyright Digital Mars 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.image;
@@ -94,12 +94,12 @@ struct CPU
 
         bool is32bit ()
         {
-                return (header.magic & MH_MAGIC) != 0;
+                return (header.magic == MH_MAGIC);
         }
 
         bool is64bit ()
         {
-                return (header.magic & MH_MAGIC_64) != 0;
+                return (header.magic == MH_MAGIC_64);
         }
 }
 

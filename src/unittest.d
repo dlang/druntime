@@ -8,7 +8,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 public import core.atomic;
@@ -26,16 +26,16 @@ public import core.sync.mutex;
 public import core.sync.rwmutex;
 public import core.sync.semaphore;
 
-version(posix)
+version(Posix)
     public import core.sys.posix.sys.select;
 
 void main()
 {
     // Bring in unit test for module by referencing a function in it
     shared(int) i;
-    cas( &i, i.init, i.init + 1 ); // atomic
+    cas( &i, 0, 1 ); // atomic
     auto b = bsf( 0 ); // bitop
-    mmx(); // cpuid
+    mmx; // cpuid
     demangle( "" ); // demangle
     setAssertHandler( null ); // exception
     // SES - disabled because you cannot enable the GC without disabling it.

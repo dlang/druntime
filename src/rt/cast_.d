@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.cast_;
@@ -24,23 +24,22 @@ extern (C):
  */
 
 Object _d_toObject(void* p)
-{   Object o;
+{
+    if(!p)
+        return null;
 
-    if (p)
+    Object o = cast(Object) p;
+    ClassInfo oc = o.classinfo;
+    Interface* pi = **cast(Interface***) p;
+
+    /* Interface.offset lines up with ClassInfo.name.ptr,
+     * so we rely on pointers never being less than 64K,
+     * and Objects never being greater.
+     */
+    if(pi.offset < 0x10000)
     {
-        o = cast(Object)p;
-        ClassInfo oc = o.classinfo;
-        Interface *pi = **cast(Interface ***)p;
-
-        /* Interface.offset lines up with ClassInfo.name.ptr,
-         * so we rely on pointers never being less than 64K,
-         * and Objects never being greater.
-         */
-        if (pi.offset < 0x10000)
-        {
-            //printf("\tpi.offset = %d\n", pi.offset);
-            o = cast(Object)(p - pi.offset);
-        }
+        debug(cast_) printf("\tpi.offset = %d\n", pi.offset);
+        return cast(Object)(p - pi.offset);
     }
     return o;
 }
@@ -51,120 +50,102 @@ Object _d_toObject(void* p)
  * Returns o if successful, null if not.
  */
 
-Object _d_interface_cast(void* p, ClassInfo c)
-{   Object o;
+void* _d_interface_cast(void* p, ClassInfo c)
+{
+    debug(cast_) printf("_d_interface_cast(p = %p, c = '%.*s')\n", p, c.name);
+    if(!p)
+        return null;
 
-    //printf("_d_interface_cast(p = %p, c = '%.*s')\n", p, c.name);
-    if (p)
-    {
-        Interface *pi = **cast(Interface ***)p;
+    Interface* pi = **cast(Interface***) p;
 
-        //printf("\tpi.offset = %d\n", pi.offset);
-        o = cast(Object)(p - pi.offset);
-        return _d_dynamic_cast(o, c);
-    }
-    return o;
+    debug(cast_) printf("\tpi.offset = %d\n", pi.offset);
+    return _d_dynamic_cast(cast(Object)(p - pi.offset), c);
 }
 
-Object _d_dynamic_cast(Object o, ClassInfo c)
-{   ClassInfo oc;
+void* _d_dynamic_cast(Object o, ClassInfo c)
+{
+    debug(cast_) printf("_d_dynamic_cast(o = %p, c = '%.*s')\n", o, c.name);
+
+    void* res = null;
     size_t offset = 0;
-
-    //printf("_d_dynamic_cast(o = %p, c = '%.*s')\n", o, c.name);
-
-    if (o)
+    if(o && _d_isbaseof2(o.classinfo, c, offset))
     {
-        oc = o.classinfo;
-        if (_d_isbaseof2(oc, c, offset))
-        {
-            //printf("\toffset = %d\n", offset);
-            o = cast(Object)(cast(void*)o + offset);
-        }
-        else
-            o = null;
+        debug(cast_) printf("\toffset = %d\n", offset);
+        res = cast(void*) o + offset;
     }
-    //printf("\tresult = %p\n", o);
-    return o;
+    debug(cast_) printf("\tresult = %p\n", res);
+    return res;
 }
 
 int _d_isbaseof2(ClassInfo oc, ClassInfo c, ref size_t offset)
-{   int i;
+{
+    if(oc is c)
+        return true;
 
-    if (oc is c)
-        return 1;
     do
     {
-        if (oc.base is c)
-            return 1;
-        for (i = 0; i < oc.interfaces.length; i++)
-        {
-            ClassInfo ic;
+        if(oc.base is c)
+            return true;
 
-            ic = oc.interfaces[i].classinfo;
-            if (ic is c)
-            {   offset = oc.interfaces[i].offset;
-                return 1;
+        foreach(iface; oc.interfaces)
+        {
+            if(iface.classinfo is c)
+            {
+                offset = iface.offset;
+                return true;
             }
         }
-        for (i = 0; i < oc.interfaces.length; i++)
-        {
-            ClassInfo ic;
 
-            ic = oc.interfaces[i].classinfo;
-            if (_d_isbaseof2(ic, c, offset))
-            {   offset = oc.interfaces[i].offset;
-                return 1;
+        foreach(iface; oc.interfaces)
+        {
+            if(_d_isbaseof2(iface.classinfo, c, offset))
+            {
+                offset = iface.offset;
+                return true;
             }
         }
+
         oc = oc.base;
-    } while (oc);
-    return 0;
+    }
+    while(oc);
+
+    return false;
 }
 
 int _d_isbaseof(ClassInfo oc, ClassInfo c)
-{   int i;
+{
+    if(oc is c)
+        return true;
 
-    if (oc is c)
-        return 1;
     do
     {
-        if (oc.base is c)
-            return 1;
-        for (i = 0; i < oc.interfaces.length; i++)
-        {
-            ClassInfo ic;
+        if(oc.base is c)
+            return true;
 
-            ic = oc.interfaces[i].classinfo;
-            if (ic is c || _d_isbaseof(ic, c))
-                return 1;
-        }
+        foreach(iface; oc.interfaces)
+            if(iface.classinfo is c || _d_isbaseof(iface.classinfo, c))
+                return true;
+
         oc = oc.base;
-    } while (oc);
-    return 0;
+    }
+    while(oc);
+
+    return false;
 }
 
 /*********************************
  * Find the vtbl[] associated with Interface ic.
  */
 
-void *_d_interface_vtbl(ClassInfo ic, Object o)
-{   int i;
-    ClassInfo oc;
-
-    //printf("__d_interface_vtbl(o = %p, ic = %p)\n", o, ic);
+void* _d_interface_vtbl(ClassInfo ic, Object o)
+{
+    debug(cast_) printf("__d_interface_vtbl(o = %p, ic = %p)\n", o, ic);
 
     assert(o);
 
-    oc = o.classinfo;
-    for (i = 0; i < oc.interfaces.length; i++)
-    {
-        ClassInfo oic;
+    foreach(iface; o.classinfo.interfaces)
+        if(iface.classinfo is ic)
+            return cast(void*) iface.vtbl;
 
-        oic = oc.interfaces[i].classinfo;
-        if (oic is ic)
-        {
-            return cast(void *)oc.interfaces[i].vtbl;
-        }
-    }
     assert(0);
 }

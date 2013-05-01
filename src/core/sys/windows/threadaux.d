@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2010 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
@@ -22,9 +22,15 @@ version( Windows )
     public import core.thread;
 
     extern(Windows)
-    HANDLE OpenThread(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwThreadId);
+    HANDLE OpenThread(DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwThreadId) nothrow;
 
     extern (C) extern __gshared int _tls_index;
+
+    extern (C) // rt.minfo
+    {
+        void rt_moduleTlsCtor();
+        void rt_moduleTlsDtor();
+    }
 
 private:
     ///////////////////////////////////////////////////////////////////
@@ -35,29 +41,77 @@ private:
         enum SystemProcessInformation = 5;
         enum STATUS_INFO_LENGTH_MISMATCH = 0xc0000004;
 
-        // abbreviated versions of these structs (full info can be found
-        //  here: http://undocumented.ntinternals.net )
+        // structs subject to change according to MSDN, more info at http://undocumented.ntinternals.net
+        // declarations according to http://processhacker.sourceforge.net/doc/ntexapi_8h_source.html
+        // NOTE: the declarations assume default alignment for Win64 and contain some padding data
+        struct UNICODE_STRING
+        {
+            short Length;
+            short MaximumLength;
+            wchar* Buffer;
+        }
+        // process or thread ID, documentation says it is a HANDLE, but it's actually the ID (a DWORD)
+        alias size_t PTID;
+
         struct _SYSTEM_PROCESS_INFORMATION
         {
-            int NextEntryOffset; // When this entry is 0, there are no more processes to be read.
-            int NumberOfThreads;
-            int[15] fill1;
-            int ProcessId;
-            int[28] fill2;
+            int     NextEntryOffset; // When this entry is 0, there are no more processes to be read.
+            int     NumberOfThreads;
+            long    WorkingSetPrivateSize;
+            uint    HardFaultCount;
+            uint    NumberOfThreadsHighWatermark;
+            ulong   CycleTime;
+            long    CreateTime;
+            long    UserTime;
+            long    KernelTime;
+            UNICODE_STRING 	ImageName;
+            int     BasePriority;
+            PTID    /*Unique*/ProcessId;
+            PTID    InheritedFromUniqueProcessId;
+            uint    HandleCount;
+            uint    SessionId;
+            size_t  UniqueProcessKey;
+            size_t  PeakVirtualSize;
+            size_t  VirtualSize;
+            uint    PageFaultCount;
+            size_t  PeakWorkingSetSize;
+            size_t  WorkingSetSize;
+            size_t  QuotaPeakPagedPoolUsage;
+            size_t  QuotaPagedPoolUsage;
+            size_t  QuotaPeakNonPagedPoolUsage;
+            size_t  QuotaNonPagedPoolUsage;
+            size_t  PagefileUsage;
+            size_t  PeakPagefileUsage;
+            size_t  PrivatePageCount;
+            long    ReadOperationCount;
+            long    WriteOperationCount;
+            long    OtherOperationCount;
+            long    ReadTransferCount;
+            long    WriteTransferCount;
+            long    OtherTransferCount;
 
             // SYSTEM_THREAD_INFORMATION or SYSTEM_EXTENDED_THREAD_INFORMATION structures follow.
         }
 
         struct _SYSTEM_THREAD_INFORMATION
         {
-            int[8] fill1;
-            int ProcessId;
-            int ThreadId;
-            int[6] fill2;
+            long    KernelTime;
+            long    UserTime;
+            long    CreateTime;
+            uint    WaitTime;
+            void*   StartAddress;
+            PTID    ProcessId;
+            PTID    ThreadId;
+            int     Priority;
+            int     BasePriority;
+            uint    ContextSwitches;
+            uint    ThreadState;
+            int     WaitReason;
+            int     reserved;
         }
 
         alias extern(Windows)
-        HRESULT fnNtQuerySystemInformation( uint SystemInformationClass, void* info, uint infoLength, uint* ReturnLength );
+        HRESULT fnNtQuerySystemInformation( uint SystemInformationClass, void* info, uint infoLength, uint* ReturnLength ) nothrow;
 
         enum ThreadBasicInformation = 0;
 
@@ -65,15 +119,15 @@ private:
         {
             int    ExitStatus;
             void** TebBaseAddress;
-            int    ProcessId;
-            int    ThreadId;
-            int    AffinityMask;
+            PTID   ProcessId;
+            PTID   ThreadId;
+            size_t AffinityMask;
             int    Priority;
             int    BasePriority;
         }
 
         alias extern(Windows)
-        int fnNtQueryInformationThread( HANDLE ThreadHandle, uint ThreadInformationClass, void* buf, uint size, uint* ReturnLength );
+        int fnNtQueryInformationThread( HANDLE ThreadHandle, uint ThreadInformationClass, void* buf, uint size, uint* ReturnLength ) nothrow;
 
         enum SYNCHRONIZE = 0x00100000;
         enum THREAD_GET_CONTEXT = 8;
@@ -82,7 +136,7 @@ private:
 
         ///////////////////////////////////////////////////////////////////
         // get the thread environment block (TEB) of the thread with the given handle
-        static void** getTEB( HANDLE hnd )
+        static void** getTEB( HANDLE hnd ) nothrow
         {
             HANDLE nthnd = GetModuleHandleA( "NTDLL" );
             assert( nthnd, "cannot get module handle for ntdll" );
@@ -97,7 +151,7 @@ private:
         }
 
         // get the thread environment block (TEB) of the thread with the given identifier
-        static void** getTEB( uint id )
+        static void** getTEB( uint id ) nothrow
         {
             HANDLE hnd = OpenThread( THREAD_QUERY_INFORMATION, FALSE, id );
             assert( hnd, "OpenThread failed" );
@@ -108,32 +162,49 @@ private:
         }
 
         // get linear address of TEB of current thread
-        static void** getTEB()
+        static void** getTEB() nothrow
         {
-            asm
+            version(Win32)
             {
-                naked;
-                mov EAX,FS:[0x18];
-                ret;
+                asm
+                {
+                    naked;
+                    mov EAX,FS:[0x18];
+                    ret;
+                }
+            }
+            else version(Win64)
+            {
+                asm
+                {
+                    naked;
+                    mov RAX,0x30;
+                    mov RAX,GS:[RAX]; // immediate value causes fixup
+                    ret;
+                }
+            }
+            else
+            {
+                static assert(false);
             }
         }
 
         // get the stack bottom (the top address) of the thread with the given handle
-        static void* getThreadStackBottom( HANDLE hnd )
+        static void* getThreadStackBottom( HANDLE hnd ) nothrow
         {
             void** teb = getTEB( hnd );
             return teb[1];
         }
 
         // get the stack bottom (the top address) of the thread with the given identifier
-        static void* getThreadStackBottom( uint id )
+        static void* getThreadStackBottom( uint id ) nothrow
         {
             void** teb = getTEB( id );
             return teb[1];
         }
 
         // create a thread handle with full access to the thread with the given identifier
-        static HANDLE OpenThreadHandle( uint id )
+        static HANDLE OpenThreadHandle( uint id ) nothrow
         {
             return OpenThread( SYNCHRONIZE|THREAD_GET_CONTEXT|THREAD_QUERY_INFORMATION|THREAD_SUSPEND_RESUME, FALSE, id );
         }
@@ -157,7 +228,7 @@ private:
                 buf = cast(char*) core.stdc.stdlib.malloc(sz);
                 if(!buf)
                     return false;
-                rc = (*fn)( SystemProcessInformation, buf, sz, &retLength );
+                rc = fn( SystemProcessInformation, buf, sz, &retLength );
                 if( rc != STATUS_INFO_LENGTH_MISMATCH )
                     break;
                 core.stdc.stdlib.free( buf );
@@ -177,7 +248,7 @@ private:
                     auto tinfo = cast(_SYSTEM_THREAD_INFORMATION*)(pinfo + 1);
                     for( int i = 0; i < pinfo.NumberOfThreads; i++, tinfo++ )
                         if( tinfo.ProcessId == procid )
-                            if( !dg( tinfo.ThreadId, context ) )
+                            if( !dg( cast(uint) tinfo.ThreadId, context ) ) // IDs are actually DWORDs
                                 return false;
                 }
                 if( pinfo.NextEntryOffset == 0 )
@@ -196,9 +267,14 @@ private:
         alias extern(C) void function() externCVoidFunc;
         static void impersonate_thread( uint id, externCVoidFunc fn )
         {
+            impersonate_thread(id, () => fn());
+        }
+
+        static void impersonate_thread( uint id, scope void delegate() dg)
+        {
             if( id == GetCurrentThreadId() )
             {
-                fn();
+                dg();
                 return;
             }
 
@@ -213,7 +289,7 @@ private:
                 return;
 
             curteb[11] = tlsarray;
-            fn();
+            dg();
             curteb[11] = curtlsarray;
         }
     }
@@ -224,9 +300,10 @@ public:
     alias thread_aux.getThreadStackBottom getThreadStackBottom;
     alias thread_aux.OpenThreadHandle OpenThreadHandle;
     alias thread_aux.enumProcessThreads enumProcessThreads;
+    alias thread_aux.impersonate_thread impersonate_thread;
 
     // get the start of the TLS memory of the thread with the given handle
-    void* GetTlsDataAddress( HANDLE hnd )
+    void* GetTlsDataAddress( HANDLE hnd ) nothrow
     {
         if( void** teb = getTEB( hnd ) )
             if( void** tlsarray = cast(void**) teb[11] )
@@ -235,7 +312,7 @@ public:
     }
 
     // get the start of the TLS memory of the thread with the given identifier
-    void* GetTlsDataAddress( uint id )
+    void* GetTlsDataAddress( uint id ) nothrow
     {
         HANDLE hnd = OpenThread( thread_aux.THREAD_QUERY_INFORMATION, FALSE, id );
         assert( hnd, "OpenThread failed" );
@@ -246,17 +323,17 @@ public:
     }
 
     ///////////////////////////////////////////////////////////////////
-    // run _moduleTlsCtor in the context of the given thread
+    // run rt_moduleTlsCtor in the context of the given thread
     void thread_moduleTlsCtor( uint id )
     {
-        thread_aux.impersonate_thread(id, &_moduleTlsCtor);
+        thread_aux.impersonate_thread(id, &rt_moduleTlsCtor);
     }
 
     ///////////////////////////////////////////////////////////////////
-    // run _moduleTlsDtor in the context of the given thread
+    // run rt_moduleTlsDtor in the context of the given thread
     void thread_moduleTlsDtor( uint id )
     {
-        thread_aux.impersonate_thread(id, &_moduleTlsDtor);
+        thread_aux.impersonate_thread(id, &rt_moduleTlsDtor);
     }
 }
 

@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Adouble;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // double[]
 
-class TypeInfo_Ad : TypeInfo
+class TypeInfo_Ad : TypeInfo_Array
 {
-    override string toString() { return "double[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   double[] s = *cast(double[]*)p;
+    override string toString() const { return "double[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        double[] s = *cast(double[]*)p;
         return hashOf(s.ptr, s.length * double.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         double[] s1 = *cast(double[]*)p1;
         double[] s2 = *cast(double[]*)p2;
@@ -43,7 +46,7 @@ class TypeInfo_Ad : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         double[] s1 = *cast(double[]*)p1;
         double[] s2 = *cast(double[]*)p2;
@@ -64,31 +67,9 @@ class TypeInfo_Ad : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (double[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(double);
-    }
-
-    override size_t talign()
-    {
-        return (double[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        //arg1 = typeid(size_t);
-        //arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(double);
     }
 }
 
@@ -96,10 +77,10 @@ class TypeInfo_Ad : TypeInfo
 
 class TypeInfo_Ap : TypeInfo_Ad
 {
-    override string toString() { return "idouble[]"; }
+    override string toString() const { return "idouble[]"; }
 
-    override TypeInfo next()
+    override @property inout(TypeInfo) next() inout
     {
-        return typeid(idouble);
+        return cast(inout)typeid(idouble);
     }
 }

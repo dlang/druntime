@@ -1,0 +1,14 @@
+IMPORTS=\
+	$(IMPDIR)\core\sync\barrier.di \
+	$(IMPDIR)\core\sync\condition.di \
+	$(IMPDIR)\core\sync\config.di \
+	$(IMPDIR)\core\sync\exception.di \
+	$(IMPDIR)\core\sync\mutex.di \
+	$(IMPDIR)\core\sync\rwmutex.di \
+	$(IMPDIR)\core\sync\semaphore.di
+
+ifeq ($(D_OBJC),1)
+IMPORTS:=$(IMPORTS) \
+	$(IMPDIR)\objc\runtime.di \
+	$(IMPDIR)\objc\types.di
+endif

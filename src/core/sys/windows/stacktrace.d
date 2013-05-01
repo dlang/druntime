@@ -7,13 +7,13 @@
  * Source:    $(DRUNTIMESRC core/sys/windows/_stacktrace.d)
  */
 
-/*          Copyright Benjamin Thaut 2010 - 2011.
+/*          Copyright Benjamin Thaut 2010 - 2012.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.windows.stacktrace;
-
+version(Windows):
 
 import core.demangle;
 import core.runtime;
@@ -21,226 +21,65 @@ import core.stdc.stdlib;
 import core.stdc.string;
 import core.sys.windows.dbghelp;
 import core.sys.windows.windows;
-import core.stdc.stdio;
+
+//debug=PRINTF;
+debug(PRINTF) import core.stdc.stdio;
 
 
-extern(Windows)
-{
-    DWORD GetEnvironmentVariableA(LPCSTR lpName, LPSTR pBuffer, DWORD nSize);
-    void  RtlCaptureContext(CONTEXT* ContextRecord);
-
-    typedef LONG function(void*) UnhandeledExceptionFilterFunc;
-    void* SetUnhandledExceptionFilter(void* handler);
-}
+extern(Windows) void RtlCaptureContext(CONTEXT* ContextRecord);
+extern(Windows) DWORD GetEnvironmentVariableA(LPCSTR lpName, LPSTR pBuffer, DWORD nSize);
 
 
-enum : uint
-{
-    MAX_MODULE_NAME32 = 255,
-    TH32CS_SNAPMODULE = 0x00000008,
-    MAX_NAMELEN       = 1024,
-};
-
-
-extern(System)
-{
-    typedef HANDLE function(DWORD dwFlags, DWORD th32ProcessID) CreateToolhelp32SnapshotFunc;
-    typedef BOOL   function(HANDLE hSnapshot, MODULEENTRY32 *lpme) Module32FirstFunc;
-    typedef BOOL   function(HANDLE hSnapshot, MODULEENTRY32 *lpme) Module32NextFunc;
-}
-
-
-struct MODULEENTRY32
-{
-    DWORD   dwSize;
-    DWORD   th32ModuleID;
-    DWORD   th32ProcessID;
-    DWORD   GlblcntUsage;
-    DWORD   ProccntUsage;
-    BYTE*   modBaseAddr;
-    DWORD   modBaseSize;
-    HMODULE hModule;
-    CHAR[MAX_MODULE_NAME32 + 1] szModule;
-    CHAR[MAX_PATH] szExePath;
-}
-
-
-private
-{
-    string generateSearchPath()
-    {
-        __gshared string[3] defaultPathList = ["_NT_SYMBOL_PATH",
-                                               "_NT_ALTERNATE_SYMBOL_PATH",
-                                               "SYSTEMROOT"];
-
-        string         path;
-        char[MAX_PATH] temp;
-        DWORD          len;
-
-        if( (len = GetCurrentDirectoryA( temp.length, temp.ptr )) > 0 )
-        {
-            path ~= temp[0 .. len] ~ ";";
-        }
-        if( (len = GetModuleFileNameA( null,temp.ptr,temp.length )) > 0 )
-        {
-            foreach_reverse( i, ref char e; temp[0 .. len] )
-            {
-                if( e == '\\' || e == '/' || e == ':' )
-                {
-                    len -= i;
-                    break;
-                }
-            }
-            if( len > 0 )
-            {
-                path ~= temp[0 .. len] ~ ";";
-            }
-        }
-        foreach( e; defaultPathList )
-        {
-            if( (len = GetEnvironmentVariableA( e.ptr, temp.ptr, temp.length )) > 0 )
-            {
-                path ~= temp[0 .. len] ~ ";";
-            }
-        }
-        return path;
-    }
-
-
-    bool loadModules( HANDLE hProcess, DWORD pid )
-    {
-        __gshared string[2] systemDlls = ["kernel32.dll", "tlhelp32.dll"];
-
-        CreateToolhelp32SnapshotFunc CreateToolhelp32Snapshot;
-        Module32FirstFunc            Module32First;
-        Module32NextFunc             Module32Next;
-        HMODULE                      dll;
-
-        foreach( e; systemDlls )
-        {
-            if( (dll = cast(HMODULE) Runtime.loadLibrary( e )) is null )
-                continue;
-            CreateToolhelp32Snapshot = cast(CreateToolhelp32SnapshotFunc) GetProcAddress( dll,"CreateToolhelp32Snapshot" );
-            Module32First            = cast(Module32FirstFunc) GetProcAddress( dll,"Module32First" );
-            Module32Next             = cast(Module32NextFunc) GetProcAddress( dll,"Module32Next" );
-            if( CreateToolhelp32Snapshot !is null && Module32First !is null && Module32Next !is null )
-                break;
-            Runtime.unloadLibrary( dll );
-            dll = null;
-        }
-        if( dll is null )
-        {
-            return false;
-        }
-
-        auto hSnap = CreateToolhelp32Snapshot( TH32CS_SNAPMODULE, pid );
-        if( hSnap == INVALID_HANDLE_VALUE )
-            return false;
-
-        MODULEENTRY32 moduleEntry;
-        moduleEntry.dwSize = MODULEENTRY32.sizeof;
-
-        auto more  = cast(bool) Module32First( hSnap, &moduleEntry );
-        int  count = 0;
-
-        while( more )
-        {
-            count++;
-            loadModule( hProcess,
-                        moduleEntry.szExePath.ptr,
-                        moduleEntry.szModule.ptr,
-                        cast(DWORD64) moduleEntry.modBaseAddr,
-                        moduleEntry.modBaseSize );
-            more = cast(bool) Module32Next( hSnap, &moduleEntry );
-        }
-
-        CloseHandle( hSnap );
-        Runtime.unloadLibrary( dll );
-        return count > 0;
-    }
-
-
-    void loadModule( HANDLE hProcess, PCSTR img, PCSTR mod, DWORD64 baseAddr, DWORD size )
-    {
-        auto dbghelp       = DbgHelp.get();
-        DWORD64 moduleAddr = dbghelp.SymLoadModule64( hProcess,
-                                                      HANDLE.init,
-                                                      img,
-                                                      mod,
-                                                      baseAddr,
-                                                      size );
-        if( moduleAddr == 0 )
-            return;
-
-        IMAGEHLP_MODULE64 moduleInfo;
-        moduleInfo.SizeOfStruct = IMAGEHLP_MODULE64.sizeof;
-
-        if( dbghelp.SymGetModuleInfo64( hProcess, moduleAddr, &moduleInfo ) == TRUE )
-        {
-            if( moduleInfo.SymType == SYM_TYPE.SymNone )
-            {
-                dbghelp.SymUnloadModule64( hProcess, moduleAddr );
-                moduleAddr = dbghelp.SymLoadModule64( hProcess,
-                                                      HANDLE.init,
-                                                      img,
-                                                      null,
-                                                      cast(DWORD64) 0,
-                                                      0 );
-                if( moduleAddr == 0 )
-                    return;
-            }
-        }
-        //printf( "Successfully loaded module %s\n", img );
-    }
-
-
-    /+
-    extern(Windows) static LONG unhandeledExceptionFilterHandler(void* info)
-    {
-        printStackTrace();
-        return 0;
-    }
-
-
-    static void printStackTrace()
-    {
-        auto stack = TraceHandler( null );
-        foreach( char[] s; stack )
-        {
-            printf( "%s\n",s );
-        }
-    }
-    +/
-
-
-    __gshared invariant bool initialized;
-}
+private __gshared immutable bool initialized;
 
 
 class StackTrace : Throwable.TraceInfo
 {
 public:
-    this()
+    /**
+     * Constructor
+     * Params:
+     *  skip = The number of stack frames to skip.
+     *  context = The context to receive the stack trace from. Can be null.
+     */
+    this(size_t skip, CONTEXT* context)
     {
+        if(context is null)
+        {
+            version(Win64)
+                static enum INTERNALFRAMES = 4;
+            else
+                static enum INTERNALFRAMES = 2;
+                
+            skip += INTERNALFRAMES; //skip the stack frames within the StackTrace class
+        }
+        else
+        {
+            //When a exception context is given the first stack frame is repeated for some reason
+            version(Win64)
+                static enum INTERNALFRAMES = 1;
+            else
+                static enum INTERNALFRAMES = 1;
+                
+            skip += INTERNALFRAMES;
+        }
         if( initialized )
-            m_trace = trace();
+            m_trace = trace(skip, context);
     }
 
-
-    int opApply( scope int delegate(ref char[]) dg )
+    int opApply( scope int delegate(ref const(char[])) dg ) const
     {
-        return opApply( (ref size_t, ref char[] buf)
+        return opApply( (ref size_t, ref const(char[]) buf)
                         {
                             return dg( buf );
                         });
     }
 
 
-    int opApply( scope int delegate(ref size_t, ref char[]) dg )
+    int opApply( scope int delegate(ref size_t, ref const(char[])) dg ) const
     {
         int result;
-
-        foreach( i, e; m_trace )
+        foreach( i, e; resolve(m_trace) )
         {
             if( (result = dg( i, e )) != 0 )
                 break;
@@ -249,157 +88,264 @@ public:
     }
 
 
-    override string toString()
+    override string toString() const
     {
         string result;
 
-        foreach( e; m_trace )
+        foreach( e; this )
         {
             result ~= e ~ "\n";
         }
         return result;
     }
 
-
-private:
-    char[][] m_trace;
-
-
-    static char[][] trace()
+    /**
+     * Receive a stack trace in the form of an address list.
+     * Params:
+     *  skip = How many stack frames should be skipped.
+     *  context = The context that should be used. If null the current context is used.
+     * Returns:
+     *  A list of addresses that can be passed to resolve at a later point in time.
+     */
+    static ulong[] trace(size_t skip = 0, CONTEXT* context = null)
     {
         synchronized( StackTrace.classinfo )
         {
-            return traceNoSync();
+            return traceNoSync(skip, context);
         }
     }
-    
-    
-    static char[][] traceNoSync()
+
+    /**
+     * Resolve a stack trace.
+     * Params:
+     *  addresses = A list of addresses to resolve.
+     * Returns:
+     *  An array of strings with the results.
+     */
+    static char[][] resolve(const(ulong)[] addresses)
     {
-        auto         dbghelp  = DbgHelp.get();
-        auto         hThread  = GetCurrentThread();
-        auto         hProcess = GetCurrentProcess();
-        STACKFRAME64 stackframe;
-        DWORD        imageType;
-        char[][]     trace;
-        CONTEXT      c;
-
-        c.ContextFlags = CONTEXT_FULL;
-        RtlCaptureContext( &c );
-
-        //x86
-        imageType                   = IMAGE_FILE_MACHINE_I386;
-        stackframe.AddrPC.Offset    = cast(DWORD64) c.Eip;
-        stackframe.AddrPC.Mode      = ADDRESS_MODE.AddrModeFlat;
-        stackframe.AddrFrame.Offset = cast(DWORD64) c.Ebp;
-        stackframe.AddrFrame.Mode   = ADDRESS_MODE.AddrModeFlat;
-        stackframe.AddrStack.Offset = cast(DWORD64) c.Esp;
-        stackframe.AddrStack.Mode   = ADDRESS_MODE.AddrModeFlat;
-
-        auto symbolSize = IMAGEHLP_SYMBOL64.sizeof + MAX_NAMELEN;
-        auto symbol     = cast(IMAGEHLP_SYMBOL64*) calloc( symbolSize, 1 );
-
-        symbol.SizeOfStruct  = symbolSize;
-        symbol.MaxNameLength = MAX_NAMELEN;
-
-        IMAGEHLP_LINE64 line;
-        line.SizeOfStruct = IMAGEHLP_LINE64.sizeof;
-
-        IMAGEHLP_MODULE64 moduleInfo;
-        moduleInfo.SizeOfStruct = IMAGEHLP_MODULE64.sizeof;
-
-        //printf( "Callstack:\n" );
-        for( int frameNum = 0; ; frameNum++ )
+        synchronized( StackTrace.classinfo )
         {
-            if( dbghelp.StackWalk64( imageType,
-                                     hProcess,
-                                     hThread,
-                                     &stackframe,
-                                     &c,
-                                     null,
-                                     cast(FunctionTableAccessProc64) dbghelp.SymFunctionTableAccess64,
-                                     cast(GetModuleBaseProc64) dbghelp.SymGetModuleBase64,
-                                     null) != TRUE )
-            {
-                //printf( "End of Callstack\n" );
-                break;
-            }
-
-            if( stackframe.AddrPC.Offset == stackframe.AddrReturn.Offset )
-            {
-                //printf( "Endless callstack\n" );
-                trace ~= "...".dup;
-                break;
-            }
-
-            if( stackframe.AddrPC.Offset != 0 )
-            {
-                DWORD64 offset;
-
-                if( dbghelp.SymGetSymFromAddr64( hProcess,
-                                                 stackframe.AddrPC.Offset,
-                                                 &offset,
-                                                 symbol ) == TRUE )
-                {
-                    DWORD    displacement;
-                    char[]   lineBuf;
-                    char[20] temp;
-
-                    if( dbghelp.SymGetLineFromAddr64( hProcess, stackframe.AddrPC.Offset, &displacement, &line ) == TRUE )
-                    {
-                        char[2048] demangleBuf;
-                        auto       symbolName = (cast(char*) symbol.Name.ptr)[0 .. strlen(symbol.Name.ptr)];
-
-                        // displacement bytes from beginning of line
-                        trace ~= line.FileName[0 .. strlen( line.FileName )] ~
-                                 "(" ~ format( temp[], line.LineNumber ) ~ "): " ~
-                                 demangle( symbolName, demangleBuf );
-                    }
-                }
-                else
-                {
-                    char[22] temp;
-                    auto     val = format( temp[], stackframe.AddrPC.Offset, 16 );
-                    trace ~= val.dup;
-                }
-            }
+            return resolveNoSync(addresses);
         }
-        free( symbol );
-        return trace;
     }
 
+private:
+    ulong[] m_trace;
 
-    // TODO: Remove this in favor of an external conversion.
-    static char[] format( char[] buf, ulong val, uint base = 10 )
-    in
-    {
-        assert( buf.length > 9 );
-    }
-    body
-    {
-        auto p = buf.ptr + buf.length;
 
-        if( base < 11 )
+    static ulong[] traceNoSync(size_t skip, CONTEXT* context)
+    {
+        auto dbghelp  = DbgHelp.get();
+        if(dbghelp is null)
+            return []; // dbghelp.dll not available
+
+        HANDLE       hThread  = GetCurrentThread();
+        HANDLE       hProcess = GetCurrentProcess();
+        CONTEXT      ctxt;
+
+        if(context is null)
         {
-            do
-            {
-                *--p = cast(char)(val % base + '0');
-            } while( val /= base );
-        }
-        else if( base < 37 )
-        {
-            do
-            {
-                auto x = val % base;
-                *--p = cast(char)(x < 10 ? x + '0' : (x - 10) + 'A');
-            } while( val /= base );
+            ctxt.ContextFlags = CONTEXT_FULL;
+            RtlCaptureContext(&ctxt);
         }
         else
         {
-            assert( false, "base too large" );
+            ctxt = *context;
         }
-        return buf[p - buf.ptr .. $];
+
+        //x86
+        STACKFRAME64 stackframe;
+        with (stackframe)
+        {
+            version(X86) 
+            {
+                enum Flat = ADDRESS_MODE.AddrModeFlat;
+                AddrPC.Offset    = ctxt.Eip;
+                AddrPC.Mode      = Flat;
+                AddrFrame.Offset = ctxt.Ebp;
+                AddrFrame.Mode   = Flat;
+                AddrStack.Offset = ctxt.Esp;
+                AddrStack.Mode   = Flat;
+            }
+        else version(X86_64)
+            {
+                enum Flat = ADDRESS_MODE.AddrModeFlat;
+                AddrPC.Offset    = ctxt.Rip;
+                AddrPC.Mode      = Flat;
+                AddrFrame.Offset = ctxt.Rbp;
+                AddrFrame.Mode   = Flat;
+                AddrStack.Offset = ctxt.Rsp;
+                AddrStack.Mode   = Flat;
+            }
+        }
+
+        version (X86)         enum imageType = IMAGE_FILE_MACHINE_I386;
+        else version (X86_64) enum imageType = IMAGE_FILE_MACHINE_AMD64;
+        else                  static assert(0, "unimplemented");
+
+        ulong[] result;
+        size_t frameNum = 0;
+        
+        // do ... while so that we don't skip the first stackframe
+        do 
+        {
+            if( stackframe.AddrPC.Offset == stackframe.AddrReturn.Offset )
+            {
+                debug(PRINTF) printf("Endless callstack\n");
+                break;
+            }
+            if(frameNum >= skip)
+            {
+                result ~= stackframe.AddrPC.Offset;
+            }
+            frameNum++;
+        }
+        while (dbghelp.StackWalk64(imageType, hProcess, hThread, &stackframe,
+                                   &ctxt, null, null, null, null));
+        return result;
     }
+
+    static char[][] resolveNoSync(const(ulong)[] addresses)
+    {
+        auto dbghelp  = DbgHelp.get();
+        if(dbghelp is null)
+            return []; // dbghelp.dll not available
+
+        HANDLE hProcess = GetCurrentProcess();
+
+        static struct BufSymbol
+        {
+        align(1):
+            IMAGEHLP_SYMBOL64 _base;
+            TCHAR[1024] _buf;
+        }
+        BufSymbol bufSymbol=void;
+        IMAGEHLP_SYMBOL64* symbol = &bufSymbol._base;
+        symbol.SizeOfStruct = IMAGEHLP_SYMBOL64.sizeof;
+        symbol.MaxNameLength = bufSymbol._buf.length;
+
+        char[][] trace;
+        foreach(pc; addresses)
+        {
+            if( pc != 0 )
+            {
+                char[] res;
+                if (dbghelp.SymGetSymFromAddr64(hProcess, pc, null, symbol) &&
+                    *symbol.Name.ptr)
+                {
+                    DWORD disp;
+                    IMAGEHLP_LINE64 line=void;
+                    line.SizeOfStruct = IMAGEHLP_LINE64.sizeof;
+
+                    if (dbghelp.SymGetLineFromAddr64(hProcess, pc, &disp, &line))
+                        res = formatStackFrame(cast(void*)pc, symbol.Name.ptr,
+                                               line.FileName, line.LineNumber);
+                    else
+                        res = formatStackFrame(cast(void*)pc, symbol.Name.ptr);
+                }
+                else
+                    res = formatStackFrame(cast(void*)pc);
+                trace ~= res;
+            }
+        }
+        return trace;
+    }
+
+    static char[] formatStackFrame(void* pc)
+    {
+        import core.stdc.stdio : snprintf;
+        char[2+2*size_t.sizeof+1] buf=void;
+
+        immutable len = snprintf(buf.ptr, buf.length, "0x%p", pc);
+        len < buf.length || assert(0);
+        return buf[0 .. len].dup;
+    }
+
+    static char[] formatStackFrame(void* pc, char* symName)
+    {
+        char[2048] demangleBuf=void;
+
+        auto res = formatStackFrame(pc);
+        res ~= " in ";
+        const(char)[] tempSymName = symName[0 .. strlen(symName)];
+        //Deal with dmd mangling of long names
+        version(DigitalMars) version(Win32)
+        {
+            size_t decodeIndex = 0;
+            tempSymName = decodeDmdString(tempSymName, decodeIndex);
+        }
+        res ~= demangle(tempSymName, demangleBuf);
+        return res;
+    }
+
+    static char[] formatStackFrame(void* pc, char* symName,
+                                   in char* fileName, uint lineNum)
+    {
+        import core.stdc.stdio : snprintf;
+        char[11] buf=void;
+
+        auto res = formatStackFrame(pc, symName);
+        res ~= " at ";
+        res ~= fileName[0 .. strlen(fileName)];
+        res ~= "(";
+        immutable len = snprintf(buf.ptr, buf.length, "%u", lineNum);
+        len < buf.length || assert(0);
+        res ~= buf[0 .. len];
+        res ~= ")";
+        return res;
+    }
+}
+
+
+// Workaround OPTLINK bug (Bugzilla 8263)
+extern(Windows) BOOL FixupDebugHeader(HANDLE hProcess, ULONG ActionCode,
+                                      ulong CallbackContext, ulong UserContext)
+{
+    if (ActionCode == CBA_READ_MEMORY)
+    {
+        auto p = cast(IMAGEHLP_CBA_READ_MEMORY*)CallbackContext;
+        if (!(p.addr & 0xFF) && p.bytes == 0x1C &&
+            // IMAGE_DEBUG_DIRECTORY.PointerToRawData
+            (*cast(DWORD*)(p.addr + 24) & 0xFF) == 0x20)
+        {
+            immutable base = DbgHelp.get().SymGetModuleBase64(hProcess, p.addr);
+            // IMAGE_DEBUG_DIRECTORY.AddressOfRawData
+            if (base + *cast(DWORD*)(p.addr + 20) == p.addr + 0x1C &&
+                *cast(DWORD*)(p.addr + 0x1C) == 0 &&
+                *cast(DWORD*)(p.addr + 0x20) == ('N'|'B'<<8|'0'<<16|'9'<<24))
+            {
+                debug(PRINTF) printf("fixup IMAGE_DEBUG_DIRECTORY.AddressOfRawData\n");
+                memcpy(p.buf, cast(void*)p.addr, 0x1C);
+                *cast(DWORD*)(p.buf + 20) = cast(DWORD)(p.addr - base) + 0x20;
+                *p.bytesread = 0x1C;
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
+
+private string generateSearchPath()
+{
+    __gshared string[3] defaultPathList = ["_NT_SYMBOL_PATH",
+                                           "_NT_ALTERNATE_SYMBOL_PATH",
+                                           "SYSTEMROOT"];
+
+    string path;
+    char[2048] temp;
+    DWORD len;
+
+    foreach( e; defaultPathList )
+    {
+        if( (len = GetEnvironmentVariableA( e.ptr, temp.ptr, temp.length )) > 0 )
+        {
+            path ~= temp[0 .. len];
+            path ~= ";";
+        }
+    }
+    path ~= "\0";
+    return path;
 }
 
 
@@ -410,21 +356,26 @@ shared static this()
     if( dbghelp is null )
         return; // dbghelp.dll not available
 
-    auto hProcess = GetCurrentProcess();
-    auto pid      = GetCurrentProcessId();
-    auto symPath  = generateSearchPath() ~ 0;
-    auto ret      = dbghelp.SymInitialize( hProcess,
-                                           symPath.ptr,
-                                           FALSE );
-    assert( ret != FALSE );
+    debug(PRINTF) 
+    {
+        API_VERSION* dbghelpVersion = dbghelp.ImagehlpApiVersion();
+        printf("DbgHelp Version %d.%d.%d\n", dbghelpVersion.MajorVersion, dbghelpVersion.MinorVersion, dbghelpVersion.Revision);
+    }
 
-    auto symOptions = dbghelp.SymGetOptions();
+    HANDLE hProcess = GetCurrentProcess();
+
+    DWORD symOptions = dbghelp.SymGetOptions();
     symOptions |= SYMOPT_LOAD_LINES;
     symOptions |= SYMOPT_FAIL_CRITICAL_ERRORS;
+    symOptions |= SYMOPT_DEFERRED_LOAD;
     symOptions  = dbghelp.SymSetOptions( symOptions );
 
-    if( !loadModules( hProcess, pid ) )
-        {} // for now it's fine if the modules don't load
+    debug(PRINTF) printf("Search paths: %s\n", generateSearchPath().ptr);
+
+    if (!dbghelp.SymInitialize(hProcess, generateSearchPath().ptr, TRUE))
+        return;
+
+    dbghelp.SymRegisterCallback64(hProcess, &FixupDebugHeader, 0);
+
     initialized = true;
-    //SetUnhandledExceptionFilter( &unhandeledExceptionFilterHandler );
 }

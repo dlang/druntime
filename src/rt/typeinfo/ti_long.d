@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_long;
@@ -19,14 +19,19 @@ private import rt.util.hash;
 
 class TypeInfo_l : TypeInfo
 {
-    override string toString() { return "long"; }
+    @trusted:
+    const:
+    pure:
+    nothrow:
 
-    override hash_t getHash(in void* p)
+    override string toString() const pure nothrow @safe { return "long"; }
+
+    override size_t getHash(in void* p)
     {
         return hashOf(p, long.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2)
     {
         return *cast(long *)p1 == *cast(long *)p2;
     }
@@ -40,7 +45,7 @@ class TypeInfo_l : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return long.sizeof;
     }
@@ -54,7 +59,7 @@ class TypeInfo_l : TypeInfo
         *cast(long *)p2 = t;
     }
 
-    override size_t talign()
+    override @property size_t talign() nothrow pure
     {
         return long.alignof;
     }

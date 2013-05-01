@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2000 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.aaA;
@@ -18,6 +18,7 @@ private
     import core.stdc.stdarg;
     import core.stdc.string;
     import core.stdc.stdio;
+    import core.memory;
 
     enum BlkAttr : uint
     {
@@ -25,12 +26,23 @@ private
         NO_SCAN     = 0b0000_0010,
         NO_MOVE     = 0b0000_0100,
         APPENDABLE  = 0b0000_1000,
+        NO_INTERIOR = 0b0001_0000,
         ALL_BITS    = 0b1111_1111
     }
 
     extern (C) void* gc_malloc( size_t sz, uint ba = 0 );
-    extern (C) void* gc_calloc( size_t sz, uint ba = 0 );
     extern (C) void  gc_free( void* p );
+
+    // Convenience function to make sure the NO_INTERIOR gets set on the
+    // aaA arrays.
+    aaA*[] newaaA(size_t len)
+    {
+        auto ptr = cast(aaA**) gc_malloc(
+            len * (aaA*).sizeof, BlkAttr.NO_INTERIOR);
+        auto ret = ptr[0..len];
+        ret[] = null;
+        return ret;
+    }
 }
 
 // Auto-rehash and pre-allocate - Dave Fladebo
@@ -63,7 +75,7 @@ struct Array
 struct aaA
 {
     aaA *next;
-    hash_t hash;
+    size_t hash;
     /* key   */
     /* value */
 }
@@ -91,13 +103,15 @@ struct AA
  * in value.
  */
 
-size_t aligntsize(size_t tsize)
+size_t aligntsize(size_t tsize) nothrow
 {
-    version (X86_64)
-        // Size of key needed to align value on 16 bytes
+    version (D_LP64) {
+        // align to 16 bytes on 64-bit
         return (tsize + 15) & ~(15);
-    else
+    }
+    else {
         return (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+    }
 }
 
 extern (C):
@@ -131,7 +145,7 @@ private int _aaCmpAh_x(aaA *e1, aaA *e2)
 
 private void _aaInvAh_x(aaA *e)
 {
-    hash_t key_hash;
+    size_t key_hash;
     aaA *e1;
     aaA *e2;
 
@@ -233,11 +247,11 @@ body
     aaA *e;
     //printf("keyti = %p\n", keyti);
     //printf("aa = %p\n", aa);
-    auto keysize = aligntsize(keyti.tsize());
+    immutable keytitsize = keyti.tsize;
 
     if (!aa.a)
     {   aa.a = new BB();
-        aa.a.b = aa.a.binit;
+        aa.a.b = aa.a.binit[];
     }
     //printf("aa = %p\n", aa);
     //printf("aa.a = %p\n", aa.a);
@@ -260,11 +274,13 @@ body
 
     // Not found, create new elem
     //printf("create new one\n");
-    size_t size = aaA.sizeof + keysize + valuesize;
-    e = cast(aaA *) gc_calloc(size);
-    memcpy(e + 1, pkey, keyti.tsize);
-    memset(cast(byte*)(e + 1) + keyti.tsize, 0, keysize - keyti.tsize);
+    size_t size = aaA.sizeof + aligntsize(keytitsize) + valuesize;
+    e = cast(aaA *) gc_malloc(size);
+    e.next = null;
     e.hash = key_hash;
+    ubyte* ptail = cast(ubyte*)(e + 1);
+    memcpy(ptail, pkey, keytitsize);
+    memset(ptail + aligntsize(keytitsize), 0, valuesize); // zero value
     *pe = e;
 
     auto nodes = ++aa.a.nodes;
@@ -276,7 +292,7 @@ body
     }
 
 Lret:
-    return cast(void *)(e + 1) + keysize;
+    return cast(void *)(e + 1) + aligntsize(keytitsize);
 }
 
 
@@ -296,7 +312,7 @@ void* _aaGetRvalueX(AA aa, TypeInfo keyti, size_t valuesize, void* pkey)
     if (!aa.a)
         return null;
 
-    auto keysize = aligntsize(keyti.tsize());
+    auto keysize = aligntsize(keyti.tsize);
     auto len = aa.a.b.length;
 
     if (len)
@@ -359,7 +375,7 @@ body
                 {
                     auto c = keyti.compare(pkey, e + 1);
                     if (c == 0)
-                        return cast(void *)(e + 1) + aligntsize(keyti.tsize());
+                        return cast(void *)(e + 1) + aligntsize(keyti.tsize);
                 }
                 e = e.next;
             }
@@ -375,12 +391,12 @@ body
  * If key is not in aa[], do nothing.
  */
 
-void _aaDel(AA aa, TypeInfo keyti, ...)
+bool _aaDel(AA aa, TypeInfo keyti, ...)
 {
     return _aaDelX(aa, keyti, cast(void*)(&keyti + 1));
 }
 
-void _aaDelX(AA aa, TypeInfo keyti, void* pkey)
+bool _aaDelX(AA aa, TypeInfo keyti, void* pkey)
 {
     aaA *e;
 
@@ -400,12 +416,13 @@ void _aaDelX(AA aa, TypeInfo keyti, void* pkey)
                     *pe = e.next;
                     aa.a.nodes--;
                     gc_free(e);
-                    break;
+                    return true;
                 }
             }
             pe = &e.next;
         }
     }
+    return false;
 }
 
 
@@ -473,7 +490,7 @@ body
                     break;
             }
             len = prime_list[i];
-            newb.b = new aaA*[len];
+            newb.b = newaaA(len);
 
             foreach (e; aa.b)
             {
@@ -488,7 +505,7 @@ body
             if (aa.b.ptr == aa.binit.ptr)
                 aa.binit[] = null;
             else
-                delete aa.b;
+                GC.free(aa.b.ptr);
 
             newb.nodes = aa.nodes;
             newb.keyti = aa.keyti;
@@ -509,7 +526,7 @@ ArrayRet_t _aaKeys(AA aa, size_t keysize)
     if (!len)
         return null;
     auto res = (cast(byte*) gc_malloc(len * keysize,
-                                 !(aa.a.keyti.flags() & 1) ? BlkAttr.NO_SCAN : 0))[0 .. len * keysize];
+                                 !(aa.a.keyti.flags & 1) ? BlkAttr.NO_SCAN : 0))[0 .. len * keysize];
     size_t resi = 0;
     foreach (e; aa.a.b)
     {
@@ -578,57 +595,57 @@ unittest
  */
 
 // dg is D, but _aaApply() is C
-extern (D) typedef int delegate(void *) dg_t;
+extern (D) alias int delegate(void *) dg_t;
 
 int _aaApply(AA aa, size_t keysize, dg_t dg)
-{   int result;
+{
+    if (!aa.a)
+    {
+        return 0;
+    }
 
+    immutable alignsize = aligntsize(keysize);
     //printf("_aaApply(aa = x%llx, keysize = %d, dg = x%llx)\n", aa.a, keysize, dg);
 
-    auto alignsize = aligntsize(keysize);
-
-    if (aa.a)
+    foreach (e; aa.a.b)
     {
-    Loop:
-        foreach (e; aa.a.b)
+        while (e)
         {
-            while (e)
-            {
-                result = dg(cast(void *)(e + 1) + alignsize);
-                if (result)
-                    break Loop;
-                e = e.next;
-            }
+            auto result = dg(cast(void *)(e + 1) + alignsize);
+            if (result)
+                return result;
+            e = e.next;
         }
     }
-    return result;
+    return 0;
 }
 
 // dg is D, but _aaApply2() is C
-extern (D) typedef int delegate(void *, void *) dg2_t;
+extern (D) alias int delegate(void *, void *) dg2_t;
 
 int _aaApply2(AA aa, size_t keysize, dg2_t dg)
-{   int result;
+{
+    if (!aa.a)
+    {
+        return 0;
+    }
 
     //printf("_aaApply(aa = x%llx, keysize = %d, dg = x%llx)\n", aa.a, keysize, dg);
 
-    auto alignsize = aligntsize(keysize);
+    immutable alignsize = aligntsize(keysize);
 
-    if (aa.a)
+    foreach (e; aa.a.b)
     {
-    Loop:
-        foreach (e; aa.a.b)
+        while (e)
         {
-            while (e)
-            {
-                result = dg(cast(void *)(e + 1), cast(void *)(e + 1) + alignsize);
-                if (result)
-                    break Loop;
-                e = e.next;
-            }
+            auto result = dg(e + 1, cast(void *)(e + 1) + alignsize);
+            if (result)
+                return result;
+            e = e.next;
         }
     }
-    return result;
+
+    return 0;
 }
 
 
@@ -640,21 +657,25 @@ int _aaApply2(AA aa, size_t keysize, dg2_t dg)
 extern (C)
 BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
 {
-    auto valuesize = ti.next.tsize();           // value size
+    auto valuesize = ti.next.tsize;             // value size
     auto keyti = ti.key;
-    auto keysize = keyti.tsize();               // key size
+    auto keysize = keyti.tsize;                 // key size
     BB* result;
 
     //printf("_d_assocarrayliteralT(keysize = %d, valuesize = %d, length = %d)\n", keysize, valuesize, length);
     //printf("tivalue = %.*s\n", ti.next.classinfo.name);
     if (length == 0 || valuesize == 0 || keysize == 0)
     {
-        ;
     }
     else
     {
         va_list q;
-        version(X86_64) va_start(q, __va_argsave); else va_start(q, length);
+        version (Win64)
+            va_start(q, length);
+        else version(X86_64)
+            va_start(q, __va_argsave);
+        else
+            va_start(q, length);
 
         result = new BB();
         result.keyti = keyti;
@@ -666,7 +687,7 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
                 break;
         }
         auto len = prime_list[i];
-        result.b = new aaA*[len];
+        result.b = newaaA(len);
 
         size_t keystacksize   = (keysize   + int.sizeof - 1) & ~(int.sizeof - 1);
         size_t valuestacksize = (valuesize + int.sizeof - 1) & ~(int.sizeof - 1);
@@ -717,9 +738,9 @@ BB* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...)
 extern (C)
 BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] values)
 {
-    auto valuesize = ti.next.tsize();           // value size
+    auto valuesize = ti.next.tsize;             // value size
     auto keyti = ti.key;
-    auto keysize = keyti.tsize();               // key size
+    auto keysize = keyti.tsize;                 // key size
     auto length = keys.length;
     BB* result;
 
@@ -728,7 +749,6 @@ BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] val
     assert(length == values.length);
     if (length == 0 || valuesize == 0 || keysize == 0)
     {
-        ;
     }
     else
     {
@@ -742,7 +762,7 @@ BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] val
                 break;
         }
         auto len = prime_list[i];
-        result.b = new aaA*[len];
+        result.b = newaaA(len);
 
         size_t keytsize = aligntsize(keysize);
 
@@ -784,6 +804,34 @@ BB* _d_assocarrayliteralTX(TypeInfo_AssociativeArray ti, void[] keys, void[] val
 }
 
 
+static TypeInfo_AssociativeArray _aaUnwrapTypeInfo(const(TypeInfo) tiRaw) nothrow
+{
+    const(TypeInfo)* p = &tiRaw;
+    TypeInfo_AssociativeArray ti;
+    while (true)
+    {
+        if ((ti = cast(TypeInfo_AssociativeArray)*p) !is null)
+            break;
+
+        if (auto tiConst = cast(TypeInfo_Const)*p) {
+            // The member in object_.d and object.di differ. This is to ensure
+            //  the file can be compiled both independently in unittest and
+            //  collectively in generating the library. Fixing object.di
+            //  requires changes to std.format in Phobos, fixing object_.d
+            //  makes Phobos's unittest fail, so this hack is employed here to
+            //  avoid irrelevant changes.
+            static if (is(typeof(&tiConst.base) == TypeInfo*))
+                p = &tiConst.base;
+            else
+                p = &tiConst.next;
+        } else
+            assert(0);  // ???
+    }
+
+    return ti;
+}
+
+
 /***********************************
  * Compare AA contents for equality.
  * Returns:
@@ -805,25 +853,7 @@ int _aaEqual(TypeInfo tiRaw, AA e1, AA e2)
 
     // Check for Bug 5925. ti_raw could be a TypeInfo_Const, we need to unwrap
     //   it until reaching a real TypeInfo_AssociativeArray.
-    TypeInfo_AssociativeArray ti;
-    while (true)
-    {
-        if ((ti = cast(TypeInfo_AssociativeArray)tiRaw) !is null)
-            break;
-        else if (auto tiConst = cast(TypeInfo_Const)tiRaw) {
-            // The member in object_.d and object.di differ. This is to ensure
-            //  the file can be compiled both independently in unittest and
-            //  collectively in generating the library. Fixing object.di
-            //  requires changes to std.format in Phobos, fixing object_.d
-            //  makes Phobos's unittest fail, so this hack is employed here to
-            //  avoid irrelevant changes.
-            static if (is(typeof(&tiConst.base) == TypeInfo*))
-                tiRaw = tiConst.base;
-            else
-                tiRaw = tiConst.next;
-        } else
-            assert(0);  // ???
-    }
+    TypeInfo_AssociativeArray ti = _aaUnwrapTypeInfo(tiRaw);
 
     /* Algorithm: Visit each key/value pair in e1. If that key doesn't exist
      * in e2, or if the value in e1 doesn't match the one in e2, the arrays
@@ -833,7 +863,7 @@ int _aaEqual(TypeInfo tiRaw, AA e1, AA e2)
 
     auto keyti = ti.key;
     auto valueti = ti.next;
-    const keysize = aligntsize(keyti.tsize());
+    const keysize = aligntsize(keyti.tsize);
     const len2 = e2.a.b.length;
 
     int _aaKeys_x(aaA* e)
@@ -890,4 +920,78 @@ int _aaEqual(TypeInfo tiRaw, AA e1, AA e2)
     }
 
     return 1;           // equal
+}
+
+
+/*****************************************
+ * Computes a hash value for the entire AA
+ * Returns:
+ *      Hash value
+ */
+extern (C)
+hash_t _aaGetHash(AA* aa, const(TypeInfo) tiRaw) nothrow
+{
+    import rt.util.hash;
+
+    if (!aa.a)
+    	return 0;
+
+    hash_t h = 0;
+    TypeInfo_AssociativeArray ti = _aaUnwrapTypeInfo(tiRaw);
+    auto keyti = ti.key;
+    auto valueti = ti.next;
+    const keysize = aligntsize(keyti.tsize);
+
+    foreach (e; aa.a.b)
+    {
+	while (e)
+	{
+	    auto pkey = cast(void*)(e + 1);
+	    auto pvalue = pkey + keysize;
+
+	    // Compute a hash for the key/value pair by hashing their
+	    // respective hash values.
+	    hash_t[2] hpair;
+	    hpair[0] = e.hash;
+	    hpair[1] = valueti.getHash(pvalue);
+
+	    // Combine the hash of the key/value pair with the running hash
+	    // value using an associative operator (+) so that the resulting
+	    // hash value is independent of the actual order the pairs are
+	    // stored in (important to ensure equality of hash value for two
+	    // AA's containing identical pairs but with different hashtable
+	    // sizes).
+	    h += hashOf(hpair.ptr, hpair.length * hash_t.sizeof);
+
+	    e = e.next;
+	}
+    }
+
+    return h;
+}
+
+unittest
+{
+    string[int] key1 = [1: "true", 2: "false"];
+    string[int] key2 = [1: "false", 2: "true"];
+
+    // AA lits create a larger hashtable
+    int[string[int]] aa1 = [key1: 100, key2: 200];
+
+    // Ensure consistent hash values are computed for key1
+    assert((key1 in aa1) !is null);
+
+    // Manually assigning to an empty AA creates a smaller hashtable
+    int[string[int]] aa2;
+    aa2[key1] = 100;
+    aa2[key2] = 200;
+
+    assert(aa1 == aa2);
+
+    // Ensure binary-independence of equal hash keys
+    string[int] key2a;
+    key2a[1] = "false";
+    key2a[2] = "true";
+
+    assert(aa1[key2a] == 200);
 }

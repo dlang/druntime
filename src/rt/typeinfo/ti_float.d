@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_float;
@@ -17,14 +17,11 @@ module rt.typeinfo.ti_float;
 
 class TypeInfo_f : TypeInfo
 {
-    override string toString() { return "float"; }
+    @trusted:
+    pure:
+    nothrow:
 
-    override hash_t getHash(in void* p)
-    {
-        return *cast(uint *)p;
-    }
-
-    static equals_t _equals(float f1, float f2)
+    static bool _equals(float f1, float f2)
     {
         return f1 == f2 ||
                 (f1 !<>= f1 && f2 !<>= f2);
@@ -35,7 +32,8 @@ class TypeInfo_f : TypeInfo
         if (d1 !<>= d2)         // if either are NaN
         {
             if (d1 !<>= d1)
-            {   if (d2 !<>= d2)
+            {
+                if (d2 !<>= d2)
                     return 0;
                 return -1;
             }
@@ -44,7 +42,16 @@ class TypeInfo_f : TypeInfo
         return (d1 == d2) ? 0 : ((d1 < d2) ? -1 : 1);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    const:
+
+    override string toString() const pure nothrow @safe { return "float"; }
+
+    override size_t getHash(in void* p)
+    {
+        return *cast(uint *)p;
+    }
+
+    override bool equals(in void* p1, in void* p2)
     {
         return _equals(*cast(float *)p1, *cast(float *)p2);
     }
@@ -54,7 +61,7 @@ class TypeInfo_f : TypeInfo
         return _compare(*cast(float *)p1, *cast(float *)p2);
     }
 
-    override size_t tsize()
+    override @property size_t tsize() nothrow pure
     {
         return float.sizeof;
     }
@@ -68,8 +75,9 @@ class TypeInfo_f : TypeInfo
         *cast(float *)p2 = t;
     }
 
-    override void[] init()
-    {   static immutable float r;
+    override const(void)[] init() nothrow pure
+    {
+        static immutable float r;
 
         return (cast(float *)&r)[0 .. 1];
     }

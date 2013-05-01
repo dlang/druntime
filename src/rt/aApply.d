@@ -10,7 +10,7 @@
 
 /*          Copyright Digital Mars 2004 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.aApply;
@@ -21,7 +21,7 @@ private import rt.util.utf;
  */
 
 // dg is D, but _aApplycd() is C
-extern (D) typedef int delegate(void *) dg_t;
+extern (D) alias int delegate(void *) dg_t;
 
 extern (C) int _aApplycd1(char[] aa, dg_t dg)
 {   int result;
@@ -196,7 +196,7 @@ extern (C) int _aApplydw1(dchar[] aa, dg_t dg)
 /****************************************************************************/
 
 // dg is D, but _aApplycd2() is C
-extern (D) typedef int delegate(void *, void *) dg2_t;
+extern (D) alias int delegate(void *, void *) dg2_t;
 
 extern (C) int _aApplycd2(char[] aa, dg2_t dg)
 {   int result;

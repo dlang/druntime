@@ -9,7 +9,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.posix.netinet.in_;
@@ -19,6 +19,7 @@ public import core.stdc.inttypes; // for uint32_t, uint16_t, uint8_t
 public import core.sys.posix.arpa.inet;
 public import core.sys.posix.sys.socket; // for sa_family_t
 
+version (Posix):
 extern (C):
 
 //
@@ -65,6 +66,14 @@ ntohs() // from core.sys.posix.arpa.inet
 
 version( linux )
 {
+    //alias uint16_t in_port_t;
+    //alias uint32_t in_addr_t;
+
+    //struct in_addr
+    //{
+    //    in_addr_t s_addr;
+    //}
+
     private enum __SOCK_SIZE__ = 16;
 
     struct sockaddr_in
@@ -89,10 +98,18 @@ version( linux )
     enum uint INADDR_ANY       = 0x00000000;
     enum uint INADDR_BROADCAST = 0xffffffff;
 
-    enum INET_ADDRSTRLEN       = 16;
+    //enum INET_ADDRSTRLEN       = 16;
 }
 else version( OSX )
 {
+    //alias uint16_t in_port_t;
+    //alias uint32_t in_addr_t;
+
+    //struct in_addr
+    //{
+    //    in_addr_t s_addr;
+    //}
+
     private enum __SOCK_SIZE__ = 16;
 
     struct sockaddr_in
@@ -115,10 +132,18 @@ else version( OSX )
     enum uint INADDR_ANY       = 0x00000000;
     enum uint INADDR_BROADCAST = 0xffffffff;
 
-    enum INET_ADDRSTRLEN       = 16;
+    //enum INET_ADDRSTRLEN       = 16;
 }
 else version( FreeBSD )
 {
+    //alias uint16_t in_port_t;
+    //alias uint32_t in_addr_t;
+
+    //struct in_addr
+    //{
+    //    in_addr_t s_addr;
+    //}
+
     struct sockaddr_in
     {
         ubyte       sin_len;
@@ -138,6 +163,8 @@ else version( FreeBSD )
 
     enum uint INADDR_ANY       = 0x00000000;
     enum uint INADDR_BROADCAST = 0xffffffff;
+
+    //enum INET_ADDRSTRLEN       = 16;
 }
 
 
@@ -232,7 +259,7 @@ version ( linux )
     {
         IPPROTO_IPV6        = 41,
 
-        INET6_ADDRSTRLEN    = 46,
+        //INET6_ADDRSTRLEN    = 46,
 
         IPV6_JOIN_GROUP     = 20,
         IPV6_LEAVE_GROUP    = 21,
@@ -355,7 +382,7 @@ else version( OSX )
     {
         IPPROTO_IPV6        = 41,
 
-        INET6_ADDRSTRLEN    = 46,
+        //INET6_ADDRSTRLEN    = 46,
 
         IPV6_JOIN_GROUP     = 12,
         IPV6_LEAVE_GROUP    = 13,
@@ -475,22 +502,19 @@ else version( FreeBSD )
         uint        ipv6mr_interface;
     }
 
-    enum INET6_ADDRSTRLEN    = 46;
-    enum IPPROTO_IPV6        = 41; // <netinet/in.h>
-
-    enum
+    enum : uint
     {
-        IPV6_SOCKOPT_RESERVED1  = 3,
-        IPV6_UNICAST_HOPS       = 4,
-        IPV6_MULTICAST_IF       = 9,
-        IPV6_MULTICAST_HOPS     = 10,
-        IPV6_MULTICAST_LOOP     = 11,
-        IPV6_JOIN_GROUP         = 12,
-        IPV6_LEAVE_GROUP        = 13,
-        IPV6_PORTRANGE          = 14,
-        ICMP6_FILTER            = 18,
-        IPV6_CHECKSUM           = 26,
-        IPV6_V6ONLY             = 27,
+        IPPROTO_IPV6        = 41,
+
+        //INET6_ADDRSTRLEN    = 46,
+
+        IPV6_JOIN_GROUP     = 12,
+        IPV6_LEAVE_GROUP    = 13,
+        IPV6_MULTICAST_HOPS = 10,
+        IPV6_MULTICAST_IF   = 9,
+        IPV6_MULTICAST_LOOP = 11,
+        IPV6_UNICAST_HOPS   = 4,
+        IPV6_V6ONLY         = 27,
     }
 
     private enum

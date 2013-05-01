@@ -1,13 +1,13 @@
 /**
  * Support code for mutithreading.
  *
- * Copyright: Copyright Mikola Lysenko 2005 - 2009.
+ * Copyright: Copyright Mikola Lysenko 2005 - 2012.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
- * Authors:   Mikola Lysenko
+ * Authors:   Mikola Lysenko, Martin Nowak
  */
 
 /*
- *          Copyright Mikola Lysenko 2005 - 2009.
+ *          Copyright Mikola Lysenko 2005 - 2012.
  * Distributed under the Boost Software License, Version 1.0.
  *    (See accompanying file LICENSE_1_0.txt or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
@@ -32,114 +32,186 @@
 _fiber_switchContext:
 
     /* Save linkage area */
-    mflr        r0
-    mfcr        r5
-    stw     r0, 8(r1)
-    stw     r5, 4(r1)
+    mflr        0
+    mfcr        5
+    stw     0, 8(1)
+    stw     5, 4(1)
 
     /* Save GPRs */
-    stw     r11, (-1 * 4)(r1)
-    stw     r13, (-2 * 4)(r1)
-    stw     r14, (-3 * 4)(r1)
-    stw     r15, (-4 * 4)(r1)
-    stw     r16, (-5 * 4)(r1)
-    stw     r17, (-6 * 4)(r1)
-    stw     r18, (-7 * 4)(r1)
-    stw     r19, (-8 * 4)(r1)
-    stw     r20, (-9 * 4)(r1)
-    stw     r21, (-10 * 4)(r1)
-    stw     r22, (-11 * 4)(r1)
-    stw     r23, (-12 * 4)(r1)
-    stw     r24, (-13 * 4)(r1)
-    stw     r25, (-14 * 4)(r1)
-    stw     r26, (-15 * 4)(r1)
-    stw     r27, (-16 * 4)(r1)
-    stw     r28, (-17 * 4)(r1)
-    stw     r29, (-18 * 4)(r1)
-    stw     r30, (-19 * 4)(r1)
-    stwu    r31, (-20 * 4)(r1)
+    stw     11, (-1 * 4)(1)
+    stw     13, (-2 * 4)(1)
+    stw     14, (-3 * 4)(1)
+    stw     15, (-4 * 4)(1)
+    stw     16, (-5 * 4)(1)
+    stw     17, (-6 * 4)(1)
+    stw     18, (-7 * 4)(1)
+    stw     19, (-8 * 4)(1)
+    stw     20, (-9 * 4)(1)
+    stw     21, (-10 * 4)(1)
+    stw     22, (-11 * 4)(1)
+    stw     23, (-12 * 4)(1)
+    stw     24, (-13 * 4)(1)
+    stw     25, (-14 * 4)(1)
+    stw     26, (-15 * 4)(1)
+    stw     27, (-16 * 4)(1)
+    stw     28, (-17 * 4)(1)
+    stw     29, (-18 * 4)(1)
+    stw     30, (-19 * 4)(1)
+    stwu    31, (-20 * 4)(1)
 
     /* We update the stack pointer here, since we do not want the GC to
        scan the floating point registers. */
 
     /* Save FPRs */
-    stfd    f14, (-1 * 8)(r1)
-    stfd    f15, (-2 * 8)(r1)
-    stfd    f16, (-3 * 8)(r1)
-    stfd    f17, (-4 * 8)(r1)
-    stfd    f18, (-5 * 8)(r1)
-    stfd    f19, (-6 * 8)(r1)
-    stfd    f20, (-7 * 8)(r1)
-    stfd    f21, (-8 * 8)(r1)
-    stfd    f22, (-9 * 8)(r1)
-    stfd    f23, (-10 * 8)(r1)
-    stfd    f24, (-11 * 8)(r1)
-    stfd    f25, (-12 * 8)(r1)
-    stfd    f26, (-13 * 8)(r1)
-    stfd    f27, (-14 * 8)(r1)
-    stfd    f28, (-15 * 8)(r1)
-    stfd    f29, (-16 * 8)(r1)
-    stfd    f30, (-17 * 8)(r1)
-    stfd    f31, (-18 * 8)(r1)
+    stfd    14, (-1 * 8)(1)
+    stfd    15, (-2 * 8)(1)
+    stfd    16, (-3 * 8)(1)
+    stfd    17, (-4 * 8)(1)
+    stfd    18, (-5 * 8)(1)
+    stfd    19, (-6 * 8)(1)
+    stfd    20, (-7 * 8)(1)
+    stfd    21, (-8 * 8)(1)
+    stfd    22, (-9 * 8)(1)
+    stfd    23, (-10 * 8)(1)
+    stfd    24, (-11 * 8)(1)
+    stfd    25, (-12 * 8)(1)
+    stfd    26, (-13 * 8)(1)
+    stfd    27, (-14 * 8)(1)
+    stfd    28, (-15 * 8)(1)
+    stfd    29, (-16 * 8)(1)
+    stfd    30, (-17 * 8)(1)
+    stfd    31, (-18 * 8)(1)
 
     /* Update the old stack pointer */
-    stw     r1, 0(r3)
+    stw     1, 0(3)
 
     /* Set new stack pointer */
-    addi        r1, r4, 20 * 4
+    addi        1, 4, 20 * 4
 
     /* Restore linkage area */
-    lwz     r0, 8(r1)
-    lwz     r5, 4(r1)
+    lwz     0, 8(1)
+    lwz     5, 4(1)
 
     /* Restore GPRs */
-    lwz     r11, (-1 * 4)(r1)
-    lwz     r13, (-2 * 4)(r1)
-    lwz     r14, (-3 * 4)(r1)
-    lwz     r15, (-4 * 4)(r1)
-    lwz     r16, (-5 * 4)(r1)
-    lwz     r17, (-6 * 4)(r1)
-    lwz     r18, (-7 * 4)(r1)
-    lwz     r19, (-8 * 4)(r1)
-    lwz     r20, (-9 * 4)(r1)
-    lwz     r21, (-10 * 4)(r1)
-    lwz     r22, (-11 * 4)(r1)
-    lwz     r23, (-12 * 4)(r1)
-    lwz     r24, (-13 * 4)(r1)
-    lwz     r25, (-14 * 4)(r1)
-    lwz     r26, (-15 * 4)(r1)
-    lwz     r27, (-16 * 4)(r1)
-    lwz     r28, (-17 * 4)(r1)
-    lwz     r29, (-18 * 4)(r1)
-    lwz     r30, (-19 * 4)(r1)
-    lwz     r31, (-20 * 4)(r1)
+    lwz     11, (-1 * 4)(1)
+    lwz     13, (-2 * 4)(1)
+    lwz     14, (-3 * 4)(1)
+    lwz     15, (-4 * 4)(1)
+    lwz     16, (-5 * 4)(1)
+    lwz     17, (-6 * 4)(1)
+    lwz     18, (-7 * 4)(1)
+    lwz     19, (-8 * 4)(1)
+    lwz     20, (-9 * 4)(1)
+    lwz     21, (-10 * 4)(1)
+    lwz     22, (-11 * 4)(1)
+    lwz     23, (-12 * 4)(1)
+    lwz     24, (-13 * 4)(1)
+    lwz     25, (-14 * 4)(1)
+    lwz     26, (-15 * 4)(1)
+    lwz     27, (-16 * 4)(1)
+    lwz     28, (-17 * 4)(1)
+    lwz     29, (-18 * 4)(1)
+    lwz     30, (-19 * 4)(1)
+    lwz     31, (-20 * 4)(1)
 
 
     /* Restore FPRs */
-    lfd     f14, (-1 * 8)(r4)
-    lfd     f15, (-2 * 8)(r4)
-    lfd     f16, (-3 * 8)(r4)
-    lfd     f17, (-4 * 8)(r4)
-    lfd     f18, (-5 * 8)(r4)
-    lfd     f19, (-6 * 8)(r4)
-    lfd     f20, (-7 * 8)(r4)
-    lfd     f21, (-8 * 8)(r4)
-    lfd     f22, (-9 * 8)(r4)
-    lfd     f23, (-10 * 8)(r4)
-    lfd     f24, (-11 * 8)(r4)
-    lfd     f25, (-12 * 8)(r4)
-    lfd     f26, (-13 * 8)(r4)
-    lfd     f27, (-14 * 8)(r4)
-    lfd     f28, (-15 * 8)(r4)
-    lfd     f29, (-16 * 8)(r4)
-    lfd     f30, (-17 * 8)(r4)
-    lfd     f31, (-18 * 8)(r4)
+    lfd     14, (-1 * 8)(4)
+    lfd     15, (-2 * 8)(4)
+    lfd     16, (-3 * 8)(4)
+    lfd     17, (-4 * 8)(4)
+    lfd     18, (-5 * 8)(4)
+    lfd     19, (-6 * 8)(4)
+    lfd     20, (-7 * 8)(4)
+    lfd     21, (-8 * 8)(4)
+    lfd     22, (-9 * 8)(4)
+    lfd     23, (-10 * 8)(4)
+    lfd     24, (-11 * 8)(4)
+    lfd     25, (-12 * 8)(4)
+    lfd     26, (-13 * 8)(4)
+    lfd     27, (-14 * 8)(4)
+    lfd     28, (-15 * 8)(4)
+    lfd     29, (-16 * 8)(4)
+    lfd     30, (-17 * 8)(4)
+    lfd     31, (-18 * 8)(4)
 
     /* Set condition and link register */
-    mtcr        r5
-    mtlr        r0
+    mtcr        5
+    mtlr        0
 
     /* Return and switch context */
     blr
+
+#elif defined(__mips__) && _MIPS_SIM == _ABIO32
+/************************************************************************************
+ * MIPS ASM BITS
+ ************************************************************************************/
+
+/**
+ * Performs a context switch.
+ *
+ * $a0 - void** - ptr to old stack pointer
+ * $a1 - void*  - new stack pointer
+ *
+ */
+.text
+.globl fiber_switchContext
+fiber_switchContext:
+    addiu $sp, $sp, -(10 * 4)
+
+    // fp regs and return address are stored below the stack
+    // because we don't want the GC to scan them.
+
+#ifdef __mips_hard_float
+#define ALIGN8(val) (val + (-val & 7))
+#define BELOW (ALIGN8(6 * 8 + 4))
+    sdcl $f20, (0 * 8 - BELOW)($sp)
+    sdcl $f22, (1 * 8 - BELOW)($sp)
+    sdcl $f24, (2 * 8 - BELOW)($sp)
+    sdcl $f26, (3 * 8 - BELOW)($sp)
+    sdcl $f28, (4 * 8 - BELOW)($sp)
+    sdcl $f30, (5 * 8 - BELOW)($sp)
+#endif
+    sw $ra, -4($sp)
+
+    sw $s0, (0 * 4)($sp)
+    sw $s1, (1 * 4)($sp)
+    sw $s2, (2 * 4)($sp)
+    sw $s3, (3 * 4)($sp)
+    sw $s4, (4 * 4)($sp)
+    sw $s5, (5 * 4)($sp)
+    sw $s6, (6 * 4)($sp)
+    sw $s7, (7 * 4)($sp)
+    sw $s8, (8 * 4)($sp)
+    sw $gp, (9 * 4)($sp)
+
+    // swap stack pointer
+    sw $sp, 0($a0)
+    move $sp, $a1
+
+#ifdef __mips_hard_float
+    ldcl $f20, (0 * 8 - BELOW)($sp)
+    ldcl $f22, (1 * 8 - BELOW)($sp)
+    ldcl $f24, (2 * 8 - BELOW)($sp)
+    ldcl $f26, (3 * 8 - BELOW)($sp)
+    ldcl $f28, (4 * 8 - BELOW)($sp)
+    ldcl $f30, (5 * 8 - BELOW)($sp)
+#endif
+    lw $ra, -4($sp)
+
+    lw $s0, (0 * 4)($sp)
+    lw $s1, (1 * 4)($sp)
+    lw $s2, (2 * 4)($sp)
+    lw $s3, (3 * 4)($sp)
+    lw $s4, (4 * 4)($sp)
+    lw $s5, (5 * 4)($sp)
+    lw $s6, (6 * 4)($sp)
+    lw $s7, (7 * 4)($sp)
+    lw $s8, (8 * 4)($sp)
+    lw $gp, (9 * 4)($sp)
+
+    addiu $sp, $sp, (10 * 4)
+
+    jr $ra // return
 
 #endif

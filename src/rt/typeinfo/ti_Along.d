@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Along;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // long[]
 
-class TypeInfo_Al : TypeInfo
+class TypeInfo_Al : TypeInfo_Array
 {
-    override string toString() { return "long[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   long[] s = *cast(long[]*)p;
+    override string toString() const { return "long[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        long[] s = *cast(long[]*)p;
         return hashOf(s.ptr, s.length * long.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         long[] s1 = *cast(long[]*)p1;
         long[] s2 = *cast(long[]*)p2;
@@ -36,7 +39,7 @@ class TypeInfo_Al : TypeInfo
                memcmp(cast(void *)s1, cast(void *)s2, s1.length * long.sizeof) == 0;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         long[] s1 = *cast(long[]*)p1;
         long[] s2 = *cast(long[]*)p2;
@@ -58,31 +61,9 @@ class TypeInfo_Al : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (long[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(long);
-    }
-
-    override size_t talign()
-    {
-        return (long[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        //arg1 = typeid(size_t);
-        //arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(long);
     }
 }
 
@@ -91,9 +72,9 @@ class TypeInfo_Al : TypeInfo
 
 class TypeInfo_Am : TypeInfo_Al
 {
-    override string toString() { return "ulong[]"; }
+    override string toString() const { return "ulong[]"; }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         ulong[] s1 = *cast(ulong[]*)p1;
         ulong[] s2 = *cast(ulong[]*)p2;
@@ -115,8 +96,8 @@ class TypeInfo_Am : TypeInfo_Al
         return 0;
     }
 
-    override TypeInfo next()
+    override @property inout(TypeInfo) next() inout
     {
-        return typeid(ulong);
+        return cast(inout)typeid(ulong);
     }
 }

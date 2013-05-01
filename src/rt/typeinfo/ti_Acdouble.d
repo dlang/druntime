@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Acdouble;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // cdouble[]
 
-class TypeInfo_Ar : TypeInfo
+class TypeInfo_Ar : TypeInfo_Array
 {
-    override string toString() { return "cdouble[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   cdouble[] s = *cast(cdouble[]*)p;
+    override string toString() const { return "cdouble[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        cdouble[] s = *cast(cdouble[]*)p;
         return hashOf(s.ptr, s.length * cdouble.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         cdouble[] s1 = *cast(cdouble[]*)p1;
         cdouble[] s2 = *cast(cdouble[]*)p2;
@@ -43,7 +46,7 @@ class TypeInfo_Ar : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         cdouble[] s1 = *cast(cdouble[]*)p1;
         cdouble[] s2 = *cast(cdouble[]*)p2;
@@ -64,30 +67,8 @@ class TypeInfo_Ar : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (cdouble[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(cdouble);
-    }
-
-    override size_t talign()
-    {
-        return (cdouble[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        //arg1 = typeid(size_t);
-        //arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(cdouble);
     }
 }

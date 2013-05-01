@@ -3,13 +3,14 @@
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
- * Authors:   Sean Kelly
+ * Authors:   Sean Kelly,
+              Alex Rønne Petersn
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.posix.dirent;
@@ -17,6 +18,7 @@ module core.sys.posix.dirent;
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for ino_t
 
+version (Posix):
 extern (C):
 
 //
@@ -67,7 +69,7 @@ version( linux )
         // Managed by OS
     }
 
-    static if( __USE_LARGEFILE64 )
+    static if( __USE_FILE_OFFSET64 )
     {
         dirent* readdir64(DIR*);
         alias   readdir64 readdir;
@@ -134,22 +136,47 @@ else version( FreeBSD )
         char[256] d_name;
     }
 
-    typedef void* DIR;
+    alias void* DIR;
 
     dirent* readdir(DIR*);
 }
-else version( Posix )
+else version (Solaris)
 {
-    dirent* readdir(DIR*);
+    struct dirent
+    {
+        ino_t d_ino;
+        off_t d_off;
+        ushort d_reclen;
+        char[1] d_name;
+    }
+
+    struct DIR
+    {
+        int dd_fd;
+        int dd_loc;
+        int dd_size;
+        char* dd_buf;
+    }
+
+    static if (__USE_LARGEFILE64)
+    {
+        dirent* readdir64(DIR*);
+        alias readdir64 readdir;
+    }
+    else
+    {
+        dirent* readdir(DIR*);
+    }
+}
+else
+{
+    static assert(false, "Unsupported platform");
 }
 
-version( Posix )
-{
-    int     closedir(DIR*);
-    DIR*    opendir(in char*);
-    //dirent* readdir(DIR*);
-    void    rewinddir(DIR*);
-}
+int     closedir(DIR*);
+DIR*    opendir(in char*);
+//dirent* readdir(DIR*);
+void    rewinddir(DIR*);
 
 //
 // Thread-Safe Functions (TSF)
@@ -178,6 +205,22 @@ else version( FreeBSD )
 {
     int readdir_r(DIR*, dirent*, dirent**);
 }
+else version (Solaris)
+{
+    static if (__USE_LARGEFILE64)
+    {
+        int readdir64_r(DIR*, dirent*, dirent**);
+        alias readdir64_r readdir_r;
+    }
+    else
+    {
+        int readdir_r(DIR*, dirent*, dirent**);
+    }
+}
+else
+{
+    static assert(false, "Unsupported platform");
+}
 
 //
 // XOpen (XSI)
@@ -197,4 +240,15 @@ else version( FreeBSD )
     void   seekdir(DIR*, c_long);
     c_long telldir(DIR*);
 }
-
+else version (OSX)
+{
+}
+else version (Solaris)
+{
+    c_long telldir(DIR*);
+    void seekdir(DIR*, c_long);
+}
+else
+{
+    static assert(false, "Unsupported platform");
+}

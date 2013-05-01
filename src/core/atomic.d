@@ -4,13 +4,13 @@
  *
  * Copyright: Copyright Sean Kelly 2005 - 2010.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Sean Kelly
+ * Authors:   Sean Kelly, Alex Rønne Petersen
  * Source:    $(DRUNTIMESRC core/_atomic.d)
  */
 
 /*          Copyright Sean Kelly 2005 - 2010.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.atomic;
@@ -21,13 +21,16 @@ version( D_InlineAsm_X86 )
     version = AsmX86_32;
     enum has64BitCAS = true;
 }
-version( D_InlineAsm_X86_64 )
+else version( D_InlineAsm_X86_64 )
 {
     version = AsmX86;
     version = AsmX86_64;
     enum has64BitCAS = true;
 }
-
+else
+{
+    enum has64BitCAS = false;
+}
 
 private
 {
@@ -46,14 +49,14 @@ version( AsmX86 )
     // NOTE: Strictly speaking, the x86 supports atomic operations on
     //       unaligned values.  However, this is far slower than the
     //       common case, so such behavior should be prohibited.
-    private bool atomicValueIsProperlyAligned(T)( size_t addr )
+    private bool atomicValueIsProperlyAligned(T)( size_t addr ) pure nothrow
     {
         return addr % T.sizeof == 0;
     }
 }
 
 
-version( D_Ddoc )
+version( CoreDdoc )
 {
     /**
      * Performs the binary operation 'op' on val using 'mod' as the modifier.
@@ -65,7 +68,7 @@ version( D_Ddoc )
      * Returns:
      *  The result of the operation.
      */
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod )
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
         if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
     {
         return HeadUnshared!(T).init;
@@ -85,12 +88,16 @@ version( D_Ddoc )
      * Returns:
      *  true if the store occurred, false if not.
      */
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
-        if( __traits( compiles, mixin( "*here = writeThis" ) ) )
-    {
-        return false;
-    }
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
+        if( !is(T == class) && !is(T U : U*) && __traits( compiles, { *here = writeThis; } ) );
 
+    /// Ditto
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
+        if( is(T == class) && __traits( compiles, { *here = writeThis; } ) );
+
+    /// Ditto
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
+        if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) );
 
     /**
      * Loads 'val' from memory and returns it.  The memory barrier specified
@@ -103,7 +110,7 @@ version( D_Ddoc )
      * Returns:
      *  The value of 'val'.
      */
-    HeadUnshared!(T) atomicLoad(msync ms = msync.seq,T)( ref const shared T val )
+    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq,T)( ref const shared T val ) nothrow
     {
         return HeadUnshared!(T).init;
     }
@@ -117,27 +124,37 @@ version( D_Ddoc )
      *  val    = The target variable.
      *  newval = The value to store.
      */
-    void atomicStore(msync ms = msync.seq,T,V1)( ref shared T val, V1 newval )
-        if( __traits( compiles, mixin( "val = newval" ) ) )
+    void atomicStore(MemoryOrder ms = MemoryOrder.seq,T,V1)( ref shared T val, V1 newval ) nothrow
+        if( __traits( compiles, { val = newval; } ) )
     {
 
     }
 
 
     /**
-     *
+     * Specifies the memory ordering semantics of an atomic operation.
      */
-    enum msync
+    enum MemoryOrder
     {
-        raw,    /// not sequenced
-        acq,    /// hoist-load + hoist-store barrier
-        rel,    /// sink-load + sink-store barrier
-        seq,    /// fully sequenced (acq + rel)
+        raw,    /// Not sequenced.
+        acq,    /// Hoist-load + hoist-store barrier.
+        rel,    /// Sink-load + sink-store barrier.
+        seq,    /// Fully sequenced (acquire + release).
     }
+
+    deprecated("Please use MemoryOrder instead.")
+    alias MemoryOrder msync;
+
+    /**
+     * Inserts a full load/store memory fence (on platforms that need it). This ensures
+     * that all loads and stores before a call to this function are executed before any
+     * loads and stores after the call.
+     */
+    void atomicFence() nothrow;
 }
 else version( AsmX86_32 )
 {
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod )
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
         if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
     in
     {
@@ -162,7 +179,7 @@ else version( AsmX86_32 )
                    op == "==" || op == "!=" || op == "<"  || op == "<="  ||
                    op == ">"  || op == ">=" )
         {
-            HeadUnshared!(T) get = atomicLoad!(msync.raw)( val );
+            HeadUnshared!(T) get = atomicLoad!(MemoryOrder.raw)( val );
             mixin( "return get " ~ op ~ " mod;" );
         }
         else
@@ -178,7 +195,7 @@ else version( AsmX86_32 )
 
             do
             {
-                get = set = atomicLoad!(msync.raw)( val );
+                get = set = atomicLoad!(MemoryOrder.raw)( val );
                 mixin( "set " ~ op ~ " mod;" );
             } while( !cas( &val, get, set ) );
             return set;
@@ -189,9 +206,25 @@ else version( AsmX86_32 )
         }
     }
 
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
+        if( !is(T == class) && !is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
 
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
-        if( __traits( compiles, mixin( "*here = writeThis" ) ) )
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
+        if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
+        if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) nothrow
     in
     {
         // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
@@ -282,29 +315,31 @@ else version( AsmX86_32 )
     }
 
 
-
-    enum msync
+    enum MemoryOrder
     {
-        raw,    /// not sequenced
-        acq,    /// hoist-load + hoist-store barrier
-        rel,    /// sink-load + sink-store barrier
-        seq,    /// fully sequenced (acq + rel)
+        raw,
+        acq,
+        rel,
+        seq,
     }
+
+    deprecated("Please use MemoryOrder instead.")
+    alias MemoryOrder msync;
 
 
     private
     {
-        template isHoistOp(msync ms)
+        template isHoistOp(MemoryOrder ms)
         {
-            enum bool isHoistOp = ms == msync.acq ||
-                                  ms == msync.seq;
+            enum bool isHoistOp = ms == MemoryOrder.acq ||
+                                  ms == MemoryOrder.seq;
         }
 
 
-        template isSinkOp(msync ms)
+        template isSinkOp(MemoryOrder ms)
         {
-            enum bool isSinkOp = ms == msync.rel ||
-                                 ms == msync.seq;
+            enum bool isSinkOp = ms == MemoryOrder.rel ||
+                                 ms == MemoryOrder.seq;
         }
 
 
@@ -320,26 +355,31 @@ else version( AsmX86_32 )
         //       of loads in some instances.
         //
         //       For reference, the old behavior (acquire semantics for loads)
-        //       required a memory barrier if: ms == msync.seq || isSinkOp!(ms)
-        template needsLoadBarrier( msync ms )
+        //       required a memory barrier if: ms == MemoryOrder.seq || isSinkOp!(ms)
+        template needsLoadBarrier( MemoryOrder ms )
         {
-            const bool needsLoadBarrier = ms != msync.raw;
+            enum bool needsLoadBarrier = ms != MemoryOrder.raw;
         }
 
 
         // NOTE: x86 stores implicitly have release semantics so a memory
         //       barrier is only necessary on acquires.
-        template needsStoreBarrier( msync ms )
+        template needsStoreBarrier( MemoryOrder ms )
         {
-            const bool needsStoreBarrier = ms == msync.seq ||
-                                                 isHoistOp!(ms);
+            enum bool needsStoreBarrier = ms == MemoryOrder.seq ||
+                                                isHoistOp!(ms);
         }
     }
 
 
-    HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val )
+    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) nothrow
+    if(!__traits(isFloating, T))
     {
-        static if( T.sizeof == byte.sizeof )
+        static if (!__traits(isPOD, T))
+        {
+            static assert( false, "argument to atomicLoad() must be POD" );
+        }
+        else static if( T.sizeof == byte.sizeof )
         {
             //////////////////////////////////////////////////////////////////
             // 1 Byte Load
@@ -444,9 +484,8 @@ else version( AsmX86_32 )
         }
     }
 
-
-    void atomicStore(msync ms = msync.seq, T, V1)( ref shared T val, V1 newval )
-        if( __traits( compiles, mixin( "val = newval" ) ) )
+    void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V1)( ref shared T val, V1 newval ) nothrow
+        if( __traits( compiles, { val = newval; } ) )
     {
         static if( T.sizeof == byte.sizeof )
         {
@@ -554,10 +593,46 @@ else version( AsmX86_32 )
             static assert( false, "Invalid template type specified." );
         }
     }
+
+
+    void atomicFence() nothrow
+    {
+        import core.cpuid;
+
+        asm
+        {
+            naked;
+
+            call sse2;
+            test AL, AL;
+            jne Lcpuid;
+
+            // Fast path: We have SSE2, so just use mfence.
+            mfence;
+            jmp Lend;
+
+        Lcpuid:
+
+            // Slow path: We use cpuid to serialize. This is
+            // significantly slower than mfence, but is the
+            // only serialization facility we have available
+            // on older non-SSE2 chips.
+            push EBX;
+
+            mov EAX, 0;
+            cpuid;
+
+            pop EBX;
+
+        Lend:
+
+            ret;
+        }
+    }
 }
 else version( AsmX86_64 )
 {
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod )
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
         if( __traits( compiles, mixin( "val" ~ op ~ "mod" ) ) )
     in
     {
@@ -582,7 +657,7 @@ else version( AsmX86_64 )
                    op == "==" || op == "!=" || op == "<"  || op == "<="  ||
                    op == ">"  || op == ">=" )
         {
-            HeadUnshared!(T) get = atomicLoad!(msync.raw)( val );
+            HeadUnshared!(T) get = atomicLoad!(MemoryOrder.raw)( val );
             mixin( "return get " ~ op ~ " mod;" );
         }
         else
@@ -598,7 +673,7 @@ else version( AsmX86_64 )
 
             do
             {
-                get = set = atomicLoad!(msync.raw)( val );
+                get = set = atomicLoad!(MemoryOrder.raw)( val );
                 mixin( "set " ~ op ~ " mod;" );
             } while( !cas( &val, get, set ) );
             return set;
@@ -610,8 +685,25 @@ else version( AsmX86_64 )
     }
 
 
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis )
-        if( __traits( compiles, mixin( "*here = writeThis" ) ) )
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
+        if( !is(T == class) && !is(T U : U*) &&  __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
+        if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
+        if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
+    {
+        return casImpl(here, ifThis, writeThis);
+    }
+
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) nothrow
     in
     {
         // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
@@ -694,28 +786,31 @@ else version( AsmX86_64 )
     }
 
 
-    enum msync
+    enum MemoryOrder
     {
-        raw,    /// not sequenced
-        acq,    /// hoist-load + hoist-store barrier
-        rel,    /// sink-load + sink-store barrier
-        seq,    /// fully sequenced (acq + rel)
+        raw,
+        acq,
+        rel,
+        seq,
     }
+
+    deprecated("Please use MemoryOrder instead.")
+    alias MemoryOrder msync;
 
 
     private
     {
-        template isHoistOp(msync ms)
+        template isHoistOp(MemoryOrder ms)
         {
-            enum bool isHoistOp = ms == msync.acq ||
-                                  ms == msync.seq;
+            enum bool isHoistOp = ms == MemoryOrder.acq ||
+                                  ms == MemoryOrder.seq;
         }
 
 
-        template isSinkOp(msync ms)
+        template isSinkOp(MemoryOrder ms)
         {
-            enum bool isSinkOp = ms == msync.rel ||
-                                 ms == msync.seq;
+            enum bool isSinkOp = ms == MemoryOrder.rel ||
+                                 ms == MemoryOrder.seq;
         }
 
 
@@ -731,25 +826,25 @@ else version( AsmX86_64 )
         //       of loads in some instances.
         //
         //       For reference, the old behavior (acquire semantics for loads)
-        //       required a memory barrier if: ms == msync.seq || isSinkOp!(ms)
-        template needsLoadBarrier( msync ms )
+        //       required a memory barrier if: ms == MemoryOrder.seq || isSinkOp!(ms)
+        template needsLoadBarrier( MemoryOrder ms )
         {
-            const bool needsLoadBarrier = ms != msync.raw;
+            enum bool needsLoadBarrier = ms != MemoryOrder.raw;
         }
 
 
         // NOTE: x86 stores implicitly have release semantics so a memory
         //       barrier is only necessary on acquires.
-        template needsStoreBarrier( msync ms )
+        template needsStoreBarrier( MemoryOrder ms )
         {
-            const bool needsStoreBarrier = ms == msync.seq ||
-                                                 isHoistOp!(ms);
+            enum bool needsStoreBarrier = ms == MemoryOrder.seq ||
+                                                isHoistOp!(ms);
         }
     }
 
 
-    HeadUnshared!(T) atomicLoad(msync ms = msync.seq, T)( ref const shared T val )
-    {
+    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) nothrow
+    if(!__traits(isFloating, T)) {
         static if( T.sizeof == byte.sizeof )
         {
             //////////////////////////////////////////////////////////////////
@@ -861,8 +956,8 @@ else version( AsmX86_64 )
     }
 
 
-    void atomicStore(msync ms = msync.seq, T, V1)( ref shared T val, V1 newval )
-        if( __traits( compiles, mixin( "val = newval" ) ) )
+    void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V1)( ref shared T val, V1 newval ) nothrow
+        if( __traits( compiles, { val = newval; } ) )
     {
         static if( T.sizeof == byte.sizeof )
         {
@@ -973,8 +1068,47 @@ else version( AsmX86_64 )
             static assert( false, "Invalid template type specified." );
         }
     }
+
+
+    void atomicFence() nothrow
+    {
+        // SSE2 is always present in 64-bit x86 chips.
+        asm
+        {
+            naked;
+
+            mfence;
+            ret;
+        }
+    }
 }
 
+// This is an ABI adapter that works on all architectures.  It type puns
+// floats and doubles to ints and longs, atomically loads them, then puns
+// them back.  This is necessary so that they get returned in floating
+// point instead of integer registers.
+HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) nothrow
+if(__traits(isFloating, T))
+{
+    static if(T.sizeof == int.sizeof)
+    {
+        static assert(is(T : float));
+        auto ptr = cast(const shared int*) &val;
+        auto asInt = atomicLoad!(ms)(*ptr);
+        return *(cast(typeof(return)*) &asInt);
+    }
+    else static if(T.sizeof == long.sizeof)
+    {
+        static assert(is(T : double));
+        auto ptr = cast(const shared long*) &val;
+        auto asLong = atomicLoad!(ms)(*ptr);
+        return *(cast(typeof(return)*) &asLong);
+    }
+    else
+    {
+        static assert(0, "Cannot atomically load 80-bit reals.");
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Unit Tests
@@ -983,44 +1117,50 @@ else version( AsmX86_64 )
 
 version( unittest )
 {
-    void testCAS(T)( T val = T.init + 1 )
+    void testCAS(T)( T val ) pure nothrow
+    in
+    {
+        assert(val !is T.init);
+    }
+    body
     {
         T         base;
         shared(T) atom;
 
-        assert( base != val );
-        assert( atom == base );
-        assert( cas( &atom, base, val ) );
-        assert( atom == val );
-        assert( !cas( &atom, base, base ) );
-        assert( atom == val );
+        assert( base !is val, T.stringof );
+        assert( atom is base, T.stringof );
+
+        assert( cas( &atom, base, val ), T.stringof );
+        assert( atom is val, T.stringof );
+        assert( !cas( &atom, base, base ), T.stringof );
+        assert( atom is val, T.stringof );
     }
 
-
-    void testLoadStore(msync ms = msync.seq, T)( T val = T.init + 1 )
+    void testLoadStore(MemoryOrder ms = MemoryOrder.seq, T)( T val = T.init + 1 ) pure nothrow
     {
-        T         base;
-        shared(T) atom;
+        T         base = cast(T) 0;
+        shared(T) atom = cast(T) 0;
 
-        assert( base != val );
-        assert( atom == base );
+        assert( base !is val );
+        assert( atom is base );
         atomicStore!(ms)( atom, val );
         base = atomicLoad!(ms)( atom );
-        assert( base == val );
-        assert( atom == val );
+
+        assert( base is val, T.stringof );
+        assert( atom is val );
     }
 
 
-    void testType(T)( T val = T.init + 1 )
+    void testType(T)( T val = T.init + 1 ) pure nothrow
     {
-        static if( !is( T U : U* ) )
-            testCAS!(T)( val );
-        testLoadStore!(msync.seq, T)( val );
-        testLoadStore!(msync.raw, T)( val );
+        testCAS!(T)( val );
+        testLoadStore!(MemoryOrder.seq, T)( val );
+        testLoadStore!(MemoryOrder.raw, T)( val );
     }
 
 
-    unittest
+    //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=8081
+    /+pure nothrow+/ unittest
     {
         testType!(bool)();
 
@@ -1035,6 +1175,12 @@ version( unittest )
 
         testType!(shared int*)();
 
+        static class Klass {}
+        testCAS!(shared Klass)( new shared(Klass) );
+
+        testType!(float)(1.0f);
+        testType!(double)(1.0);
+
         static if( has64BitCAS )
         {
             testType!(long)();
@@ -1048,5 +1194,76 @@ version( unittest )
 
         atomicOp!"-="( i, cast(size_t) 1 );
         assert( i == 0 );
+
+        shared float f = 0;
+        atomicOp!"+="( f, 1 );
+        assert( f == 1 );
+
+        shared double d = 0;
+        atomicOp!"+="( d, 1 );
+        assert( d == 1 );
+    }
+
+    //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=8081
+    /+pure nothrow+/ unittest
+    {
+        static struct S { int val; }
+        auto s = shared(S)(1);
+
+        shared(S*) ptr;
+
+        // head unshared
+        shared(S)* ifThis = null;
+        shared(S)* writeThis = &s;
+        assert(ptr is null);
+        assert(cas(&ptr, ifThis, writeThis));
+        assert(ptr is writeThis);
+
+        // head shared
+        shared(S*) ifThis2 = writeThis;
+        shared(S*) writeThis2 = null;
+        assert(cas(&ptr, ifThis2, writeThis2));
+        assert(ptr is null);
+
+        // head unshared target doesn't want atomic CAS
+        shared(S)* ptr2;
+        static assert(!__traits(compiles, cas(&ptr2, ifThis, writeThis)));
+        static assert(!__traits(compiles, cas(&ptr2, ifThis2, writeThis2)));
+    }
+
+    unittest
+    {
+        import core.thread;
+
+        // Use heap memory to ensure an optimizing
+        // compiler doesn't put things in registers.
+        uint* x = new uint();
+        bool* f = new bool();
+        uint* r = new uint();
+
+        auto thr = new Thread(()
+        {
+            while (!*f)
+            {
+            }
+
+            atomicFence();
+
+            *r = *x;
+        });
+
+        thr.start();
+
+        *x = 42;
+
+        atomicFence();
+
+        *f = true;
+
+        atomicFence();
+
+        thr.join();
+
+        assert(*r == 42);
     }
 }

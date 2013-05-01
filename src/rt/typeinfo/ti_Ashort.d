@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Ashort;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // short[]
 
-class TypeInfo_As : TypeInfo
+class TypeInfo_As : TypeInfo_Array
 {
-    override string toString() { return "short[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   short[] s = *cast(short[]*)p;
+    override string toString() const { return "short[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        short[] s = *cast(short[]*)p;
         return hashOf(s.ptr, s.length * short.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         short[] s1 = *cast(short[]*)p1;
         short[] s2 = *cast(short[]*)p2;
@@ -36,7 +39,7 @@ class TypeInfo_As : TypeInfo
                memcmp(cast(void *)s1, cast(void *)s2, s1.length * short.sizeof) == 0;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         short[] s1 = *cast(short[]*)p1;
         short[] s2 = *cast(short[]*)p2;
@@ -57,30 +60,9 @@ class TypeInfo_As : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (short[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(short);
-    }
-
-    override size_t talign()
-    {
-        return (short[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {   arg1 = typeid(size_t);
-        arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(short);
     }
 }
 
@@ -89,9 +71,9 @@ class TypeInfo_As : TypeInfo
 
 class TypeInfo_At : TypeInfo_As
 {
-    override string toString() { return "ushort[]"; }
+    override string toString() const { return "ushort[]"; }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         ushort[] s1 = *cast(ushort[]*)p1;
         ushort[] s2 = *cast(ushort[]*)p2;
@@ -112,9 +94,9 @@ class TypeInfo_At : TypeInfo_As
         return 0;
     }
 
-    override TypeInfo next()
+    override @property inout(TypeInfo) next() inout
     {
-        return typeid(ushort);
+        return cast(inout)typeid(ushort);
     }
 }
 
@@ -122,10 +104,10 @@ class TypeInfo_At : TypeInfo_As
 
 class TypeInfo_Au : TypeInfo_At
 {
-    override string toString() { return "wchar[]"; }
+    override string toString() const { return "wchar[]"; }
 
-    override TypeInfo next()
+    override @property inout(TypeInfo) next() inout
     {
-        return typeid(wchar);
+        return cast(inout)typeid(wchar);
     }
 }

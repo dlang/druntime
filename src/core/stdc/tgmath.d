@@ -9,7 +9,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.stdc.tgmath;
@@ -19,6 +19,8 @@ private static import core.stdc.math;
 private static import core.stdc.complex;
 
 extern (C):
+@trusted: // Everything here operates on floating point and integer values.
+nothrow:
 
 version( FreeBSD )
 {
@@ -166,13 +168,13 @@ version( FreeBSD )
     alias core.stdc.math.log1pf        log1p;
     alias core.stdc.math.log1pl        log1p;
 
-    alias core.stdc.math.log2          log1p;
-    alias core.stdc.math.log2f         log1p;
-    alias core.stdc.math.log2l         log1p;
+    alias core.stdc.math.log2          log2;
+    alias core.stdc.math.log2f         log2;
+    alias core.stdc.math.log2l         log2;
 
-    alias core.stdc.math.logb          log1p;
-    alias core.stdc.math.logbf         log1p;
-    alias core.stdc.math.logbl         log1p;
+    alias core.stdc.math.logb          logb;
+    alias core.stdc.math.logbf         logb;
+    alias core.stdc.math.logbl         logb;
 
     alias core.stdc.math.modf          modf;
     alias core.stdc.math.modff         modf;
@@ -484,13 +486,13 @@ else
     alias core.stdc.math.log1pf        log1p;
     alias core.stdc.math.log1pl        log1p;
 
-    alias core.stdc.math.log2          log1p;
-    alias core.stdc.math.log2f         log1p;
-    alias core.stdc.math.log2l         log1p;
+    alias core.stdc.math.log2          log2;
+    alias core.stdc.math.log2f         log2;
+    alias core.stdc.math.log2l         log2;
 
-    alias core.stdc.math.logb          log1p;
-    alias core.stdc.math.logbf         log1p;
-    alias core.stdc.math.logbl         log1p;
+    alias core.stdc.math.logb          logb;
+    alias core.stdc.math.logbf         logb;
+    alias core.stdc.math.logbl         logb;
 
     alias core.stdc.math.modf          modf;
     alias core.stdc.math.modff         modf;

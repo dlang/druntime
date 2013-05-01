@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Acfloat;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // cfloat[]
 
-class TypeInfo_Aq : TypeInfo
+class TypeInfo_Aq : TypeInfo_Array
 {
-    override string toString() { return "cfloat[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   cfloat[] s = *cast(cfloat[]*)p;
+    override string toString() const { return "cfloat[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        cfloat[] s = *cast(cfloat[]*)p;
         return hashOf(s.ptr, s.length * cfloat.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         cfloat[] s1 = *cast(cfloat[]*)p1;
         cfloat[] s2 = *cast(cfloat[]*)p2;
@@ -43,7 +46,7 @@ class TypeInfo_Aq : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         cfloat[] s1 = *cast(cfloat[]*)p1;
         cfloat[] s2 = *cast(cfloat[]*)p2;
@@ -64,30 +67,8 @@ class TypeInfo_Aq : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (cfloat[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(cfloat);
-    }
-
-    override size_t talign()
-    {
-        return (cfloat[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        //arg1 = typeid(size_t);
-        //arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(cfloat);
     }
 }

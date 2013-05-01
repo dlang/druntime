@@ -4,19 +4,20 @@
  *
  * Copyright: Copyright Digital Mars 2000 - 2009.
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
- * Authors:   Walter Bright, Sean Kelly
+ * Authors:   Walter Bright, Sean Kelly, Alex Rønne Petersen
  */
 
 /*          Copyright Digital Mars 2000 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.windows.windows;
 
+version (Windows):
+extern (Windows):
+nothrow:
 
-extern (Windows)
-{
     alias uint ULONG;
     alias ULONG *PULONG;
     alias ushort USHORT;
@@ -24,25 +25,24 @@ extern (Windows)
     alias ubyte UCHAR;
     alias UCHAR *PUCHAR;
     alias char *PSZ;
-    alias wchar WCHAR;
 
     alias void VOID;
     alias char CHAR;
     alias short SHORT;
     alias int LONG;
-    alias CHAR *LPSTR;
-    alias CHAR *PSTR;
+    
+    alias long  LONGLONG;
+    alias ulong ULONGLONG;
 
-    alias const(CHAR)* LPCSTR;
-    alias const(CHAR)* PCSTR;
+    alias CHAR*         LPCH,  LPSTR,  PCH,  PSTR;
+    alias const(CHAR)*  LPCCH, LPCSTR, PCCH, PCSTR;
 
-    alias LPSTR LPTCH, PTCH;
-    alias LPSTR PTSTR, LPTSTR;
-    alias LPCSTR PCTSTR, LPCTSTR;
+    alias wchar WCHAR;
+    alias WCHAR*        LPWCH,  LPWSTR,  PWCH,  PWSTR;
+    alias const(WCHAR)* LPCWCH, LPCWSTR, PCWCH, PCWSTR;
 
-    alias WCHAR* LPWSTR;
-
-    alias const(WCHAR)* LPCWSTR, PCWSTR;
+    alias CHAR*         LPTCH,  LPTSTR,  PTCH,  PTSTR;
+    alias const(CHAR)*  LPCTCH, LPCTSTR, PCTCH, PCTSTR;
 
     alias uint DWORD;
     alias ulong DWORD64;
@@ -50,24 +50,21 @@ extern (Windows)
     alias ubyte BYTE;
     alias ushort WORD;
     alias float FLOAT;
-    alias FLOAT *PFLOAT;
-    alias BOOL *PBOOL;
-    alias BOOL *LPBOOL;
-    alias BYTE *PBYTE;
-    alias BYTE *LPBYTE;
-    alias int *PINT;
-    alias int *LPINT;
-    alias WORD *PWORD;
-    alias WORD *LPWORD;
-    alias int *LPLONG;
-    alias DWORD *PDWORD;
-    alias DWORD *LPDWORD;
-    alias void *LPVOID;
-    alias void *LPCVOID;
+    alias FLOAT* PFLOAT;
+    alias BOOL*  LPBOOL,  PBOOL;
+    alias BYTE*  LPBYTE,  PBYTE;
+    alias int*   LPINT,   PINT;
+    alias WORD*  LPWORD,  PWORD;
+    alias int*   LPLONG;
+    alias DWORD* LPDWORD, PDWORD;
+    alias void*  LPVOID;
+    alias const(void)* LPCVOID;
 
     alias int INT;
     alias uint UINT;
-    alias uint *PUINT;
+    alias uint* PUINT;
+
+    alias size_t SIZE_T;
 
 // ULONG_PTR must be able to store a pointer as an integral type
 version (Win64)
@@ -93,7 +90,9 @@ else // Win32
     alias uint * PULONG_PTR;
 }
 
-    typedef void *HANDLE;
+    alias ULONG_PTR DWORD_PTR;
+
+    alias void *HANDLE;
     alias void *PVOID;
     alias HANDLE HGLOBAL;
     alias HANDLE HLOCAL;
@@ -102,6 +101,7 @@ else // Win32
     alias HANDLE HINSTANCE;
     alias HINSTANCE HMODULE;
     alias HANDLE HWND;
+    alias HANDLE* PHANDLE;
 
     alias HANDLE HGDIOBJ;
     alias HANDLE HACCEL;
@@ -132,28 +132,31 @@ else // Win32
     alias ACCESS_MASK *PACCESS_MASK;
     alias ACCESS_MASK REGSAM;
 
-    alias int function() FARPROC;
+    version (Win64)
+        alias INT_PTR function() FARPROC;
+    else
+        alias int function() FARPROC;
 
-    alias UINT WPARAM;
-    alias LONG LPARAM;
-    alias LONG LRESULT;
+    alias UINT_PTR WPARAM;
+    alias LONG_PTR LPARAM;
+    alias LONG_PTR LRESULT;
 
     alias DWORD   COLORREF;
     alias DWORD   *LPCOLORREF;
     alias WORD    ATOM;
 
-version (0)
+version (all)
 {   // Properly prototyped versions
-    alias BOOL function(HWND, UINT, WPARAM, LPARAM) DLGPROC;
-    alias VOID function(HWND, UINT, UINT, DWORD) TIMERPROC;
+    alias INT_PTR function(HWND, UINT, WPARAM, LPARAM) DLGPROC;
+    alias VOID function(HWND, UINT, UINT_PTR, DWORD) TIMERPROC;
     alias BOOL function(HDC, LPARAM, int) GRAYSTRINGPROC;
     alias BOOL function(HWND, LPARAM) WNDENUMPROC;
     alias LRESULT function(int code, WPARAM wParam, LPARAM lParam) HOOKPROC;
-    alias VOID function(HWND, UINT, DWORD, LRESULT) SENDASYNCPROC;
+    alias VOID function(HWND, UINT, ULONG_PTR, LRESULT) SENDASYNCPROC;
     alias BOOL function(HWND, LPCSTR, HANDLE) PROPENUMPROCA;
     alias BOOL function(HWND, LPCWSTR, HANDLE) PROPENUMPROCW;
-    alias BOOL function(HWND, LPSTR, HANDLE, DWORD) PROPENUMPROCEXA;
-    alias BOOL function(HWND, LPWSTR, HANDLE, DWORD) PROPENUMPROCEXW;
+    alias BOOL function(HWND, LPSTR, HANDLE, ULONG_PTR) PROPENUMPROCEXA;
+    alias BOOL function(HWND, LPWSTR, HANDLE, ULONG_PTR) PROPENUMPROCEXW;
     alias int function(LPSTR lpch, int ichCurrent, int cch, int code)
        EDITWORDBREAKPROCA;
     alias int function(LPWSTR lpch, int ichCurrent, int cch, int code)
@@ -178,10 +181,10 @@ else
     alias FARPROC DRAWSTATEPROC;
 }
 
-extern (D)
+extern (D) pure
 {
-WORD HIWORD(int l) { return cast(WORD)((l >> 16) & 0xFFFF); }
-WORD LOWORD(int l) { return cast(WORD)l; }
+WORD HIWORD(long x) { return cast(WORD)((x >> 16) & 0xFFFF); }
+WORD LOWORD(long x) { return cast(WORD)x; }
 bool FAILED(int status) { return status < 0; }
 bool SUCCEEDED(int Status) { return Status >= 0; }
 }
@@ -208,6 +211,7 @@ enum
     ERROR_ACCESS_DENIED =              5,
     ERROR_INVALID_HANDLE =             6,
     ERROR_NO_MORE_FILES =              18,
+    ERROR_INSUFFICIENT_BUFFER =        122,
     ERROR_MORE_DATA =          234,
     ERROR_NO_MORE_ITEMS =          259,
 }
@@ -320,12 +324,39 @@ enum
     DWORD INVALID_FILE_SIZE         = cast(DWORD)0xFFFFFFFF,
 }
 
+union LARGE_INTEGER
+{
+    struct
+    {
+        uint LowPart;
+        int  HighPart;
+    }
+    long QuadPart;
+}
+alias LARGE_INTEGER* PLARGE_INTEGER;
+
+union ULARGE_INTEGER
+{
+    struct
+    {
+        uint LowPart;
+        uint HighPart;
+    }
+    ulong QuadPart;
+}
+alias ULARGE_INTEGER* PULARGE_INTEGER;
+
 struct OVERLAPPED {
-    DWORD   Internal;
-    DWORD   InternalHigh;
-    DWORD   Offset;
-    DWORD   OffsetHigh;
-    HANDLE  hEvent;
+    ULONG_PTR Internal;
+    ULONG_PTR InternalHigh;
+    union {
+        struct {
+            DWORD Offset;
+            DWORD OffsetHigh;
+        }
+        void* Pointer;
+    }
+    HANDLE hEvent;
 }
 
 struct SECURITY_ATTRIBUTES {
@@ -414,6 +445,23 @@ enum
     STD_ERROR_HANDLE =    cast(DWORD)-12,
 }
 
+enum GET_FILEEX_INFO_LEVELS
+{
+    GetFileExInfoStandard,
+    GetFileExMaxInfoLevel
+}
+
+struct WIN32_FILE_ATTRIBUTE_DATA
+{
+    DWORD    dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD    nFileSizeHigh;
+    DWORD    nFileSizeLow;
+}
+alias WIN32_FILE_ATTRIBUTE_DATA* LPWIN32_FILE_ATTRIBUTE_DATA;
+
 export
 {
 BOOL SetCurrentDirectoryA(LPCSTR lpPathName);
@@ -447,9 +495,12 @@ HANDLE FindFirstFileW(in LPCWSTR lpFileName, WIN32_FIND_DATAW* lpFindFileData);
 BOOL   FindNextFileA(HANDLE hFindFile, WIN32_FIND_DATA* lpFindFileData);
 BOOL   FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW* lpFindFileData);
 BOOL   GetExitCodeThread(HANDLE hThread, DWORD *lpExitCode);
+BOOL   GetExitCodeProcess(HANDLE hProcess, DWORD *lpExitCode);
 DWORD  GetLastError();
 DWORD  GetFileAttributesA(in char *lpFileName);
 DWORD  GetFileAttributesW(in wchar *lpFileName);
+BOOL   GetFileAttributesExA(LPCSTR, GET_FILEEX_INFO_LEVELS, PVOID);
+BOOL   GetFileAttributesExW(LPCWSTR, GET_FILEEX_INFO_LEVELS, PVOID);
 DWORD  GetFileSize(HANDLE hFile, DWORD *lpFileSizeHigh);
 BOOL   CopyFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, BOOL bFailIfExists);
 BOOL   CopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, BOOL bFailIfExists);
@@ -462,6 +513,7 @@ DWORD  SetFilePointer(HANDLE hFile, LONG lDistanceToMove,
 BOOL   WriteFile(HANDLE hFile, in void *lpBuffer, DWORD nNumberOfBytesToWrite,
     DWORD *lpNumberOfBytesWritten, OVERLAPPED *lpOverlapped);
 DWORD  GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize);
+DWORD  GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
 HANDLE GetStdHandle(DWORD nStdHandle);
 BOOL   SetStdHandle(DWORD nStdHandle, HANDLE hHandle);
 }
@@ -639,49 +691,49 @@ enum
     REG_LEGAL_OPTION = (REG_OPTION_RESERVED | REG_OPTION_NON_VOLATILE | REG_OPTION_VOLATILE | REG_OPTION_CREATE_LINK | REG_OPTION_BACKUP_RESTORE | REG_OPTION_OPEN_LINK),
 }
 
-export LONG RegDeleteKeyA(HKEY hKey, LPCSTR lpSubKey);
-export LONG RegDeleteKeyW(HKEY hKey, LPCWSTR lpSubKey);
-export LONG RegDeleteValueA(HKEY hKey, LPCSTR lpValueName);
-export LONG RegDeleteValueW(HKEY hKey, LPCWSTR lpValueName);
+export LONG RegDeleteKeyA(in HKEY hKey, LPCSTR lpSubKey);
+export LONG RegDeleteKeyW(in HKEY hKey, LPCWSTR lpSubKey);
+export LONG RegDeleteValueA(in HKEY hKey, LPCSTR lpValueName);
+export LONG RegDeleteValueW(in HKEY hKey, LPCWSTR lpValueName);
 
-export LONG  RegEnumKeyExA(HKEY hKey, DWORD dwIndex, LPSTR lpName, LPDWORD lpcbName, LPDWORD lpReserved, LPSTR lpClass, LPDWORD lpcbClass, FILETIME* lpftLastWriteTime);
-export LONG  RegEnumKeyExW(HKEY hKey, DWORD dwIndex, LPWSTR lpName, LPDWORD lpcbName, LPDWORD lpReserved, LPWSTR lpClass, LPDWORD lpcbClass, FILETIME* lpftLastWriteTime);
-export LONG RegEnumValueA(HKEY hKey, DWORD dwIndex, LPSTR lpValueName, LPDWORD lpcbValueName, LPDWORD lpReserved,
+export LONG  RegEnumKeyExA(in HKEY hKey, DWORD dwIndex, LPSTR lpName, LPDWORD lpcbName, LPDWORD lpReserved, LPSTR lpClass, LPDWORD lpcbClass, FILETIME* lpftLastWriteTime);
+export LONG  RegEnumKeyExW(in HKEY hKey, DWORD dwIndex, LPWSTR lpName, LPDWORD lpcbName, LPDWORD lpReserved, LPWSTR lpClass, LPDWORD lpcbClass, FILETIME* lpftLastWriteTime);
+export LONG RegEnumValueA(in HKEY hKey, DWORD dwIndex, LPSTR lpValueName, LPDWORD lpcbValueName, LPDWORD lpReserved,
     LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
-export LONG RegEnumValueW(HKEY hKey, DWORD dwIndex, LPWSTR lpValueName, LPDWORD lpcbValueName, LPDWORD lpReserved,
+export LONG RegEnumValueW(in HKEY hKey, DWORD dwIndex, LPWSTR lpValueName, LPDWORD lpcbValueName, LPDWORD lpReserved,
     LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
 
-export LONG RegCloseKey(HKEY hKey);
-export LONG RegFlushKey(HKEY hKey);
+export LONG RegCloseKey(in HKEY hKey);
+export LONG RegFlushKey(in HKEY hKey);
 
-export LONG RegOpenKeyA(HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult);
-export LONG RegOpenKeyW(HKEY hKey, LPCWSTR lpSubKey, PHKEY phkResult);
-export LONG RegOpenKeyExA(HKEY hKey, LPCSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
-export LONG RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
+export LONG RegOpenKeyA(in HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult);
+export LONG RegOpenKeyW(in HKEY hKey, LPCWSTR lpSubKey, PHKEY phkResult);
+export LONG RegOpenKeyExA(in HKEY hKey, LPCSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
+export LONG RegOpenKeyExW(in HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
 
-export LONG RegQueryInfoKeyA(HKEY hKey, LPSTR lpClass, LPDWORD lpcbClass,
+export LONG RegQueryInfoKeyA(in HKEY hKey, LPSTR lpClass, LPDWORD lpcbClass,
     LPDWORD lpReserved, LPDWORD lpcSubKeys, LPDWORD lpcbMaxSubKeyLen, LPDWORD lpcbMaxClassLen,
     LPDWORD lpcValues, LPDWORD lpcbMaxValueNameLen, LPDWORD lpcbMaxValueLen, LPDWORD lpcbSecurityDescriptor,
     PFILETIME lpftLastWriteTime);
-export LONG RegQueryInfoKeyW(HKEY hKey, LPWSTR lpClass, LPDWORD lpcbClass,
+export LONG RegQueryInfoKeyW(in HKEY hKey, LPWSTR lpClass, LPDWORD lpcbClass,
     LPDWORD lpReserved, LPDWORD lpcSubKeys, LPDWORD lpcbMaxSubKeyLen, LPDWORD lpcbMaxClassLen,
     LPDWORD lpcValues, LPDWORD lpcbMaxValueNameLen, LPDWORD lpcbMaxValueLen, LPDWORD lpcbSecurityDescriptor,
     PFILETIME lpftLastWriteTime);
 
-export LONG RegQueryValueA(HKEY hKey, LPCSTR lpSubKey, LPSTR lpValue, LPLONG lpcbValue);
-export LONG RegQueryValueW(HKEY hKey, LPCWSTR lpSubKey, LPWSTR lpValue, LPLONG lpcbValue);
-export LONG RegQueryValueExA(HKEY hKey, LPCSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPVOID lpData, LPDWORD lpcbData);
-export LONG RegQueryValueExW(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPVOID lpData, LPDWORD lpcbData);
+export LONG RegQueryValueA(in HKEY hKey, LPCSTR lpSubKey, LPSTR lpValue, LPLONG lpcbValue);
+export LONG RegQueryValueW(in HKEY hKey, LPCWSTR lpSubKey, LPWSTR lpValue, LPLONG lpcbValue);
+export LONG RegQueryValueExA(in HKEY hKey, LPCSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPVOID lpData, LPDWORD lpcbData);
+export LONG RegQueryValueExW(in HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPVOID lpData, LPDWORD lpcbData);
 
-export LONG RegCreateKeyExA(HKEY hKey, LPCSTR lpSubKey, DWORD Reserved, LPSTR lpClass,
+export LONG RegCreateKeyExA(in HKEY hKey, LPCSTR lpSubKey, DWORD Reserved, LPSTR lpClass,
    DWORD dwOptions, REGSAM samDesired, SECURITY_ATTRIBUTES* lpSecurityAttributes,
     PHKEY phkResult, LPDWORD lpdwDisposition);
-export LONG RegCreateKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD Reserved, LPWSTR lpClass,
+export LONG RegCreateKeyExW(in HKEY hKey, LPCWSTR lpSubKey, DWORD Reserved, LPWSTR lpClass,
    DWORD dwOptions, REGSAM samDesired, SECURITY_ATTRIBUTES* lpSecurityAttributes,
     PHKEY phkResult, LPDWORD lpdwDisposition);
 
-export LONG RegSetValueExA(HKEY hKey, LPCSTR lpValueName, DWORD Reserved, DWORD dwType, BYTE* lpData, DWORD cbData);
-export LONG RegSetValueExW(HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, BYTE* lpData, DWORD cbData);
+export LONG RegSetValueExA(in HKEY hKey, LPCSTR lpValueName, DWORD Reserved, DWORD dwType, BYTE* lpData, DWORD cbData);
+export LONG RegSetValueExW(in HKEY hKey, LPCWSTR lpValueName, DWORD Reserved, DWORD dwType, BYTE* lpData, DWORD cbData);
 
 export LONG RegOpenCurrentUser(REGSAM samDesired, PHKEY phkResult);
 
@@ -813,14 +865,14 @@ export
  UINT LocalShrink(HLOCAL hMem, UINT cbNewSize);
  UINT LocalCompact(UINT uMinFree);
  BOOL FlushInstructionCache(HANDLE hProcess, LPCVOID lpBaseAddress, DWORD dwSize);
- LPVOID VirtualAlloc(LPVOID lpAddress, DWORD dwSize, DWORD flAllocationType, DWORD flProtect);
- BOOL VirtualFree(LPVOID lpAddress, DWORD dwSize, DWORD dwFreeType);
- BOOL VirtualProtect(LPVOID lpAddress, DWORD dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
- DWORD VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, DWORD dwLength);
- LPVOID VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, DWORD dwSize, DWORD flAllocationType, DWORD flProtect);
- BOOL VirtualFreeEx(HANDLE hProcess, LPVOID lpAddress, DWORD dwSize, DWORD dwFreeType);
- BOOL VirtualProtectEx(HANDLE hProcess, LPVOID lpAddress, DWORD dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
- DWORD VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, DWORD dwLength);
+ LPVOID VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+ BOOL VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+ BOOL VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
+ SIZE_T VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
+ LPVOID VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+ BOOL VirtualFreeEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+ BOOL VirtualProtectEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
+ SIZE_T VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
 }
 
 struct SYSTEMTIME
@@ -845,6 +897,15 @@ struct TIME_ZONE_INFORMATION {
     LONG DaylightBias;
 }
 
+struct REG_TZI_FORMAT
+{
+    LONG Bias;
+    LONG StandardBias;
+    LONG DaylightBias;
+    SYSTEMTIME StandardDate;
+    SYSTEMTIME DaylightDate;
+}
+
 enum
 {
     TIME_ZONE_ID_UNKNOWN =  0,
@@ -860,6 +921,7 @@ export BOOL SetFileTime(HANDLE hFile, in FILETIME *lpCreationTime, in FILETIME *
 export void GetLocalTime(SYSTEMTIME* lpSystemTime);
 export BOOL SetLocalTime(SYSTEMTIME* lpSystemTime);
 export BOOL SystemTimeToTzSpecificLocalTime(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpUniversalTime, SYSTEMTIME* lpLocalTime);
+export BOOL TzSpecificLocalTimeToSystemTime(TIME_ZONE_INFORMATION* lpTimeZoneInformation, SYSTEMTIME* lpLocalTime, SYSTEMTIME* lpUniversalTime);
 export DWORD GetTimeZoneInformation(TIME_ZONE_INFORMATION* lpTimeZoneInformation);
 export BOOL SetTimeZoneInformation(TIME_ZONE_INFORMATION* lpTimeZoneInformation);
 
@@ -1090,112 +1152,264 @@ WORD PRIMARYLANGID(int lgid) { return cast(WORD)(lgid & 0x3ff); }
 WORD SUBLANGID(int lgid)     { return cast(WORD)(lgid >> 10); }
 
 
-struct FLOATING_SAVE_AREA {
-    DWORD   ControlWord;
-    DWORD   StatusWord;
-    DWORD   TagWord;
-    DWORD   ErrorOffset;
-    DWORD   ErrorSelector;
-    DWORD   DataOffset;
-    DWORD   DataSelector;
-    BYTE    RegisterArea[80 ];
-    DWORD   Cr0NpxState;
-}
-
-enum
+version (Win64)
 {
-    SIZE_OF_80387_REGISTERS =      80,
-//
-// The following flags control the contents of the CONTEXT structure.
-//
-    CONTEXT_i386 =    0x00010000,    // this assumes that i386 and
-    CONTEXT_i486 =    0x00010000,    // i486 have identical context records
+    enum
+    {
+        CONTEXT_AMD64 =  0x100000,
 
-    CONTEXT_CONTROL =         (CONTEXT_i386 | 0x00000001), // SS:SP, CS:IP, FLAGS, BP
-    CONTEXT_INTEGER =         (CONTEXT_i386 | 0x00000002), // AX, BX, CX, DX, SI, DI
-    CONTEXT_SEGMENTS =        (CONTEXT_i386 | 0x00000004), // DS, ES, FS, GS
-    CONTEXT_FLOATING_POINT =  (CONTEXT_i386 | 0x00000008), // 387 state
-    CONTEXT_DEBUG_REGISTERS = (CONTEXT_i386 | 0x00000010), // DB 0-3,6,7
 
-    CONTEXT_FULL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS),
+        CONTEXT_CONTROL = (CONTEXT_AMD64 | 0x1L),
+        CONTEXT_INTEGER = (CONTEXT_AMD64 | 0x2L),
+        CONTEXT_SEGMENTS = (CONTEXT_AMD64 | 0x4L),
+        CONTEXT_FLOATING_POINT =  (CONTEXT_AMD64 | 0x8L),
+        CONTEXT_DEBUG_REGISTERS = (CONTEXT_AMD64 | 0x10L),
+
+        CONTEXT_FULL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT),
+
+        CONTEXT_ALL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS | CONTEXT_FLOATING_POINT | CONTEXT_DEBUG_REGISTERS),
+
+        CONTEXT_EXCEPTION_ACTIVE = 0x8000000,
+        CONTEXT_SERVICE_ACTIVE = 0x10000000,
+        CONTEXT_EXCEPTION_REQUEST = 0x40000000,
+        CONTEXT_EXCEPTION_REPORTING = 0x80000000,
+
+
+        // Define initial MxCsr and FpCsr control.
+
+        INITIAL_MXCSR = 0x1f80,            // initial MXCSR value
+        INITIAL_FPCSR = 0x027f,            // initial FPCSR value
+    }
+
+
+    // Copied from Public Domain w64 mingw-runtime package's winnt.h.
+
+    align(16) struct M128A 
+    {
+        ULONGLONG Low;
+        LONGLONG High;
+    } 
+    alias M128A* PM128A;
+
+    struct XMM_SAVE_AREA32 
+    {
+        WORD ControlWord;
+        WORD StatusWord;
+        BYTE TagWord;
+        BYTE Reserved1;
+        WORD ErrorOpcode;
+        DWORD ErrorOffset;
+        WORD ErrorSelector;
+        WORD Reserved2;
+        DWORD DataOffset;
+        WORD DataSelector;
+        WORD Reserved3;
+        DWORD MxCsr;
+        DWORD MxCsr_Mask;
+        M128A FloatRegisters[8];
+        M128A XmmRegisters[16];
+        BYTE Reserved4[96];
+    } 
+    alias XMM_SAVE_AREA32 PXMM_SAVE_AREA32;
+  
+    align(16) struct CONTEXT // sizeof(1232)
+    {
+        DWORD64 P1Home;
+        DWORD64 P2Home;
+        DWORD64 P3Home;
+        DWORD64 P4Home;
+        DWORD64 P5Home;
+        DWORD64 P6Home;
+        DWORD ContextFlags;
+        DWORD MxCsr;
+        WORD SegCs;
+        WORD SegDs;
+        WORD SegEs;
+        WORD SegFs;
+        WORD SegGs;
+        WORD SegSs;
+        DWORD EFlags;
+        DWORD64 Dr0;
+        DWORD64 Dr1;
+        DWORD64 Dr2;
+        DWORD64 Dr3;
+        DWORD64 Dr6;
+        DWORD64 Dr7;
+        DWORD64 Rax;
+        DWORD64 Rcx;
+        DWORD64 Rdx;
+        DWORD64 Rbx;
+        DWORD64 Rsp;
+        DWORD64 Rbp;
+        DWORD64 Rsi;
+        DWORD64 Rdi;
+        DWORD64 R8;
+        DWORD64 R9;
+        DWORD64 R10;
+        DWORD64 R11;
+        DWORD64 R12;
+        DWORD64 R13;
+        DWORD64 R14;
+        DWORD64 R15;
+        DWORD64 Rip;
+        union 
+        {
+            XMM_SAVE_AREA32 FltSave;
+            XMM_SAVE_AREA32 FloatSave;
+            struct 
+            {
+                M128A Header[2];
+                M128A Legacy[8];
+                M128A Xmm0;
+                M128A Xmm1;
+                M128A Xmm2;
+                M128A Xmm3;
+                M128A Xmm4;
+                M128A Xmm5;
+                M128A Xmm6;
+                M128A Xmm7;
+                M128A Xmm8;
+                M128A Xmm9;
+                M128A Xmm10;
+                M128A Xmm11;
+                M128A Xmm12;
+                M128A Xmm13;
+                M128A Xmm14;
+                M128A Xmm15;
+            };
+        };
+        M128A VectorRegister[26];
+        DWORD64 VectorControl;
+        DWORD64 DebugControl;
+        DWORD64 LastBranchToRip;
+        DWORD64 LastBranchFromRip;
+        DWORD64 LastExceptionToRip;
+        DWORD64 LastExceptionFromRip;
+    }
 }
-
-struct CONTEXT
+else // Win32
 {
+    enum
+    {
+        SIZE_OF_80387_REGISTERS =      80,
+        //
+        // The following flags control the contents of the CONTEXT structure.
+        //
+        CONTEXT_i386 =    0x00010000,    // this assumes that i386 and
+        CONTEXT_i486 =    0x00010000,    // i486 have identical context records
 
-    //
-    // The flags values within this flag control the contents of
-    // a CONTEXT record.
-    //
-    // If the context record is used as an input parameter, then
-    // for each portion of the context record controlled by a flag
-    // whose value is set, it is assumed that that portion of the
-    // context record contains valid context. If the context record
-    // is being used to modify a threads context, then only that
-    // portion of the threads context will be modified.
-    //
-    // If the context record is used as an IN OUT parameter to capture
-    // the context of a thread, then only those portions of the thread's
-    // context corresponding to set flags will be returned.
-    //
-    // The context record is never used as an OUT only parameter.
-    //
+        CONTEXT_CONTROL =         (CONTEXT_i386 | 0x00000001), // SS:SP, CS:IP, FLAGS, BP
+        CONTEXT_INTEGER =         (CONTEXT_i386 | 0x00000002), // AX, BX, CX, DX, SI, DI
+        CONTEXT_SEGMENTS =        (CONTEXT_i386 | 0x00000004), // DS, ES, FS, GS
+        CONTEXT_FLOATING_POINT =  (CONTEXT_i386 | 0x00000008), // 387 state
+        CONTEXT_DEBUG_REGISTERS = (CONTEXT_i386 | 0x00000010), // DB 0-3,6,7
+        CONTEXT_EXTENDED_REGISTERS = (CONTEXT_i386 | 0x00000020L), // cpu specific extensions
 
-    DWORD ContextFlags;
+        CONTEXT_FULL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS),
 
-    //
-    // This section is specified/returned if CONTEXT_DEBUG_REGISTERS is
-    // set in ContextFlags.  Note that CONTEXT_DEBUG_REGISTERS is NOT
-    // included in CONTEXT_FULL.
-    //
+        CONTEXT_ALL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS | 
+                       CONTEXT_FLOATING_POINT | CONTEXT_DEBUG_REGISTERS | 
+                       CONTEXT_EXTENDED_REGISTERS),
 
-    DWORD   Dr0;
-    DWORD   Dr1;
-    DWORD   Dr2;
-    DWORD   Dr3;
-    DWORD   Dr6;
-    DWORD   Dr7;
+        MAXIMUM_SUPPORTED_EXTENSION = 512
+    }
 
-    //
-    // This section is specified/returned if the
-    // ContextFlags word contians the flag CONTEXT_FLOATING_POINT.
-    //
+    struct FLOATING_SAVE_AREA {
+        DWORD   ControlWord;
+        DWORD   StatusWord;
+        DWORD   TagWord;
+        DWORD   ErrorOffset;
+        DWORD   ErrorSelector;
+        DWORD   DataOffset;
+        DWORD   DataSelector;
+        BYTE    RegisterArea[SIZE_OF_80387_REGISTERS];
+        DWORD   Cr0NpxState;
+    }
 
-    FLOATING_SAVE_AREA FloatSave;
+    struct CONTEXT
+    {
+        //
+        // The flags values within this flag control the contents of
+        // a CONTEXT record.
+        //
+        // If the context record is used as an input parameter, then
+        // for each portion of the context record controlled by a flag
+        // whose value is set, it is assumed that that portion of the
+        // context record contains valid context. If the context record
+        // is being used to modify a threads context, then only that
+        // portion of the threads context will be modified.
+        //
+        // If the context record is used as an IN OUT parameter to capture
+        // the context of a thread, then only those portions of the thread's
+        // context corresponding to set flags will be returned.
+        //
+        // The context record is never used as an OUT only parameter.
+        //
+    
+        DWORD ContextFlags;
 
-    //
-    // This section is specified/returned if the
-    // ContextFlags word contians the flag CONTEXT_SEGMENTS.
-    //
+        //
+        // This section is specified/returned if CONTEXT_DEBUG_REGISTERS is
+        // set in ContextFlags.  Note that CONTEXT_DEBUG_REGISTERS is NOT
+        // included in CONTEXT_FULL.
+        //
 
-    DWORD   SegGs;
-    DWORD   SegFs;
-    DWORD   SegEs;
-    DWORD   SegDs;
+        DWORD   Dr0;
+        DWORD   Dr1;
+        DWORD   Dr2;
+        DWORD   Dr3;
+        DWORD   Dr6;
+        DWORD   Dr7;
+    
+        //
+        // This section is specified/returned if the
+        // ContextFlags word contians the flag CONTEXT_FLOATING_POINT.
+        //
+    
+        FLOATING_SAVE_AREA FloatSave;
+    
+        //
+        // This section is specified/returned if the
+        // ContextFlags word contians the flag CONTEXT_SEGMENTS.
+        //
+    
+        DWORD   SegGs;
+        DWORD   SegFs;
+        DWORD   SegEs;
+        DWORD   SegDs;
+    
+        //
+        // This section is specified/returned if the
+        // ContextFlags word contians the flag CONTEXT_INTEGER.
+        //
+    
+        DWORD   Edi;
+        DWORD   Esi;
+        DWORD   Ebx;
+        DWORD   Edx;
+        DWORD   Ecx;
+        DWORD   Eax;
+    
+        //
+        // This section is specified/returned if the
+        // ContextFlags word contians the flag CONTEXT_CONTROL.
+        //
+    
+        DWORD   Ebp;
+        DWORD   Eip;
+        DWORD   SegCs;              // MUST BE SANITIZED
+        DWORD   EFlags;             // MUST BE SANITIZED
+        DWORD   Esp;
+        DWORD   SegSs;
 
-    //
-    // This section is specified/returned if the
-    // ContextFlags word contians the flag CONTEXT_INTEGER.
-    //
+        //
+        // This section is specified/returned if the ContextFlags word
+        // contains the flag CONTEXT_EXTENDED_REGISTERS.
+        // The format and contexts are processor specific
+        //
 
-    DWORD   Edi;
-    DWORD   Esi;
-    DWORD   Ebx;
-    DWORD   Edx;
-    DWORD   Ecx;
-    DWORD   Eax;
-
-    //
-    // This section is specified/returned if the
-    // ContextFlags word contians the flag CONTEXT_CONTROL.
-    //
-
-    DWORD   Ebp;
-    DWORD   Eip;
-    DWORD   SegCs;              // MUST BE SANITIZED
-    DWORD   EFlags;             // MUST BE SANITIZED
-    DWORD   Esp;
-    DWORD   SegSs;
+        BYTE    ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
+    }
 }
 
 enum ADDRESS_MODE
@@ -1300,6 +1514,44 @@ enum
     THREAD_PRIORITY_IDLE =            THREAD_BASE_PRIORITY_IDLE,
 }
 
+struct SYSTEM_INFO
+{
+    union
+    {
+        DWORD  dwOemId;
+
+        struct
+        {
+            WORD wProcessorArchitecture;
+            WORD wReserved;
+        }
+    }
+
+    DWORD     dwPageSize;
+    LPVOID    lpMinimumApplicationAddress;
+    LPVOID    lpMaximumApplicationAddress;
+    DWORD_PTR dwActiveProcessorMask;
+    DWORD     dwNumberOfProcessors;
+    DWORD     dwProcessorType;
+    DWORD     dwAllocationGranularity;
+    WORD      wProcessorLevel;
+    WORD      wProcessorRevision;
+}
+
+alias SYSTEM_INFO* LPSYSTEM_INFO;
+
+export void GetSystemInfo(LPSYSTEM_INFO lpSystemInfo);
+export void GetNativeSystemInfo(LPSYSTEM_INFO lpSystemInfo);
+
+enum : DWORD
+{
+    MAX_COMPUTERNAME_LENGTH = 15,
+}
+
+export BOOL GetComputerNameA(LPSTR lpBuffer, LPDWORD nSize);
+export BOOL GetComputerNameW(LPWSTR lpBuffer, LPDWORD nSize);
+export BOOL SetComputerNameA(LPCSTR lpComputerName);
+export BOOL SetComputerNameW(LPCWSTR lpComputerName);
 export BOOL GetUserNameA(LPSTR lpBuffer, LPDWORD lpnSize);
 export BOOL GetUserNameW(LPWSTR lpBuffer, LPDWORD lpnSize);
 export HANDLE GetCurrentThread();
@@ -1322,6 +1574,7 @@ export DWORD ResumeThread(HANDLE hThread);
 export DWORD WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds);
 export DWORD WaitForMultipleObjects(DWORD nCount, HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
 export void Sleep(DWORD dwMilliseconds);
+export BOOL SwitchToThread();
 
 // Synchronization
 
@@ -2223,6 +2476,36 @@ enum : uint
     WS_CHILDWINDOW =      (WS_CHILD),
 }
 
+enum : uint
+{
+    WS_EX_ACCEPTFILES = 0x00000010,
+    WS_EX_APPWINDOW = 0x00040000,
+    WS_EX_CLIENTEDGE = 0x00000200,
+    WS_EX_COMPOSITED = 0x02000000,
+    WS_EX_CONTEXTHELP = 0x00000400,
+    WS_EX_CONTROLPARENT = 0x00010000,
+    WS_EX_DLGMODALFRAME = 0x00000001,
+    WS_EX_LAYERED = 0x00080000,
+    WS_EX_LAYOUTRTL = 0x00400000,
+    WS_EX_LEFT = 0x00000000,
+    WS_EX_LEFTSCROLLBAR = 0x00004000,
+    WS_EX_LTRREADING = 0x00000000,
+    WS_EX_MDICHILD = 0x00000040,
+    WS_EX_NOACTIVATE = 0x08000000,
+    WS_EX_NOINHERITLAYOUT = 0x00100000,
+    WS_EX_NOPARENTNOTIFY = 0x00000004,
+    WS_EX_RIGHT = 0x00001000,
+    WS_EX_RIGHTSCROLLBAR = 0x00000000,
+    WS_EX_RTLREADING = 0x00002000,
+    WS_EX_STATICEDGE = 0x00020000,
+    WS_EX_TOOLWINDOW = 0x00000080,
+    WS_EX_TOPMOST = 0x00000008,
+    WS_EX_TRANSPARENT = 0x00000020,
+    WS_EX_WINDOWEDGE = 0x00000100,
+    WS_EX_OVERLAPPEDWINDOW = (WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE),
+    WS_EX_PALETTEWINDOW = (WS_EX_WINDOWEDGE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST),
+}
+
 /*
  * Class styles
  */
@@ -2327,7 +2610,8 @@ enum : HWND
     HWND_DESKTOP = cast(HWND)0,
 }
 
-export ATOM RegisterClassA(WNDCLASSA *lpWndClass);
+export ATOM RegisterClassA(in WNDCLASSA *lpWndClass);
+export ATOM RegisterClassExA(in WNDCLASSEXA *lpWndClass);
 
 export HWND CreateWindowExA(
     DWORD dwExStyle,
@@ -2382,6 +2666,16 @@ export
  HWND GetFocus();
 }
 
+/* http://msdn.microsoft.com/en-us/library/windows/desktop/ms683187(v=vs.85).aspx
+According to MSDN about a value returned by GetEnvironmentString:
+"Treat this memory as read-only; do not modify it directly.".
+So return type of GetEnvironmentStrings is changed from LPWCH (as in *.h file)
+to LPCWCH. FreeEnvironmentStrings's argument type is changed correspondingly.
+*/
+export LPCWCH GetEnvironmentStringsW();
+export BOOL FreeEnvironmentStringsW(LPCWCH lpszEnvironmentBlock);
+export DWORD GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize);
+export BOOL  SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue);
 export DWORD ExpandEnvironmentStringsA(LPCSTR lpSrc, LPSTR lpDst, DWORD nSize);
 export DWORD ExpandEnvironmentStringsW(LPCWSTR lpSrc, LPWSTR lpDst, DWORD nSize);
 
@@ -2402,9 +2696,9 @@ export HANDLE CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpFileMappi
 
 export BOOL GetMailslotInfo(HANDLE hMailslot, LPDWORD lpMaxMessageSize, LPDWORD lpNextSize, LPDWORD lpMessageCount, LPDWORD lpReadTimeout);
 export BOOL SetMailslotInfo(HANDLE hMailslot, DWORD lReadTimeout);
-export LPVOID MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, DWORD dwNumberOfBytesToMap);
-export LPVOID MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, DWORD dwNumberOfBytesToMap, LPVOID lpBaseAddress);
-export BOOL FlushViewOfFile(LPCVOID lpBaseAddress, DWORD dwNumberOfBytesToFlush);
+export LPVOID MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap);
+export LPVOID MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap, LPVOID lpBaseAddress);
+export BOOL FlushViewOfFile(LPCVOID lpBaseAddress, SIZE_T dwNumberOfBytesToFlush);
 export BOOL UnmapViewOfFile(LPCVOID lpBaseAddress);
 
 export  HGDIOBJ   GetStockObject(int);
@@ -3293,7 +3587,94 @@ LPVOID TlsGetValue(DWORD);
 BOOL TlsSetValue(DWORD, LPVOID);
 BOOL TlsFree(DWORD);
 
+struct STARTUPINFO
+{
+    DWORD  cb = STARTUPINFO.sizeof;
+    LPSTR  lpReserved;
+    LPSTR  lpDesktop;
+    LPSTR  lpTitle;
+    DWORD  dwX;
+    DWORD  dwY;
+    DWORD  dwXSize;
+    DWORD  dwYSize;
+    DWORD  dwXCountChars;
+    DWORD  dwYCountChars;
+    DWORD  dwFillAttribute;
+    DWORD  dwFlags;
+    WORD   wShowWindow;
+    WORD   cbReserved2;
+    LPBYTE lpReserved2;
+    HANDLE hStdInput;
+    HANDLE hStdOutput;
+    HANDLE hStdError;
+}
+
+struct STARTUPINFO_W
+{
+    DWORD  cb = STARTUPINFO_W.sizeof;
+    LPWSTR lpReserved;
+    LPWSTR lpDesktop;
+    LPWSTR lpTitle;
+    DWORD  dwX;
+    DWORD  dwY;
+    DWORD  dwXSize;
+    DWORD  dwYSize;
+    DWORD  dwXCountChars;
+    DWORD  dwYCountChars;
+    DWORD  dwFillAttribute;
+    DWORD  dwFlags;
+    WORD   wShowWindow;
+    WORD   cbReserved2;
+    LPBYTE lpReserved2;
+    HANDLE hStdInput;
+    HANDLE hStdOutput;
+    HANDLE hStdError;
+}
+
+alias STARTUPINFO *LPSTARTUPINFO;
+alias STARTUPINFO_W *LPSTARTUPINFO_W;
+
+struct PROCESS_INFORMATION
+{
+    HANDLE hProcess;
+    HANDLE hThread;
+    DWORD  dwProcessId;
+    DWORD  dwThreadId;
+}
+
+alias PROCESS_INFORMATION *LPPROCESS_INFORMATION;
+
+export
+{
+    BOOL CreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine,
+        LPSECURITY_ATTRIBUTES lpProcessAttributes,
+        LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles,
+        DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory,
+        LPSTARTUPINFO lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+
+    BOOL CreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine,
+        LPSECURITY_ATTRIBUTES lpProcessAttributes,
+        LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles,
+        DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory,
+        LPSTARTUPINFO_W lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation);
+
+    BOOL CreatePipe(PHANDLE hReadPipe, PHANDLE hWritePipe,
+        LPSECURITY_ATTRIBUTES lpPipeAttributes, DWORD nSize);
+}
+
+enum
+{
+    STARTF_USESTDHANDLES = 0x00000100
+}
+
+enum
+{
+    CREATE_NO_WINDOW = 0x08000000
+}
+
 // shellapi.h
 HINSTANCE ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
 HINSTANCE ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
-}
+
+UINT_PTR SetTimer(HWND hwnd, UINT_PTR nIDEvent, UINT uElapse, TIMERPROC lpTimerFunc);
+BOOL KillTimer(HWND hwnd, UINT_PTR nIDEvent);

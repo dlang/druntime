@@ -1,23 +1,22 @@
 /**
  * D header file for C99.
  *
- * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Sean Kelly 2005 - 2012.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Sean Kelly
  * Standards: ISO/IEC 9899:1999 (E)
+ * Source: $(DRUNTIMESRC src/core/stdc/_stdlib.d)
  */
 
-/*          Copyright Sean Kelly 2005 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module core.stdc.stdlib;
 
 private import core.stdc.config;
 public import core.stdc.stddef; // for size_t, wchar_t
 
 extern (C):
+@system:
 nothrow:
 
 struct div_t
@@ -56,15 +55,34 @@ long    atoll(in char* nptr);
 
 double  strtod(in char* nptr, char** endptr);
 float   strtof(in char* nptr, char** endptr);
-real    strtold(in char* nptr, char** endptr);
 c_long  strtol(in char* nptr, char** endptr, int base);
 long    strtoll(in char* nptr, char** endptr, int base);
 c_ulong strtoul(in char* nptr, char** endptr, int base);
 ulong   strtoull(in char* nptr, char** endptr, int base);
 
-int     rand();
-void    srand(uint seed);
+version (Win64)
+{
+    real strtold(in char* nptr, char** endptr)
+    {   // Fake it 'till we make it
+        return strtod(nptr, endptr);
+    }
+}
+else
+{
+    real strtold(in char* nptr, char** endptr);
+}
 
+// No unsafe pointer manipulation.
+@trusted
+{
+    int     rand();
+    void    srand(uint seed);
+}
+
+// We don't mark these @trusted. Given that they return a void*, one has
+// to do a pointer cast to do anything sensible with the result. Thus,
+// functions using these already have to be @trusted, allowing them to
+// call @system stuff anyway.
 void*   malloc(size_t size);
 void*   calloc(size_t nmemb, size_t size);
 void*   realloc(void* ptr, size_t size);
@@ -81,13 +99,17 @@ int     system(in char* string);
 void*   bsearch(in void* key, in void* base, size_t nmemb, size_t size, int function(in void*, in void*) compar);
 void    qsort(void* base, size_t nmemb, size_t size, int function(in void*, in void*) compar);
 
-pure int     abs(int j);
-pure c_long  labs(c_long j);
-pure long    llabs(long j);
+// These only operate on integer values.
+@trusted
+{
+    pure int     abs(int j);
+    pure c_long  labs(c_long j);
+    pure long    llabs(long j);
 
-div_t   div(int numer, int denom);
-ldiv_t  ldiv(c_long numer, c_long denom);
-lldiv_t lldiv(long numer, long denom);
+    div_t   div(int numer, int denom);
+    ldiv_t  ldiv(c_long numer, c_long denom);
+    lldiv_t lldiv(long numer, long denom);
+}
 
 int     mblen(in char* s, size_t n);
 int     mbtowc(wchar_t* pwc, in char* s, size_t n);
@@ -97,5 +119,20 @@ size_t  wcstombs(char* s, in wchar_t* pwcs, size_t n);
 
 version( DigitalMars )
 {
+    // See malloc comment about @trusted.
     void* alloca(size_t size); // non-standard
 }
+else version( GNU )
+{
+    void* alloca(size_t size); // compiler intrinsic
+}
+
+version (Win64)
+{
+    ulong  _strtoui64(in char *,char **,int);
+    ulong  _wcstoui64(in wchar *,wchar **,int);
+
+    long  _strtoi64(in char *,char **,int);
+    long  _wcstoi64(in wchar *,wchar **,int);
+}
+

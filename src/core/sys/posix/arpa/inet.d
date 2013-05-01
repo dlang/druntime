@@ -9,7 +9,7 @@
 
 /*          Copyright Sean Kelly 2005 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.sys.posix.arpa.inet;
@@ -18,12 +18,16 @@ private import core.sys.posix.config;
 public import core.stdc.inttypes; // for uint32_t, uint16_t
 public import core.sys.posix.sys.socket; // for socklen_t
 
+version (Posix):
 extern (C):
 
 //
 // Required
 //
 /*
+NOTE: The following must must be defined in core.sys.posix.arpa.inet to break
+      a circular import: in_port_t, in_addr_t, struct in_addr, INET_ADDRSTRLEN.
+
 in_port_t // from core.sys.posix.netinet.in_
 in_addr_t // from core.sys.posix.netinet.in_
 
@@ -62,15 +66,15 @@ version( linux )
     uint32_t ntohl(uint32_t);
     uint16_t ntohs(uint16_t);
 
-    in_addr_t inet_addr(in char*);
-    char*     inet_ntoa(in_addr);
-    char*     inet_ntop(int, in void*, char*, socklen_t);
-    int       inet_pton(int, in char*, void*);
+    in_addr_t       inet_addr(in char*);
+    char*           inet_ntoa(in_addr);
+    const(char)*    inet_ntop(int, in void*, char*, socklen_t);
+    int             inet_pton(int, in char*, void*);
 }
 else version( OSX )
 {
-    alias uint16_t in_port_t; // TODO: verify
-    alias uint32_t in_addr_t; // TODO: verify
+    alias uint16_t in_port_t;
+    alias uint32_t in_addr_t;
 
     struct in_addr
     {
@@ -84,10 +88,10 @@ else version( OSX )
     uint32_t ntohl(uint32_t);
     uint16_t ntohs(uint16_t);
 
-    in_addr_t inet_addr(in char*);
-    char*     inet_ntoa(in_addr);
-    char*     inet_ntop(int, in void*, char*, socklen_t);
-    int       inet_pton(int, in char*, void*);
+    in_addr_t       inet_addr(in char*);
+    char*           inet_ntoa(in_addr);
+    const(char)*    inet_ntop(int, in void*, char*, socklen_t);
+    int             inet_pton(int, in char*, void*);
 }
 else version( FreeBSD )
 {
@@ -116,6 +120,9 @@ else version( FreeBSD )
 // IPV6 (IP6)
 //
 /*
+NOTE: The following must must be defined in core.sys.posix.arpa.inet to break
+      a circular import: INET6_ADDRSTRLEN.
+
 INET6_ADDRSTRLEN // from core.sys.posix.netinet.in_
 */
 

@@ -1,19 +1,30 @@
 /**
- * Implementation of exception handling support routines for Windows.
+ * Implementation of exception handling support routines for Win32.
  *
- * Copyright: Copyright Digital Mars 1999 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 1999 - 2012.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Walter Bright
+ * Source: $(DRUNTIMESRC src/rt/_deh.d)
  */
 
-/*          Copyright Digital Mars 1999 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.deh;
+
+version (Win32)
+{
+
 import core.sys.windows.windows;
 //import core.stdc.stdio;
+
+version (D_InlineAsm_X86)
+{
+    version = AsmX86;
+}
+else version (D_InlineAsm_X86_64)
+{
+    version = AsmX86;
+}
 
 enum EXCEPTION_DISPOSITION {
     ExceptionContinueExecution,
@@ -201,7 +212,7 @@ extern __gshared DWORD _except_list; // This is just FS:[0]
 extern(C)
 {
 void _d_setUnhandled(Object);
-void _d_createTrace(Object);
+void _d_createTrace(Object, void*);
 int _d_isbaseof(ClassInfo b, ClassInfo c);
 }
 
@@ -407,7 +418,7 @@ EXCEPTION_DISPOSITION _d_framehandler(
     else
     {
         // Jump to catch block if matching one is found
-        int ndx,prev_ndx,i;
+        int ndx,prev_ndx;
         DHandlerInfo *phi;
         DCatchInfo *pci;
         DCatchBlock *pcb;
@@ -429,7 +440,7 @@ EXCEPTION_DISPOSITION _d_framehandler(
         // with an index smaller than the current table_index
         for (ndx = frame.table_index; ndx != -1; ndx = prev_ndx)
         {
-            phi = &handlerTable.handler_info[ndx];
+            phi = &handlerTable.handler_info.ptr[ndx];
             prev_ndx = phi.prev_index;
             if (phi.cioffset)
             {
@@ -437,9 +448,9 @@ EXCEPTION_DISPOSITION _d_framehandler(
                 pci = cast(DCatchInfo *)(cast(ubyte *)handlerTable + phi.cioffset);
                 ncatches = pci.ncatches;
 
-                for (i = 0; i < ncatches; i++)
+                foreach (i; 0..ncatches)
                 {
-                    pcb = &pci.catch_block[i];
+                    pcb = &pci.catch_block.ptr[i];
                     int match = 0;
                     EXCEPTION_RECORD * er = exceptionRecord;
                     // We need to check all the collateral exceptions.
@@ -465,7 +476,7 @@ EXCEPTION_DISPOSITION _d_framehandler(
                         }
                         else
                         {   // Non-D exception. It will become an Error.
-                            masterClassInfo = Error.typeinfo;
+                            masterClassInfo = typeid(Error);
                             master = er;
                         }
                         // End the loop if this was the original exception
@@ -518,7 +529,7 @@ EXCEPTION_DISPOSITION _d_framehandler(
 
                         for(;;)
                         {
-                            Throwable w = _d_translate_se_to_d_exception(z);
+                            Throwable w = _d_translate_se_to_d_exception(z, context);
                             if (z == master && (z.ExceptionFlags & EXCEPTION_COLLATERAL))
                             {   // if it is a short-circuit master, save it
                                 masterError = cast(Error)w;
@@ -583,32 +594,56 @@ int _d_exception_filter(EXCEPTION_POINTERS *eptrs,
                         int retval,
                         Object *exceptionObject)
 {
-    *exceptionObject = _d_translate_se_to_d_exception(eptrs.ExceptionRecord);
+    *exceptionObject = _d_translate_se_to_d_exception(eptrs.ExceptionRecord, eptrs.ContextRecord);
     return retval;
 }
 
 /***********************************
  * Throw a D object.
  */
-extern(C)
-void _d_throwc(Object h)
+
+private void throwImpl(Object h)
 {
     // @@@ TODO @@@ Signature should change: h will always be a Throwable.
-
     //printf("_d_throw(h = %p, &h = %p)\n", h, &h);
     //printf("\tvptr = %p\n", *(void **)h);
-    _d_createTrace(h);
+    _d_createTrace(h, null);
     //_d_setUnhandled(h);
     RaiseException(STATUS_DIGITAL_MARS_D_EXCEPTION,
                    EXCEPTION_NONCONTINUABLE,
                    1, cast(void *)&h);
 }
 
+extern(C) void _d_throwc(Object h)
+{
+    // set up a stack frame for trace unwinding
+    version (AsmX86)
+    {
+        asm
+        {
+            naked;
+            enter 0, 0;
+        }
+        version (D_InlineAsm_X86)
+            asm { mov EAX, [EBP+8]; }
+        asm
+        {
+            call throwImpl;
+            leave;
+            ret;
+        }
+    }
+    else
+    {
+        throwImpl(h);
+    }
+}
+
 /***********************************
  * Converts a Windows Structured Exception code to a D Throwable Object.
  */
 
-Throwable _d_translate_se_to_d_exception(EXCEPTION_RECORD *exceptionRecord)
+Throwable _d_translate_se_to_d_exception(EXCEPTION_RECORD *exceptionRecord, CONTEXT* context)
 {
     Throwable pti;
    // BUG: what if _d_newclass() throws an out of memory exception?
@@ -704,7 +739,7 @@ Throwable _d_translate_se_to_d_exception(EXCEPTION_RECORD *exceptionRecord)
             pti = new Error("Win32 Exception");
             break;
     }
-    _d_createTrace(pti);
+    _d_createTrace(pti, context);
     return pti;
 }
 
@@ -796,7 +831,7 @@ void _d_local_unwind(DHandlerTable *handler_table,
     }
     for (i = frame.table_index; i != -1 && i != stop_index; i = phi.prev_index)
     {
-        phi = &handler_table.handler_info[i];
+        phi = &handler_table.handler_info.ptr[i];
         if (phi.finally_code)
         {
             // Note that it is unnecessary to adjust the ESP, as the finally block
@@ -949,4 +984,6 @@ void _d_monitor_epilog(void *x, void *y, Object h)
         pop     EDX;
         pop     EAX;
     }
+}
+
 }

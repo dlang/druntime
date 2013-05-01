@@ -8,7 +8,7 @@
 
 /*          Copyright Digital Mars 2004 - 2009.
  * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
+ *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.typeinfo.ti_Afloat;
@@ -18,16 +18,19 @@ private import rt.util.hash;
 
 // float[]
 
-class TypeInfo_Af : TypeInfo
+class TypeInfo_Af : TypeInfo_Array
 {
-    override string toString() { return "float[]"; }
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override hash_t getHash(in void* p)
-    {   float[] s = *cast(float[]*)p;
+    override string toString() const { return "float[]"; }
+
+    override size_t getHash(in void* p) @trusted const
+    {
+        float[] s = *cast(float[]*)p;
         return hashOf(s.ptr, s.length * float.sizeof);
     }
 
-    override equals_t equals(in void* p1, in void* p2)
+    override bool equals(in void* p1, in void* p2) const
     {
         float[] s1 = *cast(float[]*)p1;
         float[] s2 = *cast(float[]*)p2;
@@ -43,7 +46,7 @@ class TypeInfo_Af : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(in void* p1, in void* p2) const
     {
         float[] s1 = *cast(float[]*)p1;
         float[] s2 = *cast(float[]*)p2;
@@ -64,31 +67,9 @@ class TypeInfo_Af : TypeInfo
         return 0;
     }
 
-    override size_t tsize()
+    override @property inout(TypeInfo) next() inout
     {
-        return (float[]).sizeof;
-    }
-
-    override uint flags()
-    {
-        return 1;
-    }
-
-    override TypeInfo next()
-    {
-        return typeid(float);
-    }
-
-    override size_t talign()
-    {
-        return (float[]).alignof;
-    }
-
-    version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
-    {
-        //arg1 = typeid(size_t);
-        //arg2 = typeid(void*);
-        return 0;
+        return cast(inout)typeid(float);
     }
 }
 
@@ -96,10 +77,10 @@ class TypeInfo_Af : TypeInfo
 
 class TypeInfo_Ao : TypeInfo_Af
 {
-    override string toString() { return "ifloat[]"; }
+    override string toString() const { return "ifloat[]"; }
 
-    override TypeInfo next()
+    override @property inout(TypeInfo) next() inout
     {
-        return typeid(ifloat);
+        return cast(inout)typeid(ifloat);
     }
 }
