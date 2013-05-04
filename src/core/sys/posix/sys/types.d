@@ -56,6 +56,20 @@ version( linux )
     alias c_ulong   ino_t;
     alias c_long    off_t;
   }
+
+  version (D_LP64)
+  {
+    alias blkcnt_t blkcnt64_t;
+    alias ino_t ino64_t;
+    alias off_t off64_t;
+  }
+  else
+  {
+    alias long blkcnt64_t;
+    alias ulong ino64_t;
+    alias long off64_t;
+  }
+
     alias c_long    blksize_t;
     alias ulong     dev_t;
     alias uint      gid_t;

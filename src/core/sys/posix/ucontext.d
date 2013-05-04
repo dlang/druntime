@@ -37,7 +37,6 @@ struct ucontext_t
 
 version( linux )
 {
-
     version( X86_64 )
     {
         enum
@@ -189,6 +188,88 @@ version( linux )
             mcontext_t      uc_mcontext;
             sigset_t        uc_sigmask;
             _libc_fpstate   __fpregs_mem;
+        }
+    }
+    else version (ARM)
+    {
+        enum
+        {
+            REG_R0 = 0,
+            REG_R1,
+            REG_R2,
+            REG_R3,
+            REG_R4,
+            REG_R5,
+            REG_R6,
+            REG_R7,
+            REG_R8,
+            REG_R9,
+            REG_R10,
+            REG_R11,
+            REG_R12,
+            REG_R13,
+            REG_R14,
+            REG_R15
+        }
+
+        private
+        {
+            // Anonymous struct in C header.
+            struct _libc_fpreg
+            {
+                ubyte dummy0;
+                ubyte dummy1;
+                ubyte dummy2;
+                ubyte dummy3;
+                ubyte[4] dummy4;
+                ubyte[4] dummy5;
+            }
+
+            struct _libc_fpstate
+            {
+                _libc_fpreg[8] fpregs;
+                uint fpsr;
+                uint fpcr;
+                ubyte[8] ftype;
+                uint init_flag;
+            }
+
+            alias _libc_fpstate fpregset_t;
+        }
+
+        struct sigcontext_t
+        {
+            c_ulong trap_no;
+            c_ulong error_code;
+            c_ulong oldmask;
+            c_ulong arm_r0;
+            c_ulong arm_r1;
+            c_ulong arm_r2;
+            c_ulong arm_r3;
+            c_ulong arm_r4;
+            c_ulong arm_r5;
+            c_ulong arm_r6;
+            c_ulong arm_r7;
+            c_ulong arm_r8;
+            c_ulong arm_r9;
+            c_ulong arm_r10;
+            c_ulong arm_fp;
+            c_ulong arm_ip;
+            c_ulong arm_sp;
+            c_ulong arm_lr;
+            c_ulong arm_pc;
+            c_ulong arm_cpsr;
+            c_ulong fault_address;
+        }
+
+        struct ucontext_t
+        {
+            c_ulong uc_flags;
+            ucontext_t* uc_link;
+            stack_t uc_stack;
+            sigcontext_t uc_mcontext;
+            sigset_t uc_sigmask;
+            align(8) c_ulong[128] uc_regspace;
         }
     }
     else version (MIPS)
