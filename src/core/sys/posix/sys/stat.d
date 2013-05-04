@@ -347,6 +347,78 @@ version( linux )
             c_ulong     __unused6;
         }
     }
+    else version (ARM)
+    {
+        struct stat_t
+        {
+            dev_t       st_dev;
+            ushort      __pad1;
+            static if( !__USE_FILE_OFFSET64 )
+            {
+                ino_t        st_ino;
+            }
+            else
+            {
+                ino_t        __st_ino;
+            }
+            mode_t      st_mode;
+            nlink_t     st_nlink;
+            uid_t       st_uid;
+            gid_t       st_gid;
+            dev_t       st_rdev;
+            static if(__WORDSIZE==32)
+            {
+                ushort      __pad2;
+            }
+            static if( !__USE_FILE_OFFSET64 )
+            {
+                off_t st_size;
+            }
+            else
+            {
+                off64_t st_size;
+            }
+            blksize_t   st_blksize;
+            static if( !__USE_FILE_OFFSET64 )
+            {
+                blkcnt_t st_blocks;
+            }
+            else
+            {
+                blkcnt64_t st_blocks;
+            }
+            static if( __USE_MISC || __USE_XOPEN2K8 )
+            {
+                timespec    st_atim;
+                timespec    st_mtim;
+                timespec    st_ctim;
+                extern(D)
+                {
+                    @property ref time_t st_atime() { return st_atim.tv_sec; }
+                    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+                    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+                }
+            }
+            else
+            {
+                time_t      st_atime;
+                c_ulong     st_atimensec;
+                time_t      st_mtime;
+                c_ulong     st_mtimensec;
+                time_t      st_ctime;
+                c_ulong     st_ctimensec;
+            }
+            static if( !__USE_FILE_OFFSET64 )
+            {
+                c_ulong     __unused4;
+                c_ulong     __unused5;
+            }
+            else
+            {
+                ino64_t       st_ino;
+            }
+        }
+    }
     else
         static assert(0, "unimplemented");
 
