@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_wchar;
 
+private import core.internal.hash;
+
 // wchar
 
 class TypeInfo_u : TypeInfo
@@ -26,7 +28,7 @@ class TypeInfo_u : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return *cast(wchar *)p;
+        return hashOf(*cast(wchar*)p);
     }
 
     override bool equals(in void* p1, in void* p2)

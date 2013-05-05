@@ -14,7 +14,7 @@
 module rt.typeinfo.ti_Adouble;
 
 private import rt.typeinfo.ti_double;
-private import rt.util.hash;
+private import core.internal.hash;
 
 // double[]
 
@@ -27,7 +27,7 @@ class TypeInfo_Ad : TypeInfo_Array
     override size_t getHash(in void* p) @trusted const
     {
         double[] s = *cast(double[]*)p;
-        return hashOf(s.ptr, s.length * double.sizeof);
+        return s.hashOf();
     }
 
     override bool equals(in void* p1, in void* p2) const

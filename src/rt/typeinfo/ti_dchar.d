@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_dchar;
 
+private import core.internal.hash;
+
 // dchar
 
 class TypeInfo_w : TypeInfo
@@ -26,7 +28,7 @@ class TypeInfo_w : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return *cast(dchar *)p;
+        return hashOf(*cast(dchar*)p);
     }
 
     override bool equals(in void* p1, in void* p2)

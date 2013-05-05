@@ -13,7 +13,7 @@
  */
 module rt.typeinfo.ti_ulong;
 
-private import rt.util.hash;
+private import core.internal.hash;
 
 // ulong
 
@@ -28,7 +28,7 @@ class TypeInfo_m : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return hashOf(p, ulong.sizeof);
+        return hashOf(*cast(ulong*)p);
     }
 
     override bool equals(in void* p1, in void* p2)

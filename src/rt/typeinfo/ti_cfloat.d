@@ -13,7 +13,7 @@
  */
 module rt.typeinfo.ti_cfloat;
 
-private import rt.util.hash;
+private import core.internal.hash;
 
 // cfloat
 
@@ -51,7 +51,7 @@ class TypeInfo_q : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return hashOf(p, cfloat.sizeof);
+        return hashOf(*cast(cfloat*)p);
     }
 
     override bool equals(in void* p1, in void* p2)

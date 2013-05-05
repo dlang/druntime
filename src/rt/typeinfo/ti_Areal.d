@@ -14,7 +14,7 @@
 module rt.typeinfo.ti_Areal;
 
 private import rt.typeinfo.ti_real;
-private import rt.util.hash;
+private import core.internal.hash;
 
 // real[]
 
@@ -27,7 +27,7 @@ class TypeInfo_Ae : TypeInfo_Array
     override size_t getHash(in void* p) @trusted const
     {
         real[] s = *cast(real[]*)p;
-        return hashOf(s.ptr, s.length * real.sizeof);
+        return s.hashOf();
     }
 
     override bool equals(in void* p1, in void* p2) const

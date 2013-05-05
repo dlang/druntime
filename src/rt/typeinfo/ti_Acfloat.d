@@ -14,7 +14,7 @@
 module rt.typeinfo.ti_Acfloat;
 
 private import rt.typeinfo.ti_cfloat;
-private import rt.util.hash;
+private import core.internal.hash;
 
 // cfloat[]
 
@@ -27,7 +27,7 @@ class TypeInfo_Aq : TypeInfo_Array
     override size_t getHash(in void* p) @trusted const
     {
         cfloat[] s = *cast(cfloat[]*)p;
-        return hashOf(s.ptr, s.length * cfloat.sizeof);
+        return s.hashOf();
     }
 
     override bool equals(in void* p1, in void* p2) const

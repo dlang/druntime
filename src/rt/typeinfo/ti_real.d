@@ -13,7 +13,7 @@
  */
 module rt.typeinfo.ti_real;
 
-private import rt.util.hash;
+private import core.internal.hash;
 
 // real
 
@@ -50,7 +50,7 @@ class TypeInfo_e : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return hashOf(p, real.sizeof);
+        return hashOf(*cast(real*)p);
     }
 
     override bool equals(in void* p1, in void* p2)

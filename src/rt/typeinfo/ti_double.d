@@ -13,7 +13,7 @@
  */
 module rt.typeinfo.ti_double;
 
-private import rt.util.hash;
+private import core.internal.hash;
 
 // double
 
@@ -50,7 +50,7 @@ class TypeInfo_d : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return hashOf(p, double.sizeof);
+        return hashOf(*cast(double*)p);
     }
 
     override bool equals(in void* p1, in void* p2)

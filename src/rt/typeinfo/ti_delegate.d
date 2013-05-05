@@ -13,7 +13,7 @@
  */
 module rt.typeinfo.ti_delegate;
 
-private import rt.util.hash;
+private import core.internal.hash;
 
 // delegate
 
@@ -28,7 +28,7 @@ class TypeInfo_D : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return hashOf(p, dg.sizeof);
+        return hashOf(*cast(dg*)p);
     }
 
     override bool equals(in void* p1, in void* p2)
