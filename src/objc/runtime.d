@@ -452,7 +452,7 @@ extern (C)
     // MARK: Working with Protocols
 
     /** Objective-C object representing a protocol. */
-    typedef objc_object Protocol;
+    alias Protocol = objc_object;
 
     version (ModernAPI)
     {
@@ -517,7 +517,7 @@ alias void* marg_list;
  * Method selector type. Selectors are indexed pointers to a C string
  * representing the name of the method to be called.
  */
-typedef objc_selector* SEL;
+alias SEL = objc_selector*;
 // Using struct even in legacy runtime to enable automatic conversions
 
 struct objc_method_description
