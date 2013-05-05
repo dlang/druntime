@@ -1,7 +1,7 @@
 /**
  * Objective-C protocol type.
  *
- * Note: This module is available only on Mac OS X when the compiler has 
+ * Note: This module is available only on Mac OS X when the compiler has
  * support for the Objective-C object model.
  *
  * Copyright: Copyright Michel Fortin 2011.
@@ -28,12 +28,12 @@ extern (Objective-C)
 abstract class Protocol : __Object
 {
     @disable this();
-    
+
     // could add some other members, but they are probably irrelevant
 }
 
 /**
- * The Objective-C class "Object", a mostly obsolete root class which has been 
+ * The Objective-C class "Object", a mostly obsolete root class which has been
  * replaced by NSObject everywhere but as the root class for Protocol.
  */
 extern (Objective-C)
@@ -41,7 +41,7 @@ pragma(objc_nameoverride, "Object")
 abstract class __Object
 {
     void* isa;
-    
+
     @disable this();
     bool opEquals(__Object) [isEqual:];
 }
