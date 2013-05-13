@@ -390,6 +390,35 @@ extern (C)
     void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...);
 }
 
+//CTFE-ready. CTFE allows to pass AA literal as argument but disallow to returns it
+AssociativeArray!(Key, Value) associativeArrayLiteral(Key, Value)(Value[Key] aa_lit) 
+{
+    import core.util.hash;
+    alias AA = AssociativeArray!(Key, Value);
+    size_t magic = AA.chooseSize(aa_lit.length);
+    AA.Slot*[] nodes;
+    nodes.length = magic;
+    foreach(key, val; aa_lit)
+    {
+        size_t hash = core.util.hash.computeHash(key);
+        size_t idx = hash % magic;
+        auto slot = new AA.Slot(nodes[idx], hash, key, val);
+        nodes[idx] = slot;
+    }
+    auto p = new AA.Hashtable(nodes, aa_lit.length, typeid(Key));
+    return AA(p);
+}
+
+unittest
+{
+    static straa = associativeArrayLiteral(["key1":"val1", "key2":"val2", "key3":"val3"]); //CTFE
+    string[string] aa = cast(string[string]) straa;
+    assert(aa["key1"] == "val1");
+    assert(aa["key2"] == "val2");
+    assert(aa["key3"] == "val3");
+    assert(aa == ["key1":"val1", "key2":"val2", "key3":"val3"]);
+}
+
 struct AssociativeArray(Key, Value)
 {
 private:
@@ -404,6 +433,13 @@ private:
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);
+        this(Slot* next, size_t hash, ref Key k, ref Value v)
+        {
+            this.next = next;
+            this.hash = hash;
+            cast()key = cast()k;
+            cast()value = cast()v;
+        }
     }
 
     struct Hashtable
@@ -412,6 +448,13 @@ private:
         size_t nodes;
         TypeInfo keyti;
         Slot*[4] binit;
+        
+        this(Slot*[] b, size_t nodes, TypeInfo keyti)
+        {
+            this.b = b;
+            this.nodes = nodes;
+            this.keyti = keyti;
+        }
     }
 
     void* p; // really Hashtable*
@@ -465,6 +508,27 @@ private:
         }
     }
 
+    static immutable size_t[] prime_list = [
+                  31UL,
+                  97UL,            389UL,
+               1_543UL,          6_151UL,
+              24_593UL,         98_317UL,
+              393_241UL,      1_572_869UL,
+            6_291_469UL,     25_165_843UL,
+          100_663_319UL,    402_653_189UL,
+        1_610_612_741UL,  4_294_967_291UL,
+    //  8_589_934_513UL, 17_179_869_143UL
+    ];
+
+
+    static size_t chooseSize(size_t s)
+    {
+        foreach(cur; prime_list)
+        {
+            if(cur> s) return cur;
+        }
+        return prime_list[$-1];
+    }
 public:
 
     @property size_t length() { return _aaLen(p); }

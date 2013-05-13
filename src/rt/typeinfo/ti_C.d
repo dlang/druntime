@@ -13,27 +13,22 @@
  */
 module rt.typeinfo.ti_C;
 
+private import rt.typeinfo.ti_common;
 // Object
 
-class TypeInfo_C : TypeInfo
+class TypeInfo_C : TypeInfoCommonScalar!(Object)
 {
     @trusted:
     const:
     //pure:
     //nothrow:
 
-    override size_t getHash(in void* p)
-    {
-        Object o = *cast(Object*)p;
-        return o ? o.toHash() : 0;
-    }
-
     override bool equals(in void* p1, in void* p2)
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;
-
-        return o1 == o2;
+        
+        return (o1 !is null) && (o2 !is null) && ((o1 is o2) || (o1 == o2));
     }
 
     override int compare(in void* p1, in void* p2)
@@ -56,11 +51,6 @@ class TypeInfo_C : TypeInfo
                 c = -1;
         }
         return c;
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return Object.sizeof;
     }
 
     override @property uint flags() nothrow pure

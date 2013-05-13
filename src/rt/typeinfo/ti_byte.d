@@ -13,43 +13,10 @@
  */
 module rt.typeinfo.ti_byte;
 
+private import rt.typeinfo.ti_common;
+
 // byte
 
-class TypeInfo_g : TypeInfo
+class TypeInfo_g : TypeInfoShort!(byte)
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
-
-    override string toString() const pure nothrow @safe { return "byte"; }
-
-    override size_t getHash(in void* p)
-    {
-        return *cast(byte *)p;
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        return *cast(byte *)p1 == *cast(byte *)p2;
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        return *cast(byte *)p1 - *cast(byte *)p2;
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return byte.sizeof;
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        byte t;
-
-        t = *cast(byte *)p1;
-        *cast(byte *)p1 = *cast(byte *)p2;
-        *cast(byte *)p2 = t;
-    }
 }

@@ -13,50 +13,10 @@
  */
 module rt.typeinfo.ti_char;
 
+private import rt.typeinfo.ti_common;
+
 // char
 
-class TypeInfo_a : TypeInfo
+class TypeInfo_a : TypeInfoShort!(char)
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
-
-    override string toString() const pure nothrow @safe { return "char"; }
-
-    override size_t getHash(in void* p)
-    {
-        return *cast(char *)p;
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        return *cast(char *)p1 == *cast(char *)p2;
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        return *cast(char *)p1 - *cast(char *)p2;
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return char.sizeof;
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        char t;
-
-        t = *cast(char *)p1;
-        *cast(char *)p1 = *cast(char *)p2;
-        *cast(char *)p2 = t;
-    }
-
-    override const(void)[] init() nothrow pure
-    {
-        static immutable char c;
-
-        return (cast(char *)&c)[0 .. 1];
-    }
 }

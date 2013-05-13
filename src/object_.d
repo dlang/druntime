@@ -25,7 +25,7 @@ private
     import core.stdc.string;
     import core.stdc.stdlib;
     import core.memory;
-    import rt.util.hash;
+    import core.util.hash;
     import rt.util.string;
     import rt.util.console;
     import rt.minfo;
@@ -213,7 +213,7 @@ class TypeInfo
         try
         {
             auto data = this.toString();
-            return hashOf(data.ptr, data.length);
+            return data.computeHash();
         }
         catch (Throwable)
         {
@@ -363,7 +363,7 @@ class TypeInfo_Pointer : TypeInfo
 
     override size_t getHash(in void* p) @trusted const
     {
-        return cast(size_t)*cast(void**)p;
+        return computeHash(*cast(void**)p);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -413,8 +413,7 @@ class TypeInfo_Array : TypeInfo
 
     override size_t getHash(in void* p) @trusted const
     {
-        void[] a = *cast(void[]*)p;
-        return hashOf(a.ptr, a.length * value.tsize);
+        return daGetHash(p, this);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -503,11 +502,7 @@ class TypeInfo_StaticArray : TypeInfo
 
     override size_t getHash(in void* p) @trusted const
     {
-        size_t sz = value.tsize;
-        size_t hash = 0;
-        for (size_t i = 0; i < len; i++)
-            hash += value.getHash(p + i * sz);
-        return hash;
+        return saGetHash(p, this);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -621,7 +616,7 @@ class TypeInfo_AssociativeArray : TypeInfo
 
     override hash_t getHash(in void* p) nothrow @trusted const
     {
-        return _aaGetHash(cast(void*)p, this);
+        return aaGetHash(p, this);
     }
 
     // BUG: need to add the rest of the functions
@@ -698,6 +693,12 @@ class TypeInfo_Function : TypeInfo
         return c && this.deco == c.deco;
     }
 
+    override size_t getHash(in void* p) @trusted const
+    {
+        alias int function() fn;
+        return computeHash(*cast(fn*)p);
+    }
+    
     // BUG: need to add the rest of the functions
 
     override @property size_t tsize() nothrow pure const
@@ -724,6 +725,12 @@ class TypeInfo_Delegate : TypeInfo
         return c && this.deco == c.deco;
     }
 
+    override size_t getHash(in void* p) @trusted const
+    {
+        alias int delegate() dg;
+        return computeHash(*cast(dg*)p);
+    }
+    
     // BUG: need to add the rest of the functions
 
     override @property size_t tsize() nothrow pure const
@@ -771,7 +778,7 @@ class TypeInfo_Class : TypeInfo
     override size_t getHash(in void* p) @trusted const
     {
         auto o = *cast(Object*)p;
-        return o ? o.toHash() : 0;
+        return o.computeHash();
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -897,10 +904,7 @@ class TypeInfo_Interface : TypeInfo
 
     override size_t getHash(in void* p) @trusted const
     {
-        Interface* pi = **cast(Interface ***)*cast(void**)p;
-        Object o = cast(Object)(*cast(void**)p - pi.offset);
-        assert(o);
-        return o.toHash();
+        return interfaceGetHash(p);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -962,15 +966,7 @@ class TypeInfo_Struct : TypeInfo
 
     override size_t getHash(in void* p) @safe pure nothrow const
     {
-        assert(p);
-        if (xtoHash)
-        {
-            return (*xtoHash)(p);
-        }
-        else
-        {
-            return hashOf(p, init().length);
-        }
+        return structGetHash(p, this);
     }
 
     override bool equals(in void* p1, in void* p2) @trusted pure nothrow const
@@ -2051,7 +2047,7 @@ extern (C)
 {
     // from druntime/src/compiler/dmd/aaA.d
 
-    size_t _aaLen(void* p);
+    size_t _aaLen(void* p) @safe pure nothrow;
     void* _aaGet(void** pp, TypeInfo keyti, size_t valuesize, ...);
     void* _aaGetRvalue(void* p, TypeInfo keyti, size_t valuesize, ...);
     void* _aaIn(void* p, TypeInfo keyti);
@@ -2067,7 +2063,35 @@ extern (C)
     int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
     void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, size_t length, ...);
-    hash_t _aaGetHash(void* aa, const(TypeInfo) tiRaw) nothrow;
+}
+
+//CTFE-ready. CTFE allows to pass AA literal as argument but disallow to returns it
+AssociativeArray!(Key, Value) associativeArrayLiteral(Key, Value)(Value[Key] aa_lit) 
+{
+      alias AA = AssociativeArray!(Key, Value);
+      size_t magic = AA.chooseSize(aa_lit.length);
+      AA.Slot*[] nodes;
+      nodes.length = magic;
+      foreach(key, val; aa_lit)
+      {
+	  size_t hash = computeHash(key);
+	  size_t idx = hash % magic;
+	  auto slot = new AA.Slot(nodes[idx], hash, key, val);
+	  nodes[idx] = slot;
+	  
+      }
+      auto p = new AA.Hashtable(nodes, aa_lit.length, typeid(Key));
+      return AA(p);
+}
+
+unittest
+{
+    static straa = associativeArrayLiteral(["key1":"val1", "key2":"val2", "key3":"val3"]); //CTFE
+    auto aa = cast(string[string]) straa;
+    assert(aa["key1"] == "val1");
+    assert(aa["key2"] == "val2");
+    assert(aa["key3"] == "val3");
+    assert(aa == ["key1":"val1", "key2":"val2", "key3":"val3"]);
 }
 
 struct AssociativeArray(Key, Value)
@@ -2084,6 +2108,13 @@ private:
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);
+        this(Slot* next, size_t hash, ref Key k, ref Value v)
+        {
+            this.next = next;
+            this.hash = hash;
+            cast()key = cast()k;
+            cast()value = cast()v;
+        }
     }
 
     struct Hashtable
@@ -2092,6 +2123,13 @@ private:
         size_t nodes;
         TypeInfo keyti;
         Slot*[4] binit;
+        
+        this(Slot*[] b, size_t nodes, TypeInfo keyti)
+        {
+            this.b = b;
+            this.nodes = nodes;
+            this.keyti = keyti;
+        }
     }
 
     void* p; // really Hashtable*
@@ -2145,6 +2183,28 @@ private:
         }
     }
 
+    static immutable size_t[] prime_list = [
+                  31UL,
+                  97UL,            389UL,
+               1_543UL,          6_151UL,
+              24_593UL,         98_317UL,
+              393_241UL,      1_572_869UL,
+            6_291_469UL,     25_165_843UL,
+          100_663_319UL,    402_653_189UL,
+        1_610_612_741UL,  4_294_967_291UL,
+    //  8_589_934_513UL, 17_179_869_143UL
+    ];
+
+
+    static size_t chooseSize(size_t s)
+    {
+        foreach(cur; prime_list)
+        {
+            if(cur> s) return cur;
+        }
+        return prime_list[$-1];
+    }
+    
 public:
 
     @property size_t length() { return _aaLen(p); }
@@ -2290,6 +2350,13 @@ unittest
         // this.value = p.value would actually fail, because both side types of the assignment
         // are const(Json).
     }
+    
+    static straa = associativeArrayLiteral(["key1":Json(), "key2":Json(), "key3":Json()]); //CTFE
+    auto aa = cast(const(Json)[string]) straa;
+    assert(aa["key1"] == Json());
+    assert(aa["key2"] == Json());
+    assert(aa["key3"] == Json());
+    assert(aa == ["key1":const(Json)(), "key2":const(Json)(), "key3":const(Json)()]);
 }
 
 unittest

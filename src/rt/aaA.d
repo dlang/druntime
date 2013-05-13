@@ -188,6 +188,7 @@ private void _aaInvAh_x(aaA *e)
  * Determine number of entries in associative array.
  */
 
+@safe pure nothrow
 size_t _aaLen(AA aa)
 in
 {
@@ -920,54 +921,6 @@ int _aaEqual(TypeInfo tiRaw, AA e1, AA e2)
     }
 
     return 1;           // equal
-}
-
-
-/*****************************************
- * Computes a hash value for the entire AA
- * Returns:
- *      Hash value
- */
-extern (C)
-hash_t _aaGetHash(AA* aa, const(TypeInfo) tiRaw) nothrow
-{
-    import rt.util.hash;
-
-    if (!aa.a)
-    	return 0;
-
-    hash_t h = 0;
-    TypeInfo_AssociativeArray ti = _aaUnwrapTypeInfo(tiRaw);
-    auto keyti = ti.key;
-    auto valueti = ti.next;
-    const keysize = aligntsize(keyti.tsize);
-
-    foreach (e; aa.a.b)
-    {
-	while (e)
-	{
-	    auto pkey = cast(void*)(e + 1);
-	    auto pvalue = pkey + keysize;
-
-	    // Compute a hash for the key/value pair by hashing their
-	    // respective hash values.
-	    hash_t[2] hpair;
-	    hpair[0] = e.hash;
-	    hpair[1] = valueti.getHash(pvalue);
-
-	    // Combine the hash of the key/value pair with the running hash
-	    // value using an associative operator (+) so that the resulting
-	    // hash value is independent of the actual order the pairs are
-	    // stored in (important to ensure equality of hash value for two
-	    // AA's containing identical pairs but with different hashtable
-	    // sizes).
-	    h += hashOf(hpair.ptr, hpair.length * hash_t.sizeof);
-
-	    e = e.next;
-	}
-    }
-
-    return h;
 }
 
 unittest

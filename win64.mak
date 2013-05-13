@@ -137,6 +137,7 @@ $(IMPDIR)\core\sync\semaphore.di : src\core\sync\semaphore.d
 
 copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\stdc
+	mkdir $(IMPDIR)\core\util
 	mkdir $(IMPDIR)\core\sys\freebsd\sys
 	mkdir $(IMPDIR)\core\sys\linux\sys
 	mkdir $(IMPDIR)\core\sys\osx\mach
@@ -186,6 +187,9 @@ $(IMPDIR)\core\time.d : src\core\time.d
 	copy $** $@
 
 $(IMPDIR)\core\vararg.d : src\core\vararg.d
+	copy $** $@
+
+$(IMPDIR)\core\util\hash.d : src\core\util\hash.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d

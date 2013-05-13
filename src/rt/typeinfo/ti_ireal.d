@@ -13,16 +13,10 @@
  */
 module rt.typeinfo.ti_ireal;
 
-private import rt.typeinfo.ti_real;
+private import rt.typeinfo.ti_common;
 
 // ireal
 
-class TypeInfo_j : TypeInfo_e
+class TypeInfo_j : TypeInfoFloat!(ireal)
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
-
-    override string toString() const pure nothrow @safe { return "ireal"; }
 }
