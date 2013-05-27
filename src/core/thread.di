@@ -571,7 +571,7 @@ extern (C) void thread_scanAllType( scope ScanAllThreadsTypeFn scan );
 extern (C) void thread_scanAll( scope ScanAllThreadsFn scan );
 
 
-/*
+/**
  * Signals that the code following this call is a critical region. Any code in
  * this region must finish running before the calling thread can be suspended
  * by a call to thread_suspendAll. If the world is stopped while the calling
@@ -592,15 +592,23 @@ extern (C) void thread_scanAll( scope ScanAllThreadsFn scan );
  * The term and concept of a 'critical region' comes from
  * $(LINK2 https://github.com/mono/mono/blob/521f4a198e442573c400835ef19bbb36b60b0ebb/mono/metadata/sgen-gc.h#L925 Mono's SGen garbage collector).
  *
+ * $(RED Note):
+ * This is an experimental API primarily introduced to aid the garbage collection
+ * infrastructure. It is not guaranteed to be stable.
+ *
  * In:
  *  The calling thread must be attached to the runtime.
  */
 extern (C) void thread_enterCriticalRegion();
 
 
-/*
+/**
  * Signals that the calling thread is no longer in a critical region. Following
  * a call to this function, the thread can once again be suspended.
+ *
+ * $(RED Note):
+ * This is an experimental API primarily introduced to aid the garbage collection
+ * infrastructure. It is not guaranteed to be stable.
  *
  * In:
  *  The calling thread must be attached to the runtime.
@@ -608,8 +616,12 @@ extern (C) void thread_enterCriticalRegion();
 extern (C) void thread_exitCriticalRegion();
 
 
-/*
+/**
  * Returns true if the current thread is in a critical region; otherwise, false.
+ *
+ * $(RED Note):
+ * This is an experimental API primarily introduced to aid the garbage collection
+ * infrastructure. It is not guaranteed to be stable.
  *
  * In:
  *  The calling thread must be attached to the runtime.
