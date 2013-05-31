@@ -576,7 +576,9 @@ extern (C) void thread_scanAll( scope ScanAllThreadsFn scan );
  * this region must finish running before the calling thread can be suspended
  * by a call to thread_suspendAll. If the world is stopped while the calling
  * thread is in a critical region, it will be continually suspended and resumed
- * until it is outside a critical region.
+ * until it is outside a critical region. Note that this API effectively has no
+ * effect in a thread that has been marked as non-suspendable via the
+ * thread_setSuspendable function, since such a thread will never be suspended.
  *
  * This function is, in particular, meant to help maintain garbage collector
  * invariants when a lock is not used.
@@ -615,6 +617,43 @@ extern (C) void thread_exitCriticalRegion();
  *  The calling thread must be attached to the runtime.
  */
 extern (C) bool thread_inCriticalRegion();
+
+
+/**
+ * Gets a Boolean value indicating whether the calling thread is suspendable. If
+ * this function returns true, the calling thread can be suspended by a call to
+ * thread_suspendAll (which, for example, the garbage collector uses).
+ *
+ * In:
+ *  The calling thread must be attached to the runtime.
+ */
+bool thread_getSuspendable();
+
+
+/**
+ * Toggles whether the calling thread is suspendable. If value is set to true,
+ * the calling thread can be suspended by a call to thread_suspendAll (which,
+ * for example, the garbage collector uses).
+ *
+ * This can be useful to ensure that a high-priority thread is not interrupted
+ * while doing important work (by setting value to false).
+ *
+ * $(RED Warning):
+ * Marking a thread non-suspendable is dangerous. It can lead to the garbage
+ * collector not picking up GC memory referenced by the relevant thread, and that
+ * memory being freed as a result. For that reason, it's very important that
+ * threads marked as non-suspendable only keep references to pinned GC memory, GC
+ * memory that is also referenced from a suspendable thread, or GC memory that is
+ * referenced from a global variable. A non-suspendable thread is, however,
+ * allowed to keep references to memory allocated through other means than the
+ * garbage collector. Further, non-suspendable threads may not mutate memory that
+ * is being used from another thread (including globals).
+ *
+ * In:
+ *  The calling thread must be attached to the runtime.
+ */
+void thread_setSuspendable(bool value);
+
 
 /**
  * Indicates whether an address has been marked by the GC.

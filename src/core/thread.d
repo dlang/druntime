@@ -496,6 +496,7 @@ class Thread
         m_sz   = sz;
         m_call = Call.FN;
         m_curr = &m_main;
+        m_isSuspendable = true;
     }
 
 
@@ -522,6 +523,7 @@ class Thread
         m_sz   = sz;
         m_call = Call.DG;
         m_curr = &m_main;
+        m_isSuspendable = true;
     }
 
 
@@ -1101,6 +1103,7 @@ private:
     {
         m_call = Call.NO;
         m_curr = &m_main;
+        m_isSuspendable = true;
     }
 
 
@@ -1189,6 +1192,7 @@ private:
     }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
+    bool                m_isSuspendable;
     Throwable           m_unhandled;
 
 
@@ -2195,7 +2199,7 @@ extern (C) void thread_suspendAll()
     //       the expectation that the foreach loop will never be entered.
     if( !multiThreadedFlag && Thread.sm_tbeg )
     {
-        if( ++suspendDepth == 1 )
+        if( ++suspendDepth == 1 && Thread.getThis().m_isSuspendable )
             suspend( Thread.getThis() );
 
         return;
@@ -2215,7 +2219,7 @@ extern (C) void thread_suspendAll()
         //       abort, and Bad Things to occur.
         for( Thread t = Thread.sm_tbeg; t; t = t.next )
         {
-            if( t.isRunning )
+            if( t.m_isSuspendable && t.isRunning )
                 suspend( t );
             else
                 Thread.remove( t );
@@ -2235,7 +2239,7 @@ extern (C) void thread_suspendAll()
             {
                 // NOTE: We don't need to check whether the thread has died here,
                 //       since it's checked in the loops above and below.
-                if (atomicLoad(*cast(shared)&t.m_isInCriticalRegion))
+                if (t.m_isSuspendable && atomicLoad(*cast(shared)&t.m_isInCriticalRegion))
                 {
                     unsafeCount += 10;
                     resume(t);
@@ -2256,7 +2260,7 @@ extern (C) void thread_suspendAll()
             {
                 // The thread could have died in the meantime. Also see the note in
                 // the topmost loop that initially suspends the world.
-                if (t.isRunning)
+                if (t.m_isSuspendable && t.isRunning)
                     suspend(t);
                 else
                     Thread.remove(t);
@@ -2361,7 +2365,7 @@ body
     // NOTE: See thread_suspendAll for the logic behind this.
     if( !multiThreadedFlag && Thread.sm_tbeg )
     {
-        if( --suspendDepth == 0 )
+        if( --suspendDepth == 0 && Thread.getThis().m_isSuspendable )
             resume( Thread.getThis() );
         return;
     }
@@ -2375,7 +2379,8 @@ body
         {
             // NOTE: We do not need to care about critical regions at all
             //       here. thread_suspendAll takes care of everything.
-            resume( t );
+            if (t.m_isSuspendable)
+                resume( t );
         }
     }
 }
@@ -2569,6 +2574,36 @@ unittest
     }
 
     thr.join();
+}
+
+extern (C) bool thread_getSuspendable()
+in
+{
+    assert(Thread.getThis());
+}
+body
+{
+    // See the comment in thread_setSuspendable.
+    synchronized (Thread.slock)
+        return Thread.getThis().m_isSuspendable;
+}
+
+extern (C) void thread_setSuspendable(bool value)
+in
+{
+    assert(Thread.getThis());
+}
+body
+{
+    // NOTE: We take this lock here so that a thread
+    //       that is currently non-suspendable cannot
+    //       change its suspendability in the middle
+    //       of a world suspension via thread_suspendAll
+    //       and thread_resumeAll. If this was allowed,
+    //       we could end up trying to resume the thread
+    //       when it was never suspended to begin with.
+    synchronized (Thread.slock)
+        Thread.getThis().m_isSuspendable = value;
 }
 
 /**
