@@ -368,6 +368,14 @@ class Error : Throwable
     Throwable   bypassedException;
 }
 
+version (D_ObjC)
+{
+    private abstract class ObjcThrowable : Throwable
+    {
+        protected this(string msg, Throwable next = null);
+    }
+}
+
 extern (C)
 {
     // from druntime/src/compiler/dmd/aaA.d
