@@ -21,6 +21,7 @@ private
     import core.stdc.stdlib;
     import core.stdc.string;
     import core.stdc.stdio;   // for printf()
+    import core.stdc.errno : errno;
 }
 
 version (Windows)
@@ -606,6 +607,11 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         rt_moduleTlsDtor();
         thread_joinAll();
         rt_moduleDtor();
+        if (fflush(null) != 0)
+        {
+            auto s = strerror(.errno);
+            throw new Error(s[0..strlen(s)].idup);
+        }
         gc_term();
         finiSections();
     }
