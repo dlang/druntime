@@ -2082,6 +2082,16 @@ extern (C)
     hash_t _aaGetHash(void* aa, const(TypeInfo) tiRaw) nothrow;
 }
 
+private template _Unqual(T)
+{
+         static if (is(T U == shared(const U))) alias U _Unqual;
+    else static if (is(T U ==        const U )) alias U _Unqual;
+    else static if (is(T U ==    immutable U )) alias U _Unqual;
+    else static if (is(T U ==        inout U )) alias U _Unqual;
+    else static if (is(T U ==       shared U )) alias U _Unqual;
+    else                                        alias T _Unqual;
+}
+
 struct AssociativeArray(Key, Value)
 {
 private:
@@ -2091,8 +2101,8 @@ private:
         Slot *next;
         size_t hash;
         Key key;
-        version(D_LP64) align(16) Value value; // c.f. rt/aaA.d, aligntsize()
-        else align(4) Value value;
+        version(D_LP64) align(16) _Unqual!Value value; // c.f. rt/aaA.d, aligntsize()
+        else align(4) _Unqual!Value value;
 
         // Stop creating built-in opAssign
         @disable void opAssign(Slot);
@@ -2106,7 +2116,7 @@ private:
         Slot*[4] binit;
     }
 
-    void* p; // really Hashtable*
+    Hashtable* p;
 
     struct Range
     {
@@ -2114,11 +2124,10 @@ private:
         Slot*[] slots;
         Slot* current;
 
-        this(void * aa)
+        this(Hashtable* aa)
         {
-            if (!aa) return;
-            auto pImpl = cast(Hashtable*) aa;
-            slots = pImpl.b;
+            if (aa is null) return;
+            slots = aa.b;
             nextSlot();
         }
 
@@ -2163,7 +2172,7 @@ public:
 
     Value[Key] rehash() @property
     {
-        auto p = _aaRehash(&p, typeid(Value[Key]));
+        auto p = _aaRehash(cast(void**) &p, typeid(Value[Key]));
         return *cast(Value[Key]*)(&p);
     }
 
@@ -2212,7 +2221,7 @@ public:
         {
             Range state;
 
-            this(void* p)
+            this(Hashtable* p)
             {
                 state = Range(p);
             }
@@ -2234,14 +2243,14 @@ public:
         {
             Range state;
 
-            this(void* p)
+            this(Hashtable* p)
             {
                 state = Range(p);
             }
 
             @property ref Value front()
             {
-                return state.front.value;
+                return *cast(Value*)&state.front.value;
             }
 
             alias state this;
@@ -2521,7 +2530,7 @@ unittest
     //Appending to slice will reallocate to a new array
     slice ~= 5;
     assert(slice.capacity >= 5);
-    
+
     //Dynamic array slices
     int[] a = [1, 2, 3, 4];
     int[] b = a[1 .. $];
@@ -2549,11 +2558,11 @@ unittest
     //Static array slice: no capacity. Reserve relocates.
     int[4] sarray = [1, 2, 3, 4];
     int[]  slice  = sarray[];
-    auto u = slice.reserve(8); 
+    auto u = slice.reserve(8);
     assert(u >= 8);
     assert(sarray.ptr !is slice.ptr);
     assert(slice.capacity == u);
-    
+
     //Dynamic array slices
     int[] a = [1, 2, 3, 4];
     a.reserve(8); //prepare a for appending 4 more items

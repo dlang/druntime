@@ -48,12 +48,12 @@ else version (Windows)
  */
 class ThreadException : Exception
 {
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
         super(msg, file, line, next);
     }
 
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    @safe pure nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line, next);
     }
@@ -65,12 +65,12 @@ class ThreadException : Exception
  */
 class FiberException : Exception
 {
-    this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
         super(msg, file, line, next);
     }
 
-    this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
+    @safe pure nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
     {
         super(msg, file, line, next);
     }
@@ -1339,21 +1339,30 @@ private:
     //
     @property static Mutex slock()
     {
-        __gshared Mutex m;
-        __gshared byte[__traits(classInstanceSize, Mutex)] ms;
+        return cast(Mutex)_locks[0].ptr;
+    }
 
-        if (m is null)
+    @property static Mutex criticalRegionLock()
+    {
+        return cast(Mutex)_locks[1].ptr;
+    }
+
+    __gshared byte[__traits(classInstanceSize, Mutex)][2] _locks;
+
+    static void initLocks()
+    {
+        foreach (ref lock; _locks)
         {
-            // Initialization doesn't need to be synchronized because
-            // creating a thread will lock this mutex.
-            ms[] = Mutex.classinfo.init[];
-            m = cast(Mutex)ms.ptr;
-            m.__ctor();
-
-            extern(C) void destroy() { m.__dtor(); }
-            atexit(&destroy);
+            lock[] = Mutex.classinfo.init[];
+            (cast(Mutex)lock.ptr).__ctor();
         }
-        return m;
+
+        extern(C) void destroy()
+        {
+            foreach (ref lock; _locks)
+                (cast(Mutex)lock.ptr).__dtor();
+        }
+        atexit(&destroy);
     }
 
     __gshared Context*  sm_cbeg;
@@ -1627,6 +1636,8 @@ extern (C) void thread_init()
     //       thread_init is being processed.  However, since no memory should
     //       exist to be scanned at this point, it is sufficient for these
     //       functions to detect the condition and return immediately.
+
+    Thread.initLocks();
 
     version( OSX )
     {
@@ -1906,87 +1917,94 @@ shared static ~this()
 // Used for needLock below.
 private __gshared bool multiThreadedFlag = false;
 
+version (PPC64) version = ExternStackShell;
 
-// Calls the given delegate, passing the current thread's stack pointer to it.
-private void callWithStackShell(scope void delegate(void* sp) fn)
-in
+version (ExternStackShell)
 {
-    assert(fn);
+    extern(D) public void callWithStackShell(scope void delegate(void* sp) fn);
 }
-body
+else
 {
-    // The purpose of the 'shell' is to ensure all the registers get
-    // put on the stack so they'll be scanned. We only need to push
-    // the callee-save registers.
-    void *sp = void;
-
-    version (GNU)
+    // Calls the given delegate, passing the current thread's stack pointer to it.
+    private void callWithStackShell(scope void delegate(void* sp) fn)
+    in
     {
-        __builtin_unwind_init();
-        sp = &sp;
+        assert(fn);
     }
-    else version (AsmX86_Posix)
+    body
     {
-        size_t[3] regs = void;
-        asm
+        // The purpose of the 'shell' is to ensure all the registers get
+        // put on the stack so they'll be scanned. We only need to push
+        // the callee-save registers.
+        void *sp = void;
+
+        version (GNU)
         {
-            mov [regs + 0 * 4], EBX;
-            mov [regs + 1 * 4], ESI;
-            mov [regs + 2 * 4], EDI;
-
-            mov sp[EBP], ESP;
+            __builtin_unwind_init();
+            sp = &sp;
         }
-    }
-    else version (AsmX86_Windows)
-    {
-        size_t[3] regs = void;
-        asm
+        else version (AsmX86_Posix)
         {
-            mov [regs + 0 * 4], EBX;
-            mov [regs + 1 * 4], ESI;
-            mov [regs + 2 * 4], EDI;
+            size_t[3] regs = void;
+            asm
+            {
+                mov [regs + 0 * 4], EBX;
+                mov [regs + 1 * 4], ESI;
+                mov [regs + 2 * 4], EDI;
 
-            mov sp[EBP], ESP;
+                mov sp[EBP], ESP;
+            }
         }
-    }
-    else version (AsmX86_64_Posix)
-    {
-        size_t[5] regs = void;
-        asm
+        else version (AsmX86_Windows)
         {
-            mov [regs + 0 * 8], RBX;
-            mov [regs + 1 * 8], R12;
-            mov [regs + 2 * 8], R13;
-            mov [regs + 3 * 8], R14;
-            mov [regs + 4 * 8], R15;
+            size_t[3] regs = void;
+            asm
+            {
+                mov [regs + 0 * 4], EBX;
+                mov [regs + 1 * 4], ESI;
+                mov [regs + 2 * 4], EDI;
 
-            mov sp[RBP], RSP;
+                mov sp[EBP], ESP;
+            }
         }
-    }
-    else version (AsmX86_64_Windows)
-    {
-        size_t[7] regs = void;
-        asm
+        else version (AsmX86_64_Posix)
         {
-            mov [regs + 0 * 8], RBX;
-            mov [regs + 1 * 8], RSI;
-            mov [regs + 2 * 8], RDI;
-            mov [regs + 3 * 8], R12;
-            mov [regs + 4 * 8], R13;
-            mov [regs + 5 * 8], R14;
-            mov [regs + 6 * 8], R15;
+            size_t[5] regs = void;
+            asm
+            {
+                mov [regs + 0 * 8], RBX;
+                mov [regs + 1 * 8], R12;
+                mov [regs + 2 * 8], R13;
+                mov [regs + 3 * 8], R14;
+                mov [regs + 4 * 8], R15;
 
-            mov sp[RBP], RSP;
+                mov sp[RBP], RSP;
+            }
         }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
+        else version (AsmX86_64_Windows)
+        {
+            size_t[7] regs = void;
+            asm
+            {
+                mov [regs + 0 * 8], RBX;
+                mov [regs + 1 * 8], RSI;
+                mov [regs + 2 * 8], RDI;
+                mov [regs + 3 * 8], R12;
+                mov [regs + 4 * 8], R13;
+                mov [regs + 5 * 8], R14;
+                mov [regs + 6 * 8], R15;
 
-    fn(sp);
+                mov sp[RBP], RSP;
+            }
+        }
+        else
+        {
+            static assert(false, "Architecture not supported.");
+        }
+
+        fn(sp);
+    }
 }
-
 
 // Used for suspendAll/resumeAll below.
 private __gshared uint suspendDepth = 0;
@@ -2143,17 +2161,12 @@ private void suspend( Thread t )
                 }
                 throw new ThreadException( "Unable to suspend thread" );
             }
-            // NOTE: It's really not ideal to wait for each thread to
-            //       signal individually -- rather, it would be better to
-            //       suspend them all and wait once at the end.  However,
-            //       semaphores don't really work this way, and the obvious
-            //       alternative (looping on an atomic suspend count)
-            //       requires either the atomic module (which only works on
-            //       x86) or other specialized functionality.  It would
-            //       also be possible to simply loop on sem_wait at the
-            //       end, but I'm not convinced that this would be much
-            //       faster than the current approach.
-            sem_wait( &suspendCount );
+            while (sem_wait(&suspendCount) != 0)
+            {
+                if (errno != EINTR)
+                    throw new ThreadException( "Unable to wait for semaphore" );
+                errno = 0;
+            }
         }
         else if( !t.m_lock )
         {
@@ -2206,61 +2219,30 @@ extern (C) void thread_suspendAll()
         //       the same thread to be suspended twice, which would likely
         //       cause the second suspend to fail, the garbage collection to
         //       abort, and Bad Things to occur.
-        for( Thread t = Thread.sm_tbeg; t; t = t.next )
-        {
-            if( t.isRunning )
-                suspend( t );
-            else
-                Thread.remove( t );
-        }
 
-        // The world is stopped. We now make sure that all threads are outside
-        // critical regions by continually suspending and resuming them until all
-        // of them are safe. This is extremely error-prone; if some thread enters
-        // a critical region and never exits it (e.g. it waits for a mutex forever),
-        // then we'll pretty much 'deadlock' here. Not much we can do about that,
-        // and it indicates incorrect use of the critical region API anyway.
-        for (;;)
+        Thread.criticalRegionLock.lock();
+        for (Thread t = Thread.sm_tbeg; t !is null; t = t.next)
         {
-            uint unsafeCount;
-
-            for (auto t = Thread.sm_tbeg; t; t = t.next)
+            Duration waittime = dur!"usecs"(10);
+        Lagain:
+            if (!t.isRunning)
             {
-                // NOTE: We don't need to check whether the thread has died here,
-                //       since it's checked in the loops above and below.
-                if (atomicLoad(*cast(shared)&t.m_isInCriticalRegion))
-                {
-                    unsafeCount += 10;
-                    resume(t);
-                }
+                Thread.remove(t);
             }
-
-            // If all threads are safe (i.e. unsafeCount == 0), no threads were in
-            // critical regions in the first place, and we can just break. Otherwise,
-            // we sleep for a bit to give the threads a chance to get to safe points.
-            if (unsafeCount)
-                Thread.sleep(dur!"usecs"(unsafeCount)); // This heuristic could probably use some tuning.
-            else
-                break;
-
-            // Some thread was not in a safe region, so we suspend the world again to
-            // re-do this loop to check whether we're safe now.
-            for (auto t = Thread.sm_tbeg; t; t = t.next)
+            else if (t.m_isInCriticalRegion)
             {
-                // The thread could have died in the meantime. Also see the note in
-                // the topmost loop that initially suspends the world.
-                if (t.isRunning)
-                    suspend(t);
-                else
-                    Thread.remove(t);
+                Thread.criticalRegionLock.unlock();
+                Thread.sleep(waittime);
+                if (waittime < dur!"msecs"(10)) waittime *= 2;
+                Thread.criticalRegionLock.lock();
+                goto Lagain;
+            }
+            else
+            {
+                suspend(t);
             }
         }
-
-        version( Posix )
-        {
-            // wait on semaphore -- see note in suspend for
-            // why this is currently not implemented
-        }
+        Thread.criticalRegionLock.unlock();
     }
 }
 
@@ -2465,7 +2447,8 @@ in
 }
 body
 {
-    atomicStore(*cast(shared)&Thread.getThis().m_isInCriticalRegion, true);
+    synchronized (Thread.criticalRegionLock)
+        Thread.getThis().m_isInCriticalRegion = true;
 }
 
 extern (C) void thread_exitCriticalRegion()
@@ -2475,7 +2458,8 @@ in
 }
 body
 {
-    atomicStore(*cast(shared)&Thread.getThis().m_isInCriticalRegion, false);
+    synchronized (Thread.criticalRegionLock)
+        Thread.getThis().m_isInCriticalRegion = false;
 }
 
 extern (C) bool thread_inCriticalRegion()
@@ -2485,7 +2469,8 @@ in
 }
 body
 {
-    return atomicLoad(*cast(shared)&Thread.getThis().m_isInCriticalRegion);
+    synchronized (Thread.criticalRegionLock)
+        return Thread.getThis().m_isInCriticalRegion;
 }
 
 unittest
@@ -2513,55 +2498,66 @@ unittest
     //       to cause a deadlock.
     // NOTE: DO NOT USE LOCKS IN CRITICAL REGIONS IN NORMAL CODE.
 
-    import core.sync.condition;
+    import core.sync.semaphore;
 
-    bool critical;
-    auto cond1 = new Condition(new Mutex());
+    auto sema = new Semaphore(),
+         semb = new Semaphore();
 
-    bool stop;
-    auto cond2 = new Condition(new Mutex());
-
-    auto thr = new Thread(delegate void()
+    auto thr = new Thread(
     {
         thread_enterCriticalRegion();
-
         assert(thread_inCriticalRegion());
-        assert(atomicLoad(*cast(shared)&Thread.getThis().m_isInCriticalRegion));
+        sema.notify();
 
-        synchronized (cond1.mutex)
-        {
-            critical = true;
-            cond1.notify();
-        }
-
-        synchronized (cond2.mutex)
-            while (!stop)
-                cond2.wait();
-
+        semb.wait();
         assert(thread_inCriticalRegion());
-        assert(atomicLoad(*cast(shared)&Thread.getThis().m_isInCriticalRegion));
 
         thread_exitCriticalRegion();
-
         assert(!thread_inCriticalRegion());
-        assert(!atomicLoad(*cast(shared)&Thread.getThis().m_isInCriticalRegion));
+        sema.notify();
+
+        semb.wait();
+        assert(!thread_inCriticalRegion());
     });
 
     thr.start();
 
-    synchronized (cond1.mutex)
-        while (!critical)
-            cond1.wait();
+    sema.wait();
+    synchronized (Thread.criticalRegionLock)
+        assert(thr.m_isInCriticalRegion);
+    semb.notify();
 
-    assert(atomicLoad(*cast(shared)&thr.m_isInCriticalRegion));
-
-    synchronized (cond2.mutex)
-    {
-        stop = true;
-        cond2.notify();
-    }
+    sema.wait();
+    synchronized (Thread.criticalRegionLock)
+        assert(!thr.m_isInCriticalRegion);
+    semb.notify();
 
     thr.join();
+}
+
+unittest
+{
+    import core.sync.semaphore;
+
+    shared bool inCriticalRegion;
+    auto sem = new Semaphore();
+
+    auto thr = new Thread(
+    {
+        thread_enterCriticalRegion();
+        inCriticalRegion = true;
+        sem.notify();
+        Thread.sleep(dur!"msecs"(1));
+        inCriticalRegion = false;
+        thread_exitCriticalRegion();
+    });
+    thr.start();
+
+    sem.wait();
+    assert(inCriticalRegion);
+    thread_suspendAll();
+    assert(!inCriticalRegion);
+    thread_resumeAll();
 }
 
 /**
@@ -2889,6 +2885,13 @@ private
         {
             version = AsmPPC_Posix;
             version = AsmExternal;
+        }
+    }
+    else version( PPC64 )
+    {
+        version( Posix )
+        {
+            version = AlignFiberStackTo16Byte;
         }
     }
     else version( MIPS_O32 )
@@ -4094,7 +4097,12 @@ version (D_LP64)
     else version (OSX)
         static assert(__traits(classInstanceSize, Fiber) == 88);
     else version (Posix)
-        static assert(__traits(classInstanceSize, Fiber) == 88);
+    {
+        static if( __traits( compiles, ucontext_t ) )
+            static assert(__traits(classInstanceSize, Fiber) == 88 + ucontext_t.sizeof + 8);
+        else
+            static assert(__traits(classInstanceSize, Fiber) == 88);
+    }
     else
         static assert(0, "Platform not supported.");
 }
@@ -4107,7 +4115,12 @@ else
     else version (OSX)
         static assert(__traits(classInstanceSize, Fiber) == 44);
     else version (Posix)
-        static assert(__traits(classInstanceSize, Fiber) == 44);
+    {
+        static if( __traits( compiles, ucontext_t ) )
+            static assert(__traits(classInstanceSize, Fiber) == 44 + ucontext_t.sizeof + 4);
+        else
+            static assert(__traits(classInstanceSize, Fiber) == 44);
+    }
     else
         static assert(0, "Platform not supported.");
 }

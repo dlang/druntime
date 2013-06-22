@@ -272,6 +272,9 @@ $(IMPDIR)\core\sys\linux\elf.d : src\core\sys\linux\elf.d
 $(IMPDIR)\core\sys\linux\epoll.d : src\core\sys\linux\epoll.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\linux\errno.d : src\core\sys\linux\errno.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\linux\execinfo.d : src\core\sys\linux\execinfo.d
 	copy $** $@
 
@@ -282,6 +285,9 @@ $(IMPDIR)\core\sys\linux\sys\signalfd.d : src\core\sys\linux\sys\signalfd.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\sys\xattr.d : src\core\sys\linux\sys\xattr.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\sys\inotify.d : src\core\sys\linux\sys\inotify.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\osx\execinfo.d : src\core\sys\osx\execinfo.d

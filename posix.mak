@@ -30,11 +30,15 @@ ifeq (,$(OS))
 endif
 
 DMD?=dmd
+INSTALL_DIR=../install
 
 DOCDIR=doc
 IMPDIR=import
 
-MODEL=32
+MODEL:=default
+ifneq (default,$(MODEL))
+	MODEL_FLAG:=-m$(MODEL)
+endif
 override PIC:=$(if $(PIC),-fPIC,)
 
 ifeq (osx,$(OS))
@@ -45,11 +49,11 @@ else
 	DOTLIB:=.a
 endif
 
-DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property $(PIC)
-UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property $(PIC)
-DDOCFLAGS=-m$(MODEL) -c -w -o- -Isrc -Iimport
+DFLAGS=$(MODEL_FLAG) -O -release -inline -w -Isrc -Iimport -property $(PIC)
+UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport -property $(PIC)
+DDOCFLAGS=$(MODEL_FLAG) -c -w -o- -Isrc -Iimport -version=CoreDdoc
 
-CFLAGS=-m$(MODEL) -O $(PIC)
+CFLAGS=$(MODEL_FLAG) -O $(PIC)
 
 ifeq (osx,$(OS))
     ASMFLAGS =
@@ -64,7 +68,7 @@ DRUNTIMESO=lib/lib$(DRUNTIME_BASE).so
 DRUNTIMESOOBJ=lib/lib$(DRUNTIME_BASE)so.o
 DRUNTIMESOLIB=lib/lib$(DRUNTIME_BASE)so.a
 
-DOCFMT=-version=CoreDdoc
+DOCFMT=
 
 include mak/COPY
 COPY:=$(subst \,/,$(COPY))
@@ -121,7 +125,7 @@ import: $(IMPORTS)
 
 $(IMPDIR)/core/sync/%.di : src/core/sync/%.d
 	@mkdir -p `dirname $@`
-	$(DMD) -m$(MODEL) -c -o- -Isrc -Iimport -Hf$@ $<
+	$(DMD) $(MODEL_FLAG) -c -o- -Isrc -Iimport -Hf$@ $<
 
 $(IMPDIR)/objc/%.di : src/objc/%.d
 	@mkdir -p `dirname $@`
@@ -224,8 +228,14 @@ druntime.zip: $(MANIFEST) $(DOCS) $(IMPORTS)
 	rm -rf $@
 	zip $@ $^
 
-install: druntime.zip
-	unzip -o druntime.zip -d /dmd2/src/druntime
+install: target
+	mkdir -p $(INSTALL_DIR)/html
+	cp -r doc/* $(INSTALL_DIR)/html/
+	mkdir -p $(INSTALL_DIR)/import
+	cp -r import/* $(INSTALL_DIR)/import/
+	mkdir -p $(INSTALL_DIR)/lib
+	cp -r lib/* $(INSTALL_DIR)/lib/
+	cp LICENSE $(INSTALL_DIR)/druntime-LICENSE.txt
 
 clean:
 	rm -rf obj lib $(IMPDIR) $(DOCDIR) druntime.zip

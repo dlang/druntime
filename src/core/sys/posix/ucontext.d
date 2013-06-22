@@ -270,6 +270,73 @@ version( linux )
             sigset_t    uc_sigmask;
         }
     }
+    else version (PPC64)
+    {
+        private
+        {
+            enum NGREG  = 48;
+            enum NFPREG = 33;
+            enum NVRREG = 34;
+
+            alias c_ulong        greg_t;
+            alias greg_t[NGREG]  gregset_t;
+            alias double[NFPREG] fpregset_t;
+
+            struct vscr_t
+            {
+                uint[3] __pad;
+                uint    vscr_word;
+            }
+
+            struct vrregset_t
+            {
+                uint[32][4] vrregs;
+                vscr_t      vscr;
+                uint        vrsave;
+                uint[3]     __pad;
+            }
+
+            struct pt_regs
+            {
+                c_ulong[32] gpr;
+                c_ulong     nip;
+                c_ulong     msr;
+                c_ulong     orig_gpr3;
+                c_ulong     ctr;
+                c_ulong     link;
+                c_ulong     xer;
+                c_ulong     ccr;
+                c_ulong     softe;
+                c_ulong     trap;
+                c_ulong     dar;
+                c_ulong     dsisr;
+                c_ulong     result;
+            };
+        }
+
+        struct mcontext_t
+        {
+            c_ulong[4] __unused;
+            int signal;
+            int __pad0;
+            c_ulong handler;
+            c_ulong oldmask;
+            pt_regs* regs;
+            gregset_t gp_regs;
+            fpregset_t fp_regs;
+            vrregset_t *v_regs;
+            c_long[NVRREG+NVRREG+1] vmx_reserve;
+        }
+
+        struct ucontext_t
+        {
+            c_ulong     uc_flags;
+            ucontext_t* uc_link;
+            stack_t     uc_stack;
+            sigset_t    uc_sigmask;
+            mcontext_t  uc_mcontext;
+        }
+    }
     else
         static assert(0, "unimplemented");
 }
