@@ -370,8 +370,11 @@ extern (C) int main(int argc, char **argv)
     // Issue 10344: flush stdout and return nonzero on failure
     if (.fflush(.stdout) != 0)
     {
-        fprintf(stderr, "Failed to flush stdout: %s, errno=%d\n", strerror(errno), errno);
-        result = EXIT_FAILURE;
+        .fprintf(.stderr, "Failed to flush stdout: %s\n", .strerror(.errno));
+        if (result == 0)
+        {
+            result = EXIT_FAILURE;
+        }
     }
     return result;
 }
