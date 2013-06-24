@@ -366,7 +366,14 @@ alias extern(C) int function(char[][] args) MainFunc;
  */
 extern (C) int main(int argc, char **argv)
 {
-    return _d_run_main(argc, argv, &_Dmain);
+    auto result = _d_run_main(argc, argv, &_Dmain);
+    // Issue 10344: flush stdout and return nonzero on failure
+    if (.fflush(.stdout) != 0)
+    {
+        fprintf(stderr, "Failed to flush stdout: %s, errno=%d\n", strerror(errno), errno);
+        result = EXIT_FAILURE;
+    }
+    return result;
 }
 
 version (Solaris) extern (C) int _main(int argc, char** argv)
@@ -607,11 +614,6 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         rt_moduleTlsDtor();
         thread_joinAll();
         rt_moduleDtor();
-        if (fflush(null) != 0)
-        {
-            auto s = strerror(.errno);
-            throw new Error(s[0..strlen(s)].idup);
-        }
         gc_term();
         finiSections();
     }
