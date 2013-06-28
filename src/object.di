@@ -289,6 +289,7 @@ struct ModuleInfo
         void function() tlsctor;
         void function() tlsdtor;
         uint index;
+        void* rmInfo;
         void*[1] reserved;
     }
 
@@ -312,6 +313,7 @@ struct ModuleInfo
     @property void function() unitTest() nothrow pure;
     @property ModuleInfo*[] importedModules() nothrow pure;
     @property TypeInfo_Class[] localClasses() nothrow pure;
+    @property immutable(void)* rmInfo() nothrow pure;
     @property string name() nothrow pure;
 
     static int opApply(scope int delegate(ref ModuleInfo*) dg);
@@ -670,6 +672,11 @@ void __ctfeWriteln(T...)(auto ref T values) { __ctfeWrite(values, "\n"); }
 template RTInfo(T)
 {
     enum RTInfo = cast(void*)0x12345678;
+}
+
+template RMInfo (alias mod)
+{
+    enum RMInfo = cast(void*)0x12345678;
 }
 
 version (unittest)
