@@ -1541,6 +1541,7 @@ enum
     MIunitTest   = 0x200,
     MIimportedModules = 0x400,
     MIlocalClasses = 0x800,
+    MIrmInfo     = 0x1000,
     MInew        = 0x80000000        // it's the "new" layout
 }
 
@@ -1561,6 +1562,7 @@ struct ModuleInfo
          * ictor
          * importedModules
          * localClasses
+         * rmInfo
          * name
          */
     }
@@ -1583,6 +1585,8 @@ struct ModuleInfo
         void function() tlsdtor;        // module thread local static destructor
 
         uint index;                        // index into _moduleinfo_array[]
+
+        immutable(void)* rmInfo;    // user data module info
 
         void*[1] reserved;          // for future expansion
     }
@@ -1808,6 +1812,43 @@ struct ModuleInfo
         return o.localClasses;
     }
 
+    @property immutable(void)* rmInfo() nothrow pure
+    {
+        if (isNew)
+        {
+            if (n.flags & MIrmInfo)
+            {
+                size_t off = New.sizeof;
+                if (n.flags & MItlsctor)
+                    off += o.tlsctor.sizeof;
+                if (n.flags & MItlsdtor)
+                    off += o.tlsdtor.sizeof;
+                if (n.flags & MIxgetMembers)
+                    off += o.xgetMembers.sizeof;
+                if (n.flags & MIctor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIdtor)
+                    off += o.ctor.sizeof;
+                if (n.flags & MIictor)
+                    off += o.ictor.sizeof;
+                if (n.flags & MIunitTest)
+                    off += o.unitTest.sizeof;
+                if (n.flags & MIimportedModules)
+                {
+                    auto plength = cast(size_t*)(cast(void*)(&this) + off);
+                    off += size_t.sizeof + *plength * plength.sizeof;
+                }
+                if (n.flags & MIlocalClasses)
+                {
+                    auto plength = cast(size_t*)(cast(void*)(&this) + off);
+                    off += size_t.sizeof + *plength * plength.sizeof;
+                }
+                return *cast(typeof(return)*)(cast(void*)(&this) + off);
+            }
+        }
+        return o.rmInfo;
+    }
+
     @property string name() nothrow pure
     {
         if (isNew)
@@ -1837,6 +1878,8 @@ struct ModuleInfo
                 auto plength = cast(size_t*)(cast(void*)(&this) + off);
                 off += size_t.sizeof + *plength * plength.sizeof;
             }
+            if (n.flags & MIrmInfo)
+                off += o.rmInfo.sizeof;
             auto p = cast(immutable(char)*)(cast(void*)(&this) + off);
             auto len = strlen(p);
             return p[0 .. len];
@@ -2698,4 +2741,9 @@ bool _xopEquals(in void*, in void*)
 template RTInfo(T)
 {
     enum RTInfo = null;
+}
+
+template RMInfo (alias mod)
+{
+	enum RMInfo = null;
 }
