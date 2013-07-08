@@ -686,7 +686,6 @@ class Thread
         {
             auto thr = new Thread({assert(Thread.getThis().priority == prio);});
             thr.start(prio);
-            assert(thr.priority == prio);
             thr.join();
         }
         test();
