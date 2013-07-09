@@ -624,6 +624,11 @@ class TypeInfo_AssociativeArray : TypeInfo
         return !!_aaEqual(this, *cast(const void**) p1, *cast(const void**) p2);
     }
 
+    override int compare(in void* p1, in void* p2) const
+    {
+        return equals(p1, p2) ? 0 : 1;
+    }
+
     override hash_t getHash(in void* p) nothrow @trusted const
     {
         return _aaGetHash(cast(void*)p, this);
@@ -654,6 +659,33 @@ class TypeInfo_AssociativeArray : TypeInfo
         arg1 = typeid(void*);
         return 0;
     }
+}
+
+// Issue 10380
+unittest
+{
+    int[string] aa1 = ["x": 1, "y": 2];
+    int[string] aa2 = ["x": 1, "y": 2];
+    int[string] aa3 = aa1;
+    int[string] aa4 = ["z": 3];
+
+    // Sanity
+    assert(aa1 == aa2);
+    assert(aa1 == aa3);
+    assert(aa2 == aa3);
+    assert(aa1 != aa4);
+
+    // Make sure typeinfo(AA)'s .equals and .compare make sense.
+    auto ti = typeid(aa1);
+    assert(ti.equals(&aa1, &aa2));
+    assert(ti.equals(&aa1, &aa3));
+    assert(ti.equals(&aa2, &aa3));
+    assert(!ti.equals(&aa1, &aa4));
+
+    assert(ti.compare(&aa1, &aa2)==0);
+    assert(ti.compare(&aa1, &aa3)==0);
+    assert(ti.compare(&aa2, &aa3)==0);
+    assert(ti.compare(&aa1, &aa4)!=0);
 }
 
 class TypeInfo_Vector : TypeInfo
