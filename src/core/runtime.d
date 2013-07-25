@@ -474,7 +474,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                 return ret;
             }
 
-            override string toString() const
+            override string toString() @trusted const
             {
                 string buf;
                 foreach( i, line; this )

@@ -77,7 +77,7 @@ class Object
     /**
      * Convert Object to a human readable string.
      */
-    string toString()
+    string toString() @safe
     {
         return this.classinfo.name;
     }
@@ -100,7 +100,7 @@ class Object
      *  $(TR $(TD this &gt; obj) $(TD &gt; 0))
      *  )
      */
-    int opCmp(Object o)
+    int opCmp(Object o) @safe
     {
         // BUG: this prevents a compacting GC from working, needs to be fixed
         //return cast(int)cast(void*)this - cast(int)cast(void*)o;
@@ -112,7 +112,7 @@ class Object
     /**
      * Returns !=0 if this object does have the same contents as obj.
      */
-    bool opEquals(Object o)
+    bool opEquals(Object o) @safe
     {
         return this is o;
     }
@@ -144,13 +144,13 @@ class Object
 /************************
  * Returns true if lhs and rhs are equal.
  */
-bool opEquals(const Object lhs, const Object rhs)
+bool opEquals(const Object lhs, const Object rhs) @trusted
 {
     // A hack for the moment.
     return opEquals(cast()lhs, cast()rhs);
 }
 
-bool opEquals(Object lhs, Object rhs)
+bool opEquals(Object lhs, Object rhs) @safe
 {
     // If aliased to the same object or both null => equal
     if (lhs is rhs) return true;
@@ -202,7 +202,7 @@ struct OffsetTypeInfo
  */
 class TypeInfo
 {
-    override string toString() const
+    override string toString() @trusted const
     {
         // hack to keep const qualifiers for TypeInfo member functions
         return (cast()super).toString();
@@ -486,7 +486,7 @@ class TypeInfo_Array : TypeInfo
 
 class TypeInfo_StaticArray : TypeInfo
 {
-    override string toString() const
+    override string toString() @trusted const
     {
         char[20] tmp = void;
         return cast(string)(value.toString() ~ "[" ~ tmp.uintToString(len) ~ "]");
@@ -605,7 +605,7 @@ class TypeInfo_StaticArray : TypeInfo
 
 class TypeInfo_AssociativeArray : TypeInfo
 {
-    override string toString() const
+    override string toString() @trusted const
     {
         return cast(string)(next.toString() ~ "[" ~ key.toString() ~ "]");
     }
@@ -1335,7 +1335,7 @@ class Throwable : Object
         //this.info = _d_traceContext();
     }
 
-    override string toString()
+    override string toString() @trusted
     {
         char[20] tmp = void;
         char[]   buf;
