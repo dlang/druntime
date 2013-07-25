@@ -31,10 +31,10 @@ alias immutable(dchar)[] dstring;
 
 class Object
 {
-    string   toString();
+    string   toString() @safe;
     size_t   toHash() @trusted nothrow;
-    int      opCmp(Object o);
-    bool     opEquals(Object o);
+    int      opCmp(Object o) @safe;
+    bool     opEquals(Object o) @safe;
 
     interface Monitor
     {
@@ -45,8 +45,8 @@ class Object
     static Object factory(string classname);
 }
 
-bool opEquals(const Object lhs, const Object rhs);
-bool opEquals(Object lhs, Object rhs);
+bool opEquals(const Object lhs, const Object rhs) @trusted;
+bool opEquals(Object lhs, Object rhs) @safe;
 
 void setSameMutex(shared Object ownee, shared Object owner);
 
@@ -65,7 +65,7 @@ struct OffsetTypeInfo
 
 class TypeInfo
 {
-    override string toString() const;
+    override string toString() @trusted const;
     override size_t toHash() @trusted const;
     override int opCmp(Object o);
     override bool opEquals(Object o);
@@ -306,7 +306,7 @@ class Throwable : Object
 
     @safe pure nothrow this(string msg, Throwable next = null);
     @safe pure nothrow this(string msg, string file, size_t line, Throwable next = null);
-    override string toString();
+    override string toString() @trusted;
 }
 
 
