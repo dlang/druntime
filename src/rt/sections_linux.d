@@ -18,6 +18,7 @@ import core.stdc.stdlib : calloc, malloc, free;
 import core.stdc.string : strlen;
 import core.sys.linux.elf;
 import core.sys.linux.link;
+import core.memory;
 import rt.minfo;
 import rt.deh2;
 import rt.util.container;
@@ -126,6 +127,8 @@ private:
 /*
  * Static DSOs loaded by the runtime linker. This includes the
  * executable. These can't be unloaded.
+ * Should access to this be wrapped in a mutex? After all, what if one
+ * thread is unloading a DLL while another is scanning exception tables?
  */
 __gshared Array!(DSO*) _static_dsos;
 
@@ -186,10 +189,38 @@ extern(C) void _d_dso_registry(CompilerDSOData* data)
     else
     {
         DSO* pdso = cast(DSO*)*data._slot;
-        assert(pdso == _static_dsos.back); // DSOs are unloaded in reverse order
-        _static_dsos.popBack();
+
+        /* If DSOs come from dynamically loaded DLLs, they can be unloaded
+         * in any order. Most of the time, however, they'll be unloaded in
+         * reverse order. So search backwards for pdso in _static_dsos[].
+         * Once we find it, ripple the trailing entries over it, and shorten
+         * _static_dsos[] by one.
+         */
+        for (size_t i = _static_dsos.length; 1; )
+        {
+            assert(i);                  // it must be there
+            --i;
+            if (pdso == _static_dsos[i])
+            {   // Found it. Now ripple
+                while (i + 1 < _static_dsos.length)
+                {
+                    _static_dsos[i] = _static_dsos[i + 1];
+                }
+                break;
+            }
+        }
+
+        _static_dsos.popBack();         // shorten _static_dsos[]
 
         *data._slot = null;
+
+        /* Tell the GC that it doesn't need to scan the (non-TLS) data
+         * sections from this DSO anymore.
+         */
+        foreach (rng; pdso._gcRanges)
+        {
+            GC.removeRange(rng.ptr);
+        }
 
         pdso._gcRanges.reset();
         .free(pdso);

@@ -309,8 +309,17 @@ extern (C)
     void gc_removeRange( void* p )
     {
         if( proxy is null )
-            return _gc.removeRange( p );
-        return proxy.gc_removeRange( p );
+        {
+            /* Check for _gc is necessary since this may get called after
+             * gc_term() has been called, when DSO's are unloaded.
+             * Another solution would be to add another gc function that asks
+             * if the gc is initialized, but that involves more code.
+             */
+            if (_gc)
+                _gc.removeRange( p );
+        }
+        else
+            proxy.gc_removeRange( p );
     }
 
     Proxy* gc_getProxy()
