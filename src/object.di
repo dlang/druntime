@@ -485,6 +485,32 @@ public:
 
         return Result(_aaRange(p));
     }
+
+    @property auto byPair()
+    {
+        static struct Result
+        {
+            AARange r;
+
+            @property bool empty() { return _aaRangeEmpty(r); }
+            @property auto front() @trusted
+            {
+                static struct Pair
+                {
+                    private Key* keyp;
+                    private Value* valp;
+                    @property ref Key key() { return *keyp; }
+                    @property ref Value value() { return *valp; }
+                }
+                return Pair(cast(Key*)_aaRangeFrontKey(r),
+                            cast(Value*)_aaRangeFrontValue(r));
+            }
+            void popFront() { _aaRangePopFront(r); }
+            Result save() { return this; }
+        }
+
+        return Result(_aaRange(p));
+    }
 }
 
 // Scheduled for deprecation in December 2012.

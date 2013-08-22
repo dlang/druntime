@@ -2039,6 +2039,34 @@ public:
 
         return Result(_aaRange(p));
     }
+
+    @property auto byPair()
+    {
+        static struct Result
+        {
+            AARange r;
+
+            @property bool empty() { return _aaRangeEmpty(r); }
+            @property auto front() @trusted
+            {
+                static struct Pair
+                {
+                    // We save the pointers here so that the Pair we return
+                    // won't mutate when Result.popFront is called afterwards.
+                    private Key* keyp;
+                    private Value* valp;
+                    @property ref Key key() { return *keyp; }
+                    @property ref Value value() { return *valp; }
+                }
+                return Pair(cast(Key*)_aaRangeFrontKey(r),
+                            cast(Value*)_aaRangeFrontValue(r));
+            }
+            void popFront() { _aaRangePopFront(r); }
+            Result save() { return this; }
+        }
+
+        return Result(_aaRange(p));
+    }
 }
 
 unittest
@@ -2224,6 +2252,40 @@ unittest
         aa.remove(i);
     aa.rehash;
     aa[1] = 1;
+}
+
+unittest
+{
+    // Issue 9119
+    int[string] aa;
+    assert(aa.byPair.empty);
+
+    aa["a"] = 1;
+    aa["b"] = 2;
+    aa["c"] = 3;
+
+    auto pairs = aa.byPair;
+    auto savedPairs = pairs.save;
+    size_t count = 0;
+    while (!pairs.empty)
+    {
+        assert(pairs.front.key in aa);
+        assert(pairs.front.value == aa[pairs.front.key]);
+        count++;
+        pairs.popFront();
+    }
+    assert(count == aa.length);
+
+    // Verify that saved range can iterate over the AA again
+    count = 0;
+    while (!savedPairs.empty)
+    {
+        assert(savedPairs.front.key in aa);
+        assert(savedPairs.front.value == aa[savedPairs.front.key]);
+        count++;
+        savedPairs.popFront();
+    }
+    assert(count == aa.length);
 }
 
 deprecated("Please use destroy instead of clear.")
