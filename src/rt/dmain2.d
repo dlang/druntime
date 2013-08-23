@@ -243,7 +243,7 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         initStaticDataGC();
         rt_moduleCtor();
         rt_moduleTlsCtor();
-        runModuleUnitTests();
+        //runModuleUnitTests();
         return true;
     }
     catch (Throwable e)
@@ -286,6 +286,8 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
     {
         if (dg)
             dg(e);
+        else
+            throw e;    // rethrow, don't silently ignore error
     }
     finally
     {
@@ -374,9 +376,6 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
             pop     RAX;
         }
     }
-
-    _STI_monitor_staticctor();
-    _STI_critical_init();
 
     // Allocate args[] on the stack
     char[][] args = (cast(char[]*) alloca(argc * (char[]).sizeof))[0 .. argc];
@@ -560,26 +559,18 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 
     void runAll()
     {
-        initSections();
-        gc_init();
-        initStaticDataGC();
-        rt_moduleCtor();
-        rt_moduleTlsCtor();
+        rt_init();
+
         if (runModuleUnitTests())
             tryExec(&runMain);
         else
             result = EXIT_FAILURE;
-        rt_moduleTlsDtor();
-        thread_joinAll();
-        rt_moduleDtor();
-        gc_term();
-        finiSections();
+
+        if (!rt_term() && result == EXIT_SUCCESS)
+            result = EXIT_FAILURE;
     }
 
     tryExec(&runAll);
-
-    _STD_critical_term();
-    _STD_monitor_staticdtor();
 
     // Issue 10344: flush stdout and return nonzero on failure
     if (.fflush(.stdout) != 0)
