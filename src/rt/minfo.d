@@ -12,8 +12,9 @@
 
 module rt.minfo;
 
-import core.stdc.stdlib;  // alloca
-import core.stdc.string;  // memcpy
+import core.stdc.stdlib;
+import core.stdc.string;
+import core.stdc.stdio  : printf;
 import rt.sections;
 
 enum
@@ -46,6 +47,7 @@ struct ModuleGroup
     this(ModuleInfo*[] modules)
     {
         _modules = modules;
+        first = null;
     }
 
     @property inout(ModuleInfo*)[] modules() inout
@@ -92,6 +94,7 @@ struct ModuleGroup
             size_t cidx;
 
             ModuleInfo*[] mods = _modules;
+
             size_t idx;
             while (true)
             {
@@ -169,6 +172,8 @@ struct ModuleGroup
                             stack[stackidx++] = StackRec(mods, idx);
                             idx  = 0;
                             mods = m.importedModules;
+                            //printf("m %.*s imports:\n", m.name.length, m.name.ptr);
+                            //foreach (m2; mods) printf("\t%.*s\n", m2.name.length, m2.name.ptr);
                         }
                     }
                 }
@@ -195,6 +200,18 @@ struct ModuleGroup
                 m.flags = m.flags & ~(MIctorstart | MIctordone);
         }
 
+        /* Look for module rt.dmain2, and put that as first ctor to run
+         */
+        foreach (m; _modules)
+        {
+            if (m.name == "rt.dmain2" && m.ctor)
+            {
+                first = m;
+                m.flags = m.flags | MIctordone;
+                break;
+            }
+        }
+
         /* Do two passes: ctor/dtor, tlsctor/tlsdtor
          */
         sort(_ctors, MIctor | MIdtor);
@@ -203,6 +220,19 @@ struct ModuleGroup
 
     void runCtors()
     {
+        version (none)
+        {
+            foreach (m; _modules)
+                printf("module %.*s\n", m.name.length, m.name.ptr);
+            foreach (m; _ctors)
+                printf("ctor %.*s\n", m.name.length, m.name.ptr);
+        }
+
+        if (first)
+        {
+           (*first.ctor)();
+        }
+
         // run independent ctors
         runModuleFuncs!(m => m.ictor)(_modules);
         // sorted module ctors
@@ -225,6 +255,9 @@ struct ModuleGroup
     void runDtors()
     {
         runModuleFuncsRev!(m => m.dtor)(_ctors);
+        if (first && first.dtor)
+            (*first.dtor)();
+
         // clean all initialized flags
         foreach (m; _modules)
             m.flags = m.flags & ~MIctordone;
@@ -245,6 +278,8 @@ private:
     ModuleInfo*[]  _modules;
     ModuleInfo*[]    _ctors;
     ModuleInfo*[] _tlsctors;
+public:
+    ModuleInfo*       first;
 }
 
 

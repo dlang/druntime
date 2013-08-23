@@ -29,6 +29,7 @@ private
     __gshared gc_t _gc;
 
     extern (C) void thread_init();
+    extern (C) void thread_term();
 
     struct Proxy
     {
@@ -138,6 +139,7 @@ extern (C)
                                   // static data area, roots, and ranges.
         _gc.Dtor();
 
+        thread_term();
         free(cast(void*)_gc);
         _gc = null;
     }
