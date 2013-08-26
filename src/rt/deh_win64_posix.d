@@ -115,7 +115,7 @@ immutable(FuncTable)* __eh_finddata(void *address)
     return null;
 }
 
-immutable(FuncTable)* __eh_finddata(void *address, immutable(FuncTable)* pstart, immutable(FuncTable)* pend)
+nothrow immutable(FuncTable)* __eh_finddata(void *address, immutable(FuncTable)* pstart, immutable(FuncTable)* pend)
 {
     debug(PRINTF) printf("FuncTable.sizeof = %p\n", FuncTable.sizeof);
     debug(PRINTF) printf("__eh_finddata(address = %p)\n", address);

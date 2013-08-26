@@ -243,7 +243,6 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         initStaticDataGC();
         rt_moduleCtor();
         rt_moduleTlsCtor();
-        runModuleUnitTests();
         return true;
     }
     catch (Throwable e)
@@ -251,13 +250,12 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         /* Note that if we get here, the runtime is in an unknown state.
          * I'm not sure what the point of calling dg is.
          */
-        if (dg)
-            dg(e);
-        else
+        if (!dg)
             throw e;    // rethrow, don't silently ignore error
-        /* Rethrow, and the two STD functions aren't called?
-         * This needs rethinking.
-         */
+            /* Rethrow, and the two STD functions aren't called?
+             * This needs rethinking.
+             */
+        dg(e);
     }
     _STD_critical_term();
     _STD_monitor_staticdtor();
@@ -284,8 +282,9 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
     }
     catch (Throwable e)
     {
-        if (dg)
-            dg(e);
+        if (!dg)
+            throw e;    // rethrow, don't silently ignore error
+        dg(e);
     }
     finally
     {
@@ -374,9 +373,6 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
             pop     RAX;
         }
     }
-
-    _STI_monitor_staticctor();
-    _STI_critical_init();
 
     // Allocate args[] on the stack
     char[][] args = (cast(char[]*) alloca(argc * (char[]).sizeof))[0 .. argc];
@@ -560,26 +556,26 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 
     void runAll()
     {
-        initSections();
-        gc_init();
-        initStaticDataGC();
-        rt_moduleCtor();
-        rt_moduleTlsCtor();
+        version (linux)
+        { }
+        else
+            rt_init();
+
         if (runModuleUnitTests())
             tryExec(&runMain);
         else
             result = EXIT_FAILURE;
-        rt_moduleTlsDtor();
-        thread_joinAll();
-        rt_moduleDtor();
-        gc_term();
-        finiSections();
+
+        version (linux)
+        { }
+        else
+        {
+            if (!rt_term() && result == EXIT_SUCCESS)
+                result = EXIT_FAILURE;
+        }
     }
 
     tryExec(&runAll);
-
-    _STD_critical_term();
-    _STD_monitor_staticdtor();
 
     // Issue 10344: flush stdout and return nonzero on failure
     if (.fflush(.stdout) != 0)
@@ -592,4 +588,31 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     }
 
     return result;
+}
+
+version (linux)
+{
+/* Startup and shutdown is done with static construction/destruction
+ */
+
+//import core.stdc.stdio;
+shared static this()
+{
+    //printf("dmain2\n");
+    _STI_monitor_staticctor();
+    _STI_critical_init();
+    initSections();
+    gc_init();
+    initStaticDataGC();
+}
+
+shared static ~this()
+{
+    //printf("~dmain2\n");
+    //thread_joinAll();
+    gc_term();
+    finiSections();
+    _STD_critical_term();
+    _STD_monitor_staticdtor();
+}
 }

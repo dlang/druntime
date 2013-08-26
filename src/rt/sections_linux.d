@@ -18,30 +18,44 @@ import core.stdc.stdlib : calloc, malloc, free;
 import core.stdc.string : strlen;
 import core.sys.linux.elf;
 import core.sys.linux.link;
+import core.sys.posix.pthread;
+import core.memory;
 import rt.minfo;
-import rt.deh;
+import rt.deh_win64_posix;
 import rt.util.container;
+
+extern (C) void thread_joinAll();
 
 alias DSO SectionGroup;
 struct DSO
 {
     static int opApply(scope int delegate(ref DSO) dg)
     {
+        DsoMutex.lock();
         foreach(dso; _static_dsos)
         {
             if (auto res = dg(*dso))
+            {
+                DsoMutex.unlock();
                 return res;
+            }
         }
+        DsoMutex.unlock();
         return 0;
     }
 
     static int opApplyReverse(scope int delegate(ref DSO) dg)
     {
+        DsoMutex.lock();
         foreach_reverse(dso; _static_dsos)
         {
             if (auto res = dg(*dso))
+            {
+                DsoMutex.unlock();
                 return res;
+            }
         }
+        DsoMutex.unlock();
         return 0;
     }
 
@@ -100,9 +114,11 @@ void finiSections()
  */
 Array!(void[])* initTLSRanges()
 {
+    DsoMutex.lock();
     _tlsRanges.length = _static_dsos.length;
     foreach (i, ref dso; _static_dsos)
         _tlsRanges[i] = getTLSRange(dso._tlsMod, dso._tlsSize);
+    DsoMutex.unlock();
     return &_tlsRanges;
 }
 
@@ -122,10 +138,39 @@ private:
 /*
  * Static DSOs loaded by the runtime linker. This includes the
  * executable. These can't be unloaded.
+ * Should access to this be wrapped in a mutex? After all, what if one
+ * thread is unloading a DLL while another is scanning exception tables?
  */
 __gshared Array!(DSO*) _static_dsos;
 
 Array!(void[]) _tlsRanges;
+
+/* Mutex so we can load/unload DSO's from multiple threads
+ */
+struct DsoMutex
+{
+    __gshared pthread_mutex_t mutex;
+
+    static void init()
+    {
+        pthread_mutex_init(&mutex, null);
+    }
+
+    static void term()
+    {
+        pthread_mutex_destroy(&mutex);
+    }
+
+    static void lock()
+    {
+        pthread_mutex_lock(&mutex);
+    }
+
+    static void unlock()
+    {
+        pthread_mutex_unlock(&mutex);
+    }
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -142,18 +187,20 @@ struct CompilerDSOData
     size_t _version;                                  // currently 1
     void** _slot;                                     // can be used to store runtime data
     object.ModuleInfo** _minfo_beg, _minfo_end;       // array of modules in this object file
-    immutable(rt.deh.FuncTable)* _deh_beg, _deh_end; // array of exception handling data
+    immutable(rt.deh_win64_posix.FuncTable)* _deh_beg, _deh_end; // array of exception handling data
 }
 
 T[] toRange(T)(T* beg, T* end) { return beg[0 .. end - beg]; }
 
-/* For each shared library and executable, the compiler generates code that
- * sets up CompilerDSOData and calls _d_dso_registry().
- * A pointer to that code is inserted into both the .ctors and .dtors
+/* For each shared library and executable, the compiler generates code that sets
+ * up CompilerDSOData and then calls _d_dso_registry().
+ * A pointer to that code is then inserted into both the .ctors and .dtors
  * segment so it gets called by the loader on startup and shutdown.
  */
 extern(C) void _d_dso_registry(CompilerDSOData* data)
 {
+    //printf("_d_dso_registry(%p)\n", data);
+
     // only one supported currently
     data._version >= 1 || assert(0, "corrupt DSO data version");
 
@@ -174,16 +221,70 @@ extern(C) void _d_dso_registry(CompilerDSOData* data)
 
         checkModuleCollisions(info, pdso._moduleGroup.modules);
 
+        /* If this is the first one, then it is the initialization of druntime and there's
+         * only one thread, so no need to sync yet.
+         */
+        if (_static_dsos.length == 0)
+            DsoMutex.init();
+
+        DsoMutex.lock();
         _static_dsos.insertBack(pdso);
+        DsoMutex.unlock();
+
+        // Run module constructors for DSO
+        pdso._moduleGroup.sortCtors();
+        pdso._moduleGroup.runCtors();
+        pdso._moduleGroup.runTlsCtors();
     }
     // has backlink => unregister
     else
     {
         DSO* pdso = cast(DSO*)*data._slot;
-        assert(pdso == _static_dsos.back); // DSOs are unloaded in reverse order
-        _static_dsos.popBack();
+
+        // Run module destructors for DSO
+        pdso._moduleGroup.runTlsDtors();
+        if (pdso._moduleGroup.first)
+            thread_joinAll();
+        pdso._moduleGroup.runDtors();
+
+        /* If DSOs come from dynamically loaded DLLs, they can be unloaded
+         * in any order. Most of the time, however, they'll be unloaded in
+         * reverse order. So search backwards for pdso in _static_dsos[].
+         * Once we find it, ripple the trailing entries over it, and shorten
+         * _static_dsos[] by one.
+         */
+        DsoMutex.lock();
+        for (size_t i = _static_dsos.length; ; )
+        {
+            assert(i);                  // it must be there
+            --i;
+            if (pdso == _static_dsos[i])
+            {   // Found it. Now ripple
+                while (i + 1 < _static_dsos.length)
+                {
+                    _static_dsos[i] = _static_dsos[i + 1];
+                }
+                break;
+            }
+        }
+
+        _static_dsos.popBack();         // shorten _static_dsos[]
+        DsoMutex.unlock();
 
         *data._slot = null;
+
+        if (pdso._moduleGroup.first)
+            DsoMutex.term();            // last one, don't need mutex no more
+        else
+        {
+            /* Tell the GC that it doesn't need to scan the (non-TLS) data
+             * sections from this DSO anymore.
+             */
+            foreach (rng; pdso._gcRanges)
+            {
+                GC.removeRange(rng.ptr);
+            }
+        }
 
         pdso._gcRanges.reset();
         .free(pdso);
