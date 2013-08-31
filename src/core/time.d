@@ -1376,7 +1376,7 @@ assert(nsecs(142).total!"nsecs" == 100);
         units  = The time units of the $(D Duration) (e.g. $(D "days")).
         length = The number of units in the $(D Duration).
   +/
-Duration dur(string units)(long length) @safe pure nothrow
+@property Duration dur(string units)(long length) @safe pure nothrow
     if(units == "weeks" ||
        units == "days" ||
        units == "hours" ||
