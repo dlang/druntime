@@ -17,11 +17,11 @@ module core.runtime;
 version (Windows) import core.stdc.wchar_ : wchar_t;
 
 
-/// C interface for Runtime.loadLibrary
+/// C interface for loadLibrary
 extern (C) void* rt_loadLibrary(const char* name);
 /// ditto
 version (Windows) extern (C) void* rt_loadLibraryW(const wchar_t* name);
-/// C interface for Runtime.unloadLibrary
+/// C interface for unloadLibrary
 extern (C) int rt_unloadLibrary(void* ptr);
 
 private
@@ -161,75 +161,13 @@ struct Runtime
         return rt_cArgs();
     }
 
-    /**
-     * Locates a dynamic library with the supplied library name and dynamically
-     * loads it into the caller's address space.  If the library contains a D
-     * runtime it will be integrated with the current runtime.
-     *
-     * Params:
-     *  name = The name of the dynamic library to load.
-     *
-     * Returns:
-     *  A reference to the library or null on error.
-     */
-    static void* loadLibrary()(in char[] name)
-    {
-        import core.stdc.stdlib : free, malloc;
-        version (Windows)
-        {
-            import core.sys.windows.windows;
+    /// deprecated alias for $(LREF .&#108;oadLibrary)
+    deprecated("Please use core.runtime.loadLibrary instead.")
+    alias loadLibrary = .loadLibrary;
 
-            if (name.length == 0) return null;
-            // Load a DLL at runtime
-            enum CP_UTF8 = 65001;
-            auto len = MultiByteToWideChar(
-                CP_UTF8, 0, name.ptr, cast(int)name.length, null, 0);
-            if (len == 0)
-                return null;
-
-            auto buf = cast(wchar_t*)malloc((len+1) * wchar_t.sizeof);
-            if (buf is null) return null;
-            scope (exit) free(buf);
-
-            len = MultiByteToWideChar(
-                CP_UTF8, 0, name.ptr, cast(int)name.length, buf, len);
-            if (len == 0)
-                return null;
-
-            buf[len] = '\0';
-
-            return rt_loadLibraryW(buf);
-        }
-        else version (Posix)
-        {
-            /* Need a 0-terminated C string for the dll name
-             */
-            immutable len = name.length;
-            auto buf = cast(char*)malloc(len + 1);
-            if (!buf) return null;
-            scope (exit) free(buf);
-
-            buf[0 .. len] = name[];
-            buf[len] = 0;
-
-            return rt_loadLibrary(buf);
-        }
-    }
-
-
-    /**
-     * Unloads the dynamic library referenced by p.  If this library contains a
-     * D runtime then any necessary finalization or cleanup of that runtime
-     * will be performed.
-     *
-     * Params:
-     *  p = A reference to the library to unload.
-     */
-    static bool unloadLibrary()(void* p)
-    {
-        return !!rt_unloadLibrary(p);
-    }
-
+    /// deprecated alias for $(LREF .&#117;nloadLibrary)
+    deprecated("Please use core.runtime.unloadLibrary instead.")
+    alias unloadLibrary = .unloadLibrary;
 
     /**
      * Overrides the default trace mechanism with s user-supplied version.  A
@@ -320,6 +258,75 @@ private:
     //       make it __gshared.
     __gshared ModuleUnitTester sm_moduleUnitTester = null;
 }
+
+/**
+ * Locates a dynamic library with the supplied library name and dynamically
+ * loads it into the caller's address space.  If the library contains a D
+ * runtime it will be integrated with the current runtime.
+ *
+ * Params:
+ *  name = The name of the dynamic library to load.
+ *
+ * Returns:
+ *  A reference to the library or null on error.
+ */
+void* loadLibrary()(in char[] name)
+{
+    import core.stdc.stdlib : free, malloc;
+    version (Windows)
+    {
+        import core.sys.windows.windows;
+
+        if (name.length == 0) return null;
+        // Load a DLL at runtime
+        enum CP_UTF8 = 65001;
+        auto len = MultiByteToWideChar(
+            CP_UTF8, 0, name.ptr, cast(int)name.length, null, 0);
+        if (len == 0)
+            return null;
+
+        auto buf = cast(wchar_t*)malloc((len+1) * wchar_t.sizeof);
+        if (buf is null) return null;
+        scope (exit) free(buf);
+
+        len = MultiByteToWideChar(
+            CP_UTF8, 0, name.ptr, cast(int)name.length, buf, len);
+        if (len == 0)
+            return null;
+
+        buf[len] = '\0';
+
+        return rt_loadLibraryW(buf);
+    }
+    else version (Posix)
+    {
+        /* Need a 0-terminated C string for the dll name
+         */
+        immutable len = name.length;
+        auto buf = cast(char*)malloc(len + 1);
+        if (!buf) return null;
+        scope (exit) free(buf);
+
+        buf[0 .. len] = name[];
+        buf[len] = 0;
+
+        return rt_loadLibrary(buf);
+    }
+}
+
+/**
+ * Unloads the dynamic library referenced by p.  If this library contains a
+ * D runtime then any necessary finalization or cleanup of that runtime
+ * will be performed.
+ *
+ * Params:
+ *  p = A reference to the library to unload.
+ */
+bool unloadLibrary()(void* p)
+{
+    return !!rt_unloadLibrary(p);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Overridable Callbacks

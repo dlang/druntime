@@ -7,7 +7,7 @@ void loadSym(T)(void* handle, ref T val, const char* mangle)
 
 void* openLib(string s)
 {
-    auto h = Runtime.loadLibrary(s);
+    auto h = .loadLibrary(s);
     assert(h !is null);
 
     loadSym(h, libThrowException, "_D3lib14throwExceptionFZv");
@@ -30,7 +30,7 @@ void* openLib(string s)
 
 void closeLib(void* h)
 {
-    Runtime.unloadLibrary(h);
+    .unloadLibrary(h);
 }
 
 __gshared

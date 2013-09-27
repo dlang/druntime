@@ -6,8 +6,8 @@ void main(string[] args)
 {
     auto root = args[0][0..$-"load_loaddep".length];
     auto libloaddep = root ~ "libloaddep.so";
-    auto h = Runtime.loadLibrary(libloaddep);
+    auto h = .loadLibrary(libloaddep);
     auto runDepTests = cast(RunDepTests)dlsym(h, "runDepTests");
     assert(runDepTests((root ~ "lib.so\0").ptr));
-    assert(Runtime.unloadLibrary(h));
+    assert(.unloadLibrary(h));
 }
