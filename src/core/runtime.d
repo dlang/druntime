@@ -261,8 +261,7 @@ private:
 
 /**
  * Locates a dynamic library with the supplied library name and dynamically
- * loads it into the caller's address space.  If the library contains a D
- * runtime it will be integrated with the current runtime.
+ * loads it into the caller's address space.
  *
  * Params:
  *  name = The name of the dynamic library to load.
@@ -315,9 +314,7 @@ void* loadLibrary()(in char[] name)
 }
 
 /**
- * Unloads the dynamic library referenced by p.  If this library contains a
- * D runtime then any necessary finalization or cleanup of that runtime
- * will be performed.
+ * Unloads the dynamic library referenced by p.
  *
  * Params:
  *  p = A reference to the library to unload.
