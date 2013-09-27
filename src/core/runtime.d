@@ -259,21 +259,42 @@ private:
     __gshared ModuleUnitTester sm_moduleUnitTester = null;
 }
 
-/**
- * Locates a dynamic library with the supplied library name and dynamically
- * loads it into the caller's address space.
- *
- * Params:
- *  name = The name of the dynamic library to load.
- *
- * Returns:
- *  A reference to the library or null on error.
- */
-void* loadLibrary()(in char[] name)
+version (CoreDdoc)
+    version = UseDecls;
+else version (Windows)
+{}
+else version (Shared)
+{}
+else
+    version = UseDecls;
+
+version (UseDecls)
 {
-    import core.stdc.stdlib : free, malloc;
-    version (Windows)
+    /**
+     * Locates a dynamic library with the supplied library name and dynamically
+     * loads it into the caller's address space.
+     *
+     * Params:
+     *  name = The name of the dynamic library to load.
+     *
+     * Returns:
+     *  A reference to the library or null on error.
+     */
+    void* loadLibrary(in char[] name);
+
+    /**
+     * Unloads the dynamic library referenced by p.
+     *
+     * Params:
+     *  p = A reference to the library to unload.
+     */
+    bool unloadLibrary(void* p);
+}
+else version (Windows)
+{
+    void* loadLibrary(in char[] name)
     {
+        import core.stdc.stdlib : free, malloc;
         import core.sys.windows.windows;
 
         if (name.length == 0) return null;
@@ -297,8 +318,17 @@ void* loadLibrary()(in char[] name)
 
         return rt_loadLibraryW(buf);
     }
-    else version (Posix)
+
+    bool unloadLibrary(void* p)
     {
+        return !!rt_unloadLibrary(p);
+    }
+}
+else version (Shared)
+{
+    void* loadLibrary(in char[] name)
+    {
+        import core.stdc.stdlib : free, malloc;
         /* Need a 0-terminated C string for the dll name
          */
         immutable len = name.length;
@@ -311,17 +341,11 @@ void* loadLibrary()(in char[] name)
 
         return rt_loadLibrary(buf);
     }
-}
 
-/**
- * Unloads the dynamic library referenced by p.
- *
- * Params:
- *  p = A reference to the library to unload.
- */
-bool unloadLibrary()(void* p)
-{
-    return !!rt_unloadLibrary(p);
+    bool unloadLibrary(void* p)
+    {
+        return !!rt_unloadLibrary(p);
+    }
 }
 
 
