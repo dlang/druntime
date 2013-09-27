@@ -124,7 +124,7 @@ version (Windows)
      *      true    succeeded
      *      false   some failure happened
      */
-    extern (C) bool rt_unloadLibrary(void* ptr)
+    extern (C) int rt_unloadLibrary(void* ptr)
     {
         gcClrFn gcClr  = cast(gcClrFn) GetProcAddress(ptr, "gc_clrProxy");
         if (gcClr !is null)
