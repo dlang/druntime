@@ -260,13 +260,162 @@ private:
 }
 
 version (CoreDdoc)
+{
     version = UseDecls;
+    version = UseUnittest;
+}
 else version (Windows)
-{}
-else version (Shared)
-{}
+{
+    version = UseUnittest;
+}
+else version (Shared) // compiling a shared druntime
+{
+    version = UseUnittest;
+}
 else
+{
     version = UseDecls;
+}
+
+
+/**
+ * The Library struct represent a loaded library. It contains
+ * functionality to load symbols and perform runtime introspection
+ * of the library. It sub-types the native platform handle so on
+ * top of the provided functionality it can be used with C
+ * functions like GetProcAddress or dlvsym.
+ */
+version (CoreDdoc) struct Library
+{
+    /**
+     * Loads a pointer to a function with type FT and fully
+     * qualified name fqn from this library. For extern(C)
+     * functions fqn is the plain name.
+     *
+     * Params:
+     *   T = The function pointer type.
+     *   fqn = The fully qualified name of the function.
+     *
+     * Returns:
+     *   The loaded function pointer on success or null.
+     */
+    T loadFunc(T:FT*, FT)(string fqn) if(is(FT == function));
+
+    /// ditto
+    T loadFunc(T:FT*, string fqn, FT)() if(is(FT == function));
+
+    /**
+     * Loads a pointer to a function using a declaration from a .di file.
+     *
+     * Params:
+     *   func = An alias to the function declaration.
+     *
+     * Returns:
+     *   The loaded function pointer on success or null.
+     */
+    typeof(func)* loadFunc(alias func)() if (is(typeof(func) == function));
+
+    /**
+     * Loads a pointer to a variable with type T and fully
+     * qualified name fqn from this library.
+     *
+     * Params:
+     *   T = The variable type.
+     *   fqn = The fully qualified name of the variable.
+     *
+     * Returns:
+     *   The loaded variable pointer on success or null.
+     */
+    T* loadVar(T)(string fqn);
+
+    /// ditto
+    T* loadVar(T, string fqn)();
+
+    /**
+     * Loads a pointer to a variable using a declaration from a .di file.
+     *
+     * Params:
+     *   var = An alias to the variable declaration.
+     *
+     * Returns:
+     *   The loaded variable pointer on success or null.
+     */
+    typeof(var)* loadVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var);
+
+    /// Library is a sub-types of the platform handle.
+    alias handle this;
+
+    /// The native platform handle.
+    void* handle;
+
+    private template hasLinkage(alias var) {}
+}
+else version (Windows)
+{
+    struct Library
+    {
+        import core.sys.windows.windows : GetProcAddress;
+        mixin LibraryImpl!GetProcAddress;
+    }
+}
+else version (Posix)
+{
+    struct Library
+    {
+        import core.sys.posix.dlfcn : dlsym;
+        mixin LibraryImpl!dlsym;
+    }
+}
+else
+{
+    static assert(0, "unimplemented");
+}
+
+
+///
+version (UseUnittest) unittest
+{
+    version (Windows)
+    {
+        auto lib = Library(GetModuleHandleA(null));
+    }
+    else
+    {
+        auto lib = loadLibrary(null); // the executable
+        scope (exit) lib.unloadLibrary();
+    }
+    assert(lib !is null);
+
+    auto load1 = lib.loadFunc!(Library function(const char[]))("core.runtime.loadLibrary");
+    auto load2 = lib.loadFunc!(Library function(const char[]), "core.runtime.loadLibrary")();
+    auto load3 = lib.loadFunc!loadLibrary();
+    assert(load1 is load2);
+    assert(load2 is load3);
+    assert(load3 is &loadLibrary);
+
+    auto var1 = lib.loadVar!(ModuleUnitTester)("core.runtime.Runtime.sm_moduleUnitTester");
+    auto var2 = lib.loadVar!(ModuleUnitTester, "core.runtime.Runtime.sm_moduleUnitTester")();
+    auto var3 = lib.loadVar!(Runtime.sm_moduleUnitTester)();
+    assert(var1 is var2);
+    assert(var2 is var3);
+    assert(var3 is &Runtime.sm_moduleUnitTester);
+
+    // can only load variables with linkage
+    __gshared uint num1 = 1;
+    static shared uint num2 = 2;
+    static const uint num3 = 3;
+    assert(*lib.loadVar!num1() == 1);
+    assert(*lib.loadVar!num2() == 2);
+    assert(*lib.loadVar!num3() == 3);
+
+    shared uint num4 = 4; // stack variables have no linkage
+    enum num5 = 5; // manifest constants have no linkage
+    static uint num6 = 6; // TLS variables have no linkage
+
+    static assert(!__traits(compiles, lib.loadVar!num4()));
+    static assert(!__traits(compiles, lib.loadVar!num5()));
+    static assert(!__traits(compiles, lib.loadVar!num6()));
+}
 
 version (UseDecls)
 {
@@ -280,7 +429,7 @@ version (UseDecls)
      * Returns:
      *  A reference to the library or null on error.
      */
-    void* loadLibrary(in char[] name);
+    Library loadLibrary(in char[] name);
 
     /**
      * Unloads the dynamic library referenced by p.
@@ -292,31 +441,31 @@ version (UseDecls)
 }
 else version (Windows)
 {
-    void* loadLibrary(in char[] name)
+    Library loadLibrary(in char[] name)
     {
         import core.stdc.stdlib : free, malloc;
         import core.sys.windows.windows;
 
-        if (name.length == 0) return null;
+        if (name.length == 0) return Library(null);
         // Load a DLL at runtime
         enum CP_UTF8 = 65001;
         auto len = MultiByteToWideChar(
             CP_UTF8, 0, name.ptr, cast(int)name.length, null, 0);
         if (len == 0)
-            return null;
+            return Library(null);
 
         auto buf = cast(wchar_t*)malloc((len+1) * wchar_t.sizeof);
-        if (buf is null) return null;
+        if (buf is null) return Library(null);
         scope (exit) free(buf);
 
         len = MultiByteToWideChar(
             CP_UTF8, 0, name.ptr, cast(int)name.length, buf, len);
         if (len == 0)
-            return null;
+            return Library(null);
 
         buf[len] = '\0';
 
-        return rt_loadLibraryW(buf);
+        return Library(rt_loadLibraryW(buf));
     }
 
     bool unloadLibrary(void* p)
@@ -326,20 +475,20 @@ else version (Windows)
 }
 else version (Shared)
 {
-    void* loadLibrary(in char[] name)
+    Library loadLibrary(in char[] name)
     {
         import core.stdc.stdlib : free, malloc;
         /* Need a 0-terminated C string for the dll name
          */
         immutable len = name.length;
         auto buf = cast(char*)malloc(len + 1);
-        if (!buf) return null;
+        if (!buf) return Library(null);
         scope (exit) free(buf);
 
         buf[0 .. len] = name[];
         buf[len] = 0;
 
-        return rt_loadLibrary(buf);
+        return Library(rt_loadLibrary(buf));
     }
 
     bool unloadLibrary(void* p)
@@ -348,6 +497,72 @@ else version (Shared)
     }
 }
 
+
+// implementation using GetProcAddress or dlsym
+private mixin template LibraryImpl(alias dlsym)
+{
+    import core.demangle : mangle, mangleFunc;
+
+    T loadFunc(T:FT*, FT)(string fqn) if(is(FT == function))
+    {
+        char[256] buf = void;
+        auto mangling = mangleFunc!(T)(fqn, buf);
+        return cast(T)dlsym(handle, toStringz(mangling, buf.length));
+    }
+
+    T loadFunc(T:FT*, string fqn, FT)() if(is(FT == function))
+    {
+        static const mangling = mangleFunc!(T)(fqn);
+        return cast(T)dlsym(handle, mangling.ptr);
+    }
+
+    typeof(func)* loadFunc(alias func)() if (is(typeof(func) == function))
+    {
+        static const mangling = func.mangleof;
+        return cast(typeof(func)*)dlsym(handle, mangling.ptr);
+    }
+
+    T* loadVar(T)(string fqn)
+    {
+        char[256] buf = void;
+        auto mangling = mangle!(T)(fqn, buf);
+        return cast(T*)dlsym(handle, toStringz(mangling, buf.length));
+    }
+
+    T* loadVar(T, string fqn)()
+    {
+        static const mangling = mangle!(T)(fqn);
+        return cast(T*)dlsym(handle, mangling.ptr);
+    }
+
+    typeof(var)* loadVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var)
+    {
+        static const mangling = var.mangleof;
+        return cast(typeof(var)*)dlsym(handle, mangling.ptr);
+    }
+
+    void* handle;
+    alias handle this;
+
+ private:
+    template hasLinkage(alias var)
+    {
+        // TLS: cannot take address of thread-local variable var at compile time
+        // enum: constant var is not an lvalue
+        // local: non-constant expression &var
+        // use is(typeof) to avoid linking in var
+        enum hasLinkage = is(typeof({static const varref = &var;}));
+        static assert(hasLinkage); // for better diagnostic message
+    }
+
+    char* toStringz(char[] buf, size_t knownSize)
+    {
+        immutable nulpos = buf.length;
+        if (nulpos >= knownSize) ++buf.length;
+        buf.ptr[nulpos] = 0;
+        return buf.ptr;
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Overridable Callbacks
