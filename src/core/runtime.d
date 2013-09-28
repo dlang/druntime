@@ -355,7 +355,18 @@ else version (Windows)
     struct Library
     {
         import core.sys.windows.windows : GetProcAddress;
-        mixin LibraryImpl!GetProcAddress;
+        version (Win32)
+        {
+            // Workaround Bug 3956. Optlink strips leading underscores
+            // of exported symbols. Except for the first one :(.
+            export __gshared uint _dummy; // So that's the first one hopefully.
+            mixin LibraryImpl!(function(h, n) =>
+                GetProcAddress(h, n[0] == '_' && n[1] == 'D' ? n+1 : n));
+        }
+        else
+        {
+            mixin LibraryImpl!GetProcAddress;
+        }
     }
 }
 else version (Posix)
