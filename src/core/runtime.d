@@ -371,6 +371,12 @@ else
     static assert(0, "unimplemented");
 }
 
+version (unittest) struct TestStruct
+{
+export:
+    static size_t func(string s) { return s.length; }
+    __gshared size_t var;
+}
 
 ///
 version (UseUnittest) unittest
@@ -385,32 +391,35 @@ version (UseUnittest) unittest
         scope (exit) lib.unloadLibrary();
     }
     assert(lib !is null);
-
-    auto load1 = lib.loadFunc!(Library function(const char[]))("core.runtime.loadLibrary");
-    auto load2 = lib.loadFunc!(Library function(const char[]), "core.runtime.loadLibrary")();
-    auto load3 = lib.loadFunc!loadLibrary();
+    auto load1 = lib.loadFunc!(size_t function(string))("core.runtime.TestStruct.func");
+    auto load2 = lib.loadFunc!(size_t function(string), "core.runtime.TestStruct.func")();
+    auto load3 = lib.loadFunc!(TestStruct.func)();
     assert(load1 is load2);
     assert(load2 is load3);
-    assert(load3 is &loadLibrary);
+    assert(load3 is &TestStruct.func);
 
-    auto var1 = lib.loadVar!(ModuleUnitTester)("core.runtime.Runtime.sm_moduleUnitTester");
-    auto var2 = lib.loadVar!(ModuleUnitTester, "core.runtime.Runtime.sm_moduleUnitTester")();
-    auto var3 = lib.loadVar!(Runtime.sm_moduleUnitTester)();
+    auto var1 = lib.loadVar!(size_t)("core.runtime.TestStruct.var");
+    auto var2 = lib.loadVar!(size_t, "core.runtime.TestStruct.var")();
+    auto var3 = lib.loadVar!(TestStruct.var)();
     assert(var1 is var2);
     assert(var2 is var3);
-    assert(var3 is &Runtime.sm_moduleUnitTester);
+    assert(var3 is &TestStruct.var);
 
     // can only load variables with linkage
-    __gshared uint num1 = 1;
-    static shared uint num2 = 2;
-    static const uint num3 = 3;
-    assert(*lib.loadVar!num1() == 1);
-    assert(*lib.loadVar!num2() == 2);
-    assert(*lib.loadVar!num3() == 3);
+    static struct Export
+    {
+    export:
+        __gshared uint num1 = 1;
+        static shared uint num2 = 2;
+        static const uint num3 = 3;
 
-    shared uint num4 = 4; // stack variables have no linkage
-    enum num5 = 5; // manifest constants have no linkage
-    static uint num6 = 6; // TLS variables have no linkage
+        shared uint num4 = 4; // stack variables have no linkage
+        enum num5 = 5; // manifest constants have no linkage
+        static uint num6 = 6; // TLS variables have no linkage
+    }
+    assert(*lib.loadVar!(Export.num1)() == 1);
+    assert(*lib.loadVar!(Export.num2)() == 2);
+    assert(*lib.loadVar!(Export.num3)() == 3);
 
     static assert(!__traits(compiles, lib.loadVar!num4()));
     static assert(!__traits(compiles, lib.loadVar!num5()));
