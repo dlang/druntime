@@ -277,6 +277,9 @@ else
     version = UseDecls;
 }
 
+// Workaround Bug 3956. Optlink strips leading underscores
+// of exported symbols. Except for the first one :(.
+version (Win32) export __gshared uint _dummy; // So that's the first one hopefully.
 
 /**
  * The Library struct represent a loaded library. It contains
@@ -350,45 +353,8 @@ version (CoreDdoc) struct Library
 
     private template hasLinkage(alias var) {}
 }
-else version (Windows)
-{
-    struct Library
-    {
-        import core.sys.windows.windows : GetProcAddress;
-        version (Win32)
-        {
-            // Workaround Bug 3956. Optlink strips leading underscores
-            // of exported symbols. Except for the first one :(.
-            export __gshared uint _dummy; // So that's the first one hopefully.
-            mixin LibraryImpl!(function(h, n) =>
-                GetProcAddress(h, n[0] == '_' && n[1] == 'D' ? n+1 : n));
-        }
-        else
-        {
-            mixin LibraryImpl!GetProcAddress;
-        }
-    }
-}
-else version (Posix)
-{
-    struct Library
-    {
-        import core.sys.posix.dlfcn : dlsym;
-        mixin LibraryImpl!dlsym;
-    }
-}
-else
-{
-    static assert(0, "unimplemented");
-}
 
-version (unittest) struct TestStruct
-{
-export:
-    static size_t func(string s) { return s.length; }
-    __gshared size_t var;
-}
-
+// example unittest needs to follow documentation (Bug 11133)
 ///
 version (UseUnittest) unittest
 {
@@ -425,7 +391,7 @@ version (UseUnittest) unittest
         static const uint num3 = 3;
 
         shared uint num4 = 4; // stack variables have no linkage
-        enum num5 = 5; // manifest constants have no linkage
+        enum num5 = 5;        // manifest constants have no linkage
         static uint num6 = 6; // TLS variables have no linkage
     }
     assert(*lib.loadVar!(Export.num1)() == 1);
@@ -436,6 +402,47 @@ version (UseUnittest) unittest
     static assert(!__traits(compiles, lib.loadVar!num5()));
     static assert(!__traits(compiles, lib.loadVar!num6()));
 }
+
+version (unittest) struct TestStruct
+{
+export:
+    static size_t func(string s) { return s.length; }
+    __gshared size_t var;
+}
+
+version (CoreDdoc) // see above unittest (Bug 11133)
+{
+}
+else version (Windows)
+{
+    struct Library
+    {
+        import core.sys.windows.windows : GetProcAddress;
+        version (Win32)
+        {
+            // Bug 3956 - optlink strips underscores
+            mixin LibraryImpl!(function(h, n) =>
+                GetProcAddress(h, n[0] == '_' && n[1] == 'D' ? n+1 : n));
+        }
+        else
+        {
+            mixin LibraryImpl!GetProcAddress;
+        }
+    }
+}
+else version (Posix)
+{
+    struct Library
+    {
+        import core.sys.posix.dlfcn : dlsym;
+        mixin LibraryImpl!dlsym;
+    }
+}
+else
+{
+    static assert(0, "unimplemented");
+}
+
 
 version (UseDecls)
 {
