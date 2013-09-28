@@ -1,4 +1,4 @@
-import core.runtime, core.sys.posix.dlfcn;
+import core.runtime;
 
 extern(C) alias RunDepTests = int function();
 
@@ -8,9 +8,9 @@ void main(string[] args)
     assert(name[$-13 .. $] == "/load_linkdep");
     name = name[0 .. $-12] ~ "liblinkdep.so";
 
-    auto h = .loadLibrary(name);
-    assert(h);
-    auto runDepTests = cast(RunDepTests)dlsym(h, "runDepTests");
+    auto lib = .loadLibrary(name);
+    assert(lib);
+    auto runDepTests = lib.loadFunc!(RunDepTests, "runDepTests")();
     assert(runDepTests());
-    assert(.unloadLibrary(h));
+    assert(lib.unloadLibrary());
 }
