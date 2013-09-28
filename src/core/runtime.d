@@ -512,13 +512,13 @@ private mixin template LibraryImpl(alias dlsym)
 
     T loadFunc(T:FT*, string fqn, FT)() if(is(FT == function))
     {
-        static const mangling = mangleFunc!(T)(fqn);
+        static const mangling = mangleFunc!(T)(fqn) ~ '\0';
         return cast(T)dlsym(handle, mangling.ptr);
     }
 
     typeof(func)* loadFunc(alias func)() if (is(typeof(func) == function))
     {
-        static const mangling = func.mangleof;
+        static const mangling = func.mangleof ~ '\0';
         return cast(typeof(func)*)dlsym(handle, mangling.ptr);
     }
 
@@ -531,13 +531,13 @@ private mixin template LibraryImpl(alias dlsym)
 
     T* loadVar(T, string fqn)()
     {
-        static const mangling = mangle!(T)(fqn);
+        static const mangling = mangle!(T)(fqn) ~ '\0';
         return cast(T*)dlsym(handle, mangling.ptr);
     }
 
     typeof(var)* loadVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var)
     {
-        static const mangling = var.mangleof;
+        static const mangling = var.mangleof ~ '\0';
         return cast(typeof(var)*)dlsym(handle, mangling.ptr);
     }
 
