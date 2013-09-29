@@ -617,16 +617,16 @@ in
 }
 body
 {
-    return _d_arrayextend(ti, newcapacity, newcapacity, p);
+    return _d_arrayextend(ti, newcapacity, newcapacity, true, p);
 }
 
 
 /**
 Works as $(D _d_arraysetcapacity) but also accepts desired capacity
-in $(D desCapacity).
+in $(D desCapacity) and ability to discard GC-allocated original array.
 */
 extern(C) size_t _d_arrayextend(const TypeInfo ti, size_t reqCapacity,
-                                size_t desCapacity, void[]* p)
+                                size_t desCapacity, bool keepOriginal, void[]* p)
 in
 {
     assert(ti);
@@ -639,6 +639,7 @@ body
     auto isshared = ti.classinfo is TypeInfo_Shared.classinfo;
     auto bic = !isshared ? __getBlkInfo((*p).ptr) : null;
     auto info = bic ? *bic : gc_query((*p).ptr);
+    assert(keepOriginal || !(*p).ptr || info.base, "May discard only GC-allocated original array.");
     auto size = ti.next.tsize;
     version (D_InlineAsm_X86)
     {
@@ -731,7 +732,7 @@ Lnodesoverflow:
     {
         curallocsize = curcapacity = offset = 0;
     }
-    debug(PRINTF) printf("_d_arrayextend, p = x%d,%d, reqCapacity=%d, desCapacity=%d, info.size=%d, reqsize=%d, dessize=%d, curallocsize=%d, curcapacity=%d, offset=%d\n", (*p).ptr, (*p).length, reqCapacity, desCapacity, info.size, reqsize, dessize, curallocsize, curcapacity, offset);
+    debug(PRINTF) printf("_d_arrayextend, p = x%d,%d, reqCapacity=%d, desCapacity=%d, keepOriginal=%d, info.size=%d, reqsize=%d, dessize=%d, curallocsize=%d, curcapacity=%d, offset=%d\n", (*p).ptr, (*p).length, reqCapacity, desCapacity, keepOriginal, info.size, reqsize, dessize, curallocsize, curcapacity, offset);
 
     if(curcapacity >= reqsize)
     {
@@ -757,6 +758,7 @@ Lnodesoverflow:
     // step 4, if extending doesn't work, allocate a new array with at least the requested allocated size.
     auto datasize = (*p).length * size;
     size_t allocSize = dessize + __arrayPad(dessize);
+    void* oldBase = info.base;
     // copy attributes from original block, or from the typeinfo if the
     // original block doesn't exist.
     const uint allocAttr = (info.base ? info.attr : (!(ti.next.flags & 1) ? BlkAttr.NO_SCAN : 0)) | BlkAttr.APPENDABLE;
@@ -770,8 +772,11 @@ Lnodesoverflow:
     auto tgt = __arrayStart(info);
     memcpy(tgt, (*p).ptr, datasize);
 
-    // handle postblit
-    __doPostblit(tgt, datasize, ti.next);
+    // handle postblit or free original block
+    if(keepOriginal)
+        __doPostblit(tgt, datasize, ti.next);
+    else if(oldBase)
+        gc_free(oldBase);
 
     if(!(info.attr & BlkAttr.NO_SCAN))
     {
