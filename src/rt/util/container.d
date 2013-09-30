@@ -358,11 +358,8 @@ private:
 
     static hash_t hashOf(in ref Key key)
     {
-        import rt.util.hash : hashOf;
-        static if (is(Key U : U[]))
-            return hashOf(cast(const ubyte*)key.ptr, key.length * key[0].sizeof);
-        else
-            return hashOf(cast(const ubyte*)&key, Key.sizeof);
+        static import core.internal.hash;
+        return core.internal.hash.hashOf(key);
     }
 
     @property hash_t mask() const
