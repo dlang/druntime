@@ -476,7 +476,21 @@ else version (Posix)
 {
     struct Library
     {
-        import core.sys.posix.dlfcn : dlsym;
+        version (Shared)
+        {
+            // Wrap dlsym in a D function to keep any dependency on
+            // libdl within druntime.
+            private static void* dlsym(void* handle, const char* name)
+            {
+                import core.sys.posix.dlfcn : dlsym;
+                return dlsym(handle, name);
+            }
+        }
+        else
+        {
+            private static void* dlsym(void* handle, const char* name);
+        }
+
         mixin LibraryImpl!dlsym;
     }
 }
