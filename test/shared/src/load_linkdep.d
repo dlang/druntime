@@ -9,8 +9,7 @@ void main(string[] args)
     name = name[0 .. $-12] ~ "liblinkdep.so";
 
     auto lib = .loadLib(name);
-    assert(lib);
+    scope (exit) lib.unloadLib();
     auto runDepTests = lib.loadFunc!(RunDepTests, "runDepTests")();
     assert(runDepTests());
-    assert(lib.unloadLib());
 }

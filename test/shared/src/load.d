@@ -3,7 +3,6 @@ import core.runtime, core.stdc.stdio, core.thread, core.sys.linux.dlfcn;
 Library openLib(string s)
 {
     auto h = .loadLib(s);
-    assert(h);
 
     import lib; // .di
 

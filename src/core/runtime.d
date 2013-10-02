@@ -172,7 +172,8 @@ struct Runtime
     deprecated("Please use core.runtime.unloadLib instead.")
     static void unloadLibrary()(void* handle)
     {
-        unloadLib(Library(handle));
+        auto lib = Library(handle);
+        unloadLib(lib);
     }
 
     /**
@@ -293,6 +294,9 @@ version (Win32) export __gshared uint _dummy; // So that's the first one hopeful
  */
 version (CoreDdoc) struct Library
 {
+    /// disabled default constructor
+    @disable this();
+
     /**
      * Constructs a Library from a native platform handle.
      *
@@ -359,9 +363,6 @@ version (CoreDdoc) struct Library
     /// Returns the native platform handle.
     @property void* handle();
 
-    /// Same as (lib.handle !is null), provided for convenience in conditional statements.
-    bool opCast(T:bool)();
-
 private:
     template hasLinkage(alias var) {}
 
@@ -381,7 +382,6 @@ version (UseUnittest) unittest
         auto lib = loadLib(null); // the executable
         scope (exit) lib.unloadLib();
     }
-    assert(lib);
     auto load1 = lib.loadFunc!(size_t function(string))("core.runtime.TestStruct.func");
     auto load2 = lib.loadFunc!(size_t function(string), "core.runtime.TestStruct.func")();
     auto load3 = lib.loadFunc!(TestStruct.func)();
@@ -417,11 +417,36 @@ version (UseUnittest) unittest
     static assert(!__traits(compiles, lib.loadVar!num6()));
 }
 
-version (unittest) struct TestStruct
+version (UseUnittest)
 {
-export:
-    static size_t func(string s) { return s.length; }
-    __gshared size_t var;
+    struct TestStruct
+    {
+    export:
+        static size_t func(string s) { return s.length; }
+        __gshared size_t var;
+    }
+
+    unittest
+    {
+        static bool throws(void delegate() dg)
+        {
+            try
+                dg();
+            catch (Throwable)
+                return true;
+            return false;
+        }
+        static assert(!__traits(compiles, {Library lib;}));
+        assert(throws({loadLib("nonexistent");}));
+
+        debug assert(throws({auto lib = Library(null);}));
+        version (Posix)
+        {
+            auto lib = loadLib(null);
+            lib.unloadLib();
+            debug assert(throws({lib.loadFunc!(TestStruct.func)();}));
+        }
+    }
 }
 
 version (CoreDdoc) // see above unittest (Bug 11133)
@@ -463,8 +488,7 @@ version (UseDecls)
     /**
      * Locates a dynamic library with the supplied library name and
      * dynamically loads it into the caller's address space. On error
-     * the internal handle of the returned Library will be null and library
-     * will test false.
+     * the function will throw an Exception.
      *
      * Params:
      *  name = The name of the dynamic library to load.
@@ -475,13 +499,13 @@ version (UseDecls)
     Library loadLib(in char[] name);
 
     /**
-     * Unloads the dynamic library referenced by p. This will set the
-     * internal handle to null.
+     * Unloads the dynamic library lib. This will set the internal
+     * handle to null. On error the function will throw an Exception.
      *
      * Params:
      *  lib = The library to unload.
      */
-    bool unloadLib(ref Library lib);
+    void unloadLib(ref Library lib);
 }
 else version (Windows)
 {
@@ -509,12 +533,30 @@ else version (Windows)
 
         buf[len] = '\0';
 
-        return Library(rt_loadLibraryW(buf));
+        auto res = rt_loadLibraryW(buf);
+        if (res is null)
+            loadError("Failed to load Library '"~name.idup~"'.");
+        return Library(res);
     }
 
-    bool unloadLib(Library lib)
+    void unloadLib(ref Library lib)
     {
-        return !!rt_unloadLibrary(lib.handle);
+        scope (exit) lib._handle = null;
+        if (!rt_unloadLibrary(lib.handle))
+            loadError("Failed to unload Library");
+    }
+
+    private void loadError(string msg)
+    {
+        if (auto err = GetLastError())
+        {
+            import core.stdc.stdio : snprintf;
+            char[10] buf=void;
+            immutable len = snprintf(buf.ptr, buf.length, "%u", err);
+            len > 0 && cast(size_t)len < buf.length || assert(0);
+            msg ~= " (Error Code: "~buf[0 .. len]~")";
+        }
+        throw new Exception(msg);
     }
 }
 else version (Shared)
@@ -522,6 +564,7 @@ else version (Shared)
     Library loadLib(in char[] name)
     {
         import core.stdc.stdlib : free, malloc;
+
         /* Need a 0-terminated C string for the dll name
          */
         immutable len = name.length;
@@ -532,12 +575,27 @@ else version (Shared)
         buf[0 .. len] = name[];
         buf[len] = 0;
 
-        return Library(rt_loadLibrary(buf));
+        auto res = rt_loadLibrary(buf);
+        if (res is null)
+            loadError("Failed to load Library '"~name.idup~"'.");
+        return Library(res);
     }
 
-    bool unloadLib(Library lib)
+    void unloadLib(ref Library lib)
     {
-        return !!rt_unloadLibrary(lib.handle);
+        scope (exit) lib._handle = null;
+        if (!rt_unloadLibrary(lib.handle))
+            loadError("Failed to unload Library.");
+    }
+
+    private void loadError(string msg)
+    {
+        import core.stdc.string : strlen;
+        import core.sys.posix.dlfcn : dlerror;
+
+        if (auto err = dlerror())
+            msg ~= " ("~err[0 .. strlen(err)]~")";
+        throw new Exception(msg);
     }
 }
 
@@ -546,6 +604,8 @@ else version (Shared)
 private mixin template LibraryImpl(alias dlsym)
 {
     import core.demangle : mangle, mangleFunc;
+
+    @disable this();
 
     this(void* handle)
     {
@@ -595,12 +655,12 @@ private mixin template LibraryImpl(alias dlsym)
         return _handle;
     }
 
-    bool opCast(T:bool)()
+    invariant()
     {
-        return handle !is null;
+        assert(_handle !is null);
     }
 
- private:
+private:
     template hasLinkage(alias var)
     {
         // TLS: cannot take address of thread-local variable var at compile time
