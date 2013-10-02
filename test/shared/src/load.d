@@ -2,8 +2,8 @@ import core.runtime, core.stdc.stdio, core.thread, core.sys.linux.dlfcn;
 
 Library openLib(string s)
 {
-    auto h = .loadLibrary(s);
-    assert(h !is null);
+    auto h = .loadLib(s);
+    assert(h);
 
     import lib; // .di
 
@@ -26,9 +26,9 @@ Library openLib(string s)
     return h;
 }
 
-void closeLib(void* h)
+void closeLib(Library lib)
 {
-    .unloadLibrary(h);
+    .unloadLib(lib);
 }
 
 __gshared

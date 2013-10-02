@@ -8,9 +8,9 @@ void main(string[] args)
     assert(name[$-13 .. $] == "/load_linkdep");
     name = name[0 .. $-12] ~ "liblinkdep.so";
 
-    auto lib = .loadLibrary(name);
+    auto lib = .loadLib(name);
     assert(lib);
     auto runDepTests = lib.loadFunc!(RunDepTests, "runDepTests")();
     assert(runDepTests());
-    assert(lib.unloadLibrary());
+    assert(lib.unloadLib());
 }

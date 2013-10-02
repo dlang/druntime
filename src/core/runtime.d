@@ -17,11 +17,11 @@ module core.runtime;
 version (Windows) import core.stdc.wchar_ : wchar_t;
 
 
-/// C interface for loadLibrary
+/// C interface for Runtime.loadLibrary
 extern (C) void* rt_loadLibrary(const char* name);
 /// ditto
 version (Windows) extern (C) void* rt_loadLibraryW(const wchar_t* name);
-/// C interface for unloadLibrary
+/// C interface for Runtime.unloadLibrary
 extern (C) int rt_unloadLibrary(void* ptr);
 
 private
@@ -161,13 +161,19 @@ struct Runtime
         return rt_cArgs();
     }
 
-    /// deprecated alias for $(LREF .&#108;oadLibrary)
-    deprecated("Please use core.runtime.loadLibrary instead.")
-    alias loadLibrary = .loadLibrary;
+    /// deprecated, same as $(LREF .loadLib) but returns a raw handle.
+    deprecated("Please use core.runtime.loadLib instead.")
+    static void* loadLibrary()(in char[] name)
+    {
+        return loadLib(name).handle;
+    }
 
-    /// deprecated alias for $(LREF .&#117;nloadLibrary)
-    deprecated("Please use core.runtime.unloadLibrary instead.")
-    alias unloadLibrary = .unloadLibrary;
+    /// deprecated, same as $(LREF .unloadLib) but take a raw handle.
+    deprecated("Please use core.runtime.unloadLib instead.")
+    static void unloadLibrary()(void* handle)
+    {
+        unloadLib(Library(handle));
+    }
 
     /**
      * Overrides the default trace mechanism with s user-supplied version.  A
@@ -282,14 +288,19 @@ else
 version (Win32) export __gshared uint _dummy; // So that's the first one hopefully.
 
 /**
- * The Library struct represent a loaded library. It contains
- * functionality to load symbols and perform runtime introspection
- * of the library. It sub-types the native platform handle so on
- * top of the provided functionality it can be used with C
- * functions like GetProcAddress or dlvsym.
+ * The Library struct is a loaded library. It contains functionality
+ * to load symbols and perform runtime introspection of the library.
  */
 version (CoreDdoc) struct Library
 {
+    /**
+     * Constructs a Library from a native platform handle.
+     *
+     * Params:
+     *   handle = The native platform handle.
+     */
+    this(void* handle);
+
     /**
      * Loads a pointer to a function with type FT and fully
      * qualified name fqn from this library. For extern(C)
@@ -345,13 +356,16 @@ version (CoreDdoc) struct Library
      */
     typeof(var)* loadVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var);
 
-    /// Library is a sub-types of the platform handle.
-    alias handle this;
+    /// Returns the native platform handle.
+    @property void* handle();
 
-    /// The native platform handle.
-    void* handle;
+    /// Same as (lib.handle !is null), provided for convenience in conditional statements.
+    bool opCast(T:bool)();
 
-    private template hasLinkage(alias var) {}
+private:
+    template hasLinkage(alias var) {}
+
+    void* _handle;
 }
 
 // example unittest needs to follow documentation (Bug 11133)
@@ -364,10 +378,10 @@ version (UseUnittest) unittest
     }
     else
     {
-        auto lib = loadLibrary(null); // the executable
-        scope (exit) lib.unloadLibrary();
+        auto lib = loadLib(null); // the executable
+        scope (exit) lib.unloadLib();
     }
-    assert(lib !is null);
+    assert(lib);
     auto load1 = lib.loadFunc!(size_t function(string))("core.runtime.TestStruct.func");
     auto load2 = lib.loadFunc!(size_t function(string), "core.runtime.TestStruct.func")();
     auto load3 = lib.loadFunc!(TestStruct.func)();
@@ -447,28 +461,31 @@ else
 version (UseDecls)
 {
     /**
-     * Locates a dynamic library with the supplied library name and dynamically
-     * loads it into the caller's address space.
+     * Locates a dynamic library with the supplied library name and
+     * dynamically loads it into the caller's address space. On error
+     * the internal handle of the returned Library will be null and library
+     * will test false.
      *
      * Params:
      *  name = The name of the dynamic library to load.
      *
      * Returns:
-     *  A reference to the library or null on error.
+     *  The loaded Library.
      */
-    Library loadLibrary(in char[] name);
+    Library loadLib(in char[] name);
 
     /**
-     * Unloads the dynamic library referenced by p.
+     * Unloads the dynamic library referenced by p. This will set the
+     * internal handle to null.
      *
      * Params:
-     *  p = A reference to the library to unload.
+     *  lib = The library to unload.
      */
-    bool unloadLibrary(void* p);
+    bool unloadLib(ref Library lib);
 }
 else version (Windows)
 {
-    Library loadLibrary(in char[] name)
+    Library loadLib(in char[] name)
     {
         import core.stdc.stdlib : free, malloc;
         import core.sys.windows.windows;
@@ -495,14 +512,14 @@ else version (Windows)
         return Library(rt_loadLibraryW(buf));
     }
 
-    bool unloadLibrary(void* p)
+    bool unloadLib(Library lib)
     {
-        return !!rt_unloadLibrary(p);
+        return !!rt_unloadLibrary(lib.handle);
     }
 }
 else version (Shared)
 {
-    Library loadLibrary(in char[] name)
+    Library loadLib(in char[] name)
     {
         import core.stdc.stdlib : free, malloc;
         /* Need a 0-terminated C string for the dll name
@@ -518,9 +535,9 @@ else version (Shared)
         return Library(rt_loadLibrary(buf));
     }
 
-    bool unloadLibrary(void* p)
+    bool unloadLib(Library lib)
     {
-        return !!rt_unloadLibrary(p);
+        return !!rt_unloadLibrary(lib.handle);
     }
 }
 
@@ -529,6 +546,11 @@ else version (Shared)
 private mixin template LibraryImpl(alias dlsym)
 {
     import core.demangle : mangle, mangleFunc;
+
+    this(void* handle)
+    {
+        _handle = handle;
+    }
 
     T loadFunc(T:FT*, FT)(string fqn) if(is(FT == function))
     {
@@ -568,8 +590,15 @@ private mixin template LibraryImpl(alias dlsym)
         return cast(typeof(var)*)dlsym(handle, mangling.ptr);
     }
 
-    void* handle;
-    alias handle this;
+    @property void* handle()
+    {
+        return _handle;
+    }
+
+    bool opCast(T:bool)()
+    {
+        return handle !is null;
+    }
 
  private:
     template hasLinkage(alias var)
@@ -589,6 +618,8 @@ private mixin template LibraryImpl(alias dlsym)
         buf.ptr[nulpos] = 0;
         return buf.ptr;
     }
+
+    void* _handle;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
