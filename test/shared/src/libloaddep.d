@@ -8,7 +8,7 @@ extern(C) int runDepTests(const char* name)
     {
         auto lib = .loadLib(name[0 .. strlen(name)]);
         scope (exit) lib.unloadLib();
-        auto runTests = lib.loadFunc!(RunTests, "runTests")();
+        auto runTests = lib.findFunc!(RunTests, "runTests")();
         if (runTests !is null && runTests())
             return true;
     }

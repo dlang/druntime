@@ -306,59 +306,62 @@ version (CoreDdoc) struct Library
     this(void* handle);
 
     /**
-     * Loads a pointer to a function with type FT and fully
-     * qualified name fqn from this library. For extern(C)
-     * functions fqn is the plain name.
+     * Tries to locate a function with type FT and fully qualified
+     * name fqn in this library.  For extern(C) functions fqn is the
+     * plain function name.
      *
      * Params:
      *   T = The function pointer type.
      *   fqn = The fully qualified name of the function.
      *
      * Returns:
-     *   The loaded function pointer on success or null.
+     *   A pointer to the function on success or null.
      */
-    T loadFunc(T:FT*, FT)(string fqn) if(is(FT == function));
+    T findFunc(T:FT*, FT)(string fqn) if(is(FT == function));
 
     /// ditto
-    T loadFunc(T:FT*, string fqn, FT)() if(is(FT == function));
+    T findFunc(T:FT*, string fqn, FT)() if(is(FT == function));
 
     /**
-     * Loads a pointer to a function using a declaration from a .di file.
+     * Tries to locate a function in this library using the type and
+     * fully qualified name of a .di file declaration.
      *
      * Params:
      *   func = An alias to the function declaration.
      *
      * Returns:
-     *   The loaded function pointer on success or null.
+     *   A pointer to the function on success or null.
      */
-    typeof(func)* loadFunc(alias func)() if (is(typeof(func) == function));
+    typeof(func)* findFunc(alias func)() if (is(typeof(func) == function));
 
     /**
-     * Loads a pointer to a variable with type T and fully
-     * qualified name fqn from this library.
+     * Tries to locate a variable with type T and fully qualified name
+     * fqn in this library.  For extern(C) variables fqn is the
+     * plain variable name.
      *
      * Params:
      *   T = The variable type.
      *   fqn = The fully qualified name of the variable.
      *
      * Returns:
-     *   The loaded variable pointer on success or null.
+     *   A pointer to the variable on success or null.
      */
-    T* loadVar(T)(string fqn);
+    T* findVar(T)(string fqn);
 
     /// ditto
-    T* loadVar(T, string fqn)();
+    T* findVar(T, string fqn)();
 
     /**
-     * Loads a pointer to a variable using a declaration from a .di file.
+     * Tries to locate a variable in this library using the type and
+     * fully qualified name of a .di file declaration.
      *
      * Params:
      *   var = An alias to the variable declaration.
      *
      * Returns:
-     *   The loaded variable pointer on success or null.
+     *   A pointer to the variable on success or null.
      */
-    typeof(var)* loadVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var);
+    typeof(var)* findVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var);
 
     /// Returns the native platform handle.
     @property void* handle();
@@ -382,16 +385,16 @@ version (UseUnittest) unittest
         auto lib = loadLib(null); // the executable
         scope (exit) lib.unloadLib();
     }
-    auto load1 = lib.loadFunc!(size_t function(string))("core.runtime.TestStruct.func");
-    auto load2 = lib.loadFunc!(size_t function(string), "core.runtime.TestStruct.func")();
-    auto load3 = lib.loadFunc!(TestStruct.func)();
+    auto load1 = lib.findFunc!(size_t function(string))("core.runtime.TestStruct.func");
+    auto load2 = lib.findFunc!(size_t function(string), "core.runtime.TestStruct.func")();
+    auto load3 = lib.findFunc!(TestStruct.func)();
     assert(load1 is load2);
     assert(load2 is load3);
     assert(load3 is &TestStruct.func);
 
-    auto var1 = lib.loadVar!(size_t)("core.runtime.TestStruct.var");
-    auto var2 = lib.loadVar!(size_t, "core.runtime.TestStruct.var")();
-    auto var3 = lib.loadVar!(TestStruct.var)();
+    auto var1 = lib.findVar!(size_t)("core.runtime.TestStruct.var");
+    auto var2 = lib.findVar!(size_t, "core.runtime.TestStruct.var")();
+    auto var3 = lib.findVar!(TestStruct.var)();
     assert(var1 is var2);
     assert(var2 is var3);
     assert(var3 is &TestStruct.var);
@@ -408,13 +411,13 @@ version (UseUnittest) unittest
         enum num5 = 5;        // manifest constants have no linkage
         static uint num6 = 6; // TLS variables have no linkage
     }
-    assert(*lib.loadVar!(Export.num1)() == 1);
-    assert(*lib.loadVar!(Export.num2)() == 2);
-    assert(*lib.loadVar!(Export.num3)() == 3);
+    assert(*lib.findVar!(Export.num1)() == 1);
+    assert(*lib.findVar!(Export.num2)() == 2);
+    assert(*lib.findVar!(Export.num3)() == 3);
 
-    static assert(!__traits(compiles, lib.loadVar!num4()));
-    static assert(!__traits(compiles, lib.loadVar!num5()));
-    static assert(!__traits(compiles, lib.loadVar!num6()));
+    static assert(!__traits(compiles, lib.findVar!num4()));
+    static assert(!__traits(compiles, lib.findVar!num5()));
+    static assert(!__traits(compiles, lib.findVar!num6()));
 }
 
 version (UseUnittest)
@@ -444,7 +447,7 @@ version (UseUnittest)
         {
             auto lib = loadLib(null);
             lib.unloadLib();
-            debug assert(throws({lib.loadFunc!(TestStruct.func)();}));
+            debug assert(throws({lib.findFunc!(TestStruct.func)();}));
         }
     }
 }
@@ -612,39 +615,39 @@ private mixin template LibraryImpl(alias dlsym)
         _handle = handle;
     }
 
-    T loadFunc(T:FT*, FT)(string fqn) if(is(FT == function))
+    T findFunc(T:FT*, FT)(string fqn) if(is(FT == function))
     {
         char[256] buf = void;
         auto mangling = mangleFunc!(T)(fqn, buf);
         return cast(T)dlsym(handle, toStringz(mangling, buf.length));
     }
 
-    T loadFunc(T:FT*, string fqn, FT)() if(is(FT == function))
+    T findFunc(T:FT*, string fqn, FT)() if(is(FT == function))
     {
         static const mangling = mangleFunc!(T)(fqn) ~ '\0';
         return cast(T)dlsym(handle, mangling.ptr);
     }
 
-    typeof(func)* loadFunc(alias func)() if (is(typeof(func) == function))
+    typeof(func)* findFunc(alias func)() if (is(typeof(func) == function))
     {
         static const mangling = func.mangleof ~ '\0';
         return cast(typeof(func)*)dlsym(handle, mangling.ptr);
     }
 
-    T* loadVar(T)(string fqn)
+    T* findVar(T)(string fqn)
     {
         char[256] buf = void;
         auto mangling = mangle!(T)(fqn, buf);
         return cast(T*)dlsym(handle, toStringz(mangling, buf.length));
     }
 
-    T* loadVar(T, string fqn)()
+    T* findVar(T, string fqn)()
     {
         static const mangling = mangle!(T)(fqn) ~ '\0';
         return cast(T*)dlsym(handle, mangling.ptr);
     }
 
-    typeof(var)* loadVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var)
+    typeof(var)* findVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var)
     {
         static const mangling = var.mangleof ~ '\0';
         return cast(typeof(var)*)dlsym(handle, mangling.ptr);

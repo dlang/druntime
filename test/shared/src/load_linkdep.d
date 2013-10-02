@@ -10,6 +10,6 @@ void main(string[] args)
 
     auto lib = .loadLib(name);
     scope (exit) lib.unloadLib();
-    auto runDepTests = lib.loadFunc!(RunDepTests, "runDepTests")();
+    auto runDepTests = lib.findFunc!(RunDepTests, "runDepTests")();
     assert(runDepTests());
 }

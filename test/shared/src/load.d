@@ -6,21 +6,21 @@ Library openLib(string s)
 
     import lib; // .di
 
-    libThrowException = h.loadFunc!throwException();
-    libCollectException = h.loadFunc!collectException();
+    libThrowException = h.findFunc!throwException();
+    libCollectException = h.findFunc!collectException();
 
-    libAlloc = h.loadFunc!alloc();
-    libAccess = h.loadFunc!access();
-    libFree = h.loadFunc!free();
+    libAlloc = h.findFunc!alloc();
+    libAccess = h.findFunc!access();
+    libFree = h.findFunc!free();
 
-    libTlsAlloc = h.loadFunc!tls_alloc();
-    libTlsAccess = h.loadFunc!tls_access();
-    libTlsFree = h.loadFunc!tls_free();
+    libTlsAlloc = h.findFunc!tls_alloc();
+    libTlsAccess = h.findFunc!tls_access();
+    libTlsFree = h.findFunc!tls_free();
 
-    libSharedStaticCtor = h.loadVar!shared_static_ctor();
-    libSharedStaticDtor = h.loadVar!shared_static_dtor();
-    libStaticCtor = h.loadVar!static_ctor();
-    libStaticDtor = h.loadVar!static_dtor();
+    libSharedStaticCtor = h.findVar!shared_static_ctor();
+    libSharedStaticDtor = h.findVar!shared_static_dtor();
+    libStaticCtor = h.findVar!static_ctor();
+    libStaticDtor = h.findVar!static_dtor();
 
     return h;
 }

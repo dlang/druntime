@@ -8,6 +8,6 @@ void main(string[] args)
     auto libloaddep = root ~ "libloaddep.so";
     auto lib = .loadLib(libloaddep);
     scope (exit) lib.unloadLib();
-    auto runDepTests = lib.loadFunc!(RunDepTests, "runDepTests")();
+    auto runDepTests = lib.findFunc!(RunDepTests, "runDepTests")();
     assert(runDepTests((root ~ "lib.so\0").ptr));
 }
