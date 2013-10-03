@@ -24,10 +24,10 @@ class TypeInfo_Af : TypeInfo_Array
 
     override string toString() const { return "float[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         float[] s = *cast(float[]*)p;
-        return s.hashOf();
+        return s.hashOf(seed);
     }
 
     override bool equals(in void* p1, in void* p2) const

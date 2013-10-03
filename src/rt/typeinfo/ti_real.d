@@ -48,9 +48,9 @@ class TypeInfo_e : TypeInfo
 
     override string toString() const pure nothrow @safe { return "real"; }
 
-    override size_t getHash(in void* p)
+    override size_t getHash(in void* p, size_t seed = 0)
     {
-        return hashOf(*cast(real*)p);
+        return hashOf(*cast(real*)p, seed);
     }
 
     override bool equals(in void* p1, in void* p2)

@@ -247,7 +247,7 @@ class TypeInfo
     }
 
     /// Returns a hash of the instance of a type.
-    size_t getHash(in void* p) @trusted nothrow const { return cast(size_t)p; }
+    size_t getHash(in void* p, size_t seed = 0) @trusted nothrow const { assert(0); }
 
     /// Compares two instances for equality.
     bool equals(in void* p1, in void* p2) const { return p1 == p2; }
@@ -320,7 +320,7 @@ class TypeInfo_Typedef : TypeInfo
                     this.base == c.base;
     }
 
-    override size_t getHash(in void* p) const { return base.getHash(p); }
+    override size_t getHash(in void* p, size_t seed = 0) const { return base.getHash(p, seed); }
     override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
     override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
@@ -361,9 +361,9 @@ class TypeInfo_Pointer : TypeInfo
         return c && this.m_next == c.m_next;
     }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
-        return hashOf(*cast(void**)p);
+        return hashOf(*cast(void**)p, seed);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -411,9 +411,9 @@ class TypeInfo_Array : TypeInfo
         return c && this.value == c.value;
     }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
-        return daGetHash(p, this);
+        return daGetHash(p, this, seed);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -500,9 +500,9 @@ class TypeInfo_StaticArray : TypeInfo
                     this.value == c.value;
     }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
-        return saGetHash(p, this);
+        return saGetHash(p, this, seed);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -619,9 +619,9 @@ class TypeInfo_AssociativeArray : TypeInfo
         return !!_aaEqual(this, *cast(const void**) p1, *cast(const void**) p2);
     }
 
-    override hash_t getHash(in void* p) nothrow @trusted const
+    override hash_t getHash(in void* p, size_t seed = 0) nothrow @trusted const
     {
-        return aaGetHash(p, this); 
+        return aaGetHash(p, this, seed); 
     }
 
     // BUG: need to add the rest of the functions
@@ -663,7 +663,7 @@ class TypeInfo_Vector : TypeInfo
         return c && this.base == c.base;
     }
 
-    override size_t getHash(in void* p) const { return base.getHash(p); }
+    override size_t getHash(in void* p, size_t seed = 0) const { return base.getHash(p, seed); }
     override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
     override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
@@ -698,10 +698,10 @@ class TypeInfo_Function : TypeInfo
         return c && this.deco == c.deco;
     }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         alias int function() fn;
-        return hashOf(*cast(fn*)p);
+        return hashOf(*cast(fn*)p, seed);
     }
 
     // BUG: need to add the rest of the functions
@@ -730,10 +730,10 @@ class TypeInfo_Delegate : TypeInfo
         return c && this.deco == c.deco;
     }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         alias int delegate() dg;
-        return hashOf(*cast(dg*)p);
+        return hashOf(*cast(dg*)p, seed);
     }
 
     // BUG: need to add the rest of the functions
@@ -780,10 +780,10 @@ class TypeInfo_Class : TypeInfo
         return c && this.info.name == c.info.name;
     }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         auto o = *cast(Object*)p;
-        return o.hashOf();
+        return hashOf(o, seed);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -911,9 +911,9 @@ class TypeInfo_Interface : TypeInfo
         return c && this.info.name == c.classinfo.name;
     }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
-        return interfaceGetHash(p); 
+        return interfaceGetHash(p, seed); 
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -973,9 +973,9 @@ class TypeInfo_Struct : TypeInfo
                     this.init().length == s.init().length;
     }
 
-    override size_t getHash(in void* p) @safe pure nothrow const
+    override size_t getHash(in void* p, size_t seed = 0) @safe pure nothrow const
     {
-        return structGetHash(p, this); 
+        return structGetHash(p, this, seed); 
     }
 
     override bool equals(in void* p1, in void* p2) @trusted pure nothrow const
@@ -1120,7 +1120,7 @@ class TypeInfo_Tuple : TypeInfo
         return false;
     }
 
-    override size_t getHash(in void* p) const
+    override size_t getHash(in void* p, size_t seed = 0) const
     {
         assert(0);
     }
@@ -1186,7 +1186,7 @@ class TypeInfo_Const : TypeInfo
         return base.opEquals(t.base);
     }
 
-    override size_t getHash(in void *p) const { return base.getHash(p); }
+    override size_t getHash(in void *p, size_t seed = 0) const { return base.getHash(p, seed); }
     override bool equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
     override int compare(in void *p1, in void *p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
@@ -1924,7 +1924,6 @@ extern (C)
 
     void* _d_assocarrayliteralT(TypeInfo_AssociativeArray ti, in size_t length, ...);
     int _aaEqual(in TypeInfo tiRaw, in void* e1, in void* e2);
-    hash_t _aaGetHash(in void* aa, in TypeInfo tiRaw) nothrow;
 }
 
 private template _Unqual(T)

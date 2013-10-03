@@ -24,10 +24,10 @@ class TypeInfo_C : TypeInfo
     //pure:
     //nothrow:
 
-    override size_t getHash(in void* p)
+    override size_t getHash(in void* p, size_t seed = 0)
     {
         Object o = *cast(Object*)p;
-        return o.hashOf();
+        return o.hashOf(seed);
     }
 
     override bool equals(in void* p1, in void* p2)

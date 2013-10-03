@@ -23,10 +23,10 @@ class TypeInfo_AC : TypeInfo_Array
 
     override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         Object[] s = *cast(Object[]*)p;
-        return s.hashOf();
+        return hashOf(s, seed);
     }
 
     override bool equals(in void* p1, in void* p2) const

@@ -26,9 +26,9 @@ class TypeInfo_l : TypeInfo
 
     override string toString() const pure nothrow @safe { return "long"; }
 
-    override size_t getHash(in void* p)
+    override size_t getHash(in void* p, size_t seed = 0)
     {
-        return hashOf(*cast(long*)p);
+        return hashOf(*cast(long*)p, seed);
     }
 
     override bool equals(in void* p1, in void* p2)

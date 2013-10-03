@@ -24,10 +24,10 @@ class TypeInfo_Ar : TypeInfo_Array
 
     override string toString() const { return "cdouble[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         cdouble[] s = *cast(cdouble[]*)p;
-        return s.hashOf();
+        return s.hashOf(seed);
     }
 
     override bool equals(in void* p1, in void* p2) const

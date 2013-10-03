@@ -25,10 +25,10 @@ class TypeInfo_Ag : TypeInfo_Array
 
     override string toString() const { return "byte[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         byte[] s = *cast(byte[]*)p;
-        return s.hashOf();
+        return s.hashOf(seed);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -118,10 +118,10 @@ class TypeInfo_Aa : TypeInfo_Ah
 {
     override string toString() const { return "char[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         char[] s = *cast(char[]*)p;
-        return s.hashOf();
+        return s.hashOf(seed);
     }
 
     override @property inout(TypeInfo) next() inout
