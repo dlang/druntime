@@ -561,7 +561,7 @@ void __insertBlkInfoCache(BlkInfo bi, BlkInfo *curpos) nothrow
  * It doesn't matter what the current allocated length of the array is, the
  * user is telling the runtime that he knows what he is doing.
  */
-extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr)
+extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) nothrow
 {
     // note, we do not care about shared.  We are setting the length no matter
     // what, so no lock is required.
