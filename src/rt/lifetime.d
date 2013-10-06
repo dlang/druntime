@@ -236,21 +236,31 @@ private class ArrayAllocLengthLock
 
   where elem0 starts 16 bytes after the first byte.
   */
-bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, size_t oldlength = ~0)
+bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, size_t oldlength) pure
 {
+    mixin(__setArrayAllocLengthImpl);
+}
+/// ditto
+bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool /+isshared+/) nothrow pure
+{
+    mixin(__setArrayAllocLengthImpl);
+}
+
+enum __setArrayAllocLengthImpl =
+q{
     if(info.size <= 256)
     {
         if(newlength + SMALLPAD > info.size)
             // new size does not fit inside block
             return false;
         auto length = cast(ubyte *)(info.base + info.size - SMALLPAD);
-        if(oldlength != ~0)
+        static if(is(typeof(oldlength)))
         {
             if(isshared)
             {
                 synchronized(typeid(ArrayAllocLengthLock))
                 {
-                    if(*length == cast(ubyte)oldlength)
+                    if(*length == oldlength)
                         *length = cast(ubyte)newlength;
                     else
                         return false;
@@ -258,7 +268,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
             }
             else
             {
-                if(*length == cast(ubyte)oldlength)
+                if(*length == oldlength)
                     *length = cast(ubyte)newlength;
                 else
                     return false;
@@ -276,7 +286,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
             // new size does not fit inside block
             return false;
         auto length = cast(ushort *)(info.base + info.size - MEDPAD);
-        if(oldlength != ~0)
+        static if(is(typeof(oldlength)))
         {
             if(isshared)
             {
@@ -308,14 +318,14 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
             // new size does not fit inside block
             return false;
         auto length = cast(size_t *)(info.base);
-        if(oldlength != ~0)
+        static if(is(typeof(oldlength)))
         {
             if(isshared)
             {
                 synchronized(typeid(ArrayAllocLengthLock))
                 {
                     if(*length == oldlength)
-                        *length = newlength;
+                        *length = cast(size_t)newlength;
                     else
                         return false;
                 }
@@ -323,7 +333,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
             else
             {
                 if(*length == oldlength)
-                    *length = newlength;
+                    *length = cast(size_t)newlength;
                 else
                     return false;
             }
@@ -335,7 +345,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
         }
     }
     return true; // resize succeeded
-}
+};
 
 /**
   get the start of the array for the given block
