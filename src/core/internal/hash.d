@@ -589,8 +589,14 @@ version(none)
                 if (!__ctfe)
                     return *cast(ushort*) x;
             }
-
-            return ((cast(uint) x[1]) << 8) + (cast(uint) x[0]);
+            version(BigEndian)
+            {
+                return ((cast(uint) x[0]) << 8) + (cast(uint) x[1]);
+            }
+            else
+            {
+                return ((cast(uint) x[1]) << 8) + (cast(uint) x[0]);
+            }
         }
 
         // NOTE: SuperFastHash normally starts with a zero hash value.  The seed
@@ -660,10 +666,23 @@ else
         //-----------------------------------------------------------------------------
         // Block read - if your platform needs to do endian-swapping or can only
         // handle aligned reads, do the conversion here
-        static uint get32bitsCTFE(const (ubyte)* x) pure nothrow
+        static uint get32bits(const (ubyte)* x) pure nothrow
         {
-            return ((cast(uint) x[3]) << 24) | ((cast(uint) x[2]) << 16) | ((cast(uint) x[1]) << 8) | (cast(uint) x[0]);
-        }  
+            version(HasUnalignedOps)
+            {
+                if (!__ctfe)
+                    return *cast(uint*)x;
+            }
+            
+            version(BigEndian)
+            {
+                return ((cast(uint) x[0]) << 24) | ((cast(uint) x[1]) << 16) | ((cast(uint) x[2]) << 8) | (cast(uint) x[3]);
+            }
+            else
+            {
+                return ((cast(uint) x[3]) << 24) | ((cast(uint) x[2]) << 16) | ((cast(uint) x[1]) << 8) | (cast(uint) x[0]); 
+            }
+        } 
 
         //-----------------------------------------------------------------------------
         // Finalization mix - force all bits of a hash block to avalanche
@@ -692,7 +711,7 @@ else
         auto end_data = data+nblocks*uint.sizeof;
         for(; data!=end_data; data += uint.sizeof)
         {
-            uint k1 = __ctfe ? get32bitsCTFE(data) : *cast(uint*)data;
+            uint k1 = get32bits(data);
             k1 *= c1;
             k1 = rotl32(k1,15);
             k1 *= c2;
@@ -746,7 +765,7 @@ unittest
 
 
 
- //   Compute hash value of UTF-8 string.
+//    Compute hash value of UTF-8 string.
 //    Should be reworked in future.
 @trusted pure nothrow
 private size_t stringHash(in char[] arr, size_t seed = 0)
@@ -774,7 +793,7 @@ private template Unqual(T)
     else                                        alias T Unqual;
 }
 
-//  all toUbyte funtions must be evaluatable at compile time
+//  all toUbyte functions must be evaluable at compile time
 @trusted pure nothrow
 private const(ubyte)[] toUbyte(T)(T[] arr) if (T.sizeof == 1)
 {
@@ -795,7 +814,7 @@ private const(ubyte)[] toUbyte(T)(T[] arr) if (is(typeof(toUbyte(arr[0])) == con
     }
     else
     {
-        return cast(const(ubyte)[])cast(const(void)[])arr;
+        return (cast(const(ubyte)*)(arr.ptr))[0 .. T.sizeof*arr.length];
     }
 }
 
@@ -810,7 +829,7 @@ private const(ubyte)[] toUbyte(T)(ref T val) if (__traits(isIntegral, T) && !is(
         }
         else
         {
-            return cast(const(ubyte)[])((&val)[0..1]);
+            return (cast(const(ubyte)*)(&val))[0 .. T.sizeof];
         }
     }
     else if (__ctfe)
@@ -831,7 +850,7 @@ private const(ubyte)[] toUbyte(T)(ref T val) if (__traits(isIntegral, T) && !is(
     }
     else
     {
-        return cast(const(ubyte)[])cast(const(void)[])((&val)[0..1]);
+        return (cast(const(ubyte)*)(&val))[0 .. T.sizeof];
     }
 }
 
