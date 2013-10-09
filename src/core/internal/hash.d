@@ -582,13 +582,6 @@ version(none)
          */
         static uint get16bits( const (ubyte)* x ) pure nothrow
         {
-            // CTFE doesn't support casting ubyte* -> ushort*, so revert to
-            // per-byte access when in CTFE.
-            version( HasUnalignedOps )
-            {
-                if (!__ctfe)
-                    return *cast(ushort*) x;
-            }
             version(BigEndian)
             {
                 return ((cast(uint) x[0]) << 8) + (cast(uint) x[1]);
@@ -668,12 +661,7 @@ else
         // handle aligned reads, do the conversion here
         static uint get32bits(const (ubyte)* x) pure nothrow
         {
-            version(HasUnalignedOps)
-            {
-                if (!__ctfe)
-                    return *cast(uint*)x;
-            }
-            
+			//Compiler can optimize this code to simple *cast(uint*)x if it possible.
             version(BigEndian)
             {
                 return ((cast(uint) x[0]) << 24) | ((cast(uint) x[1]) << 16) | ((cast(uint) x[2]) << 8) | (cast(uint) x[3]);
