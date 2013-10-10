@@ -22,7 +22,7 @@ extern (C) void* rt_loadLibrary(const char* name);
 /// ditto
 version (Windows) extern (C) void* rt_loadLibraryW(const wchar_t* name);
 /// C interface for Runtime.unloadLibrary
-extern (C) bool  rt_unloadLibrary(void* ptr);
+extern (C) int rt_unloadLibrary(void* ptr);
 
 private
 {
@@ -175,75 +175,20 @@ struct Runtime
         return rt_cArgs();
     }
 
-    /**
-     * Locates a dynamic library with the supplied library name and dynamically
-     * loads it into the caller's address space.  If the library contains a D
-     * runtime it will be integrated with the current runtime.
-     *
-     * Params:
-     *  name = The name of the dynamic library to load.
-     *
-     * Returns:
-     *  A reference to the library or null on error.
-     */
+    /// deprecated, same as $(LREF .loadLib) but returns a raw handle.
+    deprecated("Please use core.runtime.loadLib instead.")
     static void* loadLibrary()(in char[] name)
     {
-        import core.stdc.stdlib : free, malloc;
-        version (Windows)
-        {
-            import core.sys.windows.windows;
-
-            if (name.length == 0) return null;
-            // Load a DLL at runtime
-            enum CP_UTF8 = 65001;
-            auto len = MultiByteToWideChar(
-                CP_UTF8, 0, name.ptr, cast(int)name.length, null, 0);
-            if (len == 0)
-                return null;
-
-            auto buf = cast(wchar_t*)malloc((len+1) * wchar_t.sizeof);
-            if (buf is null) return null;
-            scope (exit) free(buf);
-
-            len = MultiByteToWideChar(
-                CP_UTF8, 0, name.ptr, cast(int)name.length, buf, len);
-            if (len == 0)
-                return null;
-
-            buf[len] = '\0';
-
-            return rt_loadLibraryW(buf);
-        }
-        else version (Posix)
-        {
-            /* Need a 0-terminated C string for the dll name
-             */
-            immutable len = name.length;
-            auto buf = cast(char*)malloc(len + 1);
-            if (!buf) return null;
-            scope (exit) free(buf);
-
-            buf[0 .. len] = name[];
-            buf[len] = 0;
-
-            return rt_loadLibrary(buf);
-        }
+        return loadLib(name).handle;
     }
 
-
-    /**
-     * Unloads the dynamic library referenced by p.  If this library contains a
-     * D runtime then any necessary finalization or cleanup of that runtime
-     * will be performed.
-     *
-     * Params:
-     *  p = A reference to the library to unload.
-     */
-    static bool unloadLibrary()(void* p)
+    /// deprecated, same as $(LREF .unloadLib) but take a raw handle.
+    deprecated("Please use core.runtime.unloadLib instead.")
+    static void unloadLibrary()(void* handle)
     {
-        return rt_unloadLibrary(p);
+        auto lib = Library(handle);
+        unloadLib(lib);
     }
-
 
     /**
      * Overrides the default trace mechanism with s user-supplied version.  A
@@ -333,6 +278,439 @@ private:
     //       never occur within any but the main thread, so it is safe to
     //       make it __gshared.
     __gshared ModuleUnitTester sm_moduleUnitTester = null;
+}
+
+version (CoreDdoc)
+{
+    version = UseDecls;
+    version = UseUnittest;
+}
+else version (Windows)
+{
+    version = UseUnittest;
+}
+else version (Shared) // compiling a shared druntime
+{
+    version = UseUnittest;
+}
+else
+{
+    version = UseDecls;
+}
+
+// Workaround Bug 3956. Optlink strips leading underscores
+// of exported symbols. Except for the first one :(.
+version (Win32) export __gshared uint _dummy; // So that's the first one hopefully.
+
+/**
+ * The Library struct is a loaded library. It contains functionality
+ * to load symbols and perform runtime introspection of the library.
+ */
+version (CoreDdoc) struct Library
+{
+    /// disabled default constructor
+    @disable this();
+
+    /**
+     * Constructs a Library from a native platform handle.
+     *
+     * Params:
+     *   handle = The native platform handle.
+     */
+    this(void* handle);
+
+    /**
+     * Tries to locate a function with type FT and fully qualified
+     * name fqn in this library.  For extern(C) functions fqn is the
+     * plain function name.
+     *
+     * Params:
+     *   T = The function pointer type.
+     *   fqn = The fully qualified name of the function.
+     *
+     * Returns:
+     *   A pointer to the function on success or null.
+     */
+    T findFunc(T:FT*, FT)(string fqn) if(is(FT == function));
+
+    /// ditto
+    T findFunc(T:FT*, string fqn, FT)() if(is(FT == function));
+
+    /**
+     * Tries to locate a function in this library using the type and
+     * fully qualified name of a .di file declaration.
+     *
+     * Params:
+     *   func = An alias to the function declaration.
+     *
+     * Returns:
+     *   A pointer to the function on success or null.
+     */
+    typeof(func)* findFunc(alias func)() if (is(typeof(func) == function));
+
+    /**
+     * Tries to locate a variable with type T and fully qualified name
+     * fqn in this library.  For extern(C) variables fqn is the
+     * plain variable name.
+     *
+     * Params:
+     *   T = The variable type.
+     *   fqn = The fully qualified name of the variable.
+     *
+     * Returns:
+     *   A pointer to the variable on success or null.
+     */
+    T* findVar(T)(string fqn);
+
+    /// ditto
+    T* findVar(T, string fqn)();
+
+    /**
+     * Tries to locate a variable in this library using the type and
+     * fully qualified name of a .di file declaration.
+     *
+     * Params:
+     *   var = An alias to the variable declaration.
+     *
+     * Returns:
+     *   A pointer to the variable on success or null.
+     */
+    typeof(var)* findVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var);
+
+    /// Returns the native platform handle.
+    @property void* handle();
+
+private:
+    template hasLinkage(alias var) {}
+
+    void* _handle;
+}
+
+// example unittest needs to follow documentation (Bug 11133)
+///
+version (UseUnittest) unittest
+{
+    version (Windows)
+    {
+        auto lib = Library(GetModuleHandleA(null));
+    }
+    else
+    {
+        auto lib = loadLib(null); // the executable
+        scope (exit) lib.unloadLib();
+    }
+    auto load1 = lib.findFunc!(size_t function(string))("core.runtime.TestStruct.func");
+    auto load2 = lib.findFunc!(size_t function(string), "core.runtime.TestStruct.func")();
+    auto load3 = lib.findFunc!(TestStruct.func)();
+    assert(load1 is load2);
+    assert(load2 is load3);
+    assert(load3 is &TestStruct.func);
+
+    auto var1 = lib.findVar!(size_t)("core.runtime.TestStruct.var");
+    auto var2 = lib.findVar!(size_t, "core.runtime.TestStruct.var")();
+    auto var3 = lib.findVar!(TestStruct.var)();
+    assert(var1 is var2);
+    assert(var2 is var3);
+    assert(var3 is &TestStruct.var);
+
+    // can only load variables with linkage
+    static struct Export
+    {
+    export:
+        __gshared uint num1 = 1;
+        static shared uint num2 = 2;
+        static const uint num3 = 3;
+
+        shared uint num4 = 4; // stack variables have no linkage
+        enum num5 = 5;        // manifest constants have no linkage
+        static uint num6 = 6; // TLS variables have no linkage
+    }
+    assert(*lib.findVar!(Export.num1)() == 1);
+    assert(*lib.findVar!(Export.num2)() == 2);
+    assert(*lib.findVar!(Export.num3)() == 3);
+
+    static assert(!__traits(compiles, lib.findVar!num4()));
+    static assert(!__traits(compiles, lib.findVar!num5()));
+    static assert(!__traits(compiles, lib.findVar!num6()));
+}
+
+version (UseUnittest)
+{
+    struct TestStruct
+    {
+    export:
+        static size_t func(string s) { return s.length; }
+        __gshared size_t var;
+    }
+
+    unittest
+    {
+        static bool throws(void delegate() dg)
+        {
+            try
+                dg();
+            catch (Throwable)
+                return true;
+            return false;
+        }
+        static assert(!__traits(compiles, {Library lib;}));
+        assert(throws({loadLib("nonexistent");}));
+
+        debug assert(throws({auto lib = Library(null);}));
+        version (Posix)
+        {
+            auto lib = loadLib(null);
+            lib.unloadLib();
+            debug assert(throws({lib.findFunc!(TestStruct.func)();}));
+        }
+    }
+}
+
+version (CoreDdoc) // see above unittest (Bug 11133)
+{
+}
+else version (Windows)
+{
+    struct Library
+    {
+        import core.sys.windows.windows : GetProcAddress;
+        version (Win32)
+        {
+            // Bug 3956 - optlink strips underscores
+            mixin LibraryImpl!(function(h, n) =>
+                GetProcAddress(h, n[0] == '_' && n[1] == 'D' ? n+1 : n));
+        }
+        else
+        {
+            mixin LibraryImpl!GetProcAddress;
+        }
+    }
+}
+else version (Posix)
+{
+    struct Library
+    {
+        version (Shared)
+        {
+            // Wrap dlsym in a D function to keep any dependency on
+            // libdl within druntime.
+            private static void* dlsym(void* handle, const char* name)
+            {
+                import core.sys.posix.dlfcn : dlsym;
+                return dlsym(handle, name);
+            }
+        }
+        else
+        {
+            private static void* dlsym(void* handle, const char* name);
+        }
+
+        mixin LibraryImpl!dlsym;
+    }
+}
+else
+{
+    static assert(0, "unimplemented");
+}
+
+
+version (UseDecls)
+{
+    /**
+     * Locates a dynamic library with the supplied library name and
+     * dynamically loads it into the caller's address space. On error
+     * the function will throw an Exception.
+     *
+     * Params:
+     *  name = The name of the dynamic library to load.
+     *
+     * Returns:
+     *  The loaded Library.
+     */
+    Library loadLib(in char[] name);
+
+    /**
+     * Unloads the dynamic library lib. This will set the internal
+     * handle to null. On error the function will throw an Exception.
+     *
+     * Params:
+     *  lib = The library to unload.
+     */
+    void unloadLib(ref Library lib);
+}
+else version (Windows)
+{
+    Library loadLib(in char[] name)
+    {
+        import core.stdc.stdlib : free, malloc;
+        import core.sys.windows.windows;
+
+        if (name.length == 0) return Library(null);
+        // Load a DLL at runtime
+        enum CP_UTF8 = 65001;
+        auto len = MultiByteToWideChar(
+            CP_UTF8, 0, name.ptr, cast(int)name.length, null, 0);
+        if (len == 0)
+            return Library(null);
+
+        auto buf = cast(wchar_t*)malloc((len+1) * wchar_t.sizeof);
+        if (buf is null) return Library(null);
+        scope (exit) free(buf);
+
+        len = MultiByteToWideChar(
+            CP_UTF8, 0, name.ptr, cast(int)name.length, buf, len);
+        if (len == 0)
+            return Library(null);
+
+        buf[len] = '\0';
+
+        auto res = rt_loadLibraryW(buf);
+        if (res is null)
+            loadError("Failed to load Library '"~name.idup~"'.");
+        return Library(res);
+    }
+
+    void unloadLib(ref Library lib)
+    {
+        scope (exit) lib._handle = null;
+        if (!rt_unloadLibrary(lib.handle))
+            loadError("Failed to unload Library");
+    }
+
+    private void loadError(string msg)
+    {
+        if (auto err = GetLastError())
+        {
+            import core.stdc.stdio : snprintf;
+            char[10] buf=void;
+            immutable len = snprintf(buf.ptr, buf.length, "%u", err);
+            len > 0 && cast(size_t)len < buf.length || assert(0);
+            msg ~= " (Error Code: "~buf[0 .. len]~")";
+        }
+        throw new Exception(msg);
+    }
+}
+else version (Shared)
+{
+    Library loadLib(in char[] name)
+    {
+        import core.stdc.stdlib : free, malloc;
+
+        /* Need a 0-terminated C string for the dll name
+         */
+        immutable len = name.length;
+        auto buf = cast(char*)malloc(len + 1);
+        if (!buf) return Library(null);
+        scope (exit) free(buf);
+
+        buf[0 .. len] = name[];
+        buf[len] = 0;
+
+        auto res = rt_loadLibrary(buf);
+        if (res is null)
+            loadError("Failed to load Library '"~name.idup~"'.");
+        return Library(res);
+    }
+
+    void unloadLib(ref Library lib)
+    {
+        scope (exit) lib._handle = null;
+        if (!rt_unloadLibrary(lib.handle))
+            loadError("Failed to unload Library.");
+    }
+
+    private void loadError(string msg)
+    {
+        import core.stdc.string : strlen;
+        import core.sys.posix.dlfcn : dlerror;
+
+        if (auto err = dlerror())
+            msg ~= " ("~err[0 .. strlen(err)]~")";
+        throw new Exception(msg);
+    }
+}
+
+
+// implementation using GetProcAddress or dlsym
+private mixin template LibraryImpl(alias dlsym)
+{
+    import core.demangle : mangle, mangleFunc;
+
+    @disable this();
+
+    this(void* handle)
+    {
+        _handle = handle;
+    }
+
+    T findFunc(T:FT*, FT)(string fqn) if(is(FT == function))
+    {
+        char[256] buf = void;
+        auto mangling = mangleFunc!(T)(fqn, buf);
+        return cast(T)dlsym(handle, toStringz(mangling, buf.length));
+    }
+
+    T findFunc(T:FT*, string fqn, FT)() if(is(FT == function))
+    {
+        static const mangling = mangleFunc!(T)(fqn) ~ '\0';
+        return cast(T)dlsym(handle, mangling.ptr);
+    }
+
+    typeof(func)* findFunc(alias func)() if (is(typeof(func) == function))
+    {
+        static const mangling = func.mangleof ~ '\0';
+        return cast(typeof(func)*)dlsym(handle, mangling.ptr);
+    }
+
+    T* findVar(T)(string fqn)
+    {
+        char[256] buf = void;
+        auto mangling = mangle!(T)(fqn, buf);
+        return cast(T*)dlsym(handle, toStringz(mangling, buf.length));
+    }
+
+    T* findVar(T, string fqn)()
+    {
+        static const mangling = mangle!(T)(fqn) ~ '\0';
+        return cast(T*)dlsym(handle, mangling.ptr);
+    }
+
+    typeof(var)* findVar(alias var)() if (!is(typeof(var) == function) && hasLinkage!var)
+    {
+        static const mangling = var.mangleof ~ '\0';
+        return cast(typeof(var)*)dlsym(handle, mangling.ptr);
+    }
+
+    @property void* handle()
+    {
+        return _handle;
+    }
+
+    invariant()
+    {
+        assert(_handle !is null);
+    }
+
+private:
+    template hasLinkage(alias var)
+    {
+        // TLS: cannot take address of thread-local variable var at compile time
+        // enum: constant var is not an lvalue
+        // local: non-constant expression &var
+        // use is(typeof) to avoid linking in var
+        enum hasLinkage = is(typeof({static const varref = &var;}));
+        static assert(hasLinkage); // for better diagnostic message
+    }
+
+    char* toStringz(char[] buf, size_t knownSize)
+    {
+        immutable nulpos = buf.length;
+        if (nulpos >= knownSize) ++buf.length;
+        buf.ptr[nulpos] = 0;
+        return buf.ptr;
+    }
+
+    void* _handle;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

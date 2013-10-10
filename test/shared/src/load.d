@@ -1,36 +1,33 @@
 import core.runtime, core.stdc.stdio, core.thread, core.sys.linux.dlfcn;
 
-void loadSym(T)(void* handle, ref T val, const char* mangle)
+Library openLib(string s)
 {
-    val = cast(T).dlsym(handle, mangle);
-}
+    auto h = .loadLib(s);
 
-void* openLib(string s)
-{
-    auto h = Runtime.loadLibrary(s);
-    assert(h !is null);
+    import lib; // .di
 
-    loadSym(h, libThrowException, "_D3lib14throwExceptionFZv");
-    loadSym(h, libCollectException, "_D3lib16collectExceptionFDFZvZC9Exception");
+    libThrowException = h.findFunc!throwException();
+    libCollectException = h.findFunc!collectException();
 
-    loadSym(h, libAlloc, "_D3lib5allocFZv");
-    loadSym(h, libTlsAlloc, "_D3lib9tls_allocFZv");
-    loadSym(h, libAccess, "_D3lib6accessFZv");
-    loadSym(h, libTlsAccess, "_D3lib10tls_accessFZv");
-    loadSym(h, libFree, "_D3lib4freeFZv");
-    loadSym(h, libTlsFree, "_D3lib8tls_freeFZv");
+    libAlloc = h.findFunc!alloc();
+    libAccess = h.findFunc!access();
+    libFree = h.findFunc!free();
 
-    loadSym(h, libSharedStaticCtor, "_D3lib18shared_static_ctorOk");
-    loadSym(h, libSharedStaticDtor, "_D3lib18shared_static_dtorOk");
-    loadSym(h, libStaticCtor, "_D3lib11static_ctorOk");
-    loadSym(h, libStaticDtor, "_D3lib11static_dtorOk");
+    libTlsAlloc = h.findFunc!tls_alloc();
+    libTlsAccess = h.findFunc!tls_access();
+    libTlsFree = h.findFunc!tls_free();
+
+    libSharedStaticCtor = h.findVar!shared_static_ctor();
+    libSharedStaticDtor = h.findVar!shared_static_dtor();
+    libStaticCtor = h.findVar!static_ctor();
+    libStaticDtor = h.findVar!static_dtor();
 
     return h;
 }
 
-void closeLib(void* h)
+void closeLib(Library lib)
 {
-    Runtime.unloadLibrary(h);
+    .unloadLib(lib);
 }
 
 __gshared

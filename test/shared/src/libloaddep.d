@@ -1,13 +1,19 @@
-import core.runtime, core.sys.posix.dlfcn;
+import core.runtime, core.stdc.string, core.sys.posix.dlfcn;
 
 extern(C) alias RunTests = int function();
 
 extern(C) int runDepTests(const char* name)
 {
-    auto h = rt_loadLibrary(name);
-    if (h is null) return false;
-    auto runTests = cast(RunTests).dlsym(h, "runTests");
-    assert(runTests !is null);
-    if (!runTests()) return false;
-    return rt_unloadLibrary(h);
+    try
+    {
+        auto lib = .loadLib(name[0 .. strlen(name)]);
+        scope (exit) lib.unloadLib();
+        auto runTests = lib.findFunc!(RunTests, "runTests")();
+        if (runTests !is null && runTests())
+            return true;
+    }
+    catch (Exception)
+    {
+    }
+    return false;
 }
