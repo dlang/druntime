@@ -3488,7 +3488,7 @@ private
         }
     }
 
-    static immutable size_t PAGESIZE;
+    package static immutable size_t PAGESIZE;
     version (Posix) static immutable size_t PTHREAD_STACK_MIN;
 }
 
