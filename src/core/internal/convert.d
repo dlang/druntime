@@ -66,8 +66,8 @@ private Float parse(bool is_denormalized = false, T)(T x) if(is(T == float) || i
 {
     if(x is cast(T)0.0) return FloatTraits!T.ZERO;
     if(x is cast(T)-0.0) return FloatTraits!T.NZERO;
-    if(x is -T.nan) return FloatTraits!T.NNAN;
     if(x is T.nan) return FloatTraits!T.NAN;
+    if(x is -T.nan) return FloatTraits!T.NNAN;
     if(x is T.infinity) return FloatTraits!T.INF;
     if(x is -T.infinity) return FloatTraits!T.NINF;
 
@@ -100,19 +100,19 @@ private Float parse(bool _ = false, T)(T x) if(is(T == real))
     if(x == 0.0L)
     {
         real y = 1.0L/x;
-        if(y == -real.infinity) // -0.0
-            return Float(0, 0, 1);
+        if(y == real.infinity) // -0.0
+            return Float(0, 0, 0);
         else
-            return Float(0, 0, 0); //0.0
+            return Float(0, 0, 1); //0.0
     }
 
     if(x != x) //HACK: should be if(x is real.nan) and if(x is -real.nan)
     {
         auto y = cast(double)x;
-        if(y is -double.nan)
-            return Float(0xC000000000000000UL, 0x7fff, 1);
-        else
+        if(y is double.nan)
             return Float(0xC000000000000000UL, 0x7fff, 0);
+        else
+            return Float(0xC000000000000000UL, 0x7fff, 1);
     }
 
     if(x == real.infinity) return Float(0x8000000000000000UL, 0x7fff, 0);
@@ -267,9 +267,9 @@ version(unittest)
         return toUbyte(val).dup;
     }
 
-    private void testNumberConvert(alias v)()
+    private void testNumberConvert(string v)()
     {
-        enum ctval = v;
+        enum ctval = mixin(v);
 
         alias TYPE = typeof(ctval);
         auto rtval = ctval;
@@ -283,62 +283,62 @@ version(unittest)
     private void testConvert()
     {
         //Test special values
-        testNumberConvert!(-float.infinity);
-        testNumberConvert!(float.infinity);
-        testNumberConvert!(-0.0F);
-        testNumberConvert!(0.0F);
-        testNumberConvert!(-float.nan);
-        testNumberConvert!(float.nan);
+        testNumberConvert!("-float.infinity");
+        testNumberConvert!("float.infinity");
+        testNumberConvert!("-0.0F");
+        testNumberConvert!("0.0F");
+        //testNumberConvert!("-float.nan"); //BUG @@@3632@@@
+        testNumberConvert!("float.nan");
 
-        testNumberConvert!(-double.infinity);
-        testNumberConvert!(double.infinity);
-        testNumberConvert!(-0.0);
-        testNumberConvert!(0.0);
-        testNumberConvert!(-double.nan);
-        testNumberConvert!(double.nan);
+        testNumberConvert!("-double.infinity");
+        testNumberConvert!("double.infinity");
+        testNumberConvert!("-0.0");
+        testNumberConvert!("0.0");
+        //testNumberConvert!("-double.nan"); //BUG @@@3632@@@
+        testNumberConvert!("double.nan");
 
-        testNumberConvert!(-real.infinity);
-        testNumberConvert!(real.infinity);
-        testNumberConvert!(-0.0L);
-        testNumberConvert!(0.0L);
-        testNumberConvert!(-real.nan);
-        testNumberConvert!(real.nan);
+        testNumberConvert!("-real.infinity");
+        testNumberConvert!("real.infinity");
+        testNumberConvert!("-0.0L");
+        testNumberConvert!("0.0L");
+        //testNumberConvert!("-real.nan"); //BUG @@@3632@@@
+        testNumberConvert!("real.nan");
 
         //Test common values
-        testNumberConvert!(float.min_normal);
-        testNumberConvert!(float.max);
-        testNumberConvert!(-0.17F);
-        testNumberConvert!(3.14F);
+        testNumberConvert!("float.min_normal");
+        testNumberConvert!("float.max");
+        testNumberConvert!("-0.17F");
+        testNumberConvert!("3.14F");
 
-        testNumberConvert!(double.min_normal);
-        testNumberConvert!(double.max);
-        testNumberConvert!(-0.17);
-        testNumberConvert!(3.14);
+        testNumberConvert!("double.min_normal");
+        testNumberConvert!("double.max");
+        testNumberConvert!("-0.17");
+        testNumberConvert!("3.14");
 
-        testNumberConvert!(real.min_normal);
-        testNumberConvert!(real.max);
-        testNumberConvert!(-0.17L);
-        testNumberConvert!(3.14L);
+        testNumberConvert!("real.min_normal");
+        testNumberConvert!("real.max");
+        testNumberConvert!("-0.17L");
+        testNumberConvert!("3.14L");
 
         //Test denormalized values
-        testNumberConvert!(float.min_normal/2);
-        testNumberConvert!(float.min_normal/2UL^^23);
-        testNumberConvert!(float.min_normal/19);
-        testNumberConvert!(float.min_normal/17);
+        testNumberConvert!("float.min_normal/2");
+        testNumberConvert!("float.min_normal/2UL^^23");
+        testNumberConvert!("float.min_normal/19");
+        testNumberConvert!("float.min_normal/17");
 
-        testNumberConvert!(double.min_normal/2);
-        testNumberConvert!(double.min_normal/2UL^^52);
-        testNumberConvert!(double.min_normal/19);
-        testNumberConvert!(double.min_normal/17);
+        testNumberConvert!("double.min_normal/2");
+        testNumberConvert!("double.min_normal/2UL^^52");
+        testNumberConvert!("double.min_normal/19");
+        testNumberConvert!("double.min_normal/17");
 
-        testNumberConvert!(real.min_normal/2);
-        testNumberConvert!(real.min_normal/2UL^^63);
-        testNumberConvert!(real.min_normal/19);
-        testNumberConvert!(real.min_normal/17);
+        testNumberConvert!("real.min_normal/2");
+        testNumberConvert!("real.min_normal/2UL^^63");
+        testNumberConvert!("real.min_normal/19");
+        testNumberConvert!("real.min_normal/17");
 
-        testNumberConvert!(0.0Fi);
-        testNumberConvert!(0.0i);
-        testNumberConvert!(0.0Li);
+        testNumberConvert!("0.0Fi");
+        testNumberConvert!("0.0i");
+        testNumberConvert!("0.0Li");
     }
 
 
