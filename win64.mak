@@ -2,25 +2,25 @@
 
 MODEL=64
 
-VCDIR="\Program Files (x86)\Microsoft Visual Studio 10.0\VC"
-SDKDIR="\Program Files (x86)\Microsoft SDKs\Windows\v7.0A"
+VCDIR=\Program Files (x86)\Microsoft Visual Studio 10.0\VC
+SDKDIR=\Program Files (x86)\Microsoft SDKs\Windows\v7.0A
 
 DMD=dmd
 
-CC=$(VCDIR)\bin\amd64\cl
-LD=$(VCDIR)\bin\amd64\link
-LIB=$(VCDIR)\bin\amd64\lib
+CC="$(VCDIR)\bin\amd64\cl"
+LD="$(VCDIR)\bin\amd64\link"
+AR="$(VCDIR)\bin\amd64\lib"
 CP=cp
 
 DOCDIR=doc
 IMPDIR=import
 
-DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property
-UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property
+DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport
+UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport
 DDOCFLAGS=-c -w -o- -Isrc -Iimport
 
-#CFLAGS=/O2 /I$(VCDIR)\INCLUDE /I$(SDKDIR)\Include
-CFLAGS=/Zi /I$(VCDIR)\INCLUDE /I$(SDKDIR)\Include
+#CFLAGS=/O2 /I"$(VCDIR)"\INCLUDE /I"$(SDKDIR)"\Include
+CFLAGS=/Z7 /I"$(VCDIR)"\INCLUDE /I"$(SDKDIR)"\Include
 
 DRUNTIME_BASE=druntime64
 DRUNTIME=lib\$(DRUNTIME_BASE).lib
@@ -287,10 +287,19 @@ $(IMPDIR)\core\sys\linux\elf.d : src\core\sys\linux\elf.d
 $(IMPDIR)\core\sys\linux\epoll.d : src\core\sys\linux\epoll.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\linux\errno.d : src\core\sys\linux\errno.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\linux\execinfo.d : src\core\sys\linux\execinfo.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\link.d : src\core\sys\linux\link.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\sys\inotify.d : src\core\sys\linux\sys\inotify.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\sys\mman.d : src\core\sys\linux\sys\mman.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\sys\signalfd.d : src\core\sys\linux\sys\signalfd.d
@@ -475,6 +484,7 @@ $(DRUNTIME): $(OBJS) $(SRCS) win$(MODEL).mak
 
 unittest : $(SRCS) $(DRUNTIME) src\unittest.d
 	$(DMD) $(UDFLAGS) -version=druntime_unittest -unittest src\unittest.d $(SRCS) $(DRUNTIME) -debuglib=$(DRUNTIME) -defaultlib=$(DRUNTIME) user32.lib
+	unittest
 
 zip: druntime.zip
 

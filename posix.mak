@@ -30,6 +30,7 @@ ifeq (,$(OS))
 endif
 
 DMD?=dmd
+INSTALL_DIR=../install
 
 DOCDIR=doc
 IMPDIR=import
@@ -48,9 +49,9 @@ else
 	DOTLIB:=.a
 endif
 
-DFLAGS=$(MODEL_FLAG) -O -release -inline -w -Isrc -Iimport -property $(PIC)
-UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport -property $(PIC)
-DDOCFLAGS=$(MODEL_FLAG) -c -w -o- -Isrc -Iimport -version=CoreDdoc
+DFLAGS=$(MODEL_FLAG) -O -release -inline -w -Isrc -Iimport $(PIC)
+UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport $(PIC)
+DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
 
 CFLAGS=$(MODEL_FLAG) -O $(PIC)
 
@@ -121,7 +122,7 @@ import: $(IMPORTS)
 
 $(IMPDIR)/core/sync/%.di : src/core/sync/%.d
 	@mkdir -p `dirname $@`
-	$(DMD) $(MODEL_FLAG) -c -o- -Isrc -Iimport -Hf$@ $<
+	$(DMD) -c -o- -Isrc -Iimport -Hf$@ $<
 
 ######################## Header .di file copy ##############################
 
@@ -151,11 +152,12 @@ $(OBJDIR)/threadasm.o : src/core/threadasm.S
 
 ######################## Create a shared library ##############################
 
-dll: override PIC:=-fPIC
+$(DRUNTIMESO) $(DRUNTIMESOLIB) dll: override PIC:=-fPIC
+$(DRUNTIMESO) $(DRUNTIMESOLIB) dll: DFLAGS+=-version=Shared
 dll: $(DRUNTIMESOLIB)
 
 $(DRUNTIMESO): $(OBJS) $(SRCS)
-	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) $(DFLAGS) $(SRCS) $(OBJS)
+	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) $(DFLAGS) $(SRCS) $(OBJS) -L-ldl
 
 $(DRUNTIMESOLIB): $(OBJS) $(SRCS)
 	$(DMD) -c -fPIC -of$(DRUNTIMESOOBJ) $(DFLAGS) $(SRCS)
@@ -167,8 +169,10 @@ $(DRUNTIME): $(OBJS) $(SRCS)
 	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
 UT_MODULES:=$(patsubst src/%.d,$(OBJDIR)/%,$(SRCS))
+ADDITIONAL_TESTS:=
+ADDITIONAL_TESTS+=$(if $(findstring $(OS),linux),test/shared,)
 
-unittest : $(UT_MODULES)
+unittest : $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
 	@echo done
 
 ifeq ($(OS),freebsd)
@@ -190,11 +194,12 @@ else
 UT_DRUNTIME:=$(OBJDIR)/lib$(DRUNTIME_BASE)-ut$(DOTDLL)
 
 $(UT_DRUNTIME): override PIC:=-fPIC
+$(UT_DRUNTIME): UDFLAGS+=-version=Shared
 $(UT_DRUNTIME): $(OBJS) $(SRCS)
-	$(DMD) $(UDFLAGS) -shared -version=druntime_unittest -unittest -of$@ $(SRCS) $(OBJS) -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -shared -version=druntime_unittest -unittest -of$@ $(SRCS) $(OBJS) -L-ldl -debuglib= -defaultlib=
 
 $(OBJDIR)/test_runner: $(UT_DRUNTIME) src/test_runner.d
-	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L-L$(OBJDIR) -L-rpath=$(OBJDIR) -L-l$(DRUNTIME_BASE)-ut -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L$(UT_DRUNTIME) -debuglib= -defaultlib=
 
 endif
 
@@ -210,6 +215,9 @@ $(OBJDIR)/% : $(OBJDIR)/test_runner
 # succeeded, render the file new again
 	@touch $@
 
+test/%/.run: test/%/Makefile $(DRUNTIMESO)
+	$(QUIET)$(MAKE) -C test/$* MODEL=$(MODEL) OS=$(OS) DMD=$(abspath $(DMD)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) QUIET=$(QUIET)
+
 detab:
 	detab $(MANIFEST)
 	tolf $(MANIFEST)
@@ -220,8 +228,17 @@ druntime.zip: $(MANIFEST) $(DOCS) $(IMPORTS)
 	rm -rf $@
 	zip $@ $^
 
-install: druntime.zip
-	unzip -o druntime.zip -d /dmd2/src/druntime
+install: target
+	mkdir -p $(INSTALL_DIR)/html
+	cp -r doc/* $(INSTALL_DIR)/html/
+	mkdir -p $(INSTALL_DIR)/import
+	cp -r import/* $(INSTALL_DIR)/import/
+	mkdir -p $(INSTALL_DIR)/lib
+	cp -r lib/* $(INSTALL_DIR)/lib/
+	cp LICENSE $(INSTALL_DIR)/druntime-LICENSE.txt
 
-clean:
+clean: $(addsuffix /.clean,$(ADDITIONAL_TESTS))
 	rm -rf obj lib $(IMPDIR) $(DOCDIR) druntime.zip
+
+test/%/.clean: test/%/Makefile
+	$(MAKE) -C test/$* clean
