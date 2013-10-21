@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_C;
 
+private import core.internal.hash;
+
 // Object
 
 class TypeInfo_C : TypeInfo
@@ -22,10 +24,10 @@ class TypeInfo_C : TypeInfo
     //pure:
     //nothrow:
 
-    override size_t getHash(in void* p)
+    override size_t getHash(in void* p, size_t seed = 0)
     {
         Object o = *cast(Object*)p;
-        return o ? o.toHash() : 0;
+        return o.hashOf(seed);
     }
 
     override bool equals(in void* p1, in void* p2)

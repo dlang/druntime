@@ -14,7 +14,7 @@
 module rt.typeinfo.ti_Afloat;
 
 private import rt.typeinfo.ti_float;
-private import rt.util.hash;
+private import core.internal.hash;
 
 // float[]
 
@@ -24,10 +24,10 @@ class TypeInfo_Af : TypeInfo_Array
 
     override string toString() const { return "float[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         float[] s = *cast(float[]*)p;
-        return hashOf(s.ptr, s.length * float.sizeof);
+        return s.hashOf(seed);
     }
 
     override bool equals(in void* p1, in void* p2) const

@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_AC;
 
+private import core.internal.hash;
+
 // Object[]
 
 class TypeInfo_AC : TypeInfo_Array
@@ -21,17 +23,10 @@ class TypeInfo_AC : TypeInfo_Array
 
     override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         Object[] s = *cast(Object[]*)p;
-        size_t hash = 0;
-
-        foreach (Object o; s)
-        {
-            if (o)
-                hash += o.toHash();
-        }
-        return hash;
+        return hashOf(s, seed);
     }
 
     override bool equals(in void* p1, in void* p2) const

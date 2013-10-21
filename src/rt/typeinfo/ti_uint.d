@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_uint;
 
+private import core.internal.hash;
+
 // uint
 
 class TypeInfo_k : TypeInfo
@@ -24,9 +26,9 @@ class TypeInfo_k : TypeInfo
 
     override string toString() const pure nothrow @safe { return "uint"; }
 
-    override size_t getHash(in void* p)
+    override size_t getHash(in void* p, size_t seed = 0)
     {
-        return *cast(uint *)p;
+        return hashOf(*cast(uint*)p, seed);
     }
 
     override bool equals(in void* p1, in void* p2)

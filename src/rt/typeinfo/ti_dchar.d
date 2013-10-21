@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_dchar;
 
+private import core.internal.hash;
+
 // dchar
 
 class TypeInfo_w : TypeInfo
@@ -24,9 +26,9 @@ class TypeInfo_w : TypeInfo
 
     override string toString() const pure nothrow @safe { return "dchar"; }
 
-    override size_t getHash(in void* p)
+    override size_t getHash(in void* p, size_t seed = 0)
     {
-        return *cast(dchar *)p;
+        return hashOf(*cast(dchar*)p, seed);
     }
 
     override bool equals(in void* p1, in void* p2)

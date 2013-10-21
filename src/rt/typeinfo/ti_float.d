@@ -13,6 +13,8 @@
  */
 module rt.typeinfo.ti_float;
 
+private import core.internal.hash;
+
 // float
 
 class TypeInfo_f : TypeInfo
@@ -46,9 +48,9 @@ class TypeInfo_f : TypeInfo
 
     override string toString() const pure nothrow @safe { return "float"; }
 
-    override size_t getHash(in void* p)
+    override size_t getHash(in void* p, size_t seed = 0)
     {
-        return *cast(uint *)p;
+        return hashOf(*cast(float*)p, seed);
     }
 
     override bool equals(in void* p1, in void* p2)

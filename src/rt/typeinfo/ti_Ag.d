@@ -14,7 +14,7 @@
 module rt.typeinfo.ti_Ag;
 
 private import core.stdc.string;
-private import rt.util.hash;
+private import core.internal.hash;
 private import rt.util.string;
 
 // byte[]
@@ -25,10 +25,10 @@ class TypeInfo_Ag : TypeInfo_Array
 
     override string toString() const { return "byte[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         byte[] s = *cast(byte[]*)p;
-        return hashOf(s.ptr, s.length * byte.sizeof);
+        return s.hashOf(seed);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -118,54 +118,10 @@ class TypeInfo_Aa : TypeInfo_Ah
 {
     override string toString() const { return "char[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         char[] s = *cast(char[]*)p;
-        size_t hash = 0;
-
-version (all)
-{
-        foreach (char c; s)
-            hash = hash * 11 + c;
-}
-else
-{
-        size_t len = s.length;
-        char *str = s;
-
-        while (1)
-        {
-            switch (len)
-            {
-                case 0:
-                    return hash;
-
-                case 1:
-                    hash *= 9;
-                    hash += *cast(ubyte *)str;
-                    return hash;
-
-                case 2:
-                    hash *= 9;
-                    hash += *cast(ushort *)str;
-                    return hash;
-
-                case 3:
-                    hash *= 9;
-                    hash += (*cast(ushort *)str << 8) +
-                            (cast(ubyte *)str)[2];
-                    return hash;
-
-                default:
-                    hash *= 9;
-                    hash += *cast(uint *)str;
-                    str += 4;
-                    len -= 4;
-                    break;
-            }
-        }
-}
-        return hash;
+        return s.hashOf(seed);
     }
 
     override @property inout(TypeInfo) next() inout

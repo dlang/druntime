@@ -13,7 +13,7 @@
  */
 module rt.typeinfo.ti_double;
 
-private import rt.util.hash;
+private import core.internal.hash;
 
 // double
 
@@ -48,9 +48,9 @@ class TypeInfo_d : TypeInfo
 
     override string toString() const pure nothrow @safe { return "double"; }
 
-    override size_t getHash(in void* p)
+    override size_t getHash(in void* p, size_t seed = 0)
     {
-        return hashOf(p, double.sizeof);
+        return hashOf(*cast(double*)p, seed);
     }
 
     override bool equals(in void* p1, in void* p2)

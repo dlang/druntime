@@ -69,7 +69,7 @@ class TypeInfo
     override size_t toHash() @trusted const;
     override int opCmp(Object o);
     override bool opEquals(Object o);
-    size_t   getHash(in void* p) @trusted nothrow const;
+    size_t   getHash(in void* p, size_t seed = 0) @trusted nothrow const;
     bool     equals(in void* p1, in void* p2) const;
     int      compare(in void* p1, in void* p2) const;
     @property size_t   tsize() nothrow pure const @safe;
@@ -107,7 +107,7 @@ class TypeInfo_Array : TypeInfo
 {
     override string toString() const;
     override bool opEquals(Object o);
-    override size_t getHash(in void* p) @trusted const;
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const;
     override bool equals(in void* p1, in void* p2) const;
     override int compare(in void* p1, in void* p2) const;
     override @property size_t tsize() nothrow pure const;

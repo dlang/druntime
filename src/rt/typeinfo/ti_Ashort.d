@@ -14,7 +14,7 @@
 module rt.typeinfo.ti_Ashort;
 
 private import core.stdc.string;
-private import rt.util.hash;
+private import core.internal.hash;
 
 // short[]
 
@@ -24,10 +24,10 @@ class TypeInfo_As : TypeInfo_Array
 
     override string toString() const { return "short[]"; }
 
-    override size_t getHash(in void* p) @trusted const
+    override size_t getHash(in void* p, size_t seed = 0) @trusted const
     {
         short[] s = *cast(short[]*)p;
-        return hashOf(s.ptr, s.length * short.sizeof);
+        return s.hashOf(seed);
     }
 
     override bool equals(in void* p1, in void* p2) const
