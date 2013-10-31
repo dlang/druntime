@@ -13,6 +13,7 @@ SRCS=\
 	src\core\thread.d \
 	src\core\time.d \
 	src\core\vararg.d \
+	src\core\vmm.d \
 	\
 	src\core\stdc\config.d \
 	src\core\stdc\ctype.d \
