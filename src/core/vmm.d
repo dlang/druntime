@@ -332,20 +332,23 @@ version(Windows)
         return VirtualUnlock(ptr, size) != 0;
     }
 }
-else static if (is(typeof(mmap)))  // else version (GC_Use_Alloc_MMap)
+else version(Posix)
 {
-    import core.sys.posix.sys.mman;
-
+    version(linux)
+        import core.sys.linux.sys.mman;
+    else
+        import core.sys.posix.sys.mman;
+    
     uint protectionFlags(uint access)
     {
-        if(access == MemoryAccess.None)
+        if(access == MemoryAccess.none)
             return PROT_NONE;        
         uint protFlags;
-        if(access & MemoryAccess.Read)
+        if(access & MemoryAccess.read)
             protFlags |= PROT_READ;
-        if(access & MemoryAccess.Write)
+        if(access & MemoryAccess.write)
             protFlags |= PROT_WRITE;
-        if(access & MemoryAccess.Execute)
+        if(access & MemoryAccess.execute)
             protFlags |= PROT_EXEC;
         return protFlags;
     }
@@ -353,7 +356,10 @@ else static if (is(typeof(mmap)))  // else version (GC_Use_Alloc_MMap)
     uint memoryFlags(uint options)
     {
         //TODO: no huge pages yet, the whole procedure isn't trivial
-        return MAP_PRIVATE | MAP_ANONYMOUS;
+        version(linux)
+            return MAP_PRIVATE | MAP_ANONYMOUS;
+        else
+            return MAP_PRIVATE | MAP_ANON;
     }
 
     void* osMap(void* base, size_t nbytes, MemoryAccess access, uint options)
