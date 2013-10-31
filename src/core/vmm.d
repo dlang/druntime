@@ -1,14 +1,14 @@
 module core.vmm;
 
 /**
-    The module aims to provide the most commonly useful features of
-    target OS virtual memory manager subsystem.
+    $(P The module aims to provide the most commonly useful features of
+    target OS virtual memory manager subsystem. )
 
-    $(P 
-        The primary goal is not to provide full potential of every OS 
+    $(P The primary goal is not to provide full potential of every OS as
         that is next impossible due to inherent differences.
-        The goal is to cover $(STRONG the most common) scenarios in $(STRONG optimal) way. 
-        In particular issuing the absolute minimum of system calls for each scenario.
+        Instead the goal is to cover $(STRONG the most common) scenarios 
+        in an $(STRONG optimal) way. In particular issuing the absolute minimum
+        of system calls for each scenario.
     )
 
     Major use cases covered:
@@ -23,7 +23,7 @@ module core.vmm;
         (avoid being paging out by OS). See $(LREF lock) and $(LREF unlock).)
 
     $(P API provides a way to perform less common operations but may have some overhead
-    compared to writing platform-speicific code.)
+    compared to writing platform-specific code.)
     
 */
 
@@ -40,7 +40,7 @@ enum MemoryAccess : uint
 
 /**
     Flags that specify additional memory options. 
-    BUGS: None of these is implemented yet. 
+    BUGS: None of these are implemented yet. 
 */
 enum MemoryOptions : uint
 {
@@ -60,12 +60,12 @@ struct VMM
     //TODO: provide the same for huge page size
 
     /**
-        Allocate a $(D size) bytes of virtual memory rounded up 
-        to nearest multiple of page size. The memory is allocated 
+        Allocate a block of $(D size) bytes of virtual memory rounded up to 
+        nearest multiple of page size. The memory is allocated 
         with specified permissions and options.
 
         Note: This operation commits virtual memory. 
-        To have fine grade of control over reserve and commit phases 
+        To have fine grained control over reserve and commit phases 
         use $(LREF reserve) and $(LREF commit).
     */
     static void[] allocate(void* base, size_t size, 
@@ -82,7 +82,7 @@ struct VMM
         to nearest multiple of page size. The memory is not commited 
         and/or OS is not explicitly asked to assign memory pages to it.
 
-        To release virtual memory range reserved by this function use $(LREF free).
+        To release a virtual memory range reserved by this function use $(LREF free).
 
         Note: This function and $(LREF commit)
         set read/write permissions but not execute.
@@ -99,7 +99,7 @@ struct VMM
 
     /**
         Commits a set of pages that form the specified $(D range) of virtual memory.
-        Only after applying this call any memory obtained via $(LREF reserve) is 
+        Only after applying this call is any memory obtained via $(LREF reserve)
         guaranteed to be accessible.
 
         Note: This function and $(LREF reserve)
@@ -115,8 +115,9 @@ struct VMM
 
     /**
         Decommits a set of pages that form the specified $(D range) of virtual memory.
-        While system retains the address space accessing memory in it is illegal. 
-        The exact consequences of such illegal access are platform dependent.
+        While system retains the address space range, accessing memory inside of it 
+        is illegal. The exact consequences of such illegal access are platform 
+        dependent.
 
     */
     static bool decommit(void[] range)
@@ -129,7 +130,7 @@ struct VMM
         $(D range) must contain exactly the same address range as the one 
         returned by $(LREF allocate) or $(LREF reserve). 
 
-        It doesn't matter what the state of each page was (reserved vs commited) 
+        It doesn't matter what the state of each page was (reserved vs commited), 
         the OS decommits pages as needed.
     */
     static bool free(void[] range)
@@ -275,7 +276,7 @@ version(Windows)
             protFlags = PAGE_EXECUTE_READWRITE; // no write-only + execute
             break;
         default:
-            throw new Exception("bad memory access flags");
+            assert(false, "bad memory access flags");
         }
         return protFlags;
     }
