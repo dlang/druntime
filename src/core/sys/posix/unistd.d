@@ -449,6 +449,38 @@ else version( OSX )
     enum F_LOCK     = 1;
     enum F_TLOCK    = 2;
     enum F_TEST     = 3;
+    
+    enum 
+    {
+        _SC_ARG_MAX = 1,
+        _SC_CHILD_MAX,
+        _SC_CLK_TCK,
+        _SC_NGROUPS_MAX,
+        _SC_OPEN_MAX,
+        _SC_JOB_CONTROL,
+        _SC_SAVED_IDS,
+        _SC_VERSION,
+        _SC_BC_BASE_MAX,
+        _SC_BC_DIM_MAX,
+        _SC_BC_SCALE_MAX,
+        _SC_BC_STRING_MAX,
+        _SC_COLL_WEIGHTS_MAX,
+        _SC_EXPR_NEST_MAX,
+        _SC_LINE_MAX,
+        _SC_RE_DUP_MAX,
+        _SC__VERSION,
+        _SC__C_BIND,
+        _SC__C_DEV,
+        _SC__CHAR_TERM,
+        _SC__FORT_DEV,
+        _SC__FORT_RUN,
+        _SC__LOCALEDEF,
+        _SC__SW_DEV,
+        _SC__UPE,
+        _SC_STREAM_MAX,
+        _SC_TZNAME_MAX
+    }
+
 }
 else version( FreeBSD )
 {
@@ -461,6 +493,37 @@ else version( FreeBSD )
     enum F_LOCK     = 1;
     enum F_TLOCK    = 2;
     enum F_TEST     = 3;
+    
+    enum 
+    {
+        _SC_ARG_MAX = 1,
+        _SC_CHILD_MAX,
+        _SC_CLK_TCK,
+        _SC_NGROUPS_MAX,
+        _SC_OPEN_MAX,
+        _SC_JOB_CONTROL,
+        _SC_SAVED_IDS,
+        _SC_VERSION,
+        _SC_BC_BASE_MAX,
+        _SC_BC_DIM_MAX,
+        _SC_BC_SCALE_MAX,
+        _SC_BC_STRING_MAX,
+        _SC_COLL_WEIGHTS_MAX,
+        _SC_EXPR_NEST_MAX,
+        _SC_LINE_MAX,
+        _SC_RE_DUP_MAX,
+        _SC__VERSION,
+        _SC__C_BIND,
+        _SC__C_DEV,
+        _SC__CHAR_TERM,
+        _SC__FORT_DEV,
+        _SC__FORT_RUN,
+        _SC__LOCALEDEF,
+        _SC__SW_DEV,
+        _SC__UPE,
+        _SC_STREAM_MAX,
+        _SC_TZNAME_MAX
+    }
 }
 
 //

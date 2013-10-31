@@ -12,7 +12,7 @@ module core.vmm;
     )
 
     Major use cases covered:
-    $(LI Getting OS page size as cheap as reading a global. See $(LREF pageSize).
+    $(LI Getting platform's page size as cheap as reading a global. See $(LREF pageSize).
     It takes a single system call at application start up.)
     $(LI Allocating a memory block that has executable permission. A must have for JITs.
     See $(LREF allocate) to allocate a block and set permissions in one call.)
@@ -48,164 +48,192 @@ enum MemoryOptions : uint
     hugePages = 0b0001_0000 
 };
 
+/// The page size as reported by the OS at the application start.
+static immutable size_t pageSize;
+
+//TODO: provide the same for huge page size
+
 /**
-    Struct that encapsulates OS facilities to manage virtual memory.
+    Allocate a block of $(D size) bytes of virtual memory rounded up to 
+    nearest multiple of page size. The memory is allocated 
+    with specified permissions and options.
+
+    $(D base) specifies the desired base address of the block, $(D null)
+    means any base address.
+
+    To release a block of memory allocated by this function use $(LREF free).
+
+    Note: This operation commits virtual memory. 
+    To have fine grained control over reserve and commit phases 
+    use $(LREF reserve) and $(LREF commit).
 */
-struct VMM
+static void[] allocate(void* base, size_t size,
+    MemoryAccess access = MemoryAccess.readWrite,
+    MemoryOptions options = MemoryOptions.none)
 {
-
-    /// The page size as reported by the OS at the application start.
-    static immutable size_t pageSize;
-
-    //TODO: provide the same for huge page size
-
-    /**
-        Allocate a block of $(D size) bytes of virtual memory rounded up to 
-        nearest multiple of page size. The memory is allocated 
-        with specified permissions and options.
-
-        Note: This operation commits virtual memory. 
-        To have fine grained control over reserve and commit phases 
-        use $(LREF reserve) and $(LREF commit).
-    */
-    static void[] allocate(void* base, size_t size, 
-        MemoryAccess access = MemoryAccess.readWrite,
-        MemoryOptions options = MemoryOptions.none)
-    {
-        size = (size + pageSize-1) & ~(pageSize-1);
-        void* ptr = osMap(base, size, access, options);
-        return ptr ? ptr[0..size] : null;
-    }
-
-    /**
-        Reserve a $(D size) bytes of virtual memory rounded up 
-        to nearest multiple of page size. The memory is not commited 
-        and/or OS is not explicitly asked to assign memory pages to it.
-
-        To release a virtual memory range reserved by this function use $(LREF free).
-
-        Note: This function and $(LREF commit)
-        set read/write permissions but not execute.
-        The reason is that some OS would set permissions on reserve 
-        while others on commit. Also Posix makes the commit stage almost transparent.
-        Use $(LREF protect) to override permissions as required.
-    */
-    static void[] reserve(void* base, size_t size)
-    {
-        size = (size + pageSize-1) & ~(pageSize-1);
-        void* ptr = osReserve(base, size);        
-        return ptr ? ptr[0..size] : null;
-    }
-
-    /**
-        Commits a set of pages that form the specified $(D range) of virtual memory.
-        Only after applying this call is any memory obtained via $(LREF reserve)
-        guaranteed to be accessible.
-
-        Note: This function and $(LREF reserve)
-        set read/write permissions but not execute.
-        The reason is that some OS would set permissions on reserve 
-        while others on commit. Also Posix makes the commit stage almost transparent.
-        Use $(LREF protect) to override permissions as required.
-    */
-    static bool commit(void[] range)
-    {
-        return osCommit(range.ptr, range.length);
-    }
-
-    /**
-        Decommits a set of pages that form the specified $(D range) of virtual memory.
-        While system retains the address space range, accessing memory inside of it 
-        is illegal. The exact consequences of such illegal access are platform 
-        dependent.
-
-    */
-    static bool decommit(void[] range)
-    {
-        return osDecommit(range.ptr, range.length);
-    }
-
-    /**
-        Decommits and releases pages that were previously allocated and/or reserved.        
-        $(D range) must contain exactly the same address range as the one 
-        returned by $(LREF allocate) or $(LREF reserve). 
-
-        It doesn't matter what the state of each page was (reserved vs commited), 
-        the OS decommits pages as needed.
-    */
-    static bool free(void[] range)
-    {
-        return osUnmap(range.ptr, range.length);
-    }
-
-    /**
-        Sets permissions on the set of pages that form $(D range).        
-    */
-    static bool protect(void[] range, MemoryAccess access)
-    {
-        return osProtect(range.ptr, range.length, access);
-    }
-
-    /**
-        Lock pages that form $(D range) to prevent their paging out.
-    */
-    static bool lock(void[] range)
-    {
-        return osLockPages(range.ptr, range.length);
-    }
-
-    /**
-        Undoes the effect of locking (with $(LREF lock)) pages that form $(D range).        
-    */
-    static bool unlock(void[] range)
-    {
-        return osUnlockPages(range.ptr, range.length);
-    }
-
-    //code to initialize pageSize constant  
-    version (Windows)
-    {
-        import core.sys.windows.windows;
-
-        alias int pthread_t;
-
-        pthread_t pthread_self()
-        {
-            return cast(pthread_t) GetCurrentThreadId();
-        }
-
-
-        shared static this()
-        {
-            SYSTEM_INFO sysinfo;
-            GetSystemInfo(&sysinfo);
-            pageSize = sysinfo.dwPageSize;
-        }
-    }
-    else version (Posix)
-    {
-        import core.stdc.stdlib;
-
-        shared static this()
-        {
-            pageSize = sysconf(_SC_PAGESIZE);
-        }
-    }
-    else
-        static assert(false);
-
+    size = roundUpToPage(size);
+    void* ptr = osMap(base, size, access, options);
+    return ptr ? ptr[0..size] : null;
 }
+
+/**
+    Reserve a block of $(D size) bytes of virtual memory rounded up 
+    to nearest multiple of page size. The memory is not commited 
+    and/or OS is not explicitly asked to assign memory pages to it.
+
+    $(D base) specifies the desired base address of the block, $(D null)
+    means any base address.
+
+    To release a virtual memory range reserved by this function use $(LREF free).
+
+    Note: This function and $(LREF commit)
+    set read/write permissions but not execute.
+    The reason is that some OS would set permissions on reserve 
+    while others on commit. Also Posix makes the commit stage almost transparent.
+    Use $(LREF protect) to override permissions as required.
+*/
+static void[] reserve(void* base, size_t size)
+{
+    size = roundUpToPage(size);
+    void* ptr = osReserve(base, size);        
+    return ptr ? ptr[0..size] : null;
+}
+
+/**
+    Commit a set of pages that form the specified $(D range) of virtual memory.
+    Only after applying this call is any memory obtained via $(LREF reserve)
+    guaranteed to be accessible.
+
+    Note: This function and $(LREF reserve)
+    set read/write permissions but not execute.
+    The reason is that some OS' would set permissions on reserve 
+    while others on commit. Also Posix makes the commit stage almost transparent.
+    Use $(LREF protect) to override permissions as required.
+*/
+static bool commit(void[] range)
+{
+    return osCommit(range.ptr, range.length);
+}
+
+/**
+    Decommit a set of pages that form the specified $(D range) of virtual memory.
+    While system retains the address space range, accessing memory inside of it 
+    is illegal. The exact consequences of such illegal access are platform 
+    dependent.
+
+*/
+static bool decommit(void[] range)
+{
+    return osDecommit(range.ptr, range.length);
+}
+
+/**
+    Decommit and releases pages that were previously allocated and/or reserved.        
+    $(D range) must contain exactly the same address range as the one 
+    returned by $(LREF allocate) or $(LREF reserve). 
+
+    It doesn't matter what the state of each page was (reserved vs commited), 
+    the OS decommits pages as needed.
+*/
+static bool free(void[] range)
+{
+    return osUnmap(range.ptr, range.length);
+}
+
+/**
+    Set permissions on the set of pages that form $(D range).        
+*/
+static bool protect(void[] range, MemoryAccess access)
+{
+    return osProtect(range.ptr, range.length, access);
+}
+
+/**
+    Lock pages that form $(D range) to prevent their paging out.
+*/
+static bool lock(void[] range)
+{
+    return osLockPages(range.ptr, range.length);
+}
+
+/**
+    Undo the effect of locking (with $(LREF lock)) pages that form $(D range).        
+*/
+static bool unlock(void[] range)
+{
+    return osUnlockPages(range.ptr, range.length);
+}
+
+/**
+    Round up a pointer or integral $(D arg)
+    to the nearest multiple of platform's page size.
+*/
+T roundUpToPage(T)(T arg)
+    if (is(T : void*) || is(T : size_t))
+{ 
+    return cast(T)((cast(size_t)arg + pageSize-1) & ~(pageSize-1)); 
+}
+
+/**
+    Round down a pointer or integral $(D arg)
+    to the nearest multiple of platform's page size.
+*/
+T roundDownToPage(T)(T arg)
+    if (is(T : void*) || is(T : size_t))
+{ 
+    return cast(T)(cast(size_t)arg & ~(pageSize-1)); 
+}
+
+//code to initialize pageSize constant  
+version (Windows)
+{
+    import core.sys.windows.windows;
+
+    alias int pthread_t;
+
+    pthread_t pthread_self()
+    {
+        return cast(pthread_t) GetCurrentThreadId();
+    }
+
+
+    shared static this()
+    {
+        SYSTEM_INFO sysinfo;
+        GetSystemInfo(&sysinfo);
+        pageSize = sysinfo.dwPageSize;
+    }
+}
+else version (Posix)
+{
+    import core.sys.posix.unistd;
+
+    private shared int fzero;
+    
+    shared static this()
+    {
+        pageSize = sysconf(_SC_PAGESIZE);
+        version(linux) //temporary 
+        {
+            import core.sys.posix.fcntl;
+            fzero = open("/dev/zero", O_RDWR);
+            assert(fzero != -1);                
+        }
+    }
+}
+else
+    static assert(false);
 
 //this is not even nearly covering all cases
 //some things are hard to check (how to check that segmentation fault is generated?)
 unittest
 {
-    auto pageSize = VMM.pageSize;    
+    auto pageSize = pageSize;
     //power of 2
     assert((pageSize & (pageSize-1)) == 0);
-    //alter when porting to some OS with smaller page size
+    //alter when porting to some platform with smaller page size
     assert(pageSize >= 4096);
-    auto slice = cast(ubyte[])VMM.allocate(null, pageSize/2);
+    auto slice = cast(ubyte[])allocate(null, pageSize/2);
     assert(slice.length == pageSize);
     foreach(i, ref v; slice)
     {
@@ -213,12 +241,14 @@ unittest
     }
     assert(slice[0] == 0);
     assert(slice[$-1] == ((slice.length-1) & 0xFF));
-    assert(VMM.free(slice));
+    assert(free(slice));
 
-    slice = cast(ubyte[])VMM.reserve(null, pageSize*10+1);
+    slice = cast(ubyte[])reserve(null, pageSize*10+1);
     assert(slice.length == pageSize*11);
-    assert(VMM.commit(slice[0..$/2]));
-    auto relSize = (slice.length/2 + pageSize-1) & ~(pageSize-1);
+    import core.stdc.stdio;
+    assert(commit(slice[0..$/2])); //5.5 pages --> 6 commited    
+    auto relSize = roundUpToPage(slice.length/2);
+    assert(relSize == 6 * pageSize);
     foreach(i, ref c; slice[0..relSize])
     {
         c = cast(ubyte)i ^ 0xFF;
@@ -226,18 +256,18 @@ unittest
     assert(slice[0] == 0xFF);
     assert(slice[pageSize] == (0xFF ^ cast(ubyte)pageSize));
     assert(slice[relSize-1] == (0xFF ^ cast(ubyte)(relSize-1)));
-    assert(VMM.commit(slice[$/2..$]));
+    assert(commit(slice[$/2..$]));
     slice[$-1] = 0xEA;
     assert(slice[$-1] == 0xEA);
-    assert(VMM.decommit(slice[$/2..$]));
-    assert(VMM.commit(slice[$/2..$]));
+    assert(decommit(slice[$/2..$]));
+    assert(commit(slice[$/2..$]));
     //decommit - commit leaves memory zeroed-out
     assert(slice[$-1] == 0);
 
-    assert(VMM.lock(slice));
-    assert(VMM.unlock(slice));
-    assert(VMM.protect(slice, MemoryAccess.read));
-    VMM.free(slice);
+    assert(lock(slice));
+    assert(unlock(slice));
+    assert(protect(slice, MemoryAccess.read));
+    free(slice);
 }
 
 //------------------------
@@ -338,8 +368,8 @@ else version(Posix)
         import core.sys.linux.sys.mman;
     else
         import core.sys.posix.sys.mman;
-    
-    uint protectionFlags(uint access)
+
+    uint protectionFlags(MemoryAccess access)
     {
         if(access == MemoryAccess.none)
             return PROT_NONE;        
@@ -357,15 +387,15 @@ else version(Posix)
     {
         //TODO: no huge pages yet, the whole procedure isn't trivial
         version(linux)
-            return MAP_PRIVATE | MAP_ANONYMOUS;
+            return MAP_PRIVATE/* | MAP_ANONYMOUS*/;
         else
-            return MAP_PRIVATE | MAP_ANON;
+            return MAP_PRIVATE/* | MAP_ANON*/;
     }
 
     void* osMap(void* base, size_t nbytes, MemoryAccess access, uint options)
     {          
         uint memFlag = memoryFlags(options) | (base == null ? 0 : MAP_FIXED);
-        void* p = mmap(base, nbytes, protectionFlags(access), memFlag, -1, 0);
+        void* p = mmap(base, nbytes, protectionFlags(access), memFlag, fzero, 0);
         return p == MAP_FAILED ? null : p;
     }
 
@@ -376,17 +406,27 @@ else version(Posix)
 
     void* osReserve(void* base, size_t size)
     {
-        return osMap(base, size);
+        return osMap(base, size, MemoryAccess.readWrite, MemoryOptions.none);
     }
 
     bool osCommit(void* ptr, size_t size)
     {
-        return madvise(ptr, size, MADV_WILLNEED) == 0;
+        ptr = roundDownToPage(ptr);
+        size = roundUpToPage(size);
+        version(linux)
+            return madvise(ptr, size, MADV_WILLNEED) == 0;
+        else
+            return posix_madvise(ptr, size, POSIX_MADV_WILLNEED) == 0;
     }
 
     bool osDecommit(void* ptr, size_t size)
     {
-        return madvise(ptr, size, MADV_DONTNEED) == 0;
+        ptr = roundDownToPage(ptr);
+        size = roundUpToPage(size);
+        version(linux)
+            return madvise(ptr, size, MADV_DONTNEED) == 0;
+        else
+            return posix_madvise(ptr, size, POSIX_MADV_WILLNEED) == 0;
     }
 
     bool osProtect(void* ptr, size_t size, MemoryAccess access)
