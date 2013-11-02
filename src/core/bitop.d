@@ -76,7 +76,8 @@ unittest
  * (No longer an intrisic - the compiler recognizes the patterns
  * in the body.)
  */
-int bt(in size_t* p, size_t bitnum) pure @system
+// @@Bug@@ 10985 - no inlining of library functions
+int bt()(in size_t* p, size_t bitnum) pure @system
 {
     static if (size_t.sizeof == 8)
         return ((p[bitnum >> 6] & (1L << (bitnum & 63)))) != 0;
@@ -215,7 +216,8 @@ version (DigitalMars) version (AnyX86) @system // not pure
 /**
  *  Calculates the number of set bits in a 32-bit integer.
  */
-int popcnt( uint x ) pure
+// @@Bug@@ 10985 - no inlining of library functions
+int popcnt()( uint x ) pure
 {
     // Avoid branches, and the potential for cache misses which
     // could be incurred with a table lookup.
