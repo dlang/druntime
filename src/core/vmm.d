@@ -372,7 +372,7 @@ else version(Posix)
     uint protectionFlags(MemoryAccess access)
     {
         if(access == MemoryAccess.none)
-            return PROT_NONE;        
+            return PROT_NONE;
         uint protFlags;
         if(access & MemoryAccess.read)
             protFlags |= PROT_READ;
@@ -389,7 +389,7 @@ else version(Posix)
         version(linux)
             return MAP_PRIVATE/* | MAP_ANONYMOUS*/;
         else
-            return MAP_PRIVATE/* | MAP_ANON*/;
+            return MAP_PRIVATE | MAP_ANON;
     }
 
     void* osMap(void* base, size_t nbytes, MemoryAccess access, uint options)
