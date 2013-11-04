@@ -212,7 +212,7 @@ else version (Posix)
     
     shared static this()
     {
-        pageSize = sysconf(_SC_PAGESIZE);
+        pageSize = getpagesize();
         version(linux) //temporary 
         {
             import core.sys.posix.fcntl;
