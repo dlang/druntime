@@ -31,6 +31,7 @@ MANIFEST=\
 	src\core\threadasm.S \
 	src\core\time.d \
 	src\core\vararg.d \
+	src\core\vmm.d \
 	\
 	src\core\stdc\complex.d \
 	src\core\stdc\config.d \

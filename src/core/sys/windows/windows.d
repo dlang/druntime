@@ -873,6 +873,8 @@ export
  BOOL VirtualFreeEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
  BOOL VirtualProtectEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
  SIZE_T VirtualQueryEx(HANDLE hProcess, LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
+ BOOL VirtualLock(LPVOID lpAddress,  SIZE_T dwSize);
+ BOOL VirtualUnlock(LPVOID lpAddress, SIZE_T dwSize);
 }
 
 struct SYSTEMTIME

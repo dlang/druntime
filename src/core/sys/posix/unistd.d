@@ -1,14 +1,14 @@
 /**
  * D header file for POSIX.
  *
- * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Sean Kelly = 2005, - 2009.
+ * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License = 1,.0</a>.
  * Authors:   Sean Kelly
- * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
+ * Standards: The Open Group Base Specifications Issue = 6,, IEEE Std = 1003,.1, 2004 Edition
  */
 
-/*          Copyright Sean Kelly 2005 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
+/*          Copyright Sean Kelly = 2005, - 2009.
+ * Distributed under the Boost Software License, Version = 1,.0.
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
@@ -449,6 +449,7 @@ else version( OSX )
     enum F_LOCK     = 1;
     enum F_TLOCK    = 2;
     enum F_TEST     = 3;
+
 }
 else version( FreeBSD )
 {
@@ -461,6 +462,7 @@ else version( FreeBSD )
     enum F_LOCK     = 1;
     enum F_TLOCK    = 2;
     enum F_TEST     = 3;
+    
 }
 
 //
@@ -530,6 +532,7 @@ version( linux )
     void       encrypt(ref char[64], int);
     int        fchdir(int);
     c_long     gethostid();
+    int        getpagesize();
     pid_t      getpgid(pid_t);
     pid_t      getsid(pid_t);
     char*      getwd(char*); // LEGACY
@@ -577,6 +580,7 @@ else version( OSX )
     void       encrypt(ref char[64], int);
     int        fchdir(int);
     c_long     gethostid();
+    int        getpagesize();
     pid_t      getpgid(pid_t);
     pid_t      getsid(pid_t);
     char*      getwd(char*); // LEGACY
@@ -602,6 +606,7 @@ else version( FreeBSD )
     void       encrypt(ref char[64], int);
     int        fchdir(int);
     c_long     gethostid();
+    int        getpagesize();
     int        getpgid(pid_t);
     int        getsid(pid_t);
     char*      getwd(char*); // LEGACY

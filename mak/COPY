@@ -12,6 +12,7 @@ COPY=\
 	$(IMPDIR)\core\thread.di \
 	$(IMPDIR)\core\time.d \
 	$(IMPDIR)\core\vararg.d \
+	$(IMPDIR)\core\vmm.d \
 	\
 	$(IMPDIR)\core\stdc\complex.d \
 	$(IMPDIR)\core\stdc\config.d \
