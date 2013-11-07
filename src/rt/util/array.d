@@ -36,14 +36,8 @@ private void _enforceSameLength(in char[] action,
     if(length1 == length2)
         return;
 
-    SizeStringBuff tmpBuff = void;
-    string msg = "Array lengths don't match for ";
-    msg ~= action;
-    msg ~= ": ";
-    msg ~= length1.sizeToTempString(tmpBuff);
-    msg ~= " != ";
-    msg ~= length2.sizeToTempString(tmpBuff);
-    throw new Error(msg);
+    throw new Error(format!"Array lengths don't match for ^: ^ != ^."
+        (action, length1, length2));
 }
 
 private void _enforceNoOverlap(in char[] action,
@@ -54,12 +48,6 @@ private void _enforceNoOverlap(in char[] action,
         return;
     const overlappedBytes = bytes - d;
 
-    SizeStringBuff tmpBuff = void;
-    string msg = "Overlapping arrays in ";
-    msg ~= action;
-    msg ~= ": ";
-    msg ~= overlappedBytes.sizeToTempString(tmpBuff);
-    msg ~= " byte(s) overlap of ";
-    msg ~= bytes.sizeToTempString(tmpBuff);
-    throw new Error(msg);
+    throw new Error(format!"Overlapping arrays in ^: ^ byte^ overlap of ^."
+        (action, overlappedBytes, overlappedBytes == 1 ? "" : "s", bytes));
 }

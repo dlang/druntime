@@ -487,8 +487,7 @@ class TypeInfo_StaticArray : TypeInfo
 {
     override string toString() const
     {
-        SizeStringBuff tmpBuff = void;
-        return cast(string)(value.toString() ~ "[" ~ len.sizeToTempString(tmpBuff) ~ "]");
+        return format!"^[^]"(value.toString(), len);
     }
 
     override bool opEquals(Object o)
@@ -606,7 +605,7 @@ class TypeInfo_AssociativeArray : TypeInfo
 {
     override string toString() const
     {
-        return cast(string)(next.toString() ~ "[" ~ key.toString() ~ "]");
+        return format!"^[^]"(next.toString(), key.toString());
     }
 
     override bool opEquals(Object o)
@@ -657,7 +656,7 @@ class TypeInfo_AssociativeArray : TypeInfo
 
 class TypeInfo_Vector : TypeInfo
 {
-    override string toString() const { return "__vector(" ~ base.toString() ~ ")"; }
+    override string toString() const { return format!"__vector(^)"(base.toString()); }
 
     override bool opEquals(Object o)
     {
@@ -1173,7 +1172,7 @@ class TypeInfo_Const : TypeInfo
 {
     override string toString() const
     {
-        return cast(string) ("const(" ~ base.toString() ~ ")");
+        return format!"const(^)"(base.toString());
     }
 
     //override bool opEquals(Object o) { return base.opEquals(o); }
@@ -1213,7 +1212,7 @@ class TypeInfo_Invariant : TypeInfo_Const
 {
     override string toString() const
     {
-        return cast(string) ("immutable(" ~ base.toString() ~ ")");
+        return format!"immutable(^)"(base.toString());
     }
 }
 
@@ -1221,7 +1220,7 @@ class TypeInfo_Shared : TypeInfo_Const
 {
     override string toString() const
     {
-        return cast(string) ("shared(" ~ base.toString() ~ ")");
+        return format!"shared(^)"(base.toString());
     }
 }
 
@@ -1229,7 +1228,7 @@ class TypeInfo_Inout : TypeInfo_Const
 {
     override string toString() const
     {
-        return cast(string) ("inout(" ~ base.toString() ~ ")");
+        return format!"inout(^)"(base.toString());
     }
 }
 
