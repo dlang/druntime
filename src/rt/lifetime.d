@@ -616,42 +616,77 @@ in
 }
 body
 {
+    return _d_arrayextend(ti, newcapacity, newcapacity, true, p);
+}
+
+
+/**
+Works as $(D _d_arraysetcapacity) but also accepts desired capacity
+in $(D desCapacity) and ability to discard GC-allocated original array.
+*/
+extern(C) size_t _d_arrayextend(const TypeInfo ti, size_t reqCapacity,
+                                size_t desCapacity, bool keepOriginal, void[]* p)
+in
+{
+    assert(ti);
+    assert(!(*p).length || (*p).ptr);
+    assert(reqCapacity <= desCapacity);
+}
+body
+{
     // step 1, get the block
     auto isshared = typeid(ti) is typeid(TypeInfo_Shared);
     auto bic = !isshared ? __getBlkInfo((*p).ptr) : null;
     auto info = bic ? *bic : gc_query((*p).ptr);
+    assert(keepOriginal || !(*p).ptr || info.base, "May discard only GC-allocated original array.");
     auto size = ti.next.tsize;
     version (D_InlineAsm_X86)
     {
-        size_t reqsize = void;
+        size_t reqsize = void, dessize = void;
 
         asm
         {
-            mov EAX, newcapacity;
+            mov EAX, reqCapacity;
             mul EAX, size;
             mov reqsize, EAX;
             jc  Loverflow;
+
+            mov EAX, desCapacity;
+            mul EAX, size;
+            mov dessize, EAX;
+            jnc Lnodesoverflow;
         }
     }
     else version (D_InlineAsm_X86_64)
     {
-        size_t reqsize = void;
+        size_t reqsize = void, dessize = void;
 
         asm
         {
-            mov RAX, newcapacity;
+            mov RAX, reqCapacity;
             mul RAX, size;
             mov reqsize, RAX;
             jc  Loverflow;
+
+            mov RAX, desCapacity;
+            mul RAX, size;
+            mov dessize, RAX;
+            jnc Lnodesoverflow;
         }
     }
     else
     {
-        size_t reqsize = size * newcapacity;
+        size_t reqsize = size * reqCapacity, dessize = size * desCapacity;
 
-        if (newcapacity > 0 && reqsize / newcapacity != size)
+        if (reqCapacity > 0 && reqsize / reqCapacity != size)
             goto Loverflow;
+
+        if (!(desCapacity > 0 && dessize / desCapacity != size))
+            goto Lnodesoverflow;
     }
+
+    dessize = reqsize;
+Lnodesoverflow:
 
     // step 2, get the actual "allocated" size.  If the allocated size does not
     // match what we expect, then we will need to reallocate anyways.
@@ -696,7 +731,7 @@ body
     {
         curallocsize = curcapacity = offset = 0;
     }
-    debug(PRINTF) printf("_d_arraysetcapacity, p = x%d,%d, newcapacity=%d, info.size=%d, reqsize=%d, curallocsize=%d, curcapacity=%d, offset=%d\n", (*p).ptr, (*p).length, newcapacity, info.size, reqsize, curallocsize, curcapacity, offset);
+    debug(PRINTF) printf("_d_arrayextend, p = x%d,%d, reqCapacity=%d, desCapacity=%d, keepOriginal=%d, info.size=%d, reqsize=%d, dessize=%d, curallocsize=%d, curcapacity=%d, offset=%d\n", (*p).ptr, (*p).length, reqCapacity, desCapacity, keepOriginal, info.size, reqsize, dessize, curallocsize, curcapacity, offset);
 
     if(curcapacity >= reqsize)
     {
@@ -707,9 +742,9 @@ body
     // step 3, try to extend the array in place.
     if(info.size >= PAGESIZE && curcapacity != 0)
     {
-        auto extendsize = reqsize + offset + LARGEPAD - info.size;
-        auto u = gc_extend((*p).ptr, extendsize, extendsize);
-        if(u)
+        const reqExtendSize = reqsize + offset + LARGEPAD - info.size;
+        const desExtendSize = dessize + offset + LARGEPAD - info.size;
+        if(const u = gc_extend((*p).ptr, reqExtendSize, desExtendSize))
         {
             // extend worked, save the new current allocated size
             if(bic)
@@ -721,10 +756,14 @@ body
 
     // step 4, if extending doesn't work, allocate a new array with at least the requested allocated size.
     auto datasize = (*p).length * size;
-    reqsize += __arrayPad(reqsize);
+    size_t allocSize = dessize + __arrayPad(dessize);
+    void* oldBase = info.base;
     // copy attributes from original block, or from the typeinfo if the
     // original block doesn't exist.
-    info = gc_qalloc(reqsize, (info.base ? info.attr : (!(ti.next.flags & 1) ? BlkAttr.NO_SCAN : 0)) | BlkAttr.APPENDABLE);
+    const uint allocAttr = (info.base ? info.attr : (!(ti.next.flags & 1) ? BlkAttr.NO_SCAN : 0)) | BlkAttr.APPENDABLE;
+    info = gc_qalloc(allocSize, allocAttr);
+    if(!info.base && reqsize != dessize)
+        info = gc_qalloc(allocSize = reqsize + __arrayPad(reqsize), allocAttr);
     if(info.base is null)
         goto Loverflow;
     // copy the data over.
@@ -732,14 +771,17 @@ body
     auto tgt = __arrayStart(info);
     memcpy(tgt, (*p).ptr, datasize);
 
-    // handle postblit
-    __doPostblit(tgt, datasize, ti.next);
+    // handle postblit or free original block
+    if(keepOriginal)
+        __doPostblit(tgt, datasize, ti.next);
+    else if(oldBase)
+        gc_free(oldBase);
 
     if(!(info.attr & BlkAttr.NO_SCAN))
     {
         // need to memset the newly requested data, except for the data that
         // malloc returned that we didn't request.
-        void *endptr = info.base + reqsize;
+        void *endptr = info.base + allocSize;
         void *begptr = tgt + datasize;
 
         // sanity check
