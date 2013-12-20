@@ -35,10 +35,20 @@ INSTALL_DIR=../install
 DOCDIR=doc
 IMPDIR=import
 
-MODEL:=default
-ifneq (default,$(MODEL))
-	MODEL_FLAG:=-m$(MODEL)
+MODEL:=
+uname_M:=$(shell uname -m)
+ifeq (x86_64,$(uname_M))
+	MODEL:=64
 endif
+ifeq (i686,$(uname_M))
+	MODEL:=32
+endif
+ifeq (,$(MODEL))
+	$(error Cannot figure 32/64 model from uname -m: $(uname_M))
+endif
+
+MODEL_FLAG:=-m$(MODEL)
+
 override PIC:=$(if $(PIC),-fPIC,)
 
 ifeq (osx,$(OS))
