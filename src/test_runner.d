@@ -1,4 +1,4 @@
-import core.runtime;
+import core.runtime, core.time : TickDuration;
 import core.stdc.stdio;
 
 ModuleInfo* getModuleInfo(string name)
@@ -10,14 +10,31 @@ ModuleInfo* getModuleInfo(string name)
 
 bool tester()
 {
-    assert(Runtime.args().length == 2);
-    auto name = Runtime.args()[1];
+    assert(Runtime.args.length == 2);
+    auto name = Runtime.args[1];
+    immutable pkg = ".package";
+    immutable pkgLen = pkg.length;
 
-    auto m = getModuleInfo(name);
-    if (auto fp = m.unitTest)
+    if(name.length > pkgLen && name[$ - pkgLen .. $] == pkg)
+        name = name[0 .. $ - pkgLen];
+
+    if (auto fp = getModuleInfo(name).unitTest)
     {
-        printf("Testing %.*s\n", cast(int)name.length, name.ptr);
-        fp();
+        try
+        {
+            immutable t0 = TickDuration.currSystemTick;
+            fp();
+            immutable t1 = TickDuration.currSystemTick;
+            printf("%.3fs PASS %.*s\n", (t1 - t0).msecs / 1000.,
+                cast(int)name.length, name.ptr);
+        }
+        catch (Throwable e)
+        {
+            auto msg = e.toString();
+            printf("****** FAIL %.*s\n%.*s\n", cast(int)name.length, name.ptr,
+                cast(int)msg.length, msg.ptr);
+            return false;
+        }
     }
     return true;
 }

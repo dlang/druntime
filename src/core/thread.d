@@ -13,8 +13,8 @@ module core.thread;
 
 
 public import core.time; // for Duration
+import core.exception : onOutOfMemoryError;
 static import rt.tlsgc;
-import rt.sections;
 
 // this should be true for most architectures
 version = StackGrowsDown;
@@ -235,7 +235,17 @@ else version( Posix )
         //
         extern (C) void* thread_entryPoint( void* arg )
         {
-            Thread  obj = cast(Thread) arg;
+            version (Shared)
+            {
+                import rt.sections;
+                Thread obj = cast(Thread)(cast(void**)arg)[0];
+                auto loadedLibraries = (cast(void**)arg)[1];
+                .free(arg);
+            }
+            else
+            {
+                Thread obj = cast(Thread)arg;
+            }
             assert( obj );
 
             assert( obj.m_curr is &obj.m_main );
@@ -314,6 +324,7 @@ else version( Posix )
 
             try
             {
+                version (Shared) inheritLoadedLibraries(loadedLibraries);
                 rt_moduleTlsCtor();
                 try
                 {
@@ -324,6 +335,7 @@ else version( Posix )
                     append( t );
                 }
                 rt_moduleTlsDtor();
+                version (Shared) cleanupLoadedLibraries();
             }
             catch( Throwable t )
             {
@@ -636,8 +648,26 @@ class Thread
                 m_isRunning = true;
                 scope( failure ) m_isRunning = false;
 
-                if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
-                    throw new ThreadException( "Error creating thread" );
+                version (Shared)
+                {
+                    import rt.sections;
+                    auto libs = pinLoadedLibraries();
+                    auto ps = cast(void**).malloc(2 * size_t.sizeof);
+                    if (ps is null) onOutOfMemoryError();
+                    ps[0] = cast(void*)this;
+                    ps[1] = cast(void*)libs;
+                    if( pthread_create( &m_addr, &attr, &thread_entryPoint, ps ) != 0 )
+                    {
+                        unpinLoadedLibraries(libs);
+                        .free(ps);
+                        throw new ThreadException( "Error creating thread" );
+                    }
+                }
+                else
+                {
+                    if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
+                        throw new ThreadException( "Error creating thread" );
+                }
             }
             version( OSX )
             {
@@ -914,7 +944,7 @@ class Thread
     unittest
     {
         auto thr = Thread.getThis();
-        immutable prio = thr.priority();
+        immutable prio = thr.priority;
         scope (exit) thr.priority = prio;
 
         assert(prio == PRIORITY_DEFAULT);
@@ -959,6 +989,10 @@ class Thread
         version( Windows )
         {
             auto maxSleepMillis = dur!("msecs")( uint.max - 1 );
+
+            // avoid a non-zero time to be round down to 0
+            if( val > dur!"msecs"( 0 ) && val < dur!"msecs"( 1 ) )
+                val = dur!"msecs"( 1 );
 
             // NOTE: In instances where all other threads in the process have a
             //       lower priority than the current thread, the current thread
@@ -1390,16 +1424,15 @@ private:
     {
         foreach (ref lock; _locks)
         {
-            lock[] = Mutex.classinfo.init[];
+            lock[] = typeid(Mutex).init[];
             (cast(Mutex)lock.ptr).__ctor();
         }
+    }
 
-        extern(C) void destroy()
-        {
-            foreach (ref lock; _locks)
-                (cast(Mutex)lock.ptr).__dtor();
-        }
-        atexit(&destroy);
+    static void termLocks()
+    {
+        foreach (ref lock; _locks)
+            (cast(Mutex)lock.ptr).__dtor();
     }
 
     __gshared Context*  sm_cbeg;
@@ -1723,6 +1756,16 @@ extern (C) void thread_init()
         assert( status == 0 );
     }
     Thread.sm_main = thread_attachThis();
+}
+
+
+/**
+ * Terminates the thread module. No other thread routine may be called
+ * afterwards.
+ */
+extern (C) void thread_term()
+{
+    Thread.termLocks();
 }
 
 
@@ -3392,15 +3435,12 @@ class Fiber
 
 
     /**
-     * Resets this fiber so that it may be re-used.  This routine may only be
-     * called for fibers that have terminated, as doing otherwise could result
-     * in scope-dependent functionality that is not executed.  Stack-based
-     * classes, for example, may not be cleaned up properly if a fiber is reset
-     * before it has terminated.
-     *
-     * Params:
-     *  fn = The fiber function.
-     *  dg = The fiber function.
+     * Resets this fiber so that it may be re-used, optionally with a
+     * new function/delegate.  This routine may only be called for
+     * fibers that have terminated, as doing otherwise could result in
+     * scope-dependent functionality that is not executed.
+     * Stack-based classes, for example, may not be cleaned up
+     * properly if a fiber is reset before it has terminated.
      *
      * In:
      *  This fiber must be in state TERM.
@@ -3694,6 +3734,7 @@ private:
         else
         {
             version (Posix) import core.sys.posix.sys.mman; // mmap
+            version (linux) import core.sys.linux.sys.mman : MAP_ANON;
 
             static if( __traits( compiles, mmap ) )
             {
@@ -4154,7 +4195,15 @@ else
     else version (Posix)
     {
         static if( __traits( compiles, ucontext_t ) )
-            static assert(__traits(classInstanceSize, Fiber) == 44 + ucontext_t.sizeof + 4);
+        {
+            // ucontext_t might have an alignment larger than 4.
+            static roundUp()(size_t n)
+            {
+                return (n + (ucontext_t.alignof - 1)) & ~(ucontext_t.alignof - 1);
+            }
+            static assert(__traits(classInstanceSize, Fiber) ==
+                roundUp(roundUp(44) + ucontext_t.sizeof + 4));
+        }
         else
             static assert(__traits(classInstanceSize, Fiber) == 44);
     }
@@ -4369,6 +4418,86 @@ unittest
 
     fib.reset(delegate void(){method = "delegate";});
     expect(fib, "delegate");
+}
+
+
+// stress testing GC stack scanning
+unittest
+{
+    import core.memory;
+
+    static void unreferencedThreadObject()
+    {
+        static void sleep() { Thread.sleep(dur!"msecs"(100)); }
+        auto thread = new Thread(&sleep);
+        thread.start();
+    }
+    unreferencedThreadObject();
+    GC.collect();
+
+    static class Foo
+    {
+        this(int value)
+        {
+            _value = value;
+        }
+
+        int bar()
+        {
+            return _value;
+        }
+
+        int _value;
+    }
+
+    static void collect()
+    {
+        auto foo = new Foo(2);
+        assert(foo.bar() == 2);
+        GC.collect();
+        Fiber.yield();
+        GC.collect();
+        assert(foo.bar() == 2);
+    }
+
+    auto fiber = new Fiber(&collect);
+
+    fiber.call();
+    GC.collect();
+    fiber.call();
+
+    // thread reference
+    auto foo = new Foo(2);
+
+    void collect2()
+    {
+        assert(foo.bar() == 2);
+        GC.collect();
+        Fiber.yield();
+        GC.collect();
+        assert(foo.bar() == 2);
+    }
+
+    fiber = new Fiber(&collect2);
+
+    fiber.call();
+    GC.collect();
+    fiber.call();
+
+    static void recurse(size_t cnt)
+    {
+        --cnt;
+        Fiber.yield();
+        if (cnt)
+        {
+            auto fib = new Fiber(() { recurse(cnt); });
+            fib.call();
+            GC.collect();
+            fib.call();
+        }
+    }
+    fiber = new Fiber(() { recurse(20); });
+    fiber.call();
 }
 
 }

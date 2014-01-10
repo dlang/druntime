@@ -5,40 +5,51 @@
 
 QUIET:=@
 
-OS:=
-uname_S:=$(shell uname -s)
-ifeq (Darwin,$(uname_S))
-	OS:=osx
-endif
-ifeq (Linux,$(uname_S))
-	OS:=linux
-endif
-ifeq (FreeBSD,$(uname_S))
-	OS:=freebsd
-endif
-ifeq (OpenBSD,$(uname_S))
-	OS:=openbsd
-endif
-ifeq (Solaris,$(uname_S))
-	OS:=solaris
-endif
-ifeq (SunOS,$(uname_S))
-	OS:=solaris
-endif
 ifeq (,$(OS))
-	$(error Unrecognized or unsupported OS for uname: $(uname_S))
+  uname_S:=$(shell uname -s)
+  ifeq (Darwin,$(uname_S))
+    OS:=osx
+  endif
+  ifeq (Linux,$(uname_S))
+    OS:=linux
+  endif
+  ifeq (FreeBSD,$(uname_S))
+    OS:=freebsd
+  endif
+  ifeq (OpenBSD,$(uname_S))
+    OS:=openbsd
+  endif
+  ifeq (Solaris,$(uname_S))
+    OS:=solaris
+  endif
+  ifeq (SunOS,$(uname_S))
+    OS:=solaris
+  endif
+  ifeq (,$(OS))
+    $(error Unrecognized or unsupported OS for uname: $(uname_S))
+  endif
 endif
 
-DMD?=dmd
+ifeq (,$(MODEL))
+  uname_M:=$(shell uname -m)
+  ifneq (,$(findstring $(uname_M),x86_64 amd64))
+    MODEL:=64
+  endif
+  ifneq (,$(findstring $(uname_M),i386 i586 i686))
+    MODEL:=32
+  endif
+  ifeq (,$(MODEL))
+    $(error Cannot figure 32/64 model from uname -m: $(uname_M))
+  endif
+endif
+
+DMD=../dmd/src/dmd
 INSTALL_DIR=../install
 
 DOCDIR=doc
 IMPDIR=import
 
-MODEL:=default
-ifneq (default,$(MODEL))
-	MODEL_FLAG:=-m$(MODEL)
-endif
+MODEL_FLAG:=-m$(MODEL)
 override PIC:=$(if $(PIC),-fPIC,)
 
 ifeq (osx,$(OS))
@@ -49,8 +60,8 @@ else
 	DOTLIB:=.a
 endif
 
-DFLAGS=$(MODEL_FLAG) -O -release -inline -w -Isrc -Iimport -property $(PIC)
-UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport -property $(PIC)
+DFLAGS=$(MODEL_FLAG) -O -release -inline -w -Isrc -Iimport $(PIC)
+UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport $(PIC)
 DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
 
 CFLAGS=$(MODEL_FLAG) -O $(PIC)
@@ -159,11 +170,12 @@ $(OBJDIR)/threadasm.o : src/core/threadasm.S
 
 ######################## Create a shared library ##############################
 
-dll: override PIC:=-fPIC
+$(DRUNTIMESO) $(DRUNTIMESOLIB) dll: override PIC:=-fPIC
+$(DRUNTIMESO) $(DRUNTIMESOLIB) dll: DFLAGS+=-version=Shared
 dll: $(DRUNTIMESOLIB)
 
 $(DRUNTIMESO): $(OBJS) $(SRCS)
-	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) $(DFLAGS) $(SRCS) $(OBJS)
+	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) $(DFLAGS) $(SRCS) $(OBJS) -L-ldl
 
 $(DRUNTIMESOLIB): $(OBJS) $(SRCS)
 	$(DMD) -c -fPIC -of$(DRUNTIMESOOBJ) $(DFLAGS) $(SRCS)
@@ -175,8 +187,13 @@ $(DRUNTIME): $(OBJS) $(SRCS)
 	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
 UT_MODULES:=$(patsubst src/%.d,$(OBJDIR)/%,$(SRCS))
+HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
+ifeq ($(HAS_ADDITIONAL_TESTS),1)
+	ADDITIONAL_TESTS:=test/init_fini test/exceptions
+	ADDITIONAL_TESTS+=$(if $(findstring $(OS),linux),test/shared,)
+endif
 
-unittest : $(UT_MODULES)
+unittest : $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
 	@echo done
 
 ifeq ($(OS),freebsd)
@@ -198,11 +215,12 @@ else
 UT_DRUNTIME:=$(OBJDIR)/lib$(DRUNTIME_BASE)-ut$(DOTDLL)
 
 $(UT_DRUNTIME): override PIC:=-fPIC
+$(UT_DRUNTIME): UDFLAGS+=-version=Shared
 $(UT_DRUNTIME): $(OBJS) $(SRCS)
-	$(DMD) $(UDFLAGS) -shared -version=druntime_unittest -unittest -of$@ $(SRCS) $(OBJS) -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -shared -version=druntime_unittest -unittest -of$@ $(SRCS) $(OBJS) -L-ldl -debuglib= -defaultlib=
 
 $(OBJDIR)/test_runner: $(UT_DRUNTIME) src/test_runner.d
-	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L-L$(OBJDIR) -L-rpath=$(OBJDIR) -L-l$(DRUNTIME_BASE)-ut -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L$(UT_DRUNTIME) -debuglib= -defaultlib=
 
 endif
 
@@ -217,6 +235,13 @@ $(OBJDIR)/% : $(OBJDIR)/test_runner
 	$(QUIET)$(RUN) $(OBJDIR)/test_runner $(call moduleName,$*)
 # succeeded, render the file new again
 	@touch $@
+
+test/init_fini/.run test/exceptions/.run: $(DRUNTIME)
+test/shared/.run: $(DRUNTIMESO)
+
+test/%/.run: test/%/Makefile
+	$(QUIET)$(MAKE) -C test/$* MODEL=$(MODEL) OS=$(OS) DMD=$(abspath $(DMD)) \
+		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) QUIET=$(QUIET)
 
 detab:
 	detab $(MANIFEST)
@@ -237,5 +262,8 @@ install: target
 	cp -r lib/* $(INSTALL_DIR)/lib/
 	cp LICENSE $(INSTALL_DIR)/druntime-LICENSE.txt
 
-clean:
+clean: $(addsuffix /.clean,$(ADDITIONAL_TESTS))
 	rm -rf obj lib $(IMPDIR) $(DOCDIR) druntime.zip
+
+test/%/.clean: test/%/Makefile
+	$(MAKE) -C test/$* clean

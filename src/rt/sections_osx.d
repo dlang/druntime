@@ -15,12 +15,12 @@ module rt.sections_osx;
 version(OSX):
 
 // debug = PRINTF;
-debug(PRINTF) import core.stdc.stdio;
+import core.stdc.stdio;
 import core.stdc.string, core.stdc.stdlib;
 import core.sys.posix.pthread;
 import core.sys.osx.mach.dyld;
 import core.sys.osx.mach.getsect;
-import rt.deh2, rt.minfo;
+import rt.deh, rt.minfo;
 import rt.util.container;
 
 struct SectionGroup
@@ -62,16 +62,29 @@ private:
     immutable(void)[][2] _tlsImage;
 }
 
+/****
+ * Boolean flag set to true while the runtime is initialized.
+ */
+__gshared bool _isRuntimeInitialized;
+
+/****
+ * Gets called on program startup just before GC is initialized.
+ */
 void initSections()
 {
     pthread_key_create(&_tlsKey, null);
     _dyld_register_func_for_add_image(&sections_osx_onAddImage);
+    _isRuntimeInitialized = true;
 }
 
+/***
+ * Gets called on program shutdown just after GC is terminated.
+ */
 void finiSections()
 {
     _sections._gcRanges.reset();
     pthread_key_delete(_tlsKey);
+    _isRuntimeInitialized = false;
 }
 
 void[]* initTLSRanges()
@@ -181,7 +194,16 @@ extern (C) void sections_osx_onAddImage(in mach_header* h, intptr_t slide)
     if (auto sect = getSection(h, slide, "__DATA", "__minfodata"))
     {
         // no support for multiple images yet
-        _sections.modules.ptr is null || assert(0);
+        // take the sections from the last static image which is the executable
+        if (_isRuntimeInitialized)
+        {
+            fprintf(stderr, "Loading shared libraries isn't yet supported on OSX.\n");
+            return;
+        }
+        else if (_sections.modules.ptr !is null)
+        {
+            fprintf(stderr, "Shared libraries are not yet supported on OSX.\n");
+        }
 
         debug(PRINTF) printf("  minfodata\n");
         auto p = cast(ModuleInfo**)sect.ptr;
@@ -192,9 +214,6 @@ extern (C) void sections_osx_onAddImage(in mach_header* h, intptr_t slide)
 
     if (auto sect = getSection(h, slide, "__DATA", "__deh_eh"))
     {
-        // no support for multiple images yet
-        _sections._ehTables.ptr is null || assert(0);
-
         debug(PRINTF) printf("  deh_eh\n");
         auto p = cast(immutable(FuncTable)*)sect.ptr;
         immutable len = sect.length / (*p).sizeof;
@@ -204,18 +223,12 @@ extern (C) void sections_osx_onAddImage(in mach_header* h, intptr_t slide)
 
     if (auto sect = getSection(h, slide, "__DATA", "__tls_data"))
     {
-        // no support for multiple images yet
-        _sections._tlsImage[0].ptr is null || assert(0);
-
         debug(PRINTF) printf("  tls_data %p %p\n", sect.ptr, sect.ptr + sect.length);
         _sections._tlsImage[0] = (cast(immutable(void)*)sect.ptr)[0 .. sect.length];
     }
 
     if (auto sect = getSection(h, slide, "__DATA", "__tlscoal_nt"))
     {
-        // no support for multiple images yet
-        _sections._tlsImage[1].ptr is null || assert(0);
-
         debug(PRINTF) printf("  tlscoal_nt %p %p\n", sect.ptr, sect.ptr + sect.length);
         _sections._tlsImage[1] = (cast(immutable(void)*)sect.ptr)[0 .. sect.length];
     }

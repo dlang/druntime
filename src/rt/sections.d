@@ -23,7 +23,7 @@ else version (Win64)
 else
     static assert(0, "unimplemented");
 
-import rt.deh2, rt.minfo;
+import rt.deh, rt.minfo;
 
 template isSectionGroup(T)
 {
@@ -42,3 +42,11 @@ static assert(is(typeof(&initTLSRanges) RT == return) &&
               is(typeof(&initTLSRanges) == RT function()) &&
               is(typeof(&finiTLSRanges) == void function(RT)) &&
               is(typeof(&scanTLSRanges) == void function(RT, scope void delegate(void*, void*))));
+
+version (Shared)
+{
+    static assert(is(typeof(&pinLoadedLibraries) == void* function()));
+    static assert(is(typeof(&unpinLoadedLibraries) == void function(void*)));
+    static assert(is(typeof(&inheritLoadedLibraries) == void function(void*)));
+    static assert(is(typeof(&cleanupLoadedLibraries) == void function()));
+}

@@ -1,7 +1,7 @@
 /**
- * Contains main program entry point and support routines.
+ * Contains druntime startup and shutdown routines.
  *
- * Copyright: Copyright Digital Mars 2000 - 2012.
+ * Copyright: Copyright Digital Mars 2000 - 2013.
  * License: Distributed under the
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
@@ -15,48 +15,20 @@ private
 {
     import rt.memory;
     import rt.sections;
-    import rt.util.console;
     import rt.util.string;
     import core.stdc.stddef;
     import core.stdc.stdlib;
     import core.stdc.string;
     import core.stdc.stdio;   // for printf()
+    import core.stdc.errno : errno;
 }
 
 version (Windows)
 {
     private import core.stdc.wchar_;
+    private import core.sys.windows.windows;
 
-    extern (Windows)
-    {
-        alias int function() FARPROC;
-        FARPROC    GetProcAddress(void*, in char*);
-        void*      LoadLibraryW(in wchar_t*);
-        int        FreeLibrary(void*);
-        void*      LocalFree(void*);
-        wchar_t*   GetCommandLineW();
-        wchar_t**  CommandLineToArgvW(in wchar_t*, int*);
-        export int WideCharToMultiByte(uint, uint, in wchar_t*, int, char*, int, in char*, int*);
-        export int MultiByteToWideChar(uint, uint, in char*, int, wchar_t*, int);
-        int        IsDebuggerPresent();
-    }
     pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
-}
-
-version (all)
-{
-    extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null);
-
-    extern (C) void _d_createTrace(Object *o, void* context)
-    {
-        auto t = cast(Throwable) o;
-
-        if (t !is null && t.info is null &&
-            cast(byte*) t !is t.classinfo.init.ptr)
-        {
-            t.info = _d_traceContext(context);
-        }
-    }
 }
 
 version (FreeBSD)
@@ -75,27 +47,7 @@ extern (C) void rt_moduleTlsCtor();
 extern (C) void rt_moduleDtor();
 extern (C) void rt_moduleTlsDtor();
 extern (C) void thread_joinAll();
-
-// NOTE: This is to preserve compatibility with old Windows DLLs.
-extern (C) void _moduleCtor()
-{
-    rt_moduleCtor();
-}
-
-extern (C) void _moduleDtor()
-{
-    rt_moduleDtor();
-}
-
-extern (C) void _moduleTlsCtor()
-{
-    rt_moduleTlsCtor();
-}
-
-extern (C) void _moduleTlsDtor()
-{
-    rt_moduleTlsDtor();
-}
+extern (C) bool runModuleUnitTests();
 
 version (OSX)
 {
@@ -118,33 +70,28 @@ extern (C)
     alias void  function()      gcClrFn;
 }
 
-extern (C) void* rt_loadLibrary(in char[] name)
+version (Windows)
 {
-    version (Windows)
+    /*******************************************
+     * Loads a DLL written in D with the name 'name'.
+     * Returns:
+     *      opaque handle to the DLL if successfully loaded
+     *      null if failure
+     */
+    extern (C) void* rt_loadLibrary(const char* name)
     {
-        if (name.length == 0) return null;
-        // Load a DLL at runtime
-        enum CP_UTF8 = 65001;
-        auto len = MultiByteToWideChar(
-            CP_UTF8, 0, name.ptr, cast(int)name.length, null, 0);
-        if (len == 0)
-            return null;
+        return initLibrary(.LoadLibraryA(name));
+    }
 
-        auto buf = cast(wchar_t*)malloc((len+1) * wchar_t.sizeof);
-        if (buf is null)
-            return null;
-        scope (exit)
-            free(buf);
+    extern (C) void* rt_loadLibraryW(const wchar_t* name)
+    {
+        return initLibrary(.LoadLibraryW(name));
+    }
 
-        len = MultiByteToWideChar(
-            CP_UTF8, 0, name.ptr, cast(int)name.length, buf, len);
-        if (len == 0)
-            return null;
-
-        buf[len] = '\0';
-
-        // BUG: LoadLibraryW() call calls rt_init(), which fails if proxy is not set!
-        auto mod = LoadLibraryW(buf);
+    void* initLibrary(void* mod)
+    {
+        // BUG: LoadLibrary() call calls rt_init(), which fails if proxy is not set!
+        // (What? LoadLibrary() is a Windows API call, it shouldn't call rt_init().)
         if (mod is null)
             return mod;
         gcSetFn gcSet = cast(gcSetFn) GetProcAddress(mod, "gc_setProxy");
@@ -153,111 +100,27 @@ extern (C) void* rt_loadLibrary(in char[] name)
             gcSet(gc_getProxy());
         }
         return mod;
-
     }
-    else version (Posix)
-    {
-        throw new Exception("rt_loadLibrary not yet implemented on Posix.");
-    }
-}
 
-extern (C) bool rt_unloadLibrary(void* ptr)
-{
-    version (Windows)
+    /*************************************
+     * Unloads DLL that was previously loaded by rt_loadLibrary().
+     * Input:
+     *      ptr     the handle returned by rt_loadLibrary()
+     * Returns:
+     *      1   succeeded
+     *      0   some failure happened
+     */
+    extern (C) int rt_unloadLibrary(void* ptr)
     {
         gcClrFn gcClr  = cast(gcClrFn) GetProcAddress(ptr, "gc_clrProxy");
         if (gcClr !is null)
             gcClr();
         return FreeLibrary(ptr) != 0;
     }
-    else version (Posix)
-    {
-        throw new Exception("rt_unloadLibrary not yet implemented on Posix.");
-    }
 }
 
-/***********************************
- * These functions must be defined for any D program linked
- * against this library.
+/* To get out-of-band access to the args[] passed to main().
  */
-extern (C) void onAssertError(string file, size_t line);
-extern (C) void onAssertErrorMsg(string file, size_t line, string msg);
-extern (C) void onUnittestErrorMsg(string file, size_t line, string msg);
-extern (C) void onRangeError(string file, size_t line);
-extern (C) void onHiddenFuncError(Object o);
-extern (C) void onSwitchError(string file, size_t line);
-extern (C) bool runModuleUnitTests();
-
-// this function is called from the utf module
-//extern (C) void onUnicodeError(string msg, size_t idx);
-
-/***********************************
- * These are internal callbacks for various language errors.
- */
-
-extern (C)
-{
-    // Use ModuleInfo to get file name for "m" versions
-
-    void _d_assertm(ModuleInfo* m, uint line)
-    {
-        onAssertError(m.name, line);
-    }
-
-    void _d_assert_msg(string msg, string file, uint line)
-    {
-        onAssertErrorMsg(file, line, msg);
-    }
-
-    void _d_assert(string file, uint line)
-    {
-        onAssertError(file, line);
-    }
-
-    void _d_unittestm(ModuleInfo* m, uint line)
-    {
-        _d_unittest(m.name, line);
-    }
-
-    void _d_unittest_msg(string msg, string file, uint line)
-    {
-        onUnittestErrorMsg(file, line, msg);
-    }
-
-    void _d_unittest(string file, uint line)
-    {
-        _d_unittest_msg("unittest failure", file, line);
-    }
-
-    void _d_array_bounds(ModuleInfo* m, uint line)
-    {
-        onRangeError(m.name, line);
-    }
-
-    void _d_switch_error(ModuleInfo* m, uint line)
-    {
-        onSwitchError(m.name, line);
-    }
-}
-
-extern (C) void _d_hidden_func()
-{
-    Object o;
-    version(D_InlineAsm_X86)
-        asm
-        {
-            mov o, EAX;
-        }
-    else version(D_InlineAsm_X86_64)
-        asm
-        {
-            mov o, RDI;
-        }
-    else
-        static assert(0, "unknown os");
-
-    onHiddenFuncError(o);
-}
 
 __gshared string[] _d_args = null;
 
@@ -270,17 +133,29 @@ extern (C) string[] rt_args()
 // be fine to leave it as __gshared.
 extern (C) __gshared bool rt_trapExceptions = true;
 
-void _d_criticalInit()
-{
-  _STI_monitor_staticctor();
-  _STI_critical_init();
-}
-
 alias void delegate(Throwable) ExceptionHandler;
 
-extern (C) bool rt_init(ExceptionHandler dg = null)
+/**
+ * Keep track of how often rt_init/rt_term were called.
+ */
+shared size_t _initCount;
+
+/**********************************************
+ * Initialize druntime.
+ * If a C program wishes to call D code, and there's no D main(), then it
+ * must call rt_init() and rt_term().
+ */
+extern (C) int rt_init()
 {
-    _d_criticalInit();
+    /* @@BUG 11380 @@ Need to synchronize rt_init/rt_term calls for
+       version (Shared) druntime, because multiple C threads might
+       initialize different D libraries without knowing about the
+       shared druntime. Also we need to attach any thread that calls
+       rt_init. */
+    if (_initCount++) return 1;
+
+    _STI_monitor_staticctor();
+    _STI_critical_init();
 
     try
     {
@@ -289,28 +164,26 @@ extern (C) bool rt_init(ExceptionHandler dg = null)
         initStaticDataGC();
         rt_moduleCtor();
         rt_moduleTlsCtor();
-        runModuleUnitTests();
-        return true;
+        return 1;
     }
-    catch (Throwable e)
+    catch (Throwable t)
     {
-        if (dg)
-            dg(e);
-        else
-            throw e;    // rethrow, don't silently ignore error
+        _initCount = 0;
+        printThrowable(t);
     }
-    _d_criticalTerm();
-    return false;
+    _STD_critical_term();
+    _STD_monitor_staticdtor();
+    return 0;
 }
 
-void _d_criticalTerm()
+/**********************************************
+ * Terminate use of druntime.
+ */
+extern (C) int rt_term()
 {
-  _STD_critical_term();
-  _STD_monitor_staticdtor();
-}
+    if (!_initCount) return 0; // was never initialized
+    if (--_initCount) return 1;
 
-extern (C) bool rt_term(ExceptionHandler dg = null)
-{
     try
     {
         rt_moduleTlsDtor();
@@ -318,19 +191,24 @@ extern (C) bool rt_term(ExceptionHandler dg = null)
         rt_moduleDtor();
         gc_term();
         finiSections();
-        return true;
+        return 1;
     }
-    catch (Throwable e)
+    catch (Throwable t)
     {
-        if (dg)
-            dg(e);
+        printThrowable(t);
     }
     finally
     {
-        _d_criticalTerm();
+        _STD_critical_term();
+        _STD_monitor_staticdtor();
     }
-    return false;
+    return 0;
 }
+
+/***********************************
+ * Provide out-of-band access to the original C argc/argv
+ * passed to this program via main(argc,argv).
+ */
 
 struct CArgs
 {
@@ -346,45 +224,18 @@ extern (C) CArgs rt_cArgs()
 }
 
 /***********************************
- * The D main() function supplied by the user's program
- *
- * It always has `_Dmain` symbol name and uses C calling convention.
- * But DMD frontend returns its type as `extern(D)` because of Issue @@@9028@@@.
- * As we need to deal with actual calling convention we have to mark it
- * as `extern(C)` and use its symbol name.
- */
-extern(C) int _Dmain(char[][] args);
-alias extern(C) int function(char[][] args) MainFunc;
-
-/***********************************
- * Substitutes for the C main() function.
- * Just calls into d_run_main with the default main function.
- * Applications are free to implement their own
- * main function and call the _d_run_main function
- * themselves with any main function.
- */
-extern (C) int main(int argc, char **argv)
-{
-    return _d_run_main(argc, argv, &_Dmain);
-}
-
-version (Solaris) extern (C) int _main(int argc, char** argv)
-{
-    // This is apparently needed on Solaris because the
-    // C tool chain seems to expect the main function
-    // to be called _main. It needs both not just one!
-    return main(argc, argv);
-}
-
-/***********************************
  * Run the given main function.
  * Its purpose is to wrap the D main()
  * function and catch any unhandled exceptions.
  */
+private alias extern(C) int function(char[][] args) MainFunc;
+
 extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 {
+    // Remember the original C argc/argv
     _cArgs.argc = argc;
     _cArgs.argv = argv;
+
     int result;
 
     version (OSX)
@@ -418,14 +269,32 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         stdin = &fp[0];
         stdout = &fp[1];
         stderr = &fp[2];
+
+        // ensure that sprintf generates only 2 digit exponent when writing floating point values
+        _set_output_format(_TWO_DIGIT_EXPONENT);
+
+        // enable full precision for reals
+        asm
+        {
+            push    RAX;
+            fstcw   word ptr [RSP];
+            or      [RSP], 0b11_00_111111; // 11: use 64 bit extended-precision
+                                           // 111111: mask all FP exceptions
+            fldcw   word ptr [RSP];
+            pop     RAX;
+        }
     }
 
-    _STI_monitor_staticctor();
-    _STI_critical_init();
-
+    // Allocate args[] on the stack
     char[][] args = (cast(char[]*) alloca(argc * (char[]).sizeof))[0 .. argc];
+
     version (Windows)
     {
+        /* Because we want args[] to be UTF-8, and Windows doesn't guarantee that,
+         * we ignore argc/argv and go get the Windows command line again as UTF-16.
+         * Then, reparse into wargc/wargs, and then use Windows API to convert
+         * to UTF-8.
+         */
         const wchar_t* wCommandLine = GetCommandLineW();
         immutable size_t wCommandLineLength = wcslen(wCommandLine);
         int wargc;
@@ -435,21 +304,21 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         // This is required because WideCharToMultiByte requires int as input.
         assert(wCommandLineLength <= cast(size_t) int.max, "Wide char command line length must not exceed int.max");
 
-        immutable size_t totalArgsLength = WideCharToMultiByte(65001, 0, wCommandLine, cast(int)wCommandLineLength, null, 0, null, null);
+        immutable size_t totalArgsLength = WideCharToMultiByte(CP_UTF8, 0, wCommandLine, cast(int)wCommandLineLength, null, 0, null, null);
         {
             char* totalArgsBuff = cast(char*) alloca(totalArgsLength);
-            int j = 0;
+            size_t j = 0;
             foreach (i; 0 .. wargc)
             {
                 immutable size_t wlen = wcslen(wargs[i]);
                 assert(wlen <= cast(size_t) int.max, "wlen cannot exceed int.max");
-                immutable int len = WideCharToMultiByte(65001, 0, &wargs[i][0], cast(int) wlen, null, 0, null, null);
+                immutable int len = WideCharToMultiByte(CP_UTF8, 0, &wargs[i][0], cast(int) wlen, null, 0, null, null);
                 args[i] = totalArgsBuff[j .. j + len];
                 if (len == 0)
                     continue;
                 j += len;
                 assert(j <= totalArgsLength);
-                WideCharToMultiByte(65001, 0, &wargs[i][0], cast(int) wlen, &args[i][0], len, null, null);
+                WideCharToMultiByte(CP_UTF8, 0, &wargs[i][0], cast(int) wlen, &args[i][0], len, null, null);
             }
         }
         LocalFree(wargs);
@@ -468,6 +337,10 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     else
         static assert(0);
 
+    /* Create a copy of args[] on the stack, and set the global _d_args to refer to it.
+     * Why a copy instead of just using args[] is unclear.
+     * This also means that when this function returns, _d_args will refer to garbage.
+     */
     {
         auto buff = cast(char[]*) alloca(argc * (char[]).sizeof + totalArgsLength);
 
@@ -491,75 +364,6 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 
     void tryExec(scope void delegate() dg)
     {
-        void printLocLine(Throwable t)
-        {
-            if (t.file)
-            {
-               console(t.classinfo.name)("@")(t.file)("(")(t.line)(")");
-            }
-            else
-            {
-                console(t.classinfo.name);
-            }
-            console("\n");
-        }
-
-        void printMsgLine(Throwable t)
-        {
-            if (t.file)
-            {
-               console(t.classinfo.name)("@")(t.file)("(")(t.line)(")");
-            }
-            else
-            {
-                console(t.classinfo.name);
-            }
-            if (t.msg)
-            {
-                console(": ")(t.msg);
-            }
-            console("\n");
-        }
-
-        void printInfoBlock(Throwable t)
-        {
-            if (t.info)
-            {
-                console("----------------\n");
-                foreach (i; t.info)
-                    console(i)("\n");
-                console("----------------\n");
-            }
-        }
-
-        void print(Throwable t)
-        {
-            Throwable firstWithBypass = null;
-
-            for (; t; t = t.next)
-            {
-                printMsgLine(t);
-                printInfoBlock(t);
-                auto e = cast(Error) t;
-                if (e && e.bypassedException)
-                {
-                    console("Bypasses ");
-                    printLocLine(e.bypassedException);
-                    if (firstWithBypass is null)
-                        firstWithBypass = t;
-                }
-            }
-            if (firstWithBypass is null)
-                return;
-            console("=== Bypassed ===\n");
-            for (t = firstWithBypass; t; t = t.next)
-            {
-                auto e = cast(Error) t;
-                if (e && e.bypassedException)
-                    print(e.bypassedException);
-            }
-        }
-
         if (trapExceptions)
         {
             try
@@ -568,7 +372,7 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
             }
             catch (Throwable t)
             {
-                print(t);
+                printThrowable(t);
                 result = EXIT_FAILURE;
             }
         }
@@ -586,34 +390,114 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     //       the user's main function.  If main terminates with an exception,
     //       the exception is handled and then cleanup begins.  An exception
     //       thrown during cleanup, however, will abort the cleanup process.
-
-    void runMain()
-    {
-        result = mainFunc(args);
-    }
-
     void runAll()
     {
-        initSections();
-        gc_init();
-        initStaticDataGC();
-        rt_moduleCtor();
-        rt_moduleTlsCtor();
-        if (runModuleUnitTests())
-            tryExec(&runMain);
+        if (rt_init() && runModuleUnitTests())
+            tryExec({ result = mainFunc(args); });
         else
             result = EXIT_FAILURE;
-        rt_moduleTlsDtor();
-        thread_joinAll();
-        rt_moduleDtor();
-        gc_term();
-        finiSections();
+
+        if (!rt_term())
+            result = (result == EXIT_SUCCESS) ? EXIT_FAILURE : result;
     }
 
     tryExec(&runAll);
 
-    _STD_critical_term();
-    _STD_monitor_staticdtor();
+    // Issue 10344: flush stdout and return nonzero on failure
+    if (.fflush(.stdout) != 0)
+    {
+        .fprintf(.stderr, "Failed to flush stdout: %s\n", .strerror(.errno));
+        if (result == 0)
+        {
+            result = EXIT_FAILURE;
+        }
+    }
 
     return result;
+}
+
+private void formatThrowable(Throwable t, void delegate(in char[] s) nothrow sink)
+{
+    for (; t; t = t.next)
+    {
+        t.toString(sink); sink("\n");
+
+        auto e = cast(Error)t;
+        if (e is null || e.bypassedException is null) continue;
+
+        sink("=== Bypassed ===\n");
+        for (auto t2 = e.bypassedException; t2; t2 = t2.next)
+        {
+            t2.toString(sink); sink("\n");
+        }
+        sink("=== ~Bypassed ===\n");
+    }
+}
+
+private void printThrowable(Throwable t)
+{
+    // On Windows, a console may not be present to print the output to.
+    // Show a message box instead.
+    version (Windows)
+    {
+        if (!GetConsoleWindow())
+        {
+            static struct WSink
+            {
+                wchar_t* ptr; size_t len;
+
+                void sink(in char[] s) nothrow
+                {
+                    if (!s.length) return;
+                    int swlen = MultiByteToWideChar(
+                        CP_UTF8, 0, s.ptr, cast(int)s.length, null, 0);
+                    if (!swlen) return;
+
+                    auto newPtr = cast(wchar_t*)realloc(ptr,
+                            (this.len + swlen + 1) * wchar_t.sizeof);
+                    if (!newPtr) return;
+                    ptr = newPtr;
+                    auto written = MultiByteToWideChar(
+                            CP_UTF8, 0, s.ptr, cast(int)s.length, ptr+len, swlen);
+                    len += written;
+                }
+
+                wchar_t* get() { if (ptr) ptr[len] = 0; return ptr; }
+
+                void free() { .free(ptr); }
+            }
+
+            WSink buf;
+            formatThrowable(t, &buf.sink);
+
+            if (buf.ptr)
+            {
+                WSink caption;
+                if (t)
+                    caption.sink(t.classinfo.name);
+
+                // Avoid static user32.dll dependency for console applications
+                // by loading it dynamically as needed
+                auto user32 = LoadLibraryW("user32.dll");
+                if (user32)
+                {
+                    alias typeof(&MessageBoxW) PMessageBoxW;
+                    auto pMessageBoxW = cast(PMessageBoxW)
+                        GetProcAddress(user32, "MessageBoxW");
+                    if (pMessageBoxW)
+                        pMessageBoxW(null, buf.get(), caption.get(), MB_ICONERROR);
+                }
+                FreeLibrary(user32);
+                caption.free();
+                buf.free();
+            }
+            return;
+        }
+    }
+
+    void sink(in char[] buf) nothrow
+    {
+        fprintf(stderr, "%.*s", cast(int)buf.length, buf.ptr);
+    }
+    formatThrowable(t, &sink);
 }

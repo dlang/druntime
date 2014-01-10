@@ -9,8 +9,8 @@ CC=dmc
 DOCDIR=doc
 IMPDIR=import
 
-DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport -property
-UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport -property
+DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport
+UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport
 DDOCFLAGS=-c -w -o- -Isrc -Iimport
 
 CFLAGS=
@@ -130,6 +130,7 @@ $(IMPDIR)\core\sync\semaphore.di : src\core\sync\semaphore.d
 
 copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\stdc
+	mkdir $(IMPDIR)\core\internal
 	mkdir $(IMPDIR)\core\sys\freebsd\sys
 	mkdir $(IMPDIR)\core\sys\linux\sys
 	mkdir $(IMPDIR)\core\sys\osx\mach
@@ -179,6 +180,12 @@ $(IMPDIR)\core\time.d : src\core\time.d
 	copy $** $@
 
 $(IMPDIR)\core\vararg.d : src\core\vararg.d
+	copy $** $@
+
+$(IMPDIR)\core\internal\hash.d : src\core\internal\hash.d
+	copy $** $@
+
+$(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d
@@ -250,7 +257,22 @@ $(IMPDIR)\core\sys\freebsd\dlfcn.d : src\core\sys\freebsd\dlfcn.d
 $(IMPDIR)\core\sys\freebsd\execinfo.d : src\core\sys\freebsd\execinfo.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\freebsd\sys\elf.d : src\core\sys\freebsd\sys\elf.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\freebsd\sys\elf_common.d : src\core\sys\freebsd\sys\elf_common.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\freebsd\sys\elf32.d : src\core\sys\freebsd\sys\elf32.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\freebsd\sys\elf64.d : src\core\sys\freebsd\sys\elf64.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\freebsd\sys\event.d : src\core\sys\freebsd\sys\event.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\freebsd\sys\link_elf.d : src\core\sys\freebsd\sys\link_elf.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\config.d : src\core\sys\linux\config.d
@@ -274,13 +296,19 @@ $(IMPDIR)\core\sys\linux\execinfo.d : src\core\sys\linux\execinfo.d
 $(IMPDIR)\core\sys\linux\link.d : src\core\sys\linux\link.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\linux\termios.d : src\core\sys\linux\termios.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\sys\inotify.d : src\core\sys\linux\sys\inotify.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\sys\mman.d : src\core\sys\linux\sys\mman.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\linux\sys\signalfd.d : src\core\sys\linux\sys\signalfd.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\sys\xattr.d : src\core\sys\linux\sys\xattr.d
-	copy $** $@
-
-$(IMPDIR)\core\sys\linux\sys\inotify.d : src\core\sys\linux\sys\inotify.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\osx\execinfo.d : src\core\sys\osx\execinfo.d

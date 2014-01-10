@@ -1,6 +1,7 @@
 MANIFEST=\
+	HACKING.md \
 	LICENSE \
-	README \
+	README.md \
 	posix.mak \
 	win32.mak \
 	win64.mak \
@@ -30,6 +31,9 @@ MANIFEST=\
 	src\core\threadasm.S \
 	src\core\time.d \
 	src\core\vararg.d \
+	\
+	src\core\internal\hash.d \
+	src\core\internal\convert.d \
 	\
 	src\core\stdc\complex.d \
 	src\core\stdc\config.d \
@@ -65,7 +69,12 @@ MANIFEST=\
 	src\core\sys\freebsd\dlfcn.d \
 	src\core\sys\freebsd\execinfo.d \
 	\
+	src\core\sys\freebsd\sys\elf.d \
+	src\core\sys\freebsd\sys\elf_common.d \
+	src\core\sys\freebsd\sys\elf32.d \
+	src\core\sys\freebsd\sys\elf64.d \
 	src\core\sys\freebsd\sys\event.d \
+	src\core\sys\freebsd\sys\link_elf.d \
 	\
 	src\core\sys\linux\config.d \
 	src\core\sys\linux\dlfcn.d \
@@ -74,10 +83,12 @@ MANIFEST=\
 	src\core\sys\linux\errno.d \
 	src\core\sys\linux\execinfo.d \
 	src\core\sys\linux\link.d \
+	src\core\sys\linux\termios.d \
 	\
+	src\core\sys\linux\sys\inotify.d \
+	src\core\sys\linux\sys\mman.d \
 	src\core\sys\linux\sys\signalfd.d \
 	src\core\sys\linux\sys\xattr.d \
-	src\core\sys\linux\sys\inotify.d \
 	\
 	src\core\sys\osx\execinfo.d \
 	src\core\sys\osx\pthread.d \
@@ -168,7 +179,8 @@ MANIFEST=\
 	src\rt\cover.d \
 	src\rt\critical_.d \
 	src\rt\deh.d \
-	src\rt\deh2.d \
+	src\rt\deh_win32.d \
+	src\rt\deh_win64_posix.d \
 	src\rt\dmain2.d \
 	src\rt\dylib_fixes.c \
 	src\rt\image.d \
@@ -229,7 +241,7 @@ MANIFEST=\
 	src\rt\typeinfo\ti_void.d \
 	src\rt\typeinfo\ti_wchar.d \
 	\
-	src\rt\util\console.d \
+	src\rt\util\array.d \
 	src\rt\util\container.d \
 	src\rt\util\hash.d \
 	src\rt\util\string.d \

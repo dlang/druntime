@@ -437,6 +437,13 @@ extern (C) void thread_init();
 
 
 /**
+ * Terminates the thread module. No other thread routine may be called
+ * afterwards.
+ */
+extern (C) void thread_term();
+
+
+/**
  *
  */
 extern (C) bool thread_isMainThread();
@@ -950,15 +957,12 @@ class Fiber
 
 
     /**
-     * Resets this fiber so that it may be re-used.  This routine may only be
-     * called for fibers that have terminated, as doing otherwise could result
-     * in scope-dependent functionality that is not executed.  Stack-based
-     * classes, for example, may not be cleaned up properly if a fiber is reset
-     * before it has terminated.
-     *
-     * Params:
-     *  fn = The fiber function.
-     *  dg = The fiber function.
+     * Resets this fiber so that it may be re-used, optionally with a
+     * new function/delegate.  This routine may only be called for
+     * fibers that have terminated, as doing otherwise could result in
+     * scope-dependent functionality that is not executed.
+     * Stack-based classes, for example, may not be cleaned up
+     * properly if a fiber is reset before it has terminated.
      *
      * In:
      *  This fiber must be in state TERM.
@@ -1074,7 +1078,14 @@ private:
         else version (Posix)
         {
             static if( __traits( compiles, ucontext_t ) )
-                enum FiberSize = 44 + ucontext_t.sizeof + 4;
+            {
+                // ucontext_t might have an alignment larger than 4.
+                static roundUp()(size_t n)
+                {
+                    return (n + (ucontext_t.alignof - 1)) & ~(ucontext_t.alignof - 1);
+                }
+                enum FiberSize = roundUp(roundUp(44) + ucontext_t.sizeof + 4);
+            }
             else
                 enum FiberSize = 44;
         }

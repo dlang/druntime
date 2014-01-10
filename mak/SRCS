@@ -14,6 +14,9 @@ SRCS=\
 	src\core\time.d \
 	src\core\vararg.d \
 	\
+	src\core\internal\hash.d \
+	src\core\internal\convert.d \
+	\
 	src\core\stdc\config.d \
 	src\core\stdc\ctype.d \
 	src\core\stdc\errno.d \
@@ -82,7 +85,8 @@ SRCS=\
 	src\rt\cover.d \
 	src\rt\critical_.d \
 	src\rt\deh.d \
-	src\rt\deh2.d \
+	src\rt\deh_win32.d \
+	src\rt\deh_win64_posix.d \
 	src\rt\dmain2.d \
 	src\rt\invariant.d \
 	src\rt\lifetime.d \
@@ -104,7 +108,7 @@ SRCS=\
 	src\rt\tlsgc.d \
 	src\rt\trace.d \
 	\
-	src\rt\util\console.d \
+	src\rt\util\array.d \
 	src\rt\util\container.d \
 	src\rt\util\hash.d \
 	src\rt\util\string.d \

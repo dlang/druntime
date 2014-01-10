@@ -30,7 +30,7 @@ nothrow:
     alias char CHAR;
     alias short SHORT;
     alias int LONG;
-    
+
     alias long  LONGLONG;
     alias ulong ULONGLONG;
 
@@ -211,9 +211,12 @@ enum
     ERROR_ACCESS_DENIED =              5,
     ERROR_INVALID_HANDLE =             6,
     ERROR_NO_MORE_FILES =              18,
+    ERROR_LOCK_VIOLATION =             33,
     ERROR_INSUFFICIENT_BUFFER =        122,
+    ERROR_ALREADY_EXISTS =             183,
     ERROR_MORE_DATA =          234,
     ERROR_NO_MORE_ITEMS =          259,
+    ERROR_IO_PENDING =                 997,
 }
 
 enum
@@ -358,6 +361,7 @@ struct OVERLAPPED {
     }
     HANDLE hEvent;
 }
+alias OVERLAPPED* LPOVERLAPPED;
 
 struct SECURITY_ATTRIBUTES {
     DWORD nLength;
@@ -508,6 +512,8 @@ BOOL   MoveFileA(in char *from, in char *to);
 BOOL   MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName);
 BOOL   ReadFile(HANDLE hFile, void *lpBuffer, DWORD nNumberOfBytesToRead,
     DWORD *lpNumberOfBytesRead, OVERLAPPED *lpOverlapped);
+BOOL   SetFileAttributesA(in LPCSTR lpFileName, DWORD dwFileAttributes);
+BOOL   SetFileAttributesW(in LPCWSTR lpFileName, DWORD dwFileAttributes);
 DWORD  SetFilePointer(HANDLE hFile, LONG lDistanceToMove,
     LONG *lpDistanceToMoveHigh, DWORD dwMoveMethod);
 BOOL   WriteFile(HANDLE hFile, in void *lpBuffer, DWORD nNumberOfBytesToWrite,
@@ -516,6 +522,7 @@ DWORD  GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize);
 DWORD  GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
 HANDLE GetStdHandle(DWORD nStdHandle);
 BOOL   SetStdHandle(DWORD nStdHandle, HANDLE hHandle);
+HWND GetConsoleWindow();
 }
 
 struct MEMORYSTATUS {
@@ -1184,14 +1191,14 @@ version (Win64)
 
     // Copied from Public Domain w64 mingw-runtime package's winnt.h.
 
-    align(16) struct M128A 
+    align(16) struct M128A
     {
         ULONGLONG Low;
         LONGLONG High;
-    } 
+    }
     alias M128A* PM128A;
 
-    struct XMM_SAVE_AREA32 
+    struct XMM_SAVE_AREA32
     {
         WORD ControlWord;
         WORD StatusWord;
@@ -1209,9 +1216,9 @@ version (Win64)
         M128A FloatRegisters[8];
         M128A XmmRegisters[16];
         BYTE Reserved4[96];
-    } 
+    }
     alias XMM_SAVE_AREA32 PXMM_SAVE_AREA32;
-  
+
     align(16) struct CONTEXT // sizeof(1232)
     {
         DWORD64 P1Home;
@@ -1252,11 +1259,11 @@ version (Win64)
         DWORD64 R14;
         DWORD64 R15;
         DWORD64 Rip;
-        union 
+        union
         {
             XMM_SAVE_AREA32 FltSave;
             XMM_SAVE_AREA32 FloatSave;
-            struct 
+            struct
             {
                 M128A Header[2];
                 M128A Legacy[8];
@@ -1307,8 +1314,8 @@ else // Win32
 
         CONTEXT_FULL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS),
 
-        CONTEXT_ALL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS | 
-                       CONTEXT_FLOATING_POINT | CONTEXT_DEBUG_REGISTERS | 
+        CONTEXT_ALL = (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS |
+                       CONTEXT_FLOATING_POINT | CONTEXT_DEBUG_REGISTERS |
                        CONTEXT_EXTENDED_REGISTERS),
 
         MAXIMUM_SUPPORTED_EXTENSION = 512
@@ -1345,7 +1352,7 @@ else // Win32
         //
         // The context record is never used as an OUT only parameter.
         //
-    
+
         DWORD ContextFlags;
 
         //
@@ -1360,41 +1367,41 @@ else // Win32
         DWORD   Dr3;
         DWORD   Dr6;
         DWORD   Dr7;
-    
+
         //
         // This section is specified/returned if the
         // ContextFlags word contians the flag CONTEXT_FLOATING_POINT.
         //
-    
+
         FLOATING_SAVE_AREA FloatSave;
-    
+
         //
         // This section is specified/returned if the
         // ContextFlags word contians the flag CONTEXT_SEGMENTS.
         //
-    
+
         DWORD   SegGs;
         DWORD   SegFs;
         DWORD   SegEs;
         DWORD   SegDs;
-    
+
         //
         // This section is specified/returned if the
         // ContextFlags word contians the flag CONTEXT_INTEGER.
         //
-    
+
         DWORD   Edi;
         DWORD   Esi;
         DWORD   Ebx;
         DWORD   Edx;
         DWORD   Ecx;
         DWORD   Eax;
-    
+
         //
         // This section is specified/returned if the
         // ContextFlags word contians the flag CONTEXT_CONTROL.
         //
-    
+
         DWORD   Ebp;
         DWORD   Eip;
         DWORD   SegCs;              // MUST BE SANITIZED
@@ -1580,11 +1587,11 @@ export BOOL SwitchToThread();
 
 export
 {
-LONG  InterlockedIncrement(LPLONG lpAddend);
-LONG  InterlockedDecrement(LPLONG lpAddend);
-LONG  InterlockedExchange(LPLONG Target, LONG Value);
-LONG  InterlockedExchangeAdd(LPLONG Addend, LONG Value);
-PVOID InterlockedCompareExchange(PVOID *Destination, PVOID Exchange, PVOID Comperand);
+LONG InterlockedIncrement(LPLONG lpAddend);
+LONG InterlockedDecrement(LPLONG lpAddend);
+LONG InterlockedExchange(LPLONG Target, LONG Value);
+LONG InterlockedExchangeAdd(LPLONG Addend, LONG Value);
+LONG InterlockedCompareExchange(LONG *Destination, LONG Exchange, LONG Comperand);
 
 void InitializeCriticalSection(CRITICAL_SECTION * lpCriticalSection);
 void EnterCriticalSection(CRITICAL_SECTION * lpCriticalSection);
@@ -2288,6 +2295,42 @@ struct LOGPALETTE {
 }
 alias LOGPALETTE* PLOGPALETTE, NPLOGPALETTE, LPLOGPALETTE;
 
+/* Pixel format descriptor flags */
+enum : DWORD
+{
+    /* pixel types */
+    PFD_TYPE_RGBA = 0,
+    PFD_TYPE_COLORINDEX = 1,
+
+    /* layer types */
+    PFD_MAIN_PLANE = 0,
+    PFD_OVERLAY_PLANE = 1,
+    PFD_UNDERLAY_PLANE = -1,
+
+    /* PIXELFORMATDESCRIPTOR flags */
+    PFD_DOUBLEBUFFER = 0x00000001,
+    PFD_STEREO = 0x00000002,
+    PFD_DRAW_TO_WINDOW = 0x00000004,
+    PFD_DRAW_TO_BITMAP = 0x00000008,
+    PFD_SUPPORT_GDI = 0x00000010,
+    PFD_SUPPORT_OPENGL = 0x00000020,
+    PFD_GENERIC_FORMAT = 0x00000040,
+    PFD_NEED_PALETTE = 0x00000080,
+    PFD_NEED_SYSTEM_PALETTE = 0x00000100,
+    PFD_SWAP_EXCHANGE = 0x00000200,
+    PFD_SWAP_COPY = 0x00000400,
+    PFD_SWAP_LAYER_BUFFERS = 0x00000800,
+    PFD_GENERIC_ACCELERATED = 0x00001000,
+    PFD_SUPPORT_DIRECTDRAW = 0x00002000,
+    PFD_DIRECT3D_ACCELERATED = 0x00004000,
+    PFD_SUPPORT_COMPOSITION = 0x00008000,
+
+    /* PIXELFORMATDESCRIPTOR flags for use in ChoosePixelFormat only */
+    PFD_DEPTH_DONTCARE = 0x20000000,
+    PFD_DOUBLEBUFFER_DONTCARE = 0x40000000,
+    PFD_STEREO_DONTCARE = 0x80000000
+}
+
 /* Pixel format descriptor */
 struct PIXELFORMATDESCRIPTOR
 {
@@ -2320,7 +2363,6 @@ struct PIXELFORMATDESCRIPTOR
 }
 alias PIXELFORMATDESCRIPTOR* PPIXELFORMATDESCRIPTOR, LPPIXELFORMATDESCRIPTOR;
 
-
 export
 {
  BOOL   RoundRect(HDC, int, int, int, int, int, int);
@@ -2346,6 +2388,8 @@ export
  COLORREF   SetPixel(HDC, int, int, COLORREF);
  BOOL     SetPixelV(HDC, int, int, COLORREF);
  BOOL    SetPixelFormat(HDC, int, PIXELFORMATDESCRIPTOR *);
+ int     ChoosePixelFormat(HDC, PIXELFORMATDESCRIPTOR *);
+ BOOL    SwapBuffers(HDC);
  int     SetPolyFillMode(HDC, int);
  BOOL    StretchBlt(HDC, int, int, int, int, HDC, int, int, int, int, DWORD);
  BOOL    SetRectRgn(HRGN, int, int, int, int);
@@ -2435,6 +2479,40 @@ struct WNDCLASSA {
 }
 alias WNDCLASSA* PWNDCLASSA, NPWNDCLASSA, LPWNDCLASSA;
 alias WNDCLASSA WNDCLASS;
+
+
+struct WNDCLASSEXW {
+    UINT        cbSize;
+    /* Win 3.x */
+    UINT        style;
+    WNDPROC     lpfnWndProc;
+    int         cbClsExtra;
+    int         cbWndExtra;
+    HINSTANCE   hInstance;
+    HICON       hIcon;
+    HCURSOR     hCursor;
+    HBRUSH      hbrBackground;
+    LPCWSTR     lpszMenuName;
+    LPCWSTR     lpszClassName;
+    /* Win 4.0 */
+    HICON       hIconSm;
+}
+
+
+struct WNDCLASSW {
+    UINT        style;
+    WNDPROC     lpfnWndProc;
+    int         cbClsExtra;
+    int         cbWndExtra;
+    HINSTANCE   hInstance;
+    HICON       hIcon;
+    HCURSOR     hCursor;
+    HBRUSH      hbrBackground;
+    LPCWSTR     lpszMenuName;
+    LPCWSTR     lpszClassName;
+}
+alias WNDCLASSW* PWNDCLASSW, NPWNDCLASSW, LPWNDCLASSW;
+
 
 /*
  * Window Styles
@@ -2612,6 +2690,8 @@ enum : HWND
 
 export ATOM RegisterClassA(in WNDCLASSA *lpWndClass);
 export ATOM RegisterClassExA(in WNDCLASSEXA *lpWndClass);
+export ATOM RegisterClassW(in WNDCLASSW *lpWndClass);
+export ATOM RegisterClassExW(in WNDCLASSEXW *lpWndClass);
 
 export HWND CreateWindowExA(
     DWORD dwExStyle,
@@ -2644,6 +2724,39 @@ HWND CreateWindowA(
     return CreateWindowExA(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
 }
 
+
+export HWND CreateWindowExW(
+    DWORD dwExStyle,
+    LPCWSTR lpClassName,
+    LPCWSTR lpWindowName,
+    DWORD dwStyle,
+    int X,
+    int Y,
+    int nWidth,
+    int nHeight,
+    HWND hWndParent,
+    HMENU hMenu,
+    HINSTANCE hInstance,
+    LPVOID lpParam);
+
+
+HWND CreateWindowW(
+    LPCWSTR lpClassName,
+    LPCWSTR lpWindowName,
+    DWORD dwStyle,
+    int X,
+    int Y,
+    int nWidth,
+    int nHeight,
+    HWND hWndParent ,
+    HMENU hMenu,
+    HINSTANCE hInstance,
+    LPVOID lpParam)
+{
+    return CreateWindowExW(0, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+}
+
+
 /*
  * Message structure
  */
@@ -2660,9 +2773,12 @@ alias MSG* PMSG, NPMSG, LPMSG;
 export
 {
  BOOL GetMessageA(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
+ BOOL GetMessageW(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
  BOOL TranslateMessage(MSG *lpMsg);
- LONG DispatchMessageA(MSG *lpMsg);
+ LONG DispatchMessageA(in MSG *lpMsg);
+ LONG DispatchMessageW(in MSG *lpMsg);
  BOOL PeekMessageA(MSG *lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
+ BOOL PeekMessageW(MSG *lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
  HWND GetFocus();
 }
 
@@ -2689,6 +2805,12 @@ export
  BOOL IsDBCSLeadByteEx(UINT CodePage, BYTE TestChar);
  int MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int cchMultiByte, LPWSTR lpWideCharStr, int cchWideChar);
  int WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr, int cchMultiByte, LPCSTR lpDefaultChar, LPBOOL lpUsedDefaultChar);
+}
+
+// Code pages
+enum : UINT
+{
+    CP_UTF8 = 65001
 }
 
 export HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCSTR lpName);
@@ -3678,3 +3800,44 @@ HINSTANCE ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR 
 
 UINT_PTR SetTimer(HWND hwnd, UINT_PTR nIDEvent, UINT uElapse, TIMERPROC lpTimerFunc);
 BOOL KillTimer(HWND hwnd, UINT_PTR nIDEvent);
+
+BOOL GetHandleInformation(HANDLE hObject, LPDWORD lpdwFlags);
+BOOL SetHandleInformation(HANDLE hObject, DWORD dwMask, DWORD dwFlags);
+BOOL TerminateProcess(HANDLE hProcess, UINT uExitCode);
+LPWSTR* CommandLineToArgvW(LPCWSTR lpCmdLine, int* pNumArgs);
+LPWSTR GetCommandLineW();
+
+enum
+{
+    HANDLE_FLAG_INHERIT = 0x1,
+    HANDLE_FLAG_PROTECT_FROM_CLOSE = 0x2,
+}
+
+enum CREATE_UNICODE_ENVIRONMENT = 0x400;
+
+BOOL LockFile(HANDLE hFile, DWORD dwFileOffsetLow, DWORD dwFileOffsetHigh, DWORD nNumberOfBytesToLockLow, DWORD nNumberOfBytesToLockHigh);
+BOOL UnlockFile(HANDLE hFile, DWORD dwFileOffsetLow, DWORD dwFileOffsetHigh, DWORD nNumberOfBytesToUnlockLow, DWORD nNumberOfBytesToUnlockHigh);
+BOOL LockFileEx(HANDLE hFile, DWORD dwFlags, DWORD dwReserved, DWORD nNumberOfBytesToLockLow, DWORD nNumberOfBytesToLockHigh, LPOVERLAPPED lpOverlapped);
+BOOL UnlockFileEx(HANDLE hFile, DWORD dwReserved, DWORD nNumberOfBytesToUnlockLow, DWORD nNumberOfBytesToUnlockHigh, LPOVERLAPPED lpOverlapped);
+enum LOCKFILE_FAIL_IMMEDIATELY = 1;
+enum LOCKFILE_EXCLUSIVE_LOCK   = 2;
+
+BOOL IsDebuggerPresent();
+
+LPSTR lstrcatA(LPSTR lpString1, LPCSTR lpString2);
+LPWSTR lstrcatW(LPWSTR lpString1, LPCWSTR lpString2);
+
+int lstrcmp(LPCSTR lpString1, LPCSTR lpString2);
+int lstrcmp(LPCWSTR lpString1,LPCWSTR lpString2);
+
+int lstrcmpi(LPCSTR lpString1, LPCSTR lpString2);
+int lstrcmpi(LPCWSTR lpString1,LPCWSTR lpString2);
+
+LPSTR lstrcpyA(LPSTR lpString1, LPCSTR lpString2);
+LPWSTR lstrcpyW(LPWSTR lpString1, LPCWSTR lpString2);
+
+LPSTR lstrcpynA(LPSTR lpString1, LPCSTR lpString2, int iMaxLength);
+LPWSTR lstrcpynW(LPWSTR lpString1, LPCWSTR lpString2, int iMaxLength);
+
+int lstrlenA(LPCSTR lpString);
+int lstrlenW(LPCWSTR lpString);
