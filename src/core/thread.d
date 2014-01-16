@@ -81,6 +81,7 @@ private
 {
     import core.sync.mutex;
     import core.atomic;
+    import core.stdc.errno;
 
     //
     // from core.memory
@@ -3402,7 +3403,14 @@ class Fiber
         Fiber   cur = getThis();
 
         static if( __traits( compiles, ucontext_t ) )
-          m_ucur = cur ? &cur.m_utxt : &Fiber.sm_utxt;
+        {
+            if(!sm_os_support)
+            {
+                throw new Error("Using ucontext_t for Fibers, but OS "~
+                    "doesn't implement getcontext!");
+            }
+            m_ucur = cur ? &cur.m_utxt : &Fiber.sm_utxt;
+        }
 
         setThis( this );
         this.switchIn();
@@ -3591,7 +3599,9 @@ class Fiber
             static if( __traits( compiles, ucontext_t ) )
             {
               int status = getcontext( &sm_utxt );
-              assert( status == 0 );
+              if(status != 0 && errno == ENOSYS)
+                  sm_os_support = false;
+              else assert( status == 0 );
             }
         }
     }
@@ -4047,7 +4057,15 @@ private:
         }
         else static if( __traits( compiles, ucontext_t ) )
         {
-            getcontext( &m_utxt );
+            auto result = getcontext( &m_utxt );
+            if(result != 0)
+            {
+                import core.stdc.string : strerror, strlen;
+                auto errorString = strerror(errno);
+                throw new Exception("Could not save context for fiber: " ~
+                    "getcontext: " ~ errorString[0 .. strlen(errorString)].idup);
+            }
+
             m_utxt.uc_stack.ss_sp   = m_pmem;
             m_utxt.uc_stack.ss_size = m_size;
             makecontext( &m_utxt, &fiber_entryPoint, 0 );
@@ -4069,6 +4087,8 @@ private:
         // NOTE: The static ucontext instance is used to represent the context
         //       of the executing thread.
         static ucontext_t       sm_utxt = void;
+        //False if getcontext returns ENOSYS
+        static bool             sm_os_support = true;
         ucontext_t              m_utxt  = void;
         ucontext_t*             m_ucur  = null;
     }
@@ -4262,10 +4282,45 @@ version( unittest )
     }
 }
 
+version(unittest)
+{
+    bool testFibers;
+}
+
+unittest
+{
+    version(AsmX86_Windows)
+        testFibers = true;
+    else version(AsmX86_64_Windows)
+        testFibers = true;
+    else version(AsmX86_Posix)
+        testFibers = true;
+    else version(AsmX86_64_Posix)
+        testFibers = true;
+    else version(AsmPPC_Posix)
+        testFibers = true;
+    else version(AsmMIPS_O32_Posix)
+        testFibers = true;
+    else static if( __traits( compiles, ucontext_t ) )
+    {
+        import core.stdc.stdio;
+        testFibers = Fiber.sm_os_support;
+        if(!testFibers)
+            printf("Warning: Not testing Fiber support: Fibers use" ~
+                " ucontext_t backend but getcontext is not implemented"
+                " in libc\n");
+    }
+    else
+        testFibers = true;
+}
 
 // Single thread running separate fibers
 unittest
 {
+    if(!testFibers)
+        return;
+    static if( __traits( compiles, ucontext_t ) )
+    
     runTen();
 }
 
@@ -4273,6 +4328,8 @@ unittest
 // Multiple threads running separate fibers
 unittest
 {
+    if(!testFibers)
+        return;
     auto group = new ThreadGroup();
     foreach(_; 0 .. 4)
     {
@@ -4285,6 +4342,8 @@ unittest
 // Multiple threads running shared fibers
 unittest
 {
+    if(!testFibers)
+        return;
     shared bool[10] locks;
     TestFiber[10] fibs;
 
@@ -4334,6 +4393,8 @@ unittest
 // Test exception handling inside fibers.
 unittest
 {
+    if(!testFibers)
+        return;
     enum MSG = "Test message.";
     string caughtMsg;
     (new Fiber({
@@ -4352,6 +4413,8 @@ unittest
 
 unittest
 {
+    if(!testFibers)
+        return;
     int x = 0;
 
     (new Fiber({
@@ -4363,6 +4426,8 @@ unittest
 
 unittest
 {
+    if(!testFibers)
+        return;
     enum MSG = "Test message.";
 
     try
@@ -4382,6 +4447,8 @@ unittest
 // Test Fiber resetting
 unittest
 {
+    if(!testFibers)
+        return;
     static string method;
 
     static void foo()
@@ -4424,6 +4491,8 @@ unittest
 // stress testing GC stack scanning
 unittest
 {
+    if(!testFibers)
+        return;
     import core.memory;
 
     static void unreferencedThreadObject()
