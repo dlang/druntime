@@ -40,6 +40,7 @@ import gc.os;
 
 import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
 import core.stdc.string;
+import core.atomic;
 import core.bitop;
 import core.sync.mutex;
 static import core.memory;
@@ -1256,6 +1257,22 @@ class GC
         stats.poolsize = psize;
         stats.usedsize = bsize - flsize;
         stats.freelistsize = flsize;
+    }
+
+    /**
+    Returns referenced object if it isn't finalized thus
+    creating a strong reference to it.
+    Returns null otherwise.
+
+    `*p` is assumed to be set to null on finalization.
+    */
+    void* getWeakRefTarget(void** pp)
+    {
+        // `atomicLoad` is used to prevent compiler optimizations.
+        void* p = cast(void*) atomicLoad(*cast(shared) pp);
+        gcLock.lock();
+        gcLock.unlock();
+        return atomicLoad(*cast(shared) pp) ? p : null;
     }
 }
 

@@ -120,6 +120,8 @@ private
 
     extern (C) void gc_removeRoot( in void* p ) nothrow;
     extern (C) void gc_removeRange( in void* p ) nothrow;
+
+    extern (C) void* gc_getWeakRefTarget( void** p ) nothrow;
 }
 
 
@@ -716,5 +718,23 @@ struct GC
     static void removeRange( in void* p ) nothrow /* FIXME pure */
     {
         gc_removeRange( p );
+    }
+
+    /*
+    Undocumented until we have a finished weak reference implementation
+    where it may be an internal function.
+
+    Returns referenced object if it isn't finalized thus
+    creating a strong reference to it.
+    Returns null otherwise.
+
+    $(D p) is assumed to be set to null on finalization.
+
+    Params:
+     p = A pointer into a GC-managed memory block or null.
+    */
+    static inout(void)* getWeakRefTarget( ref shared inout void* p ) nothrow /* FIXME pure */
+    {
+        return cast(inout(void)*) gc_getWeakRefTarget( cast(void**) &p );
     }
 }

@@ -62,6 +62,7 @@ private
 
             void function(void*) gc_removeRoot;
             void function(void*) gc_removeRange;
+            void* function(void**) gc_getWeakRefTarget;
         }
     }
 
@@ -97,6 +98,7 @@ private
 
         pthis.gc_removeRoot = &gc_removeRoot;
         pthis.gc_removeRange = &gc_removeRange;
+        pthis.gc_getWeakRefTarget = &gc_getWeakRefTarget;
     }
 }
 
@@ -313,6 +315,13 @@ extern (C)
         if( proxy is null )
             return _gc.removeRange( p );
         return proxy.gc_removeRange( p );
+    }
+
+    void* gc_getWeakRefTarget( void** p )
+    {
+        if( proxy is null )
+            return _gc.getWeakRefTarget( p );
+        return proxy.gc_getWeakRefTarget( p );
     }
 
     Proxy* gc_getProxy()
