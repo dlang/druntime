@@ -5,40 +5,51 @@
 
 QUIET:=@
 
-OS:=
-uname_S:=$(shell uname -s)
-ifeq (Darwin,$(uname_S))
-	OS:=osx
-endif
-ifeq (Linux,$(uname_S))
-	OS:=linux
-endif
-ifeq (FreeBSD,$(uname_S))
-	OS:=freebsd
-endif
-ifeq (OpenBSD,$(uname_S))
-	OS:=openbsd
-endif
-ifeq (Solaris,$(uname_S))
-	OS:=solaris
-endif
-ifeq (SunOS,$(uname_S))
-	OS:=solaris
-endif
 ifeq (,$(OS))
-	$(error Unrecognized or unsupported OS for uname: $(uname_S))
+  uname_S:=$(shell uname -s)
+  ifeq (Darwin,$(uname_S))
+    OS:=osx
+  endif
+  ifeq (Linux,$(uname_S))
+    OS:=linux
+  endif
+  ifeq (FreeBSD,$(uname_S))
+    OS:=freebsd
+  endif
+  ifeq (OpenBSD,$(uname_S))
+    OS:=openbsd
+  endif
+  ifeq (Solaris,$(uname_S))
+    OS:=solaris
+  endif
+  ifeq (SunOS,$(uname_S))
+    OS:=solaris
+  endif
+  ifeq (,$(OS))
+    $(error Unrecognized or unsupported OS for uname: $(uname_S))
+  endif
 endif
 
-DMD?=dmd
+ifeq (,$(MODEL))
+  uname_M:=$(shell uname -m)
+  ifneq (,$(findstring $(uname_M),x86_64 amd64))
+    MODEL:=64
+  endif
+  ifneq (,$(findstring $(uname_M),i386 i586 i686))
+    MODEL:=32
+  endif
+  ifeq (,$(MODEL))
+    $(error Cannot figure 32/64 model from uname -m: $(uname_M))
+  endif
+endif
+
+DMD=../dmd/src/dmd
 INSTALL_DIR=../install
 
 DOCDIR=doc
 IMPDIR=import
 
-MODEL:=default
-ifneq (default,$(MODEL))
-	MODEL_FLAG:=-m$(MODEL)
-endif
+MODEL_FLAG:=-m$(MODEL)
 override PIC:=$(if $(PIC),-fPIC,)
 
 ifeq (osx,$(OS))
@@ -105,16 +116,16 @@ endif
 doc: $(DOCS)
 
 $(DOCDIR)/object.html : src/object_.d
-	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_%.html : src/core/%.di
-	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_%.html : src/core/%.d
-	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
-	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 ######################## Header .di file generation ##############################
 
@@ -169,8 +180,11 @@ $(DRUNTIME): $(OBJS) $(SRCS)
 	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
 UT_MODULES:=$(patsubst src/%.d,$(OBJDIR)/%,$(SRCS))
-ADDITIONAL_TESTS:=test/init_fini test/exceptions
-ADDITIONAL_TESTS+=$(if $(findstring $(OS),linux),test/shared,)
+HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
+ifeq ($(HAS_ADDITIONAL_TESTS),1)
+	ADDITIONAL_TESTS:=test/init_fini test/exceptions
+	ADDITIONAL_TESTS+=$(if $(findstring $(OS),linux),test/shared,)
+endif
 
 unittest : $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
 	@echo done
