@@ -151,6 +151,42 @@ version( CoreDdoc )
      * loads and stores after the call.
      */
     void atomicFence() nothrow;
+
+    /**
+     * Converts a shared lvalue to a non-shared lvalue. 
+     *
+     * As the name suggests, this functions allows to treat a shared lvalue
+     * as if it was thread-local. 
+     * It is useful to avoid overhead of atomic operations when access to shared data
+     * is known to be within one thread (i.e. under a lock).
+     * ---
+     * shared static int i;
+     *
+     * synchronized
+     * {
+     *     ++i;                 // ERROR: cannot directly modify shared lvalue
+     *
+     *     atomicOp!"+="(i, 1); // possible overhead
+     *
+     *     // Directly modify i
+     *     assumeLocal(i) += 1;
+     *     // or:
+     *     ++assumeLocal(i);
+     * }
+     * ---
+     * Note: this function does not perform any ordering.
+     *
+     * Params:
+     *  val = the shared lvalue.
+     *
+     * Returns:
+     *  The non-shared lvalue.
+     */
+    ref T assumeLocal(T)( ref shared T val ) @trusted pure nothrow
+        if( !is( T == class ) )
+    {
+        return *cast(T*)&val;
+    }
 }
 else version( AsmX86_32 )
 {
@@ -1090,6 +1126,13 @@ if(__traits(isFloating, T))
     }
 }
 
+// assumeLocal is architecture-independent: it is just a cast
+ref auto assumeLocal(T)( ref shared T val ) @trusted pure nothrow
+    if( !is( T == class ) )
+{
+    return *cast(T*)&val;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Unit Tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -1245,5 +1288,26 @@ version( unittest )
         thr.join();
 
         assert(*r == 42);
+    }
+
+    unittest
+    {
+               int base = 0;
+        shared int atom = 0;
+
+        // only accept shared lvalues
+        static assert(!__traits(compiles, assumeLocal(base)));
+        static assert(!__traits(compiles, assumeLocal(cast(shared)base)));
+        
+        ++assumeLocal(atom);
+        assert(atomicLoad!(MemoryOrder.raw)(atom) == 1);
+
+        static class Klass {}
+        auto c1 = new Klass;
+        auto c2 = new shared Klass;
+
+        // don't accept class instances
+        static assert(!__traits(compiles, assumeLocal(c1)));
+        static assert(!__traits(compiles, assumeLocal(c2)));
     }
 }
