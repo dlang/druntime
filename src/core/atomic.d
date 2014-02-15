@@ -155,12 +155,13 @@ version( CoreDdoc )
     /**
      * Converts a shared lvalue to a non-shared lvalue. 
      *
-     * As the name suggests, this functions allows to treat a shared lvalue
-     * as if it was thread-local. 
+     * This functions allows to treat a shared lvalue as if it was thread-local. 
      * It is useful to avoid overhead of atomic operations when access to shared data
-     * is known to be within one thread (i.e. under a lock).
+     * is known to be within one thread (i.e. always under a lock).
      * ---
      * shared static int i;
+     *
+     * // i is never used outside of synchronized {} blocks...
      *
      * synchronized
      * {
@@ -172,9 +173,18 @@ version( CoreDdoc )
      *     assumeLocal(i) += 1;
      *     // or:
      *     ++assumeLocal(i);
+     *     // or:
+     *     i.assumeLocal += 1;
      * }
      * ---
+     * Usage of this function is restricted to allow limited lvalue access to shared instances of
+     * primitive and POD types (e.g. direct use of operators), thus it is not defined for classes.
+     *
      * Note: this function does not perform any ordering.
+     *
+     * Note: $(D assumeLocal) is a special-purpose primitive and should be used with care. When accessing
+     * shared variables both inside and outside of synchronized blocks, atomic operations should be
+     * used instead.
      *
      * Params:
      *  val = the shared lvalue.
