@@ -2045,15 +2045,15 @@ Value[] values(T : Value[Key], Value, Key)(T *aa) @property
     return (*aa).values;
 }
 
-auto get(T : Value[Key], Value, Key, K, V)(T aa, K key, lazy V defaultValue)
-    if (is(typeof(true ? aa[key] : defaultValue)))
+Value get(T : Value[Key], Value, Key, K, V)(T aa, K key, lazy V defaultValue)
+    if (is(typeof(aa[key] = defaultValue)))
 {
     auto p = key in aa;
-    return p ? *p : defaultValue;
+    return p ? *p : cast(Value)defaultValue;
 }
 
-auto get(T : Value[Key], Value, Key, K, V)(T* aa, K key, lazy V defaultValue)
-    if (is(typeof(true ? (*aa)[key] : defaultValue)))
+Value get(T : Value[Key], Value, Key, K, V)(T* aa, K key, lazy V defaultValue)
+    if (is(typeof((*aa).get(key, defaultValue))))
 {
     return (*aa).get(key, defaultValue);
 }
