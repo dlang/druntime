@@ -219,6 +219,7 @@ struct GC
         and is only implemented for data structures at least a page in size.
         */
         NO_INTERIOR = 0b0001_0000,
+        KEEP_ALIVE  = 0b0010_0000, /// Do not free this memory block on collect.
     }
 
 
