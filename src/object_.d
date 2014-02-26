@@ -2649,4 +2649,6 @@ bool _xopCmp(in void*, in void*)
 template RTInfo(T)
 {
     enum RTInfo = null;
+    import core.rtinfo;
+    mixin ProjectRTInfo!T;
 }

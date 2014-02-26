@@ -571,6 +571,8 @@ void __ctfeWriteln(T...)(auto ref T values) { __ctfeWrite(values, "\n"); }
 template RTInfo(T)
 {
     enum RTInfo = cast(void*)0x12345678;
+    import core.rtinfo;
+    mixin ProjectRTInfo!T;
 }
 
 version (unittest)
