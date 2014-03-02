@@ -145,6 +145,10 @@ copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\sys\osx\mach
 	mkdir $(IMPDIR)\core\sys\posix\arpa
 	mkdir $(IMPDIR)\core\sys\posix\config
+	mkdir $(IMPDIR)\core\sys\posix\config\arm
+	mkdir $(IMPDIR)\core\sys\posix\config\mips
+	mkdir $(IMPDIR)\core\sys\posix\config\ppc
+	mkdir $(IMPDIR)\core\sys\posix\config\x86
 	mkdir $(IMPDIR)\core\sys\posix\net
 	mkdir $(IMPDIR)\core\sys\posix\netinet
 	mkdir $(IMPDIR)\core\sys\posix\sys
@@ -343,6 +347,18 @@ $(IMPDIR)\core\sys\posix\arpa\inet.d : src\core\sys\posix\arpa\inet.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\posix\config\package.d : src\core\sys\posix\config\package.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\posix\config\arm\ucontext.d : src\core\sys\posix\config\arm\ucontext.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\posix\config\mips\ucontext.d : src\core\sys\posix\config\mips\ucontext.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\posix\config\ppc\ucontext.d : src\core\sys\posix\config\ppc\ucontext.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\posix\config\x86\ucontext.d : src\core\sys\posix\config\x86\ucontext.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\posix\dirent.d : src\core\sys\posix\dirent.d

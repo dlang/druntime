@@ -105,6 +105,10 @@ MANIFEST=\
 	src\core\sys\osx\mach\thread_act.d \
 	\
 	src\core\sys\posix\config\package.d \
+	src\core\sys\posix\config\arm\ucontext.d \
+	src\core\sys\posix\config\mips\ucontext.d \
+	src\core\sys\posix\config\ppc\ucontext.d \
+	src\core\sys\posix\config\x86\ucontext.d \
 	\
 	src\core\sys\posix\dirent.d \
 	src\core\sys\posix\dlfcn.d \
