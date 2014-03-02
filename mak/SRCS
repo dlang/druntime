@@ -17,7 +17,8 @@ SRCS=\
 	src\core\internal\hash.d \
 	src\core\internal\convert.d \
 	\
-	src\core\stdc\config.d \
+	src\core\stdc\config\package.d \
+	\
 	src\core\stdc\ctype.d \
 	src\core\stdc\errno.d \
 	src\core\stdc\math.d \

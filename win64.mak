@@ -137,11 +137,14 @@ $(IMPDIR)\core\sync\semaphore.di : src\core\sync\semaphore.d
 
 copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\stdc
+	mkdir $(IMPDIR)\core\stdc\config
 	mkdir $(IMPDIR)\core\internal
 	mkdir $(IMPDIR)\core\sys\freebsd\sys
+	mkdir $(IMPDIR)\core\sys\linux\config
 	mkdir $(IMPDIR)\core\sys\linux\sys
 	mkdir $(IMPDIR)\core\sys\osx\mach
 	mkdir $(IMPDIR)\core\sys\posix\arpa
+	mkdir $(IMPDIR)\core\sys\posix\config
 	mkdir $(IMPDIR)\core\sys\posix\net
 	mkdir $(IMPDIR)\core\sys\posix\netinet
 	mkdir $(IMPDIR)\core\sys\posix\sys
@@ -198,7 +201,7 @@ $(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d
 	copy $** $@
 
-$(IMPDIR)\core\stdc\config.d : src\core\stdc\config.d
+$(IMPDIR)\core\stdc\config\package.d : src\core\stdc\config\package.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\ctype.d : src\core\stdc\ctype.d
@@ -282,7 +285,7 @@ $(IMPDIR)\core\sys\freebsd\sys\event.d : src\core\sys\freebsd\sys\event.d
 $(IMPDIR)\core\sys\freebsd\sys\link_elf.d : src\core\sys\freebsd\sys\link_elf.d
 	copy $** $@
 
-$(IMPDIR)\core\sys\linux\config.d : src\core\sys\linux\config.d
+$(IMPDIR)\core\sys\linux\config\package.d : src\core\sys\linux\config\package.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\dlfcn.d : src\core\sys\linux\dlfcn.d
@@ -339,7 +342,7 @@ $(IMPDIR)\core\sys\osx\mach\thread_act.d : src\core\sys\osx\mach\thread_act.d
 $(IMPDIR)\core\sys\posix\arpa\inet.d : src\core\sys\posix\arpa\inet.d
 	copy $** $@
 
-$(IMPDIR)\core\sys\posix\config.d : src\core\sys\posix\config.d
+$(IMPDIR)\core\sys\posix\config\package.d : src\core\sys\posix\config\package.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\posix\dirent.d : src\core\sys\posix\dirent.d
