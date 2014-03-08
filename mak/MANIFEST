@@ -120,7 +120,6 @@ MANIFEST=\
 	src\core\sys\posix\stdlib.d \
 	src\core\sys\posix\termios.d \
 	src\core\sys\posix\time.d \
-	src\core\sys\posix\ucontext.d \
 	src\core\sys\posix\unistd.d \
 	src\core\sys\posix\utime.d \
 	\
@@ -152,6 +151,8 @@ MANIFEST=\
 	src\core\sys\windows\stacktrace.d \
 	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\windows.d \
+	\
+	$(PORTDIR)\core\sys\posix\ucontext.d \
 	\
 	src\gc\gc.d \
 	src\gc\os.d \

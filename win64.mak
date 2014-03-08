@@ -448,7 +448,7 @@ $(IMPDIR)\core\sys\posix\termios.d : src\core\sys\posix\termios.d
 $(IMPDIR)\core\sys\posix\time.d : src\core\sys\posix\time.d
 	copy $** $@
 
-$(IMPDIR)\core\sys\posix\ucontext.d : src\core\sys\posix\ucontext.d
+$(IMPDIR)\core\sys\posix\ucontext.d : $(PORTDIR)\core\sys\posix\ucontext.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\posix\unistd.d : src\core\sys\posix\unistd.d
