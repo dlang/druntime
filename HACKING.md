@@ -77,6 +77,11 @@ so on.
 
 The convention is to have a D module per C header.
 
+Architecture bindings
+-------------------------
+
+%% TODO %%
+
 C99 bindings
 ------------
 

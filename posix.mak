@@ -48,6 +48,7 @@ INSTALL_DIR=../install
 
 DOCDIR=doc
 IMPDIR=import
+PORTDIR=src
 
 MODEL_FLAG:=-m$(MODEL)
 override PIC:=$(if $(PIC),-fPIC,)
@@ -144,6 +145,10 @@ $(IMPDIR)/%.di : src/%.di
 	cp $< $@
 
 $(IMPDIR)/%.d : src/%.d
+	@mkdir -p `dirname $@`
+	cp $< $@
+
+$(IMPDIR)/%.d : $(PORTDIR)/%.d
 	@mkdir -p `dirname $@`
 	cp $< $@
 
