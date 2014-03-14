@@ -30,20 +30,22 @@ private
         uint   attr;
     }
 
-    extern (C) uint gc_getAttr( in void* p );
-    extern (C) uint gc_isCollecting( in void* p );
-    extern (C) uint gc_setAttr( in void* p, uint a );
-    extern (C) uint gc_clrAttr( in void* p, uint a );
+    extern (C) uint gc_getAttr( in void* p ) pure nothrow;
+    extern (C) uint gc_setAttr( in void* p, uint a ) pure nothrow;
+    extern (C) uint gc_clrAttr( in void* p, uint a ) pure nothrow;
+    extern (C) uint gc_isCollecting( in void* p ); // pure nothrow???
 
-    extern (C) void*  gc_malloc( size_t sz, uint ba = 0 );
-    extern (C) BlkInfo  gc_qalloc( size_t sz, uint ba = 0 );
-    extern (C) void*  gc_calloc( size_t sz, uint ba = 0 );
-    extern (C) size_t gc_extend( void* p, size_t mx, size_t sz );
-    extern (C) void   gc_free( void* p );
+    extern (C) void*    gc_malloc( size_t sz, uint ba = 0 ) pure nothrow;
+    extern (C) void*    gc_calloc( size_t sz, uint ba = 0 ) pure nothrow;
+    extern (C) BlkInfo  gc_qalloc( size_t sz, uint ba = 0 ) pure nothrow;
+    extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0 ) pure nothrow;
+    extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz );
+    extern (C) size_t   gc_reserve( size_t sz ) nothrow;
+    extern (C) void     gc_free( void* p ) pure nothrow;
 
-    extern (C) void*   gc_addrOf( in void* p );
-    extern (C) size_t  gc_sizeOf( in void* p );
-    extern (C) BlkInfo gc_query( in void* p );
+    extern (C) void*    gc_addrOf( in void* p ) pure nothrow;
+    extern (C) size_t   gc_sizeOf( in void* p ) pure nothrow;
+    extern (C) BlkInfo  gc_query( in void* p ) pure nothrow;
 
     extern (C) void onFinalizeError( ClassInfo c, Throwable e ) @safe pure nothrow;
     extern (C) void onOutOfMemoryError() @trusted /* pure dmd @@@BUG11461@@@ */ nothrow;
@@ -226,21 +228,31 @@ private class ArrayAllocLengthLock
 
   where elem0 starts 16 bytes after the first byte.
   */
-bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, size_t oldlength = ~0)
+bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, size_t oldlength) pure
 {
+    mixin(__setArrayAllocLengthImpl);
+}
+/// ditto
+bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool /+isshared+/) nothrow pure
+{
+    mixin(__setArrayAllocLengthImpl);
+}
+
+enum __setArrayAllocLengthImpl =
+q{
     if(info.size <= 256)
     {
         if(newlength + SMALLPAD > info.size)
             // new size does not fit inside block
             return false;
         auto length = cast(ubyte *)(info.base + info.size - SMALLPAD);
-        if(oldlength != ~0)
+        static if(is(typeof(oldlength)))
         {
             if(isshared)
             {
                 synchronized(typeid(ArrayAllocLengthLock))
                 {
-                    if(*length == cast(ubyte)oldlength)
+                    if(*length == oldlength)
                         *length = cast(ubyte)newlength;
                     else
                         return false;
@@ -248,7 +260,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
             }
             else
             {
-                if(*length == cast(ubyte)oldlength)
+                if(*length == oldlength)
                     *length = cast(ubyte)newlength;
                 else
                     return false;
@@ -266,7 +278,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
             // new size does not fit inside block
             return false;
         auto length = cast(ushort *)(info.base + info.size - MEDPAD);
-        if(oldlength != ~0)
+        static if(is(typeof(oldlength)))
         {
             if(isshared)
             {
@@ -298,14 +310,14 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
             // new size does not fit inside block
             return false;
         auto length = cast(size_t *)(info.base);
-        if(oldlength != ~0)
+        static if(is(typeof(oldlength)))
         {
             if(isshared)
             {
                 synchronized(typeid(ArrayAllocLengthLock))
                 {
                     if(*length == oldlength)
-                        *length = newlength;
+                        *length = cast(size_t)newlength;
                     else
                         return false;
                 }
@@ -313,7 +325,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
             else
             {
                 if(*length == oldlength)
-                    *length = newlength;
+                    *length = cast(size_t)newlength;
                 else
                     return false;
             }
@@ -325,7 +337,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, si
         }
     }
     return true; // resize succeeded
-}
+};
 
 /**
   get the start of the array for the given block
@@ -548,7 +560,7 @@ void __insertBlkInfoCache(BlkInfo bi, BlkInfo *curpos) nothrow
  * It doesn't matter what the current allocated length of the array is, the
  * user is telling the runtime that he knows what he is doing.
  */
-extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr)
+extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) nothrow
 {
     // note, we do not care about shared.  We are setting the length no matter
     // what, so no lock is required.

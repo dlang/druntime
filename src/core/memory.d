@@ -91,9 +91,10 @@ private
     extern (C) void gc_collect() nothrow;
     extern (C) void gc_minimize() nothrow;
 
-    extern (C) uint gc_getAttr( void* p ) pure nothrow;
-    extern (C) uint gc_setAttr( void* p, uint a ) pure nothrow;
-    extern (C) uint gc_clrAttr( void* p, uint a ) pure nothrow;
+    extern (C) uint gc_getAttr( in void* p ) pure nothrow;
+    extern (C) uint gc_setAttr( in void* p, uint a ) pure nothrow;
+    extern (C) uint gc_clrAttr( in void* p, uint a ) pure nothrow;
+    extern (C) uint gc_isCollecting( in void* p ); // pure nothrow???
 
     extern (C) void*    gc_malloc( size_t sz, uint ba = 0 ) pure nothrow;
     extern (C) void*    gc_calloc( size_t sz, uint ba = 0 ) pure nothrow;
@@ -103,8 +104,9 @@ private
     extern (C) size_t   gc_reserve( size_t sz ) nothrow;
     extern (C) void     gc_free( void* p ) pure nothrow;
 
-    extern (C) void*   gc_addrOf( void* p ) pure nothrow;
-    extern (C) size_t  gc_sizeOf( void* p ) pure nothrow;
+    extern (C) void*    gc_addrOf( in void* p ) pure nothrow;
+    extern (C) size_t   gc_sizeOf( in void* p ) pure nothrow;
+    extern (C) BlkInfo_ gc_query( in void* p ) pure nothrow;
 
     struct BlkInfo_
     {
@@ -112,8 +114,6 @@ private
         size_t size;
         uint   attr;
     }
-
-    extern (C) BlkInfo_ gc_query( void* p ) pure nothrow;
 
     extern (C) void gc_addRoot( in void* p ) nothrow;
     extern (C) void gc_addRange( in void* p, size_t sz ) nothrow;
