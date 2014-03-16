@@ -631,7 +631,8 @@ class GC
             }
             else
             {
-                psize = gcx.findSize(p);        // find allocated size
+                auto pool = gcx.findPool(p);
+                psize = gcx.findSize(p, pool);        // find allocated size
                 if (psize >= PAGESIZE && size >= PAGESIZE)
                 {
                     auto psz = psize / PAGESIZE;
@@ -639,7 +640,6 @@ class GC
                     if (newsz == psz)
                         return p;
 
-                    auto pool = gcx.findPool(p);
                     auto pagenum = (p - pool.baseAddr) / PAGESIZE;
 
                     if (newsz < psz)
@@ -675,23 +675,18 @@ class GC
                 if (psize < size ||             // if new size is bigger
                     psize > size * 2)           // or less than half
                 {
-                    if (psize)
+                    if (psize && pool)
                     {
-                        Pool *pool = gcx.findPool(p);
+                        auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
-                        if (pool)
+                        if (bits)
                         {
-                            auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
-
-                            if (bits)
-                            {
-                                gcx.clrBits(pool, biti, ~BlkAttr.NONE);
-                                gcx.setBits(pool, biti, bits);
-                            }
-                            else
-                            {
-                                bits = gcx.getBits(pool, biti);
-                            }
+                            gcx.clrBits(pool, biti, ~BlkAttr.NONE);
+                            gcx.setBits(pool, biti, bits);
+                        }
+                        else
+                        {
+                            bits = gcx.getBits(pool, biti);
                         }
                     }
                     p2 = mallocNoSync(size, bits, alloc_size);
@@ -744,15 +739,14 @@ class GC
         {
             return 0;
         }
-        auto psize = gcx.findSize(p);   // find allocated size
+        auto pool = gcx.findPool(p);
+        auto psize = gcx.findSize(p, pool);   // find allocated size
         if (psize < PAGESIZE)
             return 0;                   // cannot extend buckets
 
         auto psz = psize / PAGESIZE;
         auto minsz = (minsize + PAGESIZE - 1) / PAGESIZE;
         auto maxsz = (maxsize + PAGESIZE - 1) / PAGESIZE;
-
-        auto pool = gcx.findPool(p);
         auto pagenum = (p - pool.baseAddr) / PAGESIZE;
 
         size_t sz;
@@ -1755,30 +1749,33 @@ struct Gcx
      * Find size of pointer p.
      * Returns 0 if not a gc'd pointer
      */
-    size_t findSize(void *p)
+    size_t findSize(void *p, Pool *pool = null)
     {
-        Pool*  pool;
         size_t size = 0;
 
         if (USE_CACHE && p == cached_size_key)
             return cached_size_val;
 
-        pool = findPool(p);
-        if (pool)
+        if (!pool)
         {
-            size_t pagenum;
-            Bins   bin;
-
-            pagenum = cast(size_t)(p - pool.baseAddr) / PAGESIZE;
-            bin = cast(Bins)pool.pagetable[pagenum];
-            size = binsize[bin];
-            if (bin == B_PAGE)
-            {
-                size = pool.bPageOffsets[pagenum] * PAGESIZE;
-            }
-            cached_size_key = p;
-            cached_size_val = size;
+            pool = findPool(p);
+            if (!pool)
+                return 0;
         }
+
+        size_t pagenum;
+        Bins   bin;
+
+        pagenum = cast(size_t)(p - pool.baseAddr) / PAGESIZE;
+        bin = cast(Bins)pool.pagetable[pagenum];
+        size = binsize[bin];
+        if (bin == B_PAGE)
+        {
+            size = pool.bPageOffsets[pagenum] * PAGESIZE;
+        }
+        cached_size_key = p;
+        cached_size_val = size;
+
         return size;
     }
 
