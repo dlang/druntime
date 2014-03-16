@@ -16,8 +16,9 @@ COPY=\
 	$(IMPDIR)\core\internal\hash.d \
 	$(IMPDIR)\core\internal\convert.d \
 	\
+	$(IMPDIR)\core\stdc\config\package.d \
+	\
 	$(IMPDIR)\core\stdc\complex.d \
-	$(IMPDIR)\core\stdc\config.d \
 	$(IMPDIR)\core\stdc\ctype.d \
 	$(IMPDIR)\core\stdc\errno.d \
 	$(IMPDIR)\core\stdc\fenv.d \
@@ -47,7 +48,8 @@ COPY=\
 	$(IMPDIR)\core\sys\freebsd\sys\event.d \
 	$(IMPDIR)\core\sys\freebsd\sys\link_elf.d \
 	\
-	$(IMPDIR)\core\sys\linux\config.d \
+	$(IMPDIR)\core\sys\linux\config\package.d \
+	\
 	$(IMPDIR)\core\sys\linux\dlfcn.d \
 	$(IMPDIR)\core\sys\linux\elf.d \
 	$(IMPDIR)\core\sys\linux\epoll.d \
@@ -69,7 +71,13 @@ COPY=\
 	$(IMPDIR)\core\sys\osx\mach\thread_act.d \
 	\
 	$(IMPDIR)\core\sys\posix\arpa\inet.d \
-	$(IMPDIR)\core\sys\posix\config.d \
+	\
+	$(IMPDIR)\core\sys\posix\config\package.d \
+	$(IMPDIR)\core\sys\posix\config\arm\ucontext.d \
+	$(IMPDIR)\core\sys\posix\config\mips\ucontext.d \
+	$(IMPDIR)\core\sys\posix\config\ppc\ucontext.d \
+	$(IMPDIR)\core\sys\posix\config\x86\ucontext.d \
+	\
 	$(IMPDIR)\core\sys\posix\dirent.d \
 	$(IMPDIR)\core\sys\posix\dlfcn.d \
 	$(IMPDIR)\core\sys\posix\fcntl.d \
