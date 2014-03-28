@@ -626,3 +626,16 @@ version (unittest)
         }
     }
 }
+
+T[] dup(T)(const T[] a)
+{
+    auto b = new T[a.length];
+    b[] = a[];
+    return b;
+}
+
+immutable(T)[] idup(T)(const T[] s)
+{
+    return dup(s);
+}
+

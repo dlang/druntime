@@ -2754,3 +2754,21 @@ unittest
     int[S[]] aa = [[S(11)] : 13];
     assert(aa[[S(12)]] == 13); // fails
 }
+
+/************************
+ * Provide the .dup and .idup array properties.
+ */
+T[] dup(T)(const T[] a)
+{
+    auto b = new T[a.length];
+    b[] = a[];
+    return b;
+}
+
+// ditto
+immutable(T)[] idup(T)(const T[] s)
+{
+    return dup(s);
+}
+
+
