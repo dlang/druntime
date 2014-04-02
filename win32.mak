@@ -188,6 +188,9 @@ $(IMPDIR)\core\internal\hash.d : src\core\internal\hash.d
 $(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
 	copy $** $@
 
+$(IMPDIR)\core\internal\aa.d : src\core\internal\aa.d
+	copy $** $@
+
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d
 	copy $** $@
 
