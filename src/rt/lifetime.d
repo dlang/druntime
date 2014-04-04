@@ -2236,7 +2236,8 @@ struct Array2
 
 
 /**
- *
+ * Replaced by object.dup and object.idup.
+ * Remove in 2.068.
  */
 extern (C) void[] _adDupT(const TypeInfo ti, void[] a)
 out (result)
