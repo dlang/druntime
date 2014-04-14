@@ -2755,30 +2755,19 @@ unittest
 public:
 
 /// Provide the .dup array property.
-@property auto dup(T)(T[] a)
-    if (!is(const(T) : T))
+@property auto dup(T)(inout(T)[] a)
 {
-    import core.internal.traits : Unconst;
-    static assert(is(T : Unconst!T), "Cannot implicitly convert type "~T.stringof~
-                  " to "~Unconst!T.stringof~" in dup.");
+    alias CT = inout(T);
+    static if (is(CT : T))
+        alias UT = T;
+    else
+        alias UT = CT;
 
     // wrap unsafe _dup in @trusted to preserve @safe postblit
-    static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(T, Unconst!T)(a);
+    static if (__traits(compiles, (CT b) @safe { UT a = b; }))
+        return _trustedDup!(CT, UT)(a);
     else
-        return _dup!(T, Unconst!T)(a);
-}
-
-/// ditto
-// const overload to support implicit conversion to immutable (unique result, see DIP29)
-@property T[] dup(T)(const(T)[] a)
-    if (is(const(T) : T))
-{
-    // wrap unsafe _dup in @trusted to preserve @safe postblit
-    static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(const(T), T)(a);
-    else
-        return _dup!(const(T), T)(a);
+        return _dup!(CT, UT)(a);
 }
 
 /// ditto
@@ -2873,21 +2862,80 @@ unittest
 
     int dg1() pure nothrow @safe
     {
+        auto foo(T)(inout(T)[] data)
+        {
+            return data.dup;
+        }
+
         {
            char[] m;
+           const(char)[] c;
            string i;
+           shared(char)[] s;
+
            m = dup(m);
-           i = idup(i);
+           m = dup(c);
            m = dup(i);
+           c = dup(m);
+           c = dup(c);
+           c = dup(i);
+           i = dup(m);
+           i = dup(c);
+           i = dup(i);
+
+           c = idup(m);
+           c = idup(c);
+           c = idup(i);
            i = idup(m);
+           i = idup(c);
+           i = idup(i);
+
+           m = foo(m);
+           m = foo(c);
+           m = foo(i);
+
+           //m = dup(s); //FAILS. Normal?
+           c = dup(s);
+           i = dup(s);
+           s = dup(s);
+
+           //c = foo(s); //FAILS. Normal?
+           s = foo(s);
+
         }
         {
            S1[] m;
+           const(S1)[] c;
            immutable(S1)[] i;
+           shared(S1)[] s;
+
            m = dup(m);
-           i = idup(i);
+           static assert(!is(typeof(m = dup(c)))); //Call works, but can't be assigned to m.
+           static assert(!is(typeof(m = dup(i)))); //Call works, but can't be assigned to m.
+
+           c = dup(m);
+           c = dup(c);
+           c = dup(i);
+
+           static assert(!is(typeof(i = dup(m)))); //Call works, but can't be assigned to i.
+           static assert(!is(typeof(i = dup(c)))); //Call works, but can't be assigned to i.
+           i = dup(i);
+
            static assert(!is(typeof(idup(m))));
-           static assert(!is(typeof(dup(i))));
+           static assert(!is(typeof(idup(c))));
+           i = idup(i);
+
+           m = foo(m);
+           c = foo(c);
+           i = foo(i);
+
+           //m = dup(s);
+           //c = dup(s); //FAILS. Normal?
+           //i = dup(s);
+           s = dup(s);
+
+           //c = foo(s); //FAILS. Normal?
+           s = foo(s);
         }
         {
             S3[] m;
@@ -2913,6 +2961,7 @@ unittest
            immutable(S2)[] i = [S2.init, S2.init];
            m = dup(m);
            m = dup(i);
+           //i = dup(i); This works at runtime, but fails at CTFE
            i = idup(m);
            i = idup(i);
         }
