@@ -61,6 +61,19 @@ version (CRuntime_Glibc)
     else
         enum __WORDSIZE=32;
 }
+else version (CRuntime_Bionic)
+{
+    enum _BSD_SOURCE = true;
+    enum _GNU_SOURCE = true;
+
+    // Assume C99 support (all NDK toolchains support them).
+    enum __USE_ISOC95 = true;
+    enum __USE_ISOC99 = true;
+
+    enum __USE_POSIX = true;
+    enum __USE_POSIX2 = true;
+    enum __USE_XPG = true;
+}
 else version (Solaris)
 {
     enum _FILE_OFFSET_BITS = 64;
