@@ -218,20 +218,13 @@ useconds_t
 
 version( Android )
 {
-    version(X86)
-    {
-        alias c_ulong  fsblkcnt_t;
-        alias c_ulong  fsfilcnt_t;
-        alias c_long   clock_t;
-        alias uint     id_t;
-        alias int      key_t;
-        alias c_long   suseconds_t;
-        alias c_long   useconds_t;
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
+    alias c_ulong  fsblkcnt_t;
+    alias c_ulong  fsfilcnt_t;
+    alias c_long   clock_t;
+    alias uint     id_t;
+    alias int      key_t;
+    alias c_long   suseconds_t;
+    alias c_long   useconds_t;
 }
 else version( linux )
 {
@@ -319,21 +312,14 @@ pthread_t
 
 version( Android )
 {
-    version(X86)
+    struct pthread_attr_t
     {
-        struct pthread_attr_t
-        {
-            uint    flags;
-            void*   stack_base;
-            size_t  stack_size;
-            size_t  guard_size;
-            int     sched_policy;
-            int     sched_priority;
-        }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
+        uint    flags;
+        void*   stack_base;
+        size_t  stack_size;
+        size_t  guard_size;
+        int     sched_policy;
+        int     sched_priority;
     }
 
     struct pthread_cond_t

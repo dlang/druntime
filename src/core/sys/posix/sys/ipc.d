@@ -48,22 +48,15 @@ key_t ftok(in char*, int);
 
 version( Android )
 {
-    version (X86)
+    struct ipc_perm
     {
-        struct ipc_perm
-        {
-            key_t   key;
-            ushort  uid;
-            ushort  gid;
-            ushort  cuid;
-            ushort  cgid;
-            mode_t  mode;
-            ushort  seq;
-        }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
+        key_t   key;
+        uid_t   uid;
+        gid_t   gid;
+        uid_t   cuid;
+        gid_t   cgid;
+        mode_t  mode;
+        ushort  seq;
     }
 
     enum IPC_CREAT      = 0x0200; // 01000

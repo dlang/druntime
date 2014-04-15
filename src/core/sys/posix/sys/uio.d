@@ -39,17 +39,10 @@ ssize_t writev(int, in iovec*, int);
 
 version( Android )
 {
-    version (X86)
+    struct iovec
     {
-        struct iovec
-        {
-            void* iov_base;
-            uint  iov_len;
-        }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
+        void*  iov_base;
+        size_t iov_len;
     }
 
     int readv(int, in iovec*, int);

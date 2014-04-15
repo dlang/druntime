@@ -188,26 +188,26 @@ version( Android )
         int l_linger;
     }
 
+    struct msghdr
+    {
+        void*  msg_name;
+        int    msg_namelen;
+        iovec* msg_iov;
+        size_t msg_iovlen;
+        void*  msg_control;
+        size_t msg_controllen;
+        uint   msg_flags;
+    }
+
+    struct cmsghdr
+    {
+        size_t cmsg_len;
+        int    cmsg_level;
+        int    cmsg_type;
+    }
+
     version (X86)
     {
-        struct msghdr
-        {
-            void*  msg_name;
-            int    msg_namelen;
-            iovec* msg_iov;
-            uint   msg_iovlen;
-            void*  msg_control;
-            uint   msg_controllen;
-            uint   msg_flags;
-        }
-
-        struct cmsghdr
-        {
-            uint cmsg_len;
-            int  cmsg_level;
-            int  cmsg_type;
-        }
-
         enum
         {
             SOCK_DGRAM      = 2,
