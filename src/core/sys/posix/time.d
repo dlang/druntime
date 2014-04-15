@@ -38,7 +38,11 @@ size_t strftime(char*, size_t, in char*, in tm*);
 time_t time(time_t*);
 */
 
-version( linux )
+version (Android)
+{
+    // Not supported.
+}
+else version( linux )
 {
     time_t timegm(tm*); // non-standard
 }
@@ -51,10 +55,6 @@ else version( FreeBSD )
     time_t timegm(tm*); // non-standard
 }
 else version (Solaris)
-{
-    // Not supported.
-}
-else version (Android)
 {
     // Not supported.
 }
@@ -93,7 +93,12 @@ int clock_nanosleep(clockid_t, int, in timespec*, timespec*);
 CLOCK_MONOTONIC
 */
 
-version( linux )
+version (Android)
+{
+    enum CLOCK_MONOTONIC    = 1;
+    enum CLOCK_MONOTONIC_HR = 5;
+}
+else version( linux )
 {
     enum CLOCK_MONOTONIC        = 1;
     enum CLOCK_MONOTONIC_RAW    = 4; // non-standard
@@ -116,11 +121,6 @@ else version (Solaris)
 else version (Windows)
 {
     pragma(msg, "no Windows support for CLOCK_MONOTONIC");
-}
-else version (Android)
-{
-    enum CLOCK_MONOTONIC    = 1;
-    enum CLOCK_MONOTONIC_HR = 5;
 }
 else
 {
@@ -166,7 +166,41 @@ int timer_getoverrun(timer_t);
 int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 */
 
-version( linux )
+version( Android )
+{
+    enum CLOCK_PROCESS_CPUTIME_ID = 2;
+    enum CLOCK_THREAD_CPUTIME_ID  = 3;
+
+    struct itimerspec
+    {
+        timespec it_interval;
+        timespec it_value;
+    }
+
+    enum CLOCK_REALTIME    = 0;
+    enum CLOCK_REALTIME_HR = 4;
+    enum TIMER_ABSTIME     = 0x01;
+
+    version(X86)
+    {
+        alias int clockid_t;
+        alias int timer_t;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    int clock_getres(int, timespec*);
+    int clock_gettime(int, timespec*);
+    int nanosleep(in timespec*, timespec*);
+    int timer_create(int, sigevent*, timer_t*);
+    int timer_delete(timer_t);
+    int timer_gettime(timer_t, itimerspec*);
+    int timer_getoverrun(timer_t);
+    int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
+}
+else version( linux )
 {
     enum CLOCK_PROCESS_CPUTIME_ID = 2;
     enum CLOCK_THREAD_CPUTIME_ID  = 3;
@@ -267,40 +301,6 @@ else version (Solaris)
     int timer_gettime(timer_t, itimerspec*);
     int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 }
-else version( Android )
-{
-    enum CLOCK_PROCESS_CPUTIME_ID = 2;
-    enum CLOCK_THREAD_CPUTIME_ID  = 3;
-
-    struct itimerspec
-    {
-        timespec it_interval;
-        timespec it_value;
-    }
-
-    enum CLOCK_REALTIME    = 0;
-    enum CLOCK_REALTIME_HR = 4;
-    enum TIMER_ABSTIME     = 0x01;
-
-    version(X86)
-    {
-        alias int clockid_t;
-        alias int timer_t;
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-
-    int clock_getres(int, timespec*);
-    int clock_gettime(int, timespec*);
-    int nanosleep(in timespec*, timespec*);
-    int timer_create(int, sigevent*, timer_t*);
-    int timer_delete(timer_t);
-    int timer_gettime(timer_t, itimerspec*);
-    int timer_getoverrun(timer_t);
-    int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -316,7 +316,14 @@ tm*   gmtime_r(in time_t*, tm*);
 tm*   localtime_r(in time_t*, tm*);
 */
 
-version( linux )
+version (Android)
+{
+    char* asctime_r(in tm*, char*);
+    char* ctime_r(in time_t*, char*);
+    tm* gmtime_r(in time_t*, tm*);
+    tm* localtime_r(in time_t*, tm*);
+}
+else version( linux )
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);
@@ -344,13 +351,6 @@ else version (Solaris)
     tm* gmtime_r(in time_t*, tm*);
     tm* localtime_r(in time_t*, tm*);
 }
-else version (Android)
-{
-    char* asctime_r(in tm*, char*);
-    char* ctime_r(in time_t*, char*);
-    tm* gmtime_r(in time_t*, tm*);
-    tm* localtime_r(in time_t*, tm*);
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -369,7 +369,14 @@ tm* getdate(in char*);
 char* strptime(in char*, in char*, tm*);
 */
 
-version( linux )
+version( Android )
+{
+    extern __gshared int    daylight;
+    extern __gshared c_long timezone;
+
+    char* strptime(in char*, in char*, tm*);
+}
+else version( linux )
 {
     extern __gshared int    daylight;
     extern __gshared c_long timezone;
@@ -398,13 +405,6 @@ else version (Solaris)
     tm* getdate(in char*);
     char* __strptime_dontzero(in char*, in char*, tm*);
     alias __strptime_dontzero strptime;
-}
-else version( Android )
-{
-    extern __gshared int    daylight;
-    extern __gshared c_long timezone;
-
-    char* strptime(in char*, in char*, tm*);
 }
 else
 {

@@ -76,7 +76,29 @@ time_t
 uid_t
 */
 
-version( linux )
+version( Android )
+{
+    version(X86)
+    {
+        alias c_ulong   blkcnt_t;
+        alias c_ulong   blksize_t;
+        alias uint      dev_t;
+        alias uint      gid_t;
+        alias c_ulong   ino_t;
+        alias ushort    mode_t;
+        alias ushort    nlink_t;
+        alias c_long    off_t;
+        alias int       pid_t;
+        alias c_long    ssize_t;
+        alias c_long    time_t;
+        alias uint      uid_t;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+}
+else version( linux )
 {
   static if( __USE_FILE_OFFSET64 )
   {
@@ -176,28 +198,6 @@ else version (Solaris)
     alias c_long time_t;
     alias uint uid_t;
 }
-else version( Android )
-{
-    version(X86)
-    {
-        alias c_ulong   blkcnt_t;
-        alias c_ulong   blksize_t;
-        alias uint      dev_t;
-        alias uint      gid_t;
-        alias c_ulong   ino_t;
-        alias ushort    mode_t;
-        alias ushort    nlink_t;
-        alias c_long    off_t;
-        alias int       pid_t;
-        alias c_long    ssize_t;
-        alias c_long    time_t;
-        alias uint      uid_t;
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -216,7 +216,24 @@ suseconds_t
 useconds_t
 */
 
-version( linux )
+version( Android )
+{
+    version(X86)
+    {
+        alias c_ulong  fsblkcnt_t;
+        alias c_ulong  fsfilcnt_t;
+        alias c_long   clock_t;
+        alias uint     id_t;
+        alias int      key_t;
+        alias c_long   suseconds_t;
+        alias c_long   useconds_t;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+}
+else version( linux )
 {
   static if( __USE_FILE_OFFSET64 )
   {
@@ -279,23 +296,6 @@ else version (Solaris)
     alias id_t zoneid_t;
     alias id_t ctid_t;
 }
-else version( Android )
-{
-    version(X86)
-    {
-        alias c_ulong  fsblkcnt_t;
-        alias c_ulong  fsfilcnt_t;
-        alias c_long   clock_t;
-        alias uint     id_t;
-        alias int      key_t;
-        alias c_long   suseconds_t;
-        alias c_long   useconds_t;
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -317,7 +317,56 @@ pthread_rwlockattr_t
 pthread_t
 */
 
-version (linux)
+version( Android )
+{
+    version(X86)
+    {
+        struct pthread_attr_t
+        {
+            uint    flags;
+            void*   stack_base;
+            size_t  stack_size;
+            size_t  guard_size;
+            int     sched_policy;
+            int     sched_priority;
+        }
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    struct pthread_cond_t
+    {
+        int value; //volatile
+    }
+
+    alias c_long pthread_condattr_t;
+    alias int    pthread_key_t;
+
+    struct pthread_mutex_t
+    {
+        int value; //volatile
+    }
+
+    alias c_long pthread_mutexattr_t;
+    alias int    pthread_once_t; //volatile
+
+    struct pthread_rwlock_t
+    {
+        pthread_mutex_t  lock;
+        pthread_cond_t   cond;
+        int              numLocks;
+        int              writerThreadId;
+        int              pendingReaders;
+        int              pendingWriters;
+        void*[4]         reserved;
+    }
+
+    alias int    pthread_rwlockattr_t;
+    alias c_long pthread_t;
+}
+else version (linux)
 {
     version (X86)
     {
@@ -727,55 +776,6 @@ else version (Solaris)
 
     alias uint pthread_key_t;
 }
-else version( Android )
-{
-    version(X86)
-    {
-        struct pthread_attr_t
-        {
-            uint    flags;
-            void*   stack_base;
-            size_t  stack_size;
-            size_t  guard_size;
-            int     sched_policy;
-            int     sched_priority;
-        }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-
-    struct pthread_cond_t
-    {
-        int value; //volatile
-    }
-
-    alias c_long pthread_condattr_t;
-    alias int    pthread_key_t;
-
-    struct pthread_mutex_t
-    {
-        int value; //volatile
-    }
-
-    alias c_long pthread_mutexattr_t;
-    alias int    pthread_once_t; //volatile
-
-    struct pthread_rwlock_t
-    {
-        pthread_mutex_t  lock;
-        pthread_cond_t   cond;
-        int              numLocks;
-        int              writerThreadId;
-        int              pendingReaders;
-        int              pendingWriters;
-        void*[4]         reserved;
-    }
-
-    alias int    pthread_rwlockattr_t;
-    alias c_long pthread_t;
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -789,7 +789,10 @@ pthread_barrier_t
 pthread_barrierattr_t
 */
 
-version( linux )
+version( Android )
+{
+}
+else version( linux )
 {
     struct pthread_barrier_t
     {
@@ -828,9 +831,6 @@ else version (Solaris)
         void* __pthread_barrierattrp;
     }
 }
-else version( Android )
-{
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -843,7 +843,10 @@ else
 pthread_spinlock_t
 */
 
-version( linux )
+version( Android )
+{
+}
+else version( linux )
 {
     alias int pthread_spinlock_t; // volatile
 }

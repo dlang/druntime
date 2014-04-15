@@ -2720,10 +2720,10 @@ extern(C) void thread_processGCMarks(scope rt.tlsgc.IsMarkedDg dg)
 
 extern (C)
 {
-    version (linux) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
+    version (Android) int pthread_getattr_np(pthread_t thid, pthread_attr_t* attr);
+    else version (linux) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
     version (FreeBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
     version (Solaris) int thr_stksegment(stack_t* stk);
-    version (Android) int pthread_getattr_np(pthread_t thid, pthread_attr_t* attr);
 }
 
 
@@ -2761,6 +2761,16 @@ private void* getStackBottom()
         import core.sys.osx.pthread;
         return pthread_get_stackaddr_np(pthread_self());
     }
+    else version (Android)
+    {
+        pthread_attr_t attr;
+        void* addr; size_t size;
+
+        pthread_getattr_np(pthread_self(), &attr);
+        pthread_attr_getstack(&attr, &addr, &size);
+        pthread_attr_destroy(&attr);
+        return addr + size;
+    }
     else version (linux)
     {
         pthread_attr_t attr;
@@ -2788,16 +2798,6 @@ private void* getStackBottom()
 
         thr_stksegment(&stk);
         return stk.ss_sp;
-    }
-    else version (Android)
-    {
-        pthread_attr_t attr;
-        void* addr; size_t size;
-
-        pthread_getattr_np(pthread_self(), &attr);
-        pthread_attr_getstack(&attr, &addr, &size);
-        pthread_attr_destroy(&attr);
-        return addr + size;
     }
     else
         static assert(false, "Platform not supported.");
@@ -3938,7 +3938,8 @@ private:
         else
         {
             version (Posix) import core.sys.posix.sys.mman; // mmap
-            version (linux) import core.sys.linux.sys.mman : MAP_ANON;
+            version (Android) {}
+            else version (linux) import core.sys.linux.sys.mman : MAP_ANON;
 
             static if( __traits( compiles, mmap ) )
             {

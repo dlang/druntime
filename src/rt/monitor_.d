@@ -22,7 +22,11 @@ private
     debug(PRINTF) import core.stdc.stdio;
     import core.stdc.stdlib;
 
-    version( linux )
+    version( Android )
+    {
+        version = USE_PTHREADS;
+    }
+    else version( linux )
     {
         version = USE_PTHREADS;
     }
@@ -35,10 +39,6 @@ private
         version = USE_PTHREADS;
     }
     else version( Solaris )
-    {
-        version = USE_PTHREADS;
-    }
-    else version( Android )
     {
         version = USE_PTHREADS;
     }

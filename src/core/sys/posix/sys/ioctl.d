@@ -22,7 +22,11 @@ extern (C):
 @system:
 nothrow:
 
-version (linux)
+version (Android)
+{
+    int ioctl(int, int, ...);
+}
+else version (linux)
 {
     import core.sys.posix.termios; // tcflag_t, speed_t, cc_t
 
@@ -364,10 +368,6 @@ else version (FreeBSD)
 else version (Solaris)
 {
     int ioctl(int fildes, int request, ...);
-}
-else version (Android)
-{
-    int ioctl(int, int, ...);
 }
 else
 {

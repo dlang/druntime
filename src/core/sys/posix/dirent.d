@@ -38,7 +38,44 @@ dirent* readdir(DIR*);
 void    rewinddir(DIR*);
 */
 
-version( linux )
+version( Android )
+{
+    enum
+    {
+        DT_UNKNOWN  = 0,
+        DT_FIFO     = 1,
+        DT_CHR      = 2,
+        DT_DIR      = 4,
+        DT_BLK      = 6,
+        DT_REG      = 8,
+        DT_LNK      = 10,
+        DT_SOCK     = 12,
+        DT_WHT      = 14
+    }
+
+    version (X86)
+    {
+        struct dirent
+        {
+            ulong       d_ino;
+            long        d_off;
+            ushort      d_reclen;
+            ubyte       d_type;
+            char[256]   d_name;
+        }
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    struct DIR
+    {
+    }
+
+    dirent* readdir(DIR*);
+}
+else version( linux )
 {
     // NOTE: The following constants are non-standard Linux definitions
     //       for dirent.d_type.
@@ -168,43 +205,6 @@ else version (Solaris)
         dirent* readdir(DIR*);
     }
 }
-else version( Android )
-{
-    enum
-    {
-        DT_UNKNOWN  = 0,
-        DT_FIFO     = 1,
-        DT_CHR      = 2,
-        DT_DIR      = 4,
-        DT_BLK      = 6,
-        DT_REG      = 8,
-        DT_LNK      = 10,
-        DT_SOCK     = 12,
-        DT_WHT      = 14
-    }
-
-    version (X86)
-    {
-        struct dirent
-        {
-            ulong       d_ino;
-            long        d_off;
-            ushort      d_reclen;
-            ubyte       d_type;
-            char[256]   d_name;
-        }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-
-    struct DIR
-    {
-    }
-
-    dirent* readdir(DIR*);
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -222,7 +222,11 @@ void    rewinddir(DIR*);
 int readdir_r(DIR*, dirent*, dirent**);
 */
 
-version( linux )
+version( Android )
+{
+    int readdir_r(DIR*, dirent*, dirent**);
+}
+else version( linux )
 {
   static if( __USE_LARGEFILE64 )
   {
@@ -254,10 +258,6 @@ else version (Solaris)
         int readdir_r(DIR*, dirent*, dirent**);
     }
 }
-else version( Android )
-{
-    int readdir_r(DIR*, dirent*, dirent**);
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -271,7 +271,10 @@ void   seekdir(DIR*, c_long);
 c_long telldir(DIR*);
 */
 
-version( linux )
+version (Android)
+{
+}
+else version( linux )
 {
     void   seekdir(DIR*, c_long);
     c_long telldir(DIR*);
@@ -288,9 +291,6 @@ else version (Solaris)
 {
     c_long telldir(DIR*);
     void seekdir(DIR*, c_long);
-}
-else version (Android)
-{
 }
 else
 {

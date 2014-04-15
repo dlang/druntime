@@ -70,6 +70,24 @@ else version( Win64 )
     enum wstring _wP_tmpdir = "\\"; // non-standard
     enum int     L_tmpnam   = _P_tmpdir.length + 12;
 }
+else version( Android )
+{
+    enum
+    {
+        BUFSIZ       = 1024,
+        EOF          = -1,
+        FOPEN_MAX    = 20,
+        FILENAME_MAX = 1024,
+        TMP_MAX      = 308915776,
+        L_tmpnam     = 1024
+    }
+
+    struct __sbuf
+    {
+        ubyte* _base;
+        int _size;
+    }
+}
 else version( linux )
 {
     enum
@@ -149,24 +167,6 @@ else version (Solaris)
     else
         enum int _NFILE = 20;
 }
-else version( Android )
-{
-    enum
-    {
-        BUFSIZ       = 1024,
-        EOF          = -1,
-        FOPEN_MAX    = 20,
-        FILENAME_MAX = 1024,
-        TMP_MAX      = 308915776,
-        L_tmpnam     = 1024
-    }
-
-    struct __sbuf
-    {
-        ubyte* _base;
-        int _size;
-    }
-}
 else
 {
     static assert( false, "Unsupported platform" );
@@ -214,6 +214,42 @@ else version( Win64 )
     }
 
     alias shared(_iobuf) FILE;
+}
+else version( Android )
+{
+    alias off_t fpos_t;
+
+    struct __sFILE
+    {
+        ubyte*    _p;
+        int       _r;
+        int       _w;
+        short     _flags;
+        short     _file;
+        __sbuf    _bf;
+        int       _lbfsize;
+
+        void*     _cookie;
+        int      function(void*)                    _close;
+        int      function(void*, char*, int)        _read;
+        fpos_t   function(void*, fpos_t, int)       _seek;
+        int      function(void*, in char*, int)     _write;
+
+        __sbuf    _ext;
+        ubyte*    _up;
+        int       _ur;
+
+        ubyte[3]  _ubuf;
+        ubyte[1]  _nbuf;
+
+        __sbuf    _lb;
+
+        int       _blksize;
+        fpos_t    _offset;
+    }
+
+    alias __sFILE _iobuf; //remove later
+    alias shared(__sFILE) FILE;
 }
 else version( linux )
 {
@@ -346,42 +382,6 @@ else version (Solaris)
 
     alias shared(_iobuf) FILE;
 }
-else version( Android )
-{
-    alias off_t fpos_t;
-
-    struct __sFILE
-    {
-        ubyte*    _p;
-        int       _r;
-        int       _w;
-        short     _flags;
-        short     _file;
-        __sbuf    _bf;
-        int       _lbfsize;
-
-        void*     _cookie;
-        int      function(void*)                    _close;
-        int      function(void*, char*, int)        _read;
-        fpos_t   function(void*, fpos_t, int)       _seek;
-        int      function(void*, in char*, int)     _write;
-
-        __sbuf    _ext;
-        ubyte*    _up;
-        int       _ur;
-
-        ubyte[3]  _ubuf;
-        ubyte[1]  _nbuf;
-
-        __sbuf    _lb;
-
-        int       _blksize;
-        fpos_t    _offset;
-    }
-
-    alias __sFILE _iobuf; //remove later
-    alias shared(__sFILE) FILE;
-}
 else
 {
     static assert( false, "Unsupported platform" );
@@ -458,6 +458,21 @@ else version( Win64 )
     shared FILE* stdout; // = &__iob_func()[1];
     shared FILE* stderr; // = &__iob_func()[2];
 }
+else version( Android )
+{
+    enum
+    {
+        _IOFBF = 0,
+        _IOLBF = 1,
+        _IONBF = 2,
+    }
+
+    private extern shared FILE[3] __sF;
+
+    shared stdin  = &__sF[0];
+    shared stdout = &__sF[1];
+    shared stderr = &__sF[2];
+}
 else version( linux )
 {
     enum
@@ -525,21 +540,6 @@ else version (Solaris)
     shared stdin = &__iob[0];
     shared stdout = &__iob[1];
     shared stderr = &__iob[2];
-}
-else version( Android )
-{
-    enum
-    {
-        _IOFBF = 0,
-        _IOLBF = 1,
-        _IONBF = 2,
-    }
-
-    private extern shared FILE[3] __sF;
-
-    shared stdin  = &__sF[0];
-    shared stdout = &__sF[1];
-    shared stderr = &__sF[2];
 }
 else
 {
@@ -737,6 +737,21 @@ else version( Win64 )
     intptr_t _get_osfhandle(int fd);
     int _open_osfhandle(intptr_t osfhandle, int flags);
 }
+else version( Android )
+{
+  // No unsafe pointer manipulation.
+  @trusted
+  {
+    void rewind(FILE*);
+    pure void clearerr(FILE*);
+    pure int  feof(FILE*);
+    pure int  ferror(FILE*);
+    int  fileno(FILE*);
+  }
+
+    int  snprintf(char* s, size_t n, in char* format, ...);
+    int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
+}
 else version( linux )
 {
   // No unsafe pointer manipulation.
@@ -783,21 +798,6 @@ else version( FreeBSD )
     int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
 }
 else version (Solaris)
-{
-  // No unsafe pointer manipulation.
-  @trusted
-  {
-    void rewind(FILE*);
-    pure void clearerr(FILE*);
-    pure int  feof(FILE*);
-    pure int  ferror(FILE*);
-    int  fileno(FILE*);
-  }
-
-    int  snprintf(char* s, size_t n, in char* format, ...);
-    int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
-}
-else version( Android )
 {
   // No unsafe pointer manipulation.
   @trusted

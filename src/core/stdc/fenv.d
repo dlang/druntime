@@ -30,6 +30,27 @@ version( Windows )
 
     alias int fexcept_t;
 }
+else version( Android )
+{
+    version(X86)
+    {
+        struct fenv_t
+        {
+            ushort   __control;
+            ushort   __mxcsr_hi;
+            ushort   __status;
+            ushort   __mxcsr_lo;
+            uint     __tag;
+            byte[16] __other;
+        }
+
+        alias ushort fexcept_t;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+}
 else version( linux )
 {
     // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/x86/fpu/bits/fenv.h
@@ -134,27 +155,6 @@ else version ( FreeBSD )
 
     alias ushort fexcept_t;
 }
-else version( Android )
-{
-    version(X86)
-    {
-        struct fenv_t
-        {
-            ushort   __control;
-            ushort   __mxcsr_hi;
-            ushort   __status;
-            ushort   __mxcsr_lo;
-            uint     __tag;
-            byte[16] __other;
-        }
-    
-        alias ushort fexcept_t;
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-}
 else
 {
     static assert( false, "Unsupported platform" );
@@ -180,6 +180,11 @@ version( Windows )
     private extern __gshared fenv_t _FE_DFL_ENV;
     fenv_t* FE_DFL_ENV = &_FE_DFL_ENV;
 }
+else version( Android )
+{
+    private extern const fenv_t __fe_dfl_env;
+    const fenv_t* FE_DFL_ENV = &__fe_dfl_env;
+}
 else version( linux )
 {
     fenv_t* FE_DFL_ENV = cast(fenv_t*)(-1);
@@ -190,11 +195,6 @@ else version( OSX )
     fenv_t* FE_DFL_ENV = &_FE_DFL_ENV;
 }
 else version( FreeBSD )
-{
-    private extern const fenv_t __fe_dfl_env;
-    const fenv_t* FE_DFL_ENV = &__fe_dfl_env;
-}
-else version( Android )
 {
     private extern const fenv_t __fe_dfl_env;
     const fenv_t* FE_DFL_ENV = &__fe_dfl_env;

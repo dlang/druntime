@@ -93,7 +93,15 @@ int    vsprintf(char*, in char*, va_list);
 int    vsscanf(in char*, in char*, va_list arg);
 */
 
-version( linux )
+version( Android )
+{
+    int   fgetpos(FILE*, fpos_t *);
+    FILE* fopen(in char*, in char*);
+    FILE* freopen(in char*, in char*, FILE*);
+    int   fseek(FILE*, c_long, int);
+    int   fsetpos(FILE*, in fpos_t*);
+}
+else version( linux )
 {
     /*
      * actually, if __USE_FILE_OFFSET64 && !_LARGEFILE64_SOURCE
@@ -129,14 +137,6 @@ version( linux )
         FILE* tmpfile();
     }
 }
-else version( Android )
-{
-    int   fgetpos(FILE*, fpos_t *);
-    FILE* fopen(in char*, in char*);
-    FILE* freopen(in char*, in char*, FILE*);
-    int   fseek(FILE*, c_long, int);
-    int   fsetpos(FILE*, in fpos_t*);
-}
 
 //
 // C Extension (CX)
@@ -154,7 +154,12 @@ int    pclose(FILE*);
 FILE*  popen(in char*, in char*);
 */
 
-version( linux )
+version( Android )
+{
+    int   fseeko(FILE*, off_t, int);
+    off_t ftello(FILE*);
+}
+else version( linux )
 {
     enum L_ctermid = 9;
 
@@ -227,7 +232,13 @@ va_list (defined in core.stdc.stdarg)
 char*  tempnam(in char*, in char*);
 */
 
-version( linux )
+version( Android )
+{
+    enum P_tmpdir  = "/tmp";
+
+    char*  tempnam(in char*, in char*);
+}
+else version( linux )
 {
     enum P_tmpdir  = "/tmp";
 

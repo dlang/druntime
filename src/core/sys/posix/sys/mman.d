@@ -40,7 +40,10 @@ POSIX_MADV_WILLNEED
 POSIX_MADV_DONTNEED
 */
 
-version( linux )
+version (Android)
+{
+}
+else version( linux )
 {
     version (Alpha)
         private enum __POSIX_MADV_DONTNEED = 6;
@@ -81,9 +84,6 @@ else version( FreeBSD )
 else version (Solaris)
 {
 }
-else version (Android)
-{
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -99,7 +99,14 @@ PROT_EXEC
 PROT_NONE
 */
 
-version( linux )
+version (Android)
+{
+    enum PROT_NONE = 0x00;
+    enum PROT_READ = 0x01;
+    enum PROT_WRITE = 0x02;
+    enum PROT_EXEC = 0x04;
+}
+else version( linux )
 {
     enum PROT_NONE      = 0x0;
     enum PROT_READ      = 0x1;
@@ -127,13 +134,6 @@ else version (Solaris)
     enum PROT_WRITE = 0x02;
     enum PROT_EXEC = 0x04;
 }
-else version (Android)
-{
-    enum PROT_NONE = 0x00;
-    enum PROT_READ = 0x01;
-    enum PROT_WRITE = 0x02;
-    enum PROT_EXEC = 0x04;
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -147,7 +147,12 @@ void* mmap(void*, size_t, int, int, int, off_t);
 int munmap(void*, size_t);
 */
 
-version( linux )
+version (Android)
+{
+    void* mmap(void*, size_t, int, int, int, off_t);
+    int   munmap(void*, size_t);
+}
+else version( linux )
 {
     static if (__USE_LARGEFILE64) void* mmap64(void*, size_t, int, int, int, off_t);
     static if (__USE_FILE_OFFSET64)
@@ -167,11 +172,6 @@ else version( FreeBSD )
     int   munmap(void*, size_t);
 }
 else version (Solaris)
-{
-    void* mmap(void*, size_t, int, int, int, off_t);
-    int   munmap(void*, size_t);
-}
-else version (Android)
 {
     void* mmap(void*, size_t, int, int, int, off_t);
     int   munmap(void*, size_t);
@@ -197,7 +197,30 @@ MS_INVALIDATE (MF|SIO)
 int msync(void*, size_t, int); (MF|SIO)
 */
 
-version( linux )
+version (Android)
+{
+    enum MAP_SHARED     = 0x0001;
+    enum MAP_PRIVATE    = 0x0002;
+    enum MAP_FIXED      = 0x0010;
+
+    version (X86)
+    {
+        enum MAP_ANON       = 0x0020;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    enum MAP_FAILED     = cast(void*)-1;
+
+    enum MS_SYNC        = 4;
+    enum MS_ASYNC       = 1;
+    enum MS_INVALIDATE  = 2;
+
+    int msync(in void*, size_t, int);
+}
+else version( linux )
 {
     enum MAP_SHARED     = 0x01;
     enum MAP_PRIVATE    = 0x02;
@@ -281,29 +304,6 @@ else version (Solaris)
 
     int msync(void*, size_t, int);
 }
-else version (Android)
-{
-    enum MAP_SHARED     = 0x0001;
-    enum MAP_PRIVATE    = 0x0002;
-    enum MAP_FIXED      = 0x0010;
-
-    version (X86)
-    {
-        enum MAP_ANON       = 0x0020;
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-
-    enum MAP_FAILED     = cast(void*)-1;
-
-    enum MS_SYNC        = 4;
-    enum MS_ASYNC       = 1;
-    enum MS_INVALIDATE  = 2;
-
-    int msync(in void*, size_t, int);
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -320,7 +320,15 @@ int mlockall(int);
 int munlockall();
 */
 
-version( linux )
+version (Android)
+{
+    enum MCL_CURRENT = 1;
+    enum MCL_FUTURE  = 2;
+
+    int mlockall(int);
+    int munlockall();
+}
+else version( linux )
 {
     version (SPARC) enum
     {
@@ -381,14 +389,6 @@ else version (Solaris)
     int mlockall(int);
     int munlockall();
 }
-else version (Android)
-{
-    enum MCL_CURRENT = 1;
-    enum MCL_FUTURE  = 2;
-
-    int mlockall(int);
-    int munlockall();
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -402,7 +402,12 @@ int mlock(in void*, size_t);
 int munlock(in void*, size_t);
 */
 
-version( linux )
+version (Android)
+{
+    int mlock(in void*, size_t);
+    int munlock(in void*, size_t);
+}
+else version( linux )
 {
     int mlock(in void*, size_t);
     int munlock(in void*, size_t);
@@ -418,11 +423,6 @@ else version( FreeBSD )
     int munlock(in void*, size_t);
 }
 else version (Solaris)
-{
-    int mlock(in void*, size_t);
-    int munlock(in void*, size_t);
-}
-else version (Android)
 {
     int mlock(in void*, size_t);
     int munlock(in void*, size_t);
@@ -439,7 +439,11 @@ else
 int mprotect(void*, size_t, int);
 */
 
-version (linux)
+version (Android)
+{
+    int mprotect(in void*, size_t, int);
+}
+else version (linux)
 {
     int mprotect(void*, size_t, int);
 }
@@ -454,10 +458,6 @@ else version( FreeBSD )
 else version (Solaris)
 {
     int mprotect(void*, size_t, int);
-}
-else version (Android)
-{
-    int mprotect(in void*, size_t, int);
 }
 else
 {
@@ -472,7 +472,10 @@ int shm_open(in char*, int, mode_t);
 int shm_unlink(in char*);
 */
 
-version( linux )
+version (Android)
+{
+}
+else version( linux )
 {
     int shm_open(in char*, int, mode_t);
     int shm_unlink(in char*);
@@ -491,9 +494,6 @@ else version (Solaris)
 {
     int shm_open(in char*, int, mode_t);
     int shm_unlink(in char*);
-}
-else version (Android)
-{
 }
 else
 {

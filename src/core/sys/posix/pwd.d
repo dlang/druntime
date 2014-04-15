@@ -37,7 +37,19 @@ passwd* getpwnam(in char*);
 passwd* getpwuid(uid_t);
 */
 
-version( linux )
+version( Android )
+{
+    struct passwd
+    {
+        char*   pw_name;
+        char*   pw_passwd;
+        uid_t   pw_uid;
+        gid_t   pw_gid;
+        char*   pw_dir;
+        char*   pw_shell;
+    }
+}
+else version( linux )
 {
     struct passwd
     {
@@ -98,18 +110,6 @@ else version (Solaris)
         char* pw_shell;
     }
 }
-else version( Android )
-{
-    struct passwd
-    {
-        char*   pw_name;
-        char*   pw_passwd;
-        uid_t   pw_uid;
-        gid_t   pw_gid;
-        char*   pw_dir;
-        char*   pw_shell;
-    }
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -126,7 +126,11 @@ int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
 int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
 */
 
-version( linux )
+version( Android )
+{
+    // Missing from bionic
+}
+else version( linux )
 {
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
@@ -146,10 +150,6 @@ else version (Solaris)
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
 }
-else version( Android )
-{
-    // Missing from bionic
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -164,7 +164,11 @@ passwd* getpwent();
 void    setpwent();
 */
 
-version( linux )
+version ( Android )
+{
+    void    endpwent();
+}
+else version( linux )
 {
     void    endpwent();
     passwd* getpwent();
@@ -187,10 +191,6 @@ else version (Solaris)
     void endpwent();
     passwd* getpwent();
     void setpwent();
-}
-else version ( Android )
-{
-    void    endpwent();
 }
 else
 {

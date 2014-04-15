@@ -30,7 +30,8 @@ version (Windows)
 else version (Posix)
 {
     import core.sys.posix.sys.mman;
-    version (linux) import core.sys.linux.sys.mman : MAP_ANON;
+    version (Android) {}
+    else version (linux) import core.sys.linux.sys.mman : MAP_ANON;
     import core.stdc.stdlib;
 
     //version = GC_Use_Alloc_MMap;
