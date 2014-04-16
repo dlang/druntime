@@ -133,6 +133,11 @@ version( CRuntime_Glibc )
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
 }
+else version( CRuntime_Bionic )
+{
+    int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
+    int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
+}
 else version( OSX )
 {
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
@@ -147,9 +152,6 @@ else version (Solaris)
 {
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
-}
-else version( CRuntime_Bionic )
-{
 }
 else
 {
