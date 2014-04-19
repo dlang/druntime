@@ -630,7 +630,7 @@ version (unittest)
 }
 
 /// Provide the .dup array property.
-@property auto dup(T)(T[] a)
+auto dup(T)(T[] a)
     if (!is(const(T) : T))
 {
     import core.internal.traits : Unconst;
@@ -646,7 +646,7 @@ version (unittest)
 
 /// ditto
 // const overload to support implicit conversion to immutable (unique result, see DIP29)
-@property T[] dup(T)(const(T)[] a)
+T[] dup(T)(const(T)[] a)
     if (is(const(T) : T))
 {
     // wrap unsafe _dup in @trusted to preserve @safe postblit
@@ -657,14 +657,14 @@ version (unittest)
 }
 
 /// ditto
-@property T[] dup(T:void)(const(T)[] a) @trusted
+T[] dup(T:void)(const(T)[] a) @trusted
 {
     if (__ctfe) assert(0, "Cannot dup a void[] array at compile time.");
     return cast(T[])_rawDup(a);
 }
 
 /// Provide the .idup array property.
-@property immutable(T)[] idup(T)(T[] a)
+immutable(T)[] idup(T)(T[] a)
 {
     static assert(is(T : immutable(T)), "Cannot implicitly convert type "~T.stringof~
                   " to immutable in idup.");
@@ -677,7 +677,7 @@ version (unittest)
 }
 
 /// ditto
-@property immutable(T)[] idup(T:void)(const(T)[] a)
+immutable(T)[] idup(T:void)(const(T)[] a)
 {
     return .dup(a);
 }
