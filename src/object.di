@@ -642,6 +642,15 @@ void __ctfeWriteln(T...)(auto ref T values) { __ctfeWrite(values, "\n"); }
 
 template RTInfo(T)
 {
+    static if ({
+        foreach(i; __traits(allMembers, T))
+            static if (i == "_RTInfo")
+                return true;
+        return false;
+    }())
+    {
+        alias InstanciateRTInfo = T._RTInfo!(T);
+    }
     enum RTInfo = cast(void*)0x12345678;
 }
 
