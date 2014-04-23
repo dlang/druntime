@@ -2784,6 +2784,15 @@ bool _xopCmp(in void*, in void*)
 
 template RTInfo(T)
 {
+    static if ({
+        foreach(i; __traits(allMembers, T))
+            static if (i == "_RTInfo")
+                return true;
+        return false;
+    }())
+    {
+        alias InstanciateRTInfo = T._RTInfo!(T);
+    }
     enum RTInfo = null;
 }
 
