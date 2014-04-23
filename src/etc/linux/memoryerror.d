@@ -14,7 +14,10 @@
 
 module etc.linux.memoryerror;
 
-version (linux)
+version (Android)
+{
+}
+else version (linux)
 {
     version (X86)
         version = MemoryErrorSupported;

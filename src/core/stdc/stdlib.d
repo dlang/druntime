@@ -42,11 +42,11 @@ enum EXIT_FAILURE = 1;
 enum MB_CUR_MAX   = 1;
 
 version(Windows)      enum RAND_MAX = 0x7fff;
+else version(Android) enum RAND_MAX = 0x7fffffff;
 else version(linux)   enum RAND_MAX = 0x7fffffff;
 else version(OSX)     enum RAND_MAX = 0x7fffffff;
 else version(FreeBSD) enum RAND_MAX = 0x7fffffff;
 else version(Solaris) enum RAND_MAX = 0x7fff;
-else version(Android) enum RAND_MAX = 0x7fffffff;
 else static assert( false, "Unsupported platform" );
 
 double  atof(in char* nptr);

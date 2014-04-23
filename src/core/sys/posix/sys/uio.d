@@ -37,7 +37,18 @@ ssize_t readv(int, in iovec*, int);
 ssize_t writev(int, in iovec*, int);
 */
 
-version( linux )
+version( Android )
+{
+    struct iovec
+    {
+        void*  iov_base;
+        size_t iov_len;
+    }
+
+    int readv(int, in iovec*, int);
+    int writev(int, in iovec*, int);
+}
+else version( linux )
 {
     struct iovec
     {
@@ -80,24 +91,6 @@ else version (Solaris)
 
     ssize_t readv(int, in iovec*, int);
     ssize_t writev(int, in iovec*, int);
-}
-else version( Android )
-{
-    version (X86)
-    {
-        struct iovec
-        {
-            void* iov_base;
-            uint  iov_len;
-        }
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-
-    int readv(int, in iovec*, int);
-    int writev(int, in iovec*, int);
 }
 else
 {

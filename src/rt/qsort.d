@@ -18,7 +18,22 @@ module rt.qsort;
 
 private import core.stdc.stdlib;
 
-version (linux)
+version (Android)
+{
+    private TypeInfo tiglobal;
+
+    extern (C) void[] _adSort(void[] a, TypeInfo ti)
+    {
+        extern (C) int cmp(in void* p1, in void* p2)
+        {
+            return tiglobal.compare(p1, p2);
+        }
+        tiglobal = ti;
+        qsort(a.ptr, a.length, ti.tsize, &cmp);
+        return a;
+    }
+}
+else version (linux)
 {
     alias extern (C) int function(const void *, const void *, void *) Cmp;
     extern (C) void qsort_r(void *base, size_t nmemb, size_t size, Cmp cmp, void *arg);

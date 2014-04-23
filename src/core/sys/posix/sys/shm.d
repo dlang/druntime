@@ -50,7 +50,10 @@ int   shmdt(in void*);
 int   shmget(key_t, size_t, int);
 */
 
-version( linux )
+version( Android )
+{
+}
+else version( linux )
 {
     enum SHM_RDONLY     = 0x01000; // 010000
     enum SHM_RND        = 0x02000; // 020000

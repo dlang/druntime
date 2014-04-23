@@ -37,7 +37,14 @@ if_nameindex_t* if_nameindex();
 void            if_freenameindex(if_nameindex_t*);
 */
 
-version( linux )
+version( Android )
+{
+    enum IF_NAMESIZE = 16;
+
+    uint            if_nametoindex(in char*);
+    char*           if_indextoname(uint, char*);
+}
+else version( linux )
 {
     struct if_nameindex_t
     {
@@ -81,11 +88,4 @@ else version( FreeBSD )
     char*           if_indextoname(uint, char*);
     if_nameindex_t* if_nameindex();
     void            if_freenameindex(if_nameindex_t*);
-}
-else version( Android )
-{
-    enum IF_NAMESIZE = 16;
-
-    uint            if_nametoindex(in char*);
-    char*           if_indextoname(uint, char*);
 }

@@ -93,7 +93,24 @@ int pthread_setcanceltype(int, int*);
 int pthread_setspecific(pthread_key_t, in void*);
 void pthread_testcancel();
 */
-version( linux )
+version( Android )
+{
+    enum
+    {
+        PTHREAD_CREATE_JOINABLE,
+        PTHREAD_CREATE_DETACHED
+    }
+
+    enum PTHREAD_MUTEX_INITIALIZER = pthread_mutex_t.init;
+    enum PTHREAD_ONCE_INIT         = pthread_once_t.init;
+
+    enum
+    {
+        PTHREAD_PROCESS_PRIVATE,
+        PTHREAD_PROCESS_SHARED
+    }
+}
+else version( linux )
 {
     enum
     {
@@ -239,23 +256,6 @@ else version (Solaris)
     enum PTHREAD_MUTEX_INITIALIZER  = pthread_mutex_t.init;
     enum PTHREAD_ONCE_INIT          = pthread_once_t.init;
 }
-else version( Android )
-{
-    enum
-    {
-        PTHREAD_CREATE_JOINABLE,
-        PTHREAD_CREATE_DETACHED
-    }
-
-    enum PTHREAD_MUTEX_INITIALIZER = pthread_mutex_t.init;
-    enum PTHREAD_ONCE_INIT         = pthread_once_t.init;
-
-    enum
-    {
-        PTHREAD_PROCESS_PRIVATE,
-        PTHREAD_PROCESS_SHARED
-    }
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -273,7 +273,37 @@ version( Posix )
     int pthread_cancel(pthread_t);
 }
 
-version( linux )
+version( Android )
+{
+    alias void function(void*) __pthread_cleanup_func_t;
+
+    struct __pthread_cleanup_t
+    {
+        __pthread_cleanup_t*     __cleanup_prev;
+        __pthread_cleanup_func_t __cleanup_routine;
+        void*                    __cleanup_arg;
+    }
+
+    void __pthread_cleanup_push(__pthread_cleanup_t*, __pthread_cleanup_func_t,
+                                void*);
+    void __pthread_cleanup_pop(__pthread_cleanup_t*, int);
+
+    struct pthread_cleanup
+    {
+        __pthread_cleanup_t __cleanup = void;
+
+        extern (D) void push()( __pthread_cleanup_func_t routine, void* arg )
+        {
+            __pthread_cleanup_push( &__cleanup, routine, arg );
+        }
+
+        extern (D) void pop()( int execute )
+        {
+            __pthread_cleanup_pop( &__cleanup, execute );
+        }
+    }
+}
+else version( linux )
 {
     alias void function(void*) _pthread_cleanup_routine;
 
@@ -394,36 +424,6 @@ else version (Solaris)
     void __pthread_cleanup_push(_pthread_cleanup_routine, void*, caddr_t, _pthread_cleanup_info*);
     void __pthread_cleanup_pop(int, _pthread_cleanup_info*);
 }
-else version( Android )
-{
-    alias void function(void*) __pthread_cleanup_func_t;
-
-    struct __pthread_cleanup_t
-    {
-        __pthread_cleanup_t*     __cleanup_prev;
-        __pthread_cleanup_func_t __cleanup_routine;
-        void*                    __cleanup_arg;
-    }
-
-    void __pthread_cleanup_push(__pthread_cleanup_t*, __pthread_cleanup_func_t,
-                                void*);
-    void __pthread_cleanup_pop(__pthread_cleanup_t*, int);
-
-    struct pthread_cleanup
-    {
-        __pthread_cleanup_t __cleanup = void;
-
-        extern (D) void push()( __pthread_cleanup_func_t routine, void* arg )
-        {
-            __pthread_cleanup_push( &__cleanup, routine, arg );
-        }
-
-        extern (D) void pop()( int execute )
-        {
-            __pthread_cleanup_pop( &__cleanup, execute );
-        }
-    }
-}
 else version( Posix )
 {
     void pthread_cleanup_push(void function(void*), void*);
@@ -487,7 +487,10 @@ int pthread_barrierattr_init(pthread_barrierattr_t*);
 int pthread_barrierattr_setpshared(pthread_barrierattr_t*, int); (BAR|TSH)
 */
 
-version( linux )
+version (Android)
+{
+}
+else version( linux )
 {
     enum PTHREAD_BARRIER_SERIAL_THREAD = -1;
 
@@ -526,9 +529,6 @@ else version (Solaris)
     int pthread_barrierattr_init(pthread_barrierattr_t*);
     int pthread_barrierattr_setpshared(pthread_barrierattr_t*, int);
 }
-else version (Android)
-{
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -553,7 +553,10 @@ int pthread_spin_trylock(pthread_spinlock_t*);
 int pthread_spin_unlock(pthread_spinlock_t*);
 */
 
-version( linux )
+version (Android)
+{
+}
+else version( linux )
 {
     int pthread_spin_destroy(pthread_spinlock_t*);
     int pthread_spin_init(pthread_spinlock_t*, int);
@@ -580,9 +583,6 @@ else version (Solaris)
     int pthread_spin_trylock(pthread_spinlock_t*);
     int pthread_spin_unlock(pthread_spinlock_t*);
 }
-else version (Android)
-{
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -605,7 +605,19 @@ int pthread_mutexattr_settype(pthread_mutexattr_t*, int);
 int pthread_setconcurrency(int);
 */
 
-version( linux )
+version (Android)
+{
+    enum PTHREAD_MUTEX_NORMAL     = 0;
+    enum PTHREAD_MUTEX_RECURSIVE  = 1;
+    enum PTHREAD_MUTEX_ERRORCHECK = 2;
+    enum PTHREAD_MUTEX_DEFAULT    = PTHREAD_MUTEX_NORMAL;
+
+    int pthread_attr_getguardsize(in pthread_attr_t*, size_t*);
+    int pthread_attr_setguardsize(pthread_attr_t*, size_t);
+    int pthread_mutexattr_gettype(in pthread_mutexattr_t*, int*);
+    int pthread_mutexattr_settype(pthread_mutexattr_t*, int);
+}
+else version( linux )
 {
     enum PTHREAD_MUTEX_NORMAL       = 0;
     enum PTHREAD_MUTEX_RECURSIVE    = 1;
@@ -670,18 +682,6 @@ else version (Solaris)
     int pthread_mutexattr_settype(pthread_mutexattr_t*, int);
     int pthread_setconcurrency(int);
 }
-else version (Android)
-{
-    enum PTHREAD_MUTEX_NORMAL     = 0;
-    enum PTHREAD_MUTEX_RECURSIVE  = 1;
-    enum PTHREAD_MUTEX_ERRORCHECK = 2;
-    enum PTHREAD_MUTEX_DEFAULT    = PTHREAD_MUTEX_NORMAL;
-
-    int pthread_attr_getguardsize(in pthread_attr_t*, size_t*);
-    int pthread_attr_setguardsize(pthread_attr_t*, size_t);
-    int pthread_mutexattr_gettype(in pthread_mutexattr_t*, int*);
-    int pthread_mutexattr_settype(pthread_mutexattr_t*, int);
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -694,7 +694,11 @@ else
 int pthread_getcpuclockid(pthread_t, clockid_t*);
 */
 
-version( linux )
+version( Android )
+{
+    int pthread_getcpuclockid(pthread_t, clockid_t*);
+}
+else version( linux )
 {
     int pthread_getcpuclockid(pthread_t, clockid_t*);
 }
@@ -707,10 +711,6 @@ else version (OSX)
 }
 else version (Solaris)
 {
-}
-else version( Android )
-{
-    int pthread_getcpuclockid(pthread_t, clockid_t*);
 }
 else
 {
@@ -726,7 +726,12 @@ int pthread_rwlock_timedrdlock(pthread_rwlock_t*, in timespec*);
 int pthread_rwlock_timedwrlock(pthread_rwlock_t*, in timespec*);
 */
 
-version( linux )
+version( Android )
+{
+    int pthread_rwlock_timedrdlock(pthread_rwlock_t*, in timespec*);
+    int pthread_rwlock_timedwrlock(pthread_rwlock_t*, in timespec*);
+}
+else version( linux )
 {
     int pthread_mutex_timedlock(pthread_mutex_t*, in timespec*);
     int pthread_rwlock_timedrdlock(pthread_rwlock_t*, in timespec*);
@@ -747,11 +752,6 @@ else version( FreeBSD )
 else version (Solaris)
 {
     int pthread_mutex_timedlock(pthread_mutex_t*, in timespec*);
-    int pthread_rwlock_timedrdlock(pthread_rwlock_t*, in timespec*);
-    int pthread_rwlock_timedwrlock(pthread_rwlock_t*, in timespec*);
-}
-else version( Android )
-{
     int pthread_rwlock_timedrdlock(pthread_rwlock_t*, in timespec*);
     int pthread_rwlock_timedwrlock(pthread_rwlock_t*, in timespec*);
 }
@@ -810,7 +810,22 @@ int pthread_setschedparam(pthread_t, int, in sched_param*);
 int pthread_setschedprio(pthread_t, int);
 */
 
-version( linux )
+version (Android)
+{
+    enum
+    {
+        PTHREAD_SCOPE_SYSTEM,
+        PTHREAD_SCOPE_PROCESS
+    }
+
+    int pthread_attr_getschedpolicy(in pthread_attr_t*, int*);
+    int pthread_attr_getscope(in pthread_attr_t*);
+    int pthread_attr_setschedpolicy(pthread_attr_t*, int);
+    int pthread_attr_setscope(pthread_attr_t*, int);
+    int pthread_getschedparam(pthread_t, int*, sched_param*);
+    int pthread_setschedparam(pthread_t, int, in sched_param*);
+}
+else version( linux )
 {
     enum
     {
@@ -882,21 +897,6 @@ else version (Solaris)
     int pthread_setschedparam(pthread_t, int, sched_param*);
     int pthread_setschedprio(pthread_t, int);
 }
-else version (Android)
-{
-    enum
-    {
-        PTHREAD_SCOPE_SYSTEM,
-        PTHREAD_SCOPE_PROCESS
-    }
-
-    int pthread_attr_getschedpolicy(in pthread_attr_t*, int*);
-    int pthread_attr_getscope(in pthread_attr_t*);
-    int pthread_attr_setschedpolicy(pthread_attr_t*, int);
-    int pthread_attr_setscope(pthread_attr_t*, int);
-    int pthread_getschedparam(pthread_t, int*, sched_param*);
-    int pthread_setschedparam(pthread_t, int, in sched_param*);
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -914,7 +914,16 @@ int pthread_attr_setstackaddr(pthread_attr_t*, void*); (TSA)
 int pthread_attr_setstacksize(pthread_attr_t*, size_t); (TSS)
 */
 
-version( linux )
+version (Android)
+{
+    int pthread_attr_getstack(in pthread_attr_t*, void**, size_t*);
+    int pthread_attr_getstackaddr(in pthread_attr_t*, void**);
+    int pthread_attr_getstacksize(in pthread_attr_t*, size_t*);
+    int pthread_attr_setstack(pthread_attr_t*, void*, size_t);
+    int pthread_attr_setstackaddr(pthread_attr_t*, void*);
+    int pthread_attr_setstacksize(pthread_attr_t*, size_t);
+}
+else version( linux )
 {
     int pthread_attr_getstack(in pthread_attr_t*, void**, size_t*);
     int pthread_attr_getstackaddr(in pthread_attr_t*, void**);
@@ -942,15 +951,6 @@ else version( FreeBSD )
     int pthread_attr_setstacksize(pthread_attr_t*, size_t);
 }
 else version (Solaris)
-{
-    int pthread_attr_getstack(in pthread_attr_t*, void**, size_t*);
-    int pthread_attr_getstackaddr(in pthread_attr_t*, void**);
-    int pthread_attr_getstacksize(in pthread_attr_t*, size_t*);
-    int pthread_attr_setstack(pthread_attr_t*, void*, size_t);
-    int pthread_attr_setstackaddr(pthread_attr_t*, void*);
-    int pthread_attr_setstacksize(pthread_attr_t*, size_t);
-}
-else version (Android)
 {
     int pthread_attr_getstack(in pthread_attr_t*, void**, size_t*);
     int pthread_attr_getstackaddr(in pthread_attr_t*, void**);
@@ -976,7 +976,16 @@ int pthread_rwlockattr_getpshared(in pthread_rwlockattr_t*, int*);
 int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
 */
 
-version (linux)
+version (Android)
+{
+    int pthread_condattr_getpshared(pthread_condattr_t*, int*);
+    int pthread_condattr_setpshared(pthread_condattr_t*, int);
+    int pthread_mutexattr_getpshared(pthread_mutexattr_t*, int*);
+    int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
+    int pthread_rwlockattr_getpshared(pthread_rwlockattr_t*, int*);
+    int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
+}
+else version (linux)
 {
     int pthread_condattr_getpshared(in pthread_condattr_t*, int*);
     int pthread_condattr_setpshared(pthread_condattr_t*, int);
@@ -1010,15 +1019,6 @@ else version (Solaris)
     int pthread_mutexattr_getpshared(in pthread_mutexattr_t*, int*);
     int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
     int pthread_rwlockattr_getpshared(in pthread_rwlockattr_t*, int*);
-    int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
-}
-else version (Android)
-{
-    int pthread_condattr_getpshared(pthread_condattr_t*, int*);
-    int pthread_condattr_setpshared(pthread_condattr_t*, int);
-    int pthread_mutexattr_getpshared(pthread_mutexattr_t*, int*);
-    int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
-    int pthread_rwlockattr_getpshared(pthread_rwlockattr_t*, int*);
     int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
 }
 else

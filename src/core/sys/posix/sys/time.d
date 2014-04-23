@@ -48,7 +48,36 @@ int setitimer(int, in itimerval*, itimerval*);
 int utimes(in char*, ref const(timeval)[2]); // LEGACY
 */
 
-version( linux )
+version( Android )
+{
+    struct timeval
+    {
+        time_t      tv_sec;
+        suseconds_t tv_usec;
+    }
+
+    struct itimerval
+    {
+        timeval it_interval;
+        timeval it_value;
+    }
+
+    struct timezone_t
+    {
+        int tz_minuteswest;
+        int tz_dsttime;
+    }
+
+    enum ITIMER_REAL    = 0;
+    enum ITIMER_VIRTUAL = 1;
+    enum ITIMER_PROF    = 2;
+
+    int getitimer(int, itimerval*);
+    int gettimeofday(timeval*, timezone_t*);
+    int setitimer(int, in itimerval*, itimerval*);
+    int utimes(in char*, in timeval*);
+}
+else version( linux )
 {
     struct timeval
     {
@@ -141,35 +170,6 @@ else version (Solaris)
     int gettimeofday(timeval*, void*);
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, ref const(timeval)[2]);
-}
-else version( Android )
-{
-    struct timeval
-    {
-        time_t      tv_sec;
-        suseconds_t tv_usec;
-    }
-
-    struct itimerval
-    {
-        timeval it_interval;
-        timeval it_value;
-    }
-
-    struct timezone_t
-    {
-        int tz_minuteswest;
-        int tz_dsttime;
-    }
-
-    enum ITIMER_REAL    = 0;
-    enum ITIMER_VIRTUAL = 1;
-    enum ITIMER_PROF    = 2;
-
-    int getitimer(int, itimerval*);
-    int gettimeofday(timeval*, timezone_t*);
-    int setitimer(int, in itimerval*, itimerval*);
-    int utimes(in char*, in timeval*);
 }
 else
 {

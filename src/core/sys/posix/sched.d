@@ -46,7 +46,19 @@ int sched_setparam(pid_t, in sched_param*);
 int sched_setscheduler(pid_t, int, in sched_param*);
 */
 
-version( linux )
+version( Android )
+{
+    struct sched_param
+    {
+        int sched_priority;
+    }
+
+    enum SCHED_NORMAL   = 0;
+    enum SCHED_OTHER    = 0;
+    enum SCHED_FIFO     = 1;
+    enum SCHED_RR       = 2;
+}
+else version( linux )
 {
     struct sched_param
     {
@@ -101,18 +113,6 @@ else version (Solaris)
     enum SCHED_FX = 6;
     enum _SCHED_NEXT = 7;
 }
-else version( Android )
-{
-    struct sched_param
-    {
-        int sched_priority;
-    }
-
-    enum SCHED_NORMAL   = 0;
-    enum SCHED_OTHER    = 0;
-    enum SCHED_FIFO     = 1;
-    enum SCHED_RR       = 2;
-}
 else
 {
     static assert(false, "Unsupported platform");
@@ -133,7 +133,11 @@ version( Posix )
 int sched_yield();
 */
 
-version( linux )
+version (Android)
+{
+    int sched_yield();
+}
+else version( linux )
 {
     int sched_yield();
 }
@@ -146,10 +150,6 @@ else version( FreeBSD )
     int sched_yield();
 }
 else version (Solaris)
-{
-    int sched_yield();
-}
-else version (Android)
 {
     int sched_yield();
 }
@@ -167,7 +167,13 @@ int sched_get_priority_min(int);
 int sched_rr_get_interval(pid_t, timespec*);
 */
 
-version( linux )
+version (Android)
+{
+    int sched_get_priority_max(int);
+    int sched_get_priority_min(int);
+    int sched_rr_get_interval(pid_t, timespec*);
+}
+else version( linux )
 {
     int sched_get_priority_max(int);
     int sched_get_priority_min(int);
@@ -186,12 +192,6 @@ else version( FreeBSD )
     int sched_rr_get_interval(pid_t, timespec*);
 }
 else version (Solaris)
-{
-    int sched_get_priority_max(int);
-    int sched_get_priority_min(int);
-    int sched_rr_get_interval(pid_t, timespec*);
-}
-else version (Android)
 {
     int sched_get_priority_max(int);
     int sched_get_priority_min(int);

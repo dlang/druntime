@@ -124,7 +124,17 @@ else version( Posix )
     int   ftruncate(int, off_t) @trusted;
 }
 
-version( linux )
+version( Android )
+{
+    enum F_OK       = 0;
+    enum R_OK       = 4;
+    enum W_OK       = 2;
+    enum X_OK       = 1;
+
+    enum _SC_PAGESIZE         = 0x0027;
+    enum _SC_NPROCESSORS_ONLN = 0x0061;
+}
+else version( linux )
 {
     enum F_OK       = 0;
     enum R_OK       = 4;
@@ -635,16 +645,6 @@ else version( FreeBSD )
     enum F_TLOCK    = 2;
     enum F_TEST     = 3;
 }
-else version( Android )
-{
-    enum F_OK       = 0;
-    enum R_OK       = 4;
-    enum W_OK       = 2;
-    enum X_OK       = 1;
-
-    enum _SC_PAGESIZE         = 0x0027;
-    enum _SC_NPROCESSORS_ONLN = 0x0061;
-}
 
 //
 // File Synchronization (FSC)
@@ -653,7 +653,11 @@ else version( Android )
 int fsync(int);
 */
 
-version( linux )
+version( Android )
+{
+    int fsync(int) @trusted;
+}
+else version( linux )
 {
     int fsync(int) @trusted;
 }
@@ -665,10 +669,6 @@ else version( FreeBSD )
 {
     int fsync(int) @trusted;
 }
-else version( Android )
-{
-    int fsync(int) @trusted;
-}
 
 //
 // Synchronized I/O (SIO)
@@ -677,11 +677,11 @@ else version( Android )
 int fdatasync(int);
 */
 
-version( linux )
+version( Android )
 {
     int fdatasync(int) @trusted;
 }
-else version( Android )
+else version( linux )
 {
     int fdatasync(int) @trusted;
 }
@@ -714,7 +714,23 @@ int        usleep(useconds_t);
 pid_t      vfork();
 */
 
-version( linux )
+version( Android )
+{
+    int        fchdir(int) @trusted;
+    pid_t      getpgid(pid_t) @trusted;
+    int        lchown(in char*, uid_t, gid_t);
+    int        nice(int) @trusted;
+    ssize_t    pread(int, void*, size_t, off_t);
+    ssize_t    pwrite(int, in void*, size_t, off_t);
+    int        setpgrp() @trusted;
+    int        setregid(gid_t, gid_t) @trusted;
+    int        setreuid(uid_t, uid_t) @trusted;
+    int        sync() @trusted;
+    int        truncate(in char*, off_t);
+    int        usleep(c_ulong) @trusted;
+    pid_t      vfork();
+}
+else version( linux )
 {
     char*      crypt(in char*, in char*);
     char*      ctermid(char*);
@@ -809,21 +825,5 @@ else version( FreeBSD )
     int        truncate(in char*, off_t);
     useconds_t ualarm(useconds_t, useconds_t) @trusted;
     int        usleep(useconds_t) @trusted;
-    pid_t      vfork();
-}
-else version( Android )
-{
-    int        fchdir(int) @trusted;
-    pid_t      getpgid(pid_t) @trusted;
-    int        lchown(in char*, uid_t, gid_t);
-    int        nice(int) @trusted;
-    ssize_t    pread(int, void*, size_t, off_t);
-    ssize_t    pwrite(int, in void*, size_t, off_t);
-    int        setpgrp() @trusted;
-    int        setregid(gid_t, gid_t) @trusted;
-    int        setreuid(uid_t, uid_t) @trusted;
-    int        sync() @trusted;
-    int        truncate(in char*, off_t);
-    int        usleep(c_ulong) @trusted;
     pid_t      vfork();
 }

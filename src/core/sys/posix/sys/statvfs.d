@@ -15,7 +15,8 @@ public import core.sys.posix.sys.types;
 version (Posix):
 extern (C) :
 
-version(linux) {
+version(Android) {
+} else version(linux) {
     static if(__WORDSIZE == 32) 
     {
         version=_STATVFSBUF_F_UNUSED;
