@@ -640,48 +640,53 @@ bool _xopCmp(in void* ptr, in void* ptr);
 void __ctfeWrite(T...)(auto ref T) {}
 void __ctfeWriteln(T...)(auto ref T values) { __ctfeWrite(values, "\n"); }
 
-private template _Tuple(Args...)
-{
-    alias _Tuple = Args;
-}
+private alias _Tuple(Args...) = Args;
 
-struct rtInfo(alias customInfo)
-{
-    private alias info = customInfo;
-}
+struct rtInfo(CustomInfos...) {}
 
 template RTInfo(T)
 {
-    template _instanciateRTInfoFromAttributes(Attrs...)
+    template _instantiateRTInfos(Infos...)
     {
-        static if (Attrs.length == 0)
-            alias _instanciateRTInfoFromAttributes = _Tuple!();
-        else static if (is(Attrs[0] == rtInfo!(U), alias U))
-            alias _instanciateRTInfoFromAttributes = _Tuple!(Attrs[0].info!(T), _instanciateRTInfoFromAttributes!(Attrs[1 .. $]));
+        static if (Infos.length == 0)
+            alias _instantiateRTInfos = _Tuple!();
         else
-            alias _instanciateRTInfoFromAttributes = _instanciateRTInfoFromAttributes!(Attrs[1 .. $]);
+        {
+            alias Info = Infos[0];
+            alias _instantiateRTInfos = _Tuple!(Info!(T), _instantiateRTInfos!(Infos[1 .. $]));
+        }
     }
 
-    template _instanciateRTInfoFromSupers(Args...)
+    template _instantiateRTInfoFromAttributes(Attrs...)
+    {
+        static if (Attrs.length == 0)
+            alias _instantiateRTInfoFromAttributes = _Tuple!();
+        else static if (is(Attrs[0] == rtInfo!(CustomRTInfos), CustomRTInfos...))
+            alias _instantiateRTInfoFromAttributes = _instantiateRTInfos!(CustomRTInfos);
+        else
+            alias _instantiateRTInfoFromAttributes = _instantiateRTInfoFromAttributes!(Attrs[1 .. $]);
+    }
+
+    template _instantiateRTInfoFromSupers(Args...)
     {
         static if (Args.length == 0)
             alias _getRTInfov = _Tuple!();
         else static if (is(Args[0] == Object))
-            alias _getRTInfov = _instanciateRTInfoFromSupers!(Args[1 .. $]);
+            alias _getRTInfov = _instantiateRTInfoFromSupers!(Args[1 .. $]);
         else
-            alias _getRTInfov = _Tuple!(_instanciateRTInfo!(Args[0]), _instanciateRTInfoFromSupers!(Args[1 .. $]));
+            alias _getRTInfov = _Tuple!(_instantiateRTInfo!(Args[0]), _instantiateRTInfoFromSupers!(Args[1 .. $]));
     }
 
-    template _instanciateRTInfo(alias U = T)
+    template _instantiateRTInfo(U = T)
     {
-        alias OwnRTInfo = _instanciateRTInfoFromAttributes!(__traits(getAttributes, U));
+        alias OwnRTInfo = _instantiateRTInfoFromAttributes!(__traits(getAttributes, U));
         static if (is(U Super == super))
-            alias _instanciateRTInfo = _Tuple!(OwnRTInfo, _instanciateRTInfoFromSupers!(Super));
+            alias _instantiateRTInfo = _Tuple!(OwnRTInfo, _instantiateRTInfoFromSupers!(Super));
         else
-            alias _instanciateRTInfo = OwnRTInfo;
+            alias _instantiateRTInfo = OwnRTInfo;
     }
 
-    alias InstanciateRTInfo = _instanciateRTInfo!();
+    alias InstantiateRTInfo = _instantiateRTInfo!();
     enum RTInfo = cast(void*)0x12345678;
 }
 
