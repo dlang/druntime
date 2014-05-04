@@ -630,30 +630,19 @@ version (unittest)
 }
 
 /// Provide the .dup array property.
-@property auto dup(T)(T[] a)
-    if (!is(const(T) : T))
+@property auto dup(T)(inout(T)[] a)
 {
-    import core.internal.traits : Unconst;
-    static assert(is(T : Unconst!T), "Cannot implicitly convert type "~T.stringof~
-                  " to "~Unconst!T.stringof~" in dup.");
+    alias CT = inout(T);
+    static if (is(CT : T))
+        alias UT = T;
+    else
+        alias UT = CT;
 
     // wrap unsafe _dup in @trusted to preserve @safe postblit
-    static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(T, Unconst!T)(a);
+    static if (__traits(compiles, (CT b) @safe { UT a = b; }))
+        return _trustedDup!(CT, UT)(a);
     else
-        return _dup!(T, Unconst!T)(a);
-}
-
-/// ditto
-// const overload to support implicit conversion to immutable (unique result, see DIP29)
-@property T[] dup(T)(const(T)[] a)
-    if (is(const(T) : T))
-{
-    // wrap unsafe _dup in @trusted to preserve @safe postblit
-    static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(const(T), T)(a);
-    else
-        return _dup!(const(T), T)(a);
+        return _dup!(CT, UT)(a);
 }
 
 /// ditto
