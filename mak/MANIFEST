@@ -71,6 +71,14 @@ MANIFEST=\
 	src\core\sys\freebsd\dlfcn.d \
 	src\core\sys\freebsd\execinfo.d \
 	\
+	src\core\sys\ucontext\package.d \
+	src\core\sys\ucontext\aarch.d \
+	src\core\sys\ucontext\arm.d \
+	src\core\sys\ucontext\generic.d \
+	src\core\sys\ucontext\mips.d \
+	src\core\sys\ucontext\ppc.d \
+	src\core\sys\ucontext\intel.d \
+	\
 	src\core\sys\freebsd\sys\elf.d \
 	src\core\sys\freebsd\sys\elf_common.d \
 	src\core\sys\freebsd\sys\elf32.d \
