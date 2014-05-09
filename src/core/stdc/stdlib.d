@@ -17,6 +17,7 @@ public import core.stdc.stddef; // for size_t, wchar_t
 
 extern (C):
 @system:
+nothrow:
 
 /* Placed outside @nogc in order to not constrain what the callback does.
  */
@@ -24,8 +25,6 @@ alias int function(in void*, in void*) _compare_fp_t;
 void*   bsearch(in void* key, in void* base, size_t nmemb, size_t size, _compare_fp_t compar);
 void    qsort(void* base, size_t nmemb, size_t size, _compare_fp_t compar);
 
-
-nothrow:
 @nogc:
 
 struct div_t
@@ -154,4 +153,3 @@ version (Win64)
     long  _strtoi64(in char *,char **,int);
     long  _wcstoi64(in wchar *,wchar **,int);
 }
-
