@@ -259,6 +259,7 @@ class ReadWriteMutex
         }
 
         MonitorProxy    m_proxy;
+        void* __monitor;
     }
 
 
@@ -375,6 +376,7 @@ class ReadWriteMutex
         }
 
         MonitorProxy    m_proxy;
+        void* __monitor;
     }
 
 

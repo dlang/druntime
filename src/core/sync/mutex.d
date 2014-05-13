@@ -31,6 +31,9 @@ else
     static assert(false, "Platform not supported");
 }
 
+extern(C) void* getMonitor(Object h) nothrow;
+extern(C) void setMonitor(Object h, void* m) nothrow;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Mutex
@@ -92,12 +95,12 @@ class Mutex :
     this( Object o )
     in
     {
-        assert( o.__monitor is null );
+        assert( getMonitor(o) is null );
     }
     body
     {
         this();
-        o.__monitor = &m_proxy;
+        setMonitor(o, &m_proxy);
     }
 
 
@@ -207,6 +210,7 @@ class Mutex :
 
 
 private:
+    void* __monitor;
     version( Windows )
     {
         CRITICAL_SECTION    m_hndl;

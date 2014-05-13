@@ -21,6 +21,7 @@ private
 {
     debug(PRINTF) import core.stdc.stdio;
     import core.stdc.stdlib;
+    import core.atomic;
 
     version( linux )
     {
@@ -78,17 +79,121 @@ private
         static assert(0, "Unsupported platform");
     }
 
-    Monitor* getMonitor(Object h) pure
+    __gshared Monitor*[Object] monitors;
+
+    __gshared SpinRWLock monitorsLock;
+
+    extern(C) Monitor* getMonitor(Object h) nothrow
     {
-        return cast(Monitor*) h.__monitor;
+        assert(h);
+        size_t offset = typeid(h).monitorOffset;
+        if (offset  == size_t.max)
+        {
+            // The monitor is stored in external hash table
+            (cast(shared)monitorsLock).lockRead();
+            scope(exit) (cast(shared)monitorsLock).unlockRead();
+            try
+            {
+                return monitors.get(h, null);
+            }
+            catch(Exception ex)
+            {
+                return null;
+            }
+        }
+        return *cast(Monitor**)(cast(byte*)h + offset);
     }
 
-    void setMonitor(Object h, Monitor* m) pure
+    extern(C) void setMonitor(Object h, Monitor* m) nothrow
     {
-        h.__monitor = m;
+        assert(h);
+        size_t offset = typeid(h).monitorOffset;
+        if (offset == size_t.max)
+        {
+            // The monitor is stored in external hash table
+            (cast(shared)monitorsLock).lockWrite();
+            scope(exit) (cast(shared)monitorsLock).unlockWrite();
+            if (m is null)
+            {
+                monitors.remove(h);
+            }
+            else
+            {
+                monitors[h] = m;
+            }
+            return;
+        }
+
+        *cast(Monitor**)(cast(byte*)h + offset) = m;
     }
 
     static __gshared int inited;
+}
+
+shared struct SpinRWLock
+{
+    void lockRead() nothrow
+    {
+        while (!tryLockRead()) { }
+    }
+
+    bool tryLockRead() nothrow
+    {
+        ptrdiff_t thisVal;
+        ptrdiff_t newVal;
+        do
+        {
+            thisVal = count;
+            if (thisVal == -1) return false;
+            newVal = count + 1;
+        } while(!cas(&count, thisVal, newVal));
+        return true;
+    }
+
+    void unlockRead() nothrow
+    {
+        ptrdiff_t thisVal;
+        ptrdiff_t newVal;
+        do
+        {
+            thisVal = count;
+            assert(thisVal > 0);
+            newVal = count - 1;
+        } while(!cas(&count, thisVal, newVal));
+    }
+
+    bool tryLockWrite() nothrow
+    {
+        do
+        {
+            if (count > 0) return false;
+        } while(!cas(&count, cast(ptrdiff_t)0, cast(ptrdiff_t)-1));
+        return true;
+    }
+
+    void lockWrite() nothrow
+    {
+        while (!cas(&count, cast(ptrdiff_t)0, cast(ptrdiff_t)-1)) { }
+    }
+
+    void unlockWrite() nothrow
+    {
+        assert(count == -1);
+        while (!cas(&count, cast(ptrdiff_t)-1, cast(ptrdiff_t)0)) { }
+    }
+
+    void promote() nothrow
+    {
+        while (!cas(&count, cast(ptrdiff_t)1, cast(ptrdiff_t)-1)) { }
+    }
+
+    void demote() nothrow
+    {
+        assert(count == -1);
+        while (!cas(&count, cast(ptrdiff_t)-1, cast(ptrdiff_t)1)) { }
+    }
+
+    private ptrdiff_t count = 0;
 }
 
 
@@ -120,7 +225,7 @@ version( Windows )
         debug(PRINTF) printf("-_STI_monitor_staticdtor() - d\n");
     }
 
-    extern (C) void _d_monitor_create(Object h)
+    extern (C) Monitor* _d_monitor_create(Object h)
     {
         /*
          * NOTE: Assume this is only called when h.__monitor is null prior to the
@@ -130,48 +235,46 @@ version( Windows )
          */
 
         debug(PRINTF) printf("+_d_monitor_create(%p)\n", h);
-        assert(h);
-        Monitor *cs;
         EnterCriticalSection(&_monitor_critsec);
-        if (!h.__monitor)
+        Monitor *cs = getMonitor(h);
+        if (!cs)
         {
             cs = cast(Monitor *)calloc(Monitor.sizeof, 1);
             assert(cs);
             InitializeCriticalSection(&cs.mon);
             setMonitor(h, cs);
             cs.refs = 1;
-            cs = null;
         }
         LeaveCriticalSection(&_monitor_critsec);
-        if (cs)
-            free(cs);
         debug(PRINTF) printf("-_d_monitor_create(%p)\n", h);
+        return cs;
     }
 
     extern (C) void _d_monitor_destroy(Object h)
     {
         debug(PRINTF) printf("+_d_monitor_destroy(%p)\n", h);
-        assert(h && h.__monitor && !getMonitor(h).impl);
-        DeleteCriticalSection(&getMonitor(h).mon);
-        free(h.__monitor);
+        Monitor* m = getMonitor(h);
         setMonitor(h, null);
+        assert(m && !m.impl);
+        DeleteCriticalSection(&m.mon);
+        free(m);
         debug(PRINTF) printf("-_d_monitor_destroy(%p)\n", h);
     }
 
-    extern (C) void _d_monitor_lock(Object h)
+    extern (C) void _d_monitor_lock(Monitor* m)
     {
-        debug(PRINTF) printf("+_d_monitor_acquire(%p)\n", h);
-        assert(h && h.__monitor && !getMonitor(h).impl);
-        EnterCriticalSection(&getMonitor(h).mon);
-        debug(PRINTF) printf("-_d_monitor_acquire(%p)\n", h);
+        debug(PRINTF) printf("+_d_monitor_acquire(%p)\n", m);
+        assert(m && !m.impl);
+        EnterCriticalSection(&m.mon);
+        debug(PRINTF) printf("-_d_monitor_acquire(%p)\n", m);
     }
 
-    extern (C) void _d_monitor_unlock(Object h)
+    extern (C) void _d_monitor_unlock(Monitor* m)
     {
-        debug(PRINTF) printf("+_d_monitor_release(%p)\n", h);
-        assert(h && h.__monitor && !getMonitor(h).impl);
-        LeaveCriticalSection(&getMonitor(h).mon);
-        debug(PRINTF) printf("-_d_monitor_release(%p)\n", h);
+        debug(PRINTF) printf("+_d_monitor_release(%p)\n", m);
+        assert(m && !m.impl);
+        LeaveCriticalSection(&m.mon);
+        debug(PRINTF) printf("-_d_monitor_release(%p)\n", m);
     }
 }
 
@@ -204,7 +307,7 @@ version( USE_PTHREADS )
         }
     }
 
-    extern (C) void _d_monitor_create(Object h)
+    extern (C) Monitor* _d_monitor_create(Object h)
     {
         /*
          * NOTE: Assume this is only called when h.__monitor is null prior to the
@@ -214,48 +317,46 @@ version( USE_PTHREADS )
          */
 
         debug(PRINTF) printf("+_d_monitor_create(%p)\n", h);
-        assert(h);
-        Monitor *cs;
         pthread_mutex_lock(&_monitor_critsec);
-        if (!h.__monitor)
+        Monitor* cs = getMonitor(h);
+        if (!cs)
         {
             cs = cast(Monitor *)calloc(Monitor.sizeof, 1);
             assert(cs);
             pthread_mutex_init(&cs.mon, &_monitors_attr);
             setMonitor(h, cs);
             cs.refs = 1;
-            cs = null;
+            typeid(h).m_flags |= TypeInfo_Class.ClassFlags.hasAllocatedMonitors;
         }
         pthread_mutex_unlock(&_monitor_critsec);
-        if (cs)
-            free(cs);
         debug(PRINTF) printf("-_d_monitor_create(%p)\n", h);
+        return cs;
     }
 
     extern (C) void _d_monitor_destroy(Object h)
     {
         debug(PRINTF) printf("+_d_monitor_destroy(%p)\n", h);
-        assert(h && h.__monitor && !getMonitor(h).impl);
-        pthread_mutex_destroy(&getMonitor(h).mon);
-        free(h.__monitor);
+        Monitor* m = getMonitor(h);
         setMonitor(h, null);
+        assert(m && !m.impl);
+        pthread_mutex_destroy(&m.mon);
+        free(m);
         debug(PRINTF) printf("-_d_monitor_destroy(%p)\n", h);
     }
 
-    extern (C) void _d_monitor_lock(Object h)
+    extern (C) void _d_monitor_lock(Monitor* m)
     {
-        debug(PRINTF) printf("+_d_monitor_acquire(%p)\n", h);
-        assert(h && h.__monitor && !getMonitor(h).impl);
-        pthread_mutex_lock(&getMonitor(h).mon);
-        debug(PRINTF) printf("-_d_monitor_acquire(%p)\n", h);
+        debug(PRINTF) printf("+_d_monitor_acquire(%p)\n", m);
+        assert(m && !m.impl);
+        pthread_mutex_lock(&m.mon);
+        debug(PRINTF) printf("-_d_monitor_acquire(%p)\n", m);
     }
 
-    extern (C) void _d_monitor_unlock(Object h)
+    extern (C) void _d_monitor_unlock(Monitor* m)
     {
-        debug(PRINTF) printf("+_d_monitor_release(%p)\n", h);
-        assert(h && h.__monitor && !getMonitor(h).impl);
-        pthread_mutex_unlock(&getMonitor(h).mon);
-        debug(PRINTF) printf("-_d_monitor_release(%p)\n", h);
+        debug(PRINTF) printf("+_d_monitor_release(%p)\n", m);
+        assert(m && !m.impl);
+        pthread_mutex_unlock(&m.mon);
+        debug(PRINTF) printf("-_d_monitor_release(%p)\n", m);
     }
 }
-

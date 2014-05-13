@@ -880,11 +880,9 @@ class Thread
         }
     }
 
-
     ///////////////////////////////////////////////////////////////////////////
     // Thread Priority Actions
     ///////////////////////////////////////////////////////////////////////////
-
 
     /**
      * The minimum scheduling priority that may be set for a thread.  On
@@ -1369,6 +1367,8 @@ private:
     //
     __gshared Thread    sm_main;
 
+
+    void* __monitor;
 
     //
     // Standard thread data
@@ -3223,6 +3223,7 @@ class ThreadGroup
 
 
 private:
+    void* __monitor;
     Thread[Thread]  m_all;
 }
 
@@ -4099,7 +4100,8 @@ private:
         FN,
         DG
     }
-
+    
+    void* __monitor;
 
     //
     // Standard fiber data

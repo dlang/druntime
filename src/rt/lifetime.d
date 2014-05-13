@@ -1239,8 +1239,17 @@ extern (C) void rt_finalize2(void* p, bool det = true, bool resetMemory = true) 
             while ((c = c.base) !is null);
         }
 
-        if (ppv[1]) // if monitor is not null
+        if (cast(int)pc.monitorOffset != -1)
+        {
+            if (*(ppv + cast(int)pc.monitorOffset))
+            {
+                _d_monitordelete(cast(Object) p, det);
+            }
+        }
+        else if (pc.m_flags & TypeInfo_Class.ClassFlags.hasAllocatedMonitors)
+        {
             _d_monitordelete(cast(Object) p, det);
+        }
 
         if(resetMemory)
         {

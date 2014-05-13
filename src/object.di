@@ -154,6 +154,7 @@ class TypeInfo_Class : TypeInfo
     @property auto info() @safe nothrow pure const { return this; }
     @property auto typeinfo() @safe nothrow pure const { return this; }
 
+    size_t      monitorOffset;
     byte[]      init;   // class static initializer
     string      name;   // class name
     void*[]     vtbl;   // virtual function pointer table
