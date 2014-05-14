@@ -63,6 +63,8 @@ struct OffsetTypeInfo
     TypeInfo ti;
 }
 
+struct monitor; // Should be used as a class attribute
+
 class TypeInfo
 {
     override string toString() const pure @safe nothrow;

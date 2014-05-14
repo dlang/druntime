@@ -517,7 +517,7 @@ else
  *
  * ----------------------------------------------------------------------------
  */
-class Thread
+@monitor class Thread
 {
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
@@ -1367,8 +1367,6 @@ private:
     //
     __gshared Thread    sm_main;
 
-
-    void* __monitor;
 
     //
     // Standard thread data
@@ -3080,7 +3078,7 @@ body
 /**
  * This class is intended to simplify certain common programming techniques.
  */
-class ThreadGroup
+@monitor class ThreadGroup
 {
     /**
      * Creates and starts a new Thread object that executes fn and adds it to
@@ -3223,7 +3221,6 @@ class ThreadGroup
 
 
 private:
-    void* __monitor;
     Thread[Thread]  m_all;
 }
 
@@ -3758,7 +3755,7 @@ private
  *
  * Authors: Based on a design by Mikola Lysenko.
  */
-class Fiber
+@monitor class Fiber
 {
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
@@ -4100,8 +4097,6 @@ private:
         FN,
         DG
     }
-    
-    void* __monitor;
 
     //
     // Standard fiber data

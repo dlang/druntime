@@ -205,6 +205,8 @@ struct OffsetTypeInfo
     TypeInfo ti;        /// TypeInfo for this member
 }
 
+struct monitor; // Should be used as a class attribute
+
 /**
  * Runtime type information about a type.
  * Can be retrieved for any type using a

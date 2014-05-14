@@ -47,7 +47,7 @@ extern(C) void setMonitor(Object h, void* m) nothrow;
 /**
  * This class represents a general purpose, recursive mutex.
  */
-class Mutex :
+@monitor class Mutex :
     Object.Monitor
 {
     ////////////////////////////////////////////////////////////////////////////
@@ -208,9 +208,7 @@ class Mutex :
         }
     }
 
-
 private:
-    void* __monitor;
     version( Windows )
     {
         CRITICAL_SECTION    m_hndl;
