@@ -371,6 +371,56 @@ extern (C)
     void* _aaRangeFrontKey(AARange r);
     void* _aaRangeFrontValue(AARange r);
     void _aaRangePopFront(ref AARange r);
+    
+    void* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, void[] values) pure;
+}
+
+void* aaLiteral(Key, Value, T...)(T args) @trusted
+{
+    static if(!T.length) 
+    {
+        return aaInit!(Key, Value)();
+    }
+    else
+    {
+        Key[] keys;
+        Value[] values;
+        keys.reserve(T.length / 2);
+        values.reserve(T.length / 2);
+        
+        template _Tuple(T...)
+        {
+            alias _Tuple = T;
+        }
+
+        template Step2Tuple(size_t len, size_t idx = 0)
+        {
+            static if (idx >= len)
+            {
+                alias Step2Tuple = _Tuple!();
+            }
+            else
+            {
+                alias Step2Tuple = _Tuple!(idx, Step2Tuple!(len, idx + 2));
+            }
+        }
+        
+        foreach (i; Step2Tuple!(T.length))
+        {
+            keys ~= cast(Key)args[i];
+            values ~= cast(Value)args[i+1];
+        }   
+        
+        void[] key_slice = (cast(void*)keys.ptr)[0 .. keys.length];
+        void[] value_slice = (cast(void*)values.ptr)[0 .. values.length];
+        
+        return _d_assocarrayliteralTX(typeid(Value[Key]), key_slice, value_slice);
+    }
+}
+
+void* aaInit(Key, Value)() @trusted nothrow pure
+{
+    return null;
 }
 
 alias AssociativeArray(Key, Value) = Value[Key];
