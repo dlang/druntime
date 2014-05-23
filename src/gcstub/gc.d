@@ -24,7 +24,7 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module gc.gc;
-
+import gc.stats;
 private
 {
    import core.stdc.stdlib;
@@ -68,6 +68,9 @@ private
         extern (C) size_t  function(size_t) gc_reserve;
         extern (C) void    function(void*) gc_free;
 
+        
+        extern (C) GCStats function() gc_stats;
+        
         extern (C) void*   function(void*) gc_addrOf;
         extern (C) size_t  function(void*) gc_sizeOf;
 
@@ -102,6 +105,7 @@ private
         pthis.gc_reserve = &gc_reserve;
         pthis.gc_free = &gc_free;
 
+        pthis.gc_stats = &gc_stats;
         pthis.gc_addrOf = &gc_addrOf;
         pthis.gc_sizeOf = &gc_sizeOf;
 
@@ -161,6 +165,13 @@ extern (C) void gc_collect()
     if( proxy is null )
         return;
     return proxy.gc_collect();
+}
+
+extern (C) GCStats gc_stats()
+{
+    if( proxy is null )
+        return GCStats.init;
+    return proxy.gc_stats();
 }
 
 extern (C) void gc_minimize()

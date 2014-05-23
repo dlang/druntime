@@ -92,6 +92,7 @@ private
         pthis.gc_reserve = &gc_reserve;
         pthis.gc_free = &gc_free;
 
+        pthis.gc_stats = &gc_stats;
         pthis.gc_addrOf = &gc_addrOf;
         pthis.gc_sizeOf = &gc_sizeOf;
 
@@ -289,8 +290,8 @@ extern (C)
         }
         // TODO: Add proxy support for this once the layout of GCStats is
         //       finalized.
-        //return proxy.gc_stats();
-        return GCStats.init;
+        return proxy.gc_stats();
+        //return GCStats.init;
     }
 
     void gc_addRoot( void* p ) nothrow

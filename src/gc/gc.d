@@ -1255,47 +1255,9 @@ class GC
     //
     private void getStatsNoSync(out GCStats stats) nothrow
     {
-        size_t psize = 0;
-        size_t usize = 0;
-        size_t flsize = 0;
-
-        size_t n;
-        size_t bsize = 0;
-
-        //debug(PRINTF) printf("getStats()\n");
-        memset(&stats, 0, GCStats.sizeof);
-
-        for (n = 0; n < gcx.npools; n++)
-        {   Pool *pool = gcx.pooltable[n];
-
-            psize += pool.npages * PAGESIZE;
-            for (size_t j = 0; j < pool.npages; j++)
-            {
-                Bins bin = cast(Bins)pool.pagetable[j];
-                if (bin == B_FREE)
-                    stats.freeblocks++;
-                else if (bin == B_PAGE)
-                    stats.pageblocks++;
-                else if (bin < B_PAGE)
-                    bsize += PAGESIZE;
-            }
-        }
-
-        for (n = 0; n < B_PAGE; n++)
-        {
-            //debug(PRINTF) printf("bin %d\n", n);
-            for (List *list = gcx.bucket[n]; list; list = list.next)
-            {
-                //debug(PRINTF) printf("\tlist %p\n", list);
-                flsize += binsize[n];
-            }
-        }
-
-        usize = bsize - flsize;
-
-        stats.poolsize = psize;
-        stats.usedsize = bsize - flsize;
-        stats.freelistsize = flsize;
+        stats.freed = gcx.totFreed;
+        stats.used = gcx.totUsed;
+        stats.collections = gcx.totCollections;
     }
 }
 
@@ -1376,7 +1338,7 @@ struct Gcx
     uint inited;
     uint running;
     int disabled;       // turn off collections if >0
-
+    
     byte *minAddr;      // min(baseAddr)
     byte *maxAddr;      // max(topAddr)
 
@@ -1385,7 +1347,42 @@ struct Gcx
 
     List *bucket[B_MAX];        // free list for each size
 
+    size_t totFreed;
+    size_t totUsed;
+    size_t totCollections;
+    
+    size_t getUsed() nothrow {     
+        size_t bsize;
+        size_t flsize;
+        size_t psize;
+        size_t used;
+        size_t n;
+        for (n = 0; n < npools; n++)
+        {   Pool *pool = pooltable[n];
 
+            psize += pool.npages * PAGESIZE;
+            for (size_t j = 0; j < pool.npages; j++)
+            {
+                Bins bin = cast(Bins)pool.pagetable[j];
+                if (bin < B_PAGE)
+                    bsize += PAGESIZE;
+            }
+        }
+
+        for (n = 0; n < B_PAGE; n++)
+        {
+            //debug(PRINTF) printf("bin %d\n", n);
+            for (List *list = bucket[n]; list; list = list.next)
+            {
+                //debug(PRINTF) printf("\tlist %p\n", list);
+                flsize += binsize[n];
+            }
+        }
+        
+        used = psize - (bsize - flsize);
+        return used;
+    }
+    
     void initialize()
     {   int dummy;
 
@@ -2420,7 +2417,15 @@ struct Gcx
     {
         size_t n;
         Pool*  pool;
-
+        
+        if (totUsed > size_t.max/2){
+            totCollections = 0;
+            totUsed = 0;
+            totFreed = 0;
+        }
+        totCollections++;
+        
+        
         debug(PROFILING)
         {
             clock_t start, stop;
@@ -2755,7 +2760,9 @@ struct Gcx
 
         debug(COLLECT_PRINTF) printf("\trecovered pages = %d\n", recoveredpages);
         debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u pages from %u pools\n", freed, freedpages, npools);
-
+        
+        totFreed += freed;
+        totUsed += getUsed();
         running = 0; // only clear on success
 
         return freedpages + recoveredpages;
