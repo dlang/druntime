@@ -2443,12 +2443,36 @@ struct Gcx
         }
         
         anychanges = 0;
+
+        // initialize the mark and scan bits
         for (n = 0; n < npools; n++)
         {
             pool = pooltable[n];
-            pool.mark.zero();
-            pool.scan.zero();
+            pool.newChanges = false;
             if(!pool.isLargeObject) pool.freebits.zero();
+
+            if(pool.keepalive.nbits)
+            {
+                pool.mark.copy(&pool.keepalive); // mark keepalive objects
+
+                // mark keepalive objects to be scanned (exclude the ones with no-scan)
+                GCBits.wordtype any = 0;
+                for(size_t i = 1; i <= pool.scan.nwords; ++i)
+                {
+                    pool.scan.data[i] = pool.keepalive.data[i] & ~pool.noscan.data[i];
+                    any |= pool.scan.data[i];
+                }
+                if(any != 0)
+                {
+                    anychanges = 1;
+                    pool.newChanges = true;
+                }
+            }
+            else
+            {
+                pool.mark.zero();
+                pool.scan.zero();
+            }
         }
 
         debug(COLLECT_PRINTF) printf("Set bits\n");
@@ -2469,10 +2493,17 @@ struct Gcx
         for (n = 0; n < npools; n++)
         {
             pool = pooltable[n];
-            pool.newChanges = false;  // Some of these get set to true on stack scan.
             if(!pool.isLargeObject)
             {
-                pool.mark.copy(&pool.freebits);
+                // if there is a keepalive-array, some objects might already be marked.
+                // if not, nothing is marked, so we can use a (possibly faster) copy
+                if(pool.keepalive.nbits)
+                {
+                    for(size_t i = 1; i <= pool.mark.nwords; ++i)
+                        pool.mark.data[i] |= pool.freebits.data[i];
+                }
+                else
+                    pool.mark.copy(&pool.freebits);
             }
         }
 
@@ -2828,6 +2859,8 @@ struct Gcx
 //            bits |= BlkAttr.NO_MOVE;
         if (pool.appendable.test(biti))
             bits |= BlkAttr.APPENDABLE;
+        if (pool.keepalive.nbits && pool.keepalive.test(biti))
+            bits |= BlkAttr.KEEP_ALIVE;
         return bits;
     }
 
@@ -2875,6 +2908,13 @@ struct Gcx
                 pool.nointerior.alloc(pool.mark.nbits);
             pool.nointerior.data[dataIndex] |= orWith;
         }
+
+        if (mask & BlkAttr.KEEP_ALIVE)
+        {
+            if(!pool.keepalive.nbits)
+                pool.keepalive.alloc(pool.mark.nbits);
+            pool.keepalive.data[dataIndex] |= orWith;
+        }
     }
 
 
@@ -2902,6 +2942,8 @@ struct Gcx
             pool.appendable.data[dataIndex] &= keep;
         if (pool.nointerior.nbits && (mask & BlkAttr.NO_INTERIOR))
             pool.nointerior.data[dataIndex] &= keep;
+        if (mask & BlkAttr.KEEP_ALIVE && pool.keepalive.nbits)
+            pool.keepalive.data[dataIndex] &= keep;
     }
 
     void clrBitsSmallSweep(Pool* pool, size_t dataIndex, GCBits.wordtype toClear) nothrow
@@ -2924,6 +2966,9 @@ struct Gcx
 
         if (pool.nointerior.nbits)
             pool.nointerior.data[dataIndex] &= toKeep;
+
+        if (pool.keepalive.nbits)
+            pool.keepalive.data[dataIndex] &= toKeep;
     }
 
     /***** Leak Detector ******/
@@ -3063,6 +3108,7 @@ struct Pool
     GCBits appendable;  // entries that are appendable
     GCBits nointerior;  // interior pointers should be ignored.
                         // Only implemented for large object pools.
+    GCBits keepalive;   // entries that should not be freed.
 
     size_t npages;
     size_t freepages;     // The number of pages not in use.
@@ -3178,6 +3224,7 @@ struct Pool
         finals.Dtor();
         noscan.Dtor();
         appendable.Dtor();
+        keepalive.Dtor();
     }
 
 
@@ -3194,6 +3241,7 @@ struct Pool
         //noscan.Invariant();
         //appendable.Invariant();
         //nointerior.Invariant();
+        //keepalive.Invariant();
 
         if (baseAddr)
         {
