@@ -101,8 +101,8 @@ private
     extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
     extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz, const TypeInfo = null ) pure nothrow;
     extern (C) size_t   gc_reserve( size_t sz ) nothrow;
-	extern (C) void     gc_free( void* p ) pure nothrow;
-	extern (C) GCStats     gc_stats( ) pure nothrow;
+    extern (C) void     gc_free( void* p ) pure nothrow;
+    extern (C) GCStats  gc_stats( ) pure nothrow;
 
     extern (C) void*   gc_addrOf( void* p ) pure nothrow;
     extern (C) size_t  gc_sizeOf( void* p ) pure nothrow;
@@ -587,9 +587,9 @@ struct GC
         return gc_sizeOf( p );
     }
 
-	static GCStats stats() pure nothrow {
-		return gc_stats();
-	}
+    static GCStats stats() pure nothrow {
+        return gc_stats();
+    }
 
     // verify that the reallocation doesn't leave the size cache in a wrong state
     unittest

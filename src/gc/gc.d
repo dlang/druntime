@@ -1196,15 +1196,6 @@ class GC
             gcLock.unlock();
         }
 
-        version (none)
-        {
-            GCStats stats;
-
-            getStats(stats);
-            debug(PRINTF) printf("poolsize = %zx, usedsize = %zx, freelistsize = %zx\n",
-                    stats.poolsize, stats.usedsize, stats.freelistsize);
-        }
-
         gcx.log_collect();
         return result;
     }
@@ -1255,9 +1246,17 @@ class GC
     //
     private void getStatsNoSync(out GCStats stats) nothrow
     {
-        stats.freed = gcx.totFreed;
-        stats.used = gcx.totUsed;
-        stats.collections = gcx.totCollections;
+        if (gcx.stats){
+            stats.freed = gcx.totFreed;
+            stats.used = gcx.totUsed;
+            stats.collections = gcx.totCollections;
+            gcx.totFreed = 0;
+            gcx.totUsed = 0;
+            gcx.totCollections = 0;
+        }
+        else
+            gcx.stats = true;
+        
     }
 }
 
@@ -1332,6 +1331,8 @@ struct Gcx
     Treap!Root roots;
     Treap!Range ranges;
 
+    bool stats;
+    
     uint noStack;       // !=0 means don't scan stack
     uint log;           // turn on logging
     uint anychanges;
@@ -2418,12 +2419,13 @@ struct Gcx
         size_t n;
         Pool*  pool;
         
-        if (totUsed > size_t.max/2){
+        if (stats && totUsed > size_t.max/2){
             totCollections = 0;
             totUsed = 0;
             totFreed = 0;
         }
-        totCollections++;
+        if (stats)
+            totCollections++;
         
         
         debug(PROFILING)
@@ -2761,8 +2763,10 @@ struct Gcx
         debug(COLLECT_PRINTF) printf("\trecovered pages = %d\n", recoveredpages);
         debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u pages from %u pools\n", freed, freedpages, npools);
         
-        totFreed += freed;
-        totUsed += getUsed();
+        if (stats){
+            totFreed += freed;
+            totUsed += getUsed();
+        }
         running = 0; // only clear on success
 
         return freedpages + recoveredpages;
