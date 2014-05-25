@@ -3068,3 +3068,23 @@ unittest
     i = s.dup;
     static assert(!__traits(compiles, m = s.dup));
 }
+
+// Check object size. An empty class without monitor should contain only vtbl pointer
+version(unittest)
+{
+    class A {}
+    @monitor class B {}
+    class C : A {}
+    class D : B {}
+    @monitor class E : B {}
+}
+
+unittest
+{
+    assert(__traits(classInstanceSize, A) == (void*).sizeof);
+    assert(__traits(classInstanceSize, B) == (void*).sizeof * 2);
+    assert(__traits(classInstanceSize, C) == (void*).sizeof);
+    assert(__traits(classInstanceSize, D) == (void*).sizeof * 2);
+    assert(__traits(classInstanceSize, E) == (void*).sizeof * 2);
+}
+
