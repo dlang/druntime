@@ -1245,7 +1245,9 @@ class GC
     //
     //
     private void getStatsNoSync(out GCStats stats) nothrow
-    {
+    in { assert(stats.ver == 1, "Cannot retrieve statistics - wrong version specified."); }
+    body {
+        
         if (gcx.stats){
             stats.freed = gcx.totFreed;
             stats.used = gcx.totUsed;
@@ -1367,6 +1369,8 @@ struct Gcx
                 Bins bin = cast(Bins)pool.pagetable[j];
                 if (bin < B_PAGE)
                     bsize += PAGESIZE;
+                else if (bin == B_FREE)
+                    psize -= PAGESIZE;
             }
         }
 
@@ -1380,7 +1384,7 @@ struct Gcx
             }
         }
         
-        used = psize - (bsize - flsize);
+        used = psize + (bsize - flsize);
         return used;
     }
     
@@ -2424,9 +2428,10 @@ struct Gcx
             totUsed = 0;
             totFreed = 0;
         }
-        if (stats)
+        if (stats){
             totCollections++;
-        
+            totUsed += getUsed();
+        }
         
         debug(PROFILING)
         {
@@ -2616,6 +2621,7 @@ struct Gcx
                         {
                             pn++;
                             pool.pagetable[pn] = B_FREE;
+                            freed += B_PAGE;
 
                             // Don't need to update searchStart here because
                             // pn is guaranteed to be greater than last time
@@ -2765,7 +2771,6 @@ struct Gcx
         
         if (stats){
             totFreed += freed;
-            totUsed += getUsed();
         }
         running = 0; // only clear on success
 

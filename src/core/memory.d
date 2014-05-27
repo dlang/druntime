@@ -126,6 +126,7 @@ private
 
 struct GCStats
 {
+    int ver = 1;
 	size_t freed;
 	size_t used;
 	size_t collections;
@@ -587,6 +588,18 @@ struct GC
         return gc_sizeOf( p );
     }
 
+    /**
+     * Call the stats once to enable statistics.
+     * Once started, the garbage collector starts counting the sum of bytes freed
+     * per garbage collection cycle, along with the sum of bytes that were used
+     * before every collection cycle, and the number of total collections.
+     * This is useful to evaluate the efficiency of the garbage collector
+     * on the allocations it is used for.
+     *
+     * Returns:
+     *  The GCStats object containing the sum of used and freed bytes at collection,
+     *  and the number of collection cycles. An assert verifies the version of the object.
+    */
     static GCStats stats() pure nothrow {
         return gc_stats();
     }
