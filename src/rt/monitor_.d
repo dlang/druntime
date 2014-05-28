@@ -326,7 +326,7 @@ version( USE_PTHREADS )
             pthread_mutex_init(&cs.mon, &_monitors_attr);
             setMonitor(h, cs);
             cs.refs = 1;
-            typeid(h).m_flags |= TypeInfo_Class.ClassFlags.hasAllocatedMonitors;
+            atomicOp!"|="((cast(shared)typeid(h)).m_flags, TypeInfo_Class.ClassFlags.hasAllocatedMonitors);
         }
         pthread_mutex_unlock(&_monitor_critsec);
         debug(PRINTF) printf("-_d_monitor_create(%p)\n", h);

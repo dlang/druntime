@@ -17,6 +17,8 @@ import core.stdc.string;
 import core.stdc.stdarg;
 import core.bitop;
 import core.memory;
+import core.atomic;
+
 debug(PRINTF) import core.stdc.stdio;
 static import rt.tlsgc;
 
@@ -1246,7 +1248,7 @@ extern (C) void rt_finalize2(void* p, bool det = true, bool resetMemory = true) 
                 _d_monitordelete(cast(Object) p, det);
             }
         }
-        else if (pc.m_flags & TypeInfo_Class.ClassFlags.hasAllocatedMonitors)
+        else if (atomicOp!"&"((cast(shared)pc).m_flags, TypeInfo_Class.ClassFlags.hasAllocatedMonitors))
         {
             _d_monitordelete(cast(Object) p, det);
         }
