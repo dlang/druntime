@@ -79,7 +79,7 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.memory;
-
+import core.time : TickDuration;
 
 private
 {
@@ -126,10 +126,27 @@ private
 
 struct GCStats
 {
-    int ver = 1;
-	size_t freed;
-	size_t used;
-	size_t collections;
+    short ver = 1;
+    long bytesFreedInCollections;
+    long bytesUsedInCollections;
+    long totalCollections;
+    TickDuration elapsedInCollections;
+    long bytesReqBigAllocations;
+    long bytesBigAllocations;
+    long totalBigAllocations;
+    TickDuration elapsedInBigAllocations;
+    long bytesReqSmallAllocations;
+    long bytesSmallAllocations;
+    long totalSmallAllocations;
+    TickDuration elapsedInSmallAllocations;
+    long bytesUsedCurrently;
+    long bytesFreeCurrently;
+    long maxBytesUsed;
+    long maxBytesFree;
+    long bytesFreedToOS;
+    long totalFreeToOS;
+    TickDuration elapsedInFreeToOS;
+    TickDuration elapsed;
 }
 
 /**
