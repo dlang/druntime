@@ -254,6 +254,9 @@ class GC
         if (!gcx)
             onOutOfMemoryError();
         gcx.initialize();
+        try gcx.stats.started = TickDuration.currSystemTick;
+        catch {}
+        
     }
 
 
@@ -1256,7 +1259,7 @@ class GC
      * Retrieve statistics about garbage collection.
      * Useful for debugging and tuning.
      */
-    void getStats(out GCStats stats) nothrow
+    void getStats(GCStats* stats) nothrow
     {
         gcLock.lock();
         getStatsNoSync(stats);
@@ -1267,7 +1270,7 @@ class GC
     //
     //
     //
-    private void getStatsNoSync(out GCStats stats) nothrow
+    private void getStatsNoSync(GCStats* stats) nothrow
     in { assert(stats.ver == 1, "Cannot retrieve statistics - wrong version specified."); }
     body {
         if (gcx.stats.enabled){
@@ -1370,7 +1373,8 @@ struct Gcx
     }
     Treap!Root roots;
     Treap!Range ranges;
-
+    long leastUsed; // The amount of bytes used after the last collection
+    
     uint noStack;       // !=0 means don't scan stack
     uint log;           // turn on logging
     uint anychanges;
@@ -1473,10 +1477,9 @@ struct Gcx
         return flsize + fsize;
     }
     
+    
     void initialize()
     {   int dummy;
-        try stats.started = TickDuration.currSystemTick;
-        catch {}
         (cast(byte*)&this)[0 .. Gcx.sizeof] = 0;
         log_init();
         roots.initialize();
@@ -2007,11 +2010,11 @@ struct Gcx
             for (j = i; j < npools; ++j)
             {
                 pool = pooltable[j];
+                if (stats.enabled)
+                    stats.bytesFreedToOS += pool.npages * B_PAGE;
                 debug(PRINTF) printFreeInfo(pool);
                 pool.Dtor();
                 cstdlib.free(pool);
-                if (stats.enabled)
-                    stats.bytesFreedToOS += pool.npages * B_PAGE;
             }
             npools = i;
         }
@@ -2532,12 +2535,14 @@ struct Gcx
         if (stats.enabled) try elapsed_start = TickDuration.currSystemTick; catch {}
 
         if (stats.enabled){
+            try elapsed_start = TickDuration.currSystemTick; catch {}
             stats.totalCollections++;
             long bytesUsed = getUsed();
             if (bytesUsed > stats.maxBytesUsed)
                 stats.maxBytesUsed = bytesUsed;
             stats.bytesUsedInCollections += bytesUsed;
         }
+        
         
         debug(PROFILING)
         {

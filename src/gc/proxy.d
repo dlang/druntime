@@ -53,6 +53,8 @@ private
             void*   function(size_t, uint, const TypeInfo) gc_calloc;
             void*   function(void*, size_t, uint ba, const TypeInfo) gc_realloc;
             size_t  function(void*, size_t, size_t, const TypeInfo) gc_extend;
+            void    function(GCStats*) gc_stats;
+            
             size_t  function(size_t) gc_reserve;
             void    function(void*) gc_free;
 
@@ -277,20 +279,17 @@ extern (C)
             return _gc.query( p );
         return proxy.gc_query( p );
     }
-
-    // NOTE: This routine is experimental. The stats or function name may change
-    //       before it is made officially available.
-    GCStats gc_stats() nothrow
+    
+    void gc_stats(GCStats* stats) nothrow
     {
         if( proxy is null )
         {
-            GCStats stats = void;
             _gc.getStats( stats );
-            return stats;
+            return;
         }
         // TODO: Add proxy support for this once the layout of GCStats is
         //       finalized.
-        return proxy.gc_stats();
+        return proxy.gc_stats( stats );
         //return GCStats.init;
     }
 
