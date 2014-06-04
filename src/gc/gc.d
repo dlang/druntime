@@ -49,6 +49,7 @@ import core.sync.mutex;
 import core.exception : onOutOfMemoryError, onInvalidMemoryOperationError;
 import core.thread;
 static import core.memory;
+import core.time : TickDuration;
 private alias BlkAttr = core.memory.GC.BlkAttr;
 private alias BlkInfo = core.memory.GC.BlkInfo;
 
@@ -253,6 +254,9 @@ class GC
         if (!gcx)
             onOutOfMemoryError();
         gcx.initialize();
+        try gcx.stats.started = TickDuration.currSystemTick;
+        catch {}
+        
     }
 
 
@@ -448,6 +452,9 @@ class GC
 
         if (bin < B_PAGE)
         {
+        
+            TickDuration elapsed_start = void;
+            if (gcx.stats.enabled) try elapsed_start = TickDuration.currSystemTick; catch {}
             if(alloc_size)
                 *alloc_size = binsize[bin];
             int  state     = gcx.disabled ? 1 : 0;
@@ -490,6 +497,14 @@ class GC
             // Return next item from free list
             gcx.bucket[bin] = (cast(List*)p).next;
             pool = (cast(List*)p).pool;
+                      
+            if (gcx.stats.enabled){
+                gcx.stats.bytesSmallAllocations += *alloc_size;
+                gcx.stats.bytesReqSmallAllocations += size;
+                gcx.stats.totalSmallAllocations += 1;
+                try gcx.stats.elapsedInSmallAllocations += TickDuration.currSystemTick - elapsed_start;
+                catch {}
+            }
             //debug(PRINTF) printf("\tmalloc => %p\n", p);
             debug (MEMSTOMP) memset(p, 0xF0, size);
         }
@@ -754,6 +769,8 @@ class GC
             if (psize < PAGESIZE)
                 return 0;                   // cannot extend buckets
 
+            TickDuration elapsed_start = void;
+            if (gcx.stats.enabled) try elapsed_start = TickDuration.currSystemTick; catch {}
             auto psz = psize / PAGESIZE;
             auto minsz = (minsize + PAGESIZE - 1) / PAGESIZE;
             auto maxsz = (maxsize + PAGESIZE - 1) / PAGESIZE;
@@ -778,6 +795,15 @@ class GC
             memset(pool.pagetable + pagenum + psz, B_PAGEPLUS, sz);
             pool.updateOffsets(pagenum);
             pool.freepages -= sz;
+            
+            if (gcx.stats.enabled){
+                gcx.stats.bytesBigAllocations += sz;
+                gcx.stats.bytesReqBigAllocations += minsize;
+                gcx.stats.totalBigAllocations += 1;
+                try gcx.stats.elapsedInBigAllocations += TickDuration.currSystemTick - elapsed_start;
+                catch {}
+            }
+            
             return (psz + sz) * PAGESIZE;
         }
     }
@@ -841,7 +867,7 @@ class GC
 
         if (gcx.running)
             onInvalidMemoryOperationError();
-
+            
         Pool*  pool;
         size_t pagenum;
         Bins   bin;
@@ -1186,15 +1212,6 @@ class GC
             gcLock.unlock();
         }
 
-        version (none)
-        {
-            GCStats stats;
-
-            getStats(stats);
-            debug(PRINTF) printf("poolsize = %zx, usedsize = %zx, freelistsize = %zx\n",
-                    stats.poolsize, stats.usedsize, stats.freelistsize);
-        }
-
         gcx.log_collect();
         return result;
     }
@@ -1232,7 +1249,7 @@ class GC
      * Retrieve statistics about garbage collection.
      * Useful for debugging and tuning.
      */
-    void getStats(out GCStats stats) nothrow
+    void getStats(GCStats* stats) nothrow
     {
         gcLock.lock();
         getStatsNoSync(stats);
@@ -1243,49 +1260,36 @@ class GC
     //
     //
     //
-    private void getStatsNoSync(out GCStats stats) nothrow
-    {
-        size_t psize = 0;
-        size_t usize = 0;
-        size_t flsize = 0;
-
-        size_t n;
-        size_t bsize = 0;
-
-        //debug(PRINTF) printf("getStats()\n");
-        memset(&stats, 0, GCStats.sizeof);
-
-        for (n = 0; n < gcx.npools; n++)
-        {   Pool *pool = gcx.pooltable[n];
-
-            psize += pool.npages * PAGESIZE;
-            for (size_t j = 0; j < pool.npages; j++)
-            {
-                Bins bin = cast(Bins)pool.pagetable[j];
-                if (bin == B_FREE)
-                    stats.freeblocks++;
-                else if (bin == B_PAGE)
-                    stats.pageblocks++;
-                else if (bin < B_PAGE)
-                    bsize += PAGESIZE;
-            }
+    private void getStatsNoSync(GCStats* stats) nothrow
+    in { assert(stats.ver == 1, "Cannot retrieve statistics - wrong version specified."); }
+    body {
+        if (gcx.stats.enabled){
+            stats.bytesFreedInCollections = gcx.stats.bytesFreedInCollections;
+            stats.bytesUsedInCollections = gcx.stats.bytesUsedInCollections;
+            stats.totalCollections = gcx.stats.totalCollections;
+            stats.elapsedInCollections = gcx.stats.elapsedInCollections;
+            stats.bytesReqBigAllocations = gcx.stats.bytesReqBigAllocations;
+            stats.bytesBigAllocations = gcx.stats.bytesBigAllocations;
+            stats.totalBigAllocations = gcx.stats.totalBigAllocations;
+            stats.elapsedInBigAllocations = gcx.stats.elapsedInBigAllocations;
+            stats.bytesReqSmallAllocations = gcx.stats.bytesReqSmallAllocations;
+            stats.bytesSmallAllocations = gcx.stats.bytesSmallAllocations;
+            stats.totalSmallAllocations = gcx.stats.totalSmallAllocations;
+            stats.elapsedInSmallAllocations = gcx.stats.elapsedInSmallAllocations;
+            stats.bytesUsedCurrently = gcx.getUsed();
+            stats.bytesFreeCurrently = gcx.getFree();
+            stats.maxBytesUsed = gcx.stats.maxBytesUsed;
+            stats.maxBytesFree = gcx.stats.maxBytesFree;
+            stats.bytesFreedToOS = gcx.stats.bytesFreedToOS;
+            stats.totalFreeToOS = gcx.stats.totalFreeToOS;
+            stats.elapsedInFreeToOS = gcx.stats.elapsedInFreeToOS;
+            try stats.elapsed = TickDuration.currSystemTick - gcx.stats.started;
+            catch {}
+            
         }
-
-        for (n = 0; n < B_PAGE; n++)
-        {
-            //debug(PRINTF) printf("bin %d\n", n);
-            for (List *list = gcx.bucket[n]; list; list = list.next)
-            {
-                //debug(PRINTF) printf("\tlist %p\n", list);
-                flsize += binsize[n];
-            }
-        }
-
-        usize = bsize - flsize;
-
-        stats.poolsize = psize;
-        stats.usedsize = bsize - flsize;
-        stats.freelistsize = flsize;
+        else
+            gcx.stats.enabled = true;
+        
     }
 }
 
@@ -1359,14 +1363,15 @@ struct Gcx
     }
     Treap!Root roots;
     Treap!Range ranges;
-
+    long leastUsed; // The amount of bytes used after the last collection
+    
     uint noStack;       // !=0 means don't scan stack
     uint log;           // turn on logging
     uint anychanges;
     uint inited;
     uint running;
     int disabled;       // turn off collections if >0
-
+    
     byte *minAddr;      // min(baseAddr)
     byte *maxAddr;      // max(topAddr)
 
@@ -1375,10 +1380,96 @@ struct Gcx
 
     List *bucket[B_MAX];        // free list for each size
 
+    struct GCStats
+    {
+        short ver = 1;
+        bool enabled;
+        long bytesFreedInCollections;
+        long bytesUsedInCollections;
+        long totalCollections;
+        TickDuration elapsedInCollections;
+        long bytesReqBigAllocations;
+        long bytesBigAllocations;
+        long totalBigAllocations;
+        TickDuration elapsedInBigAllocations;
+        long bytesReqSmallAllocations;
+        long bytesSmallAllocations;
+        long totalSmallAllocations;
+        TickDuration elapsedInSmallAllocations;
+        long bytesUsedCurrently;
+        long bytesFreeCurrently;
+        long maxBytesUsed;
+        long maxBytesFree;
+        long bytesFreedToOS;
+        long totalFreeToOS;
+        TickDuration elapsedInFreeToOS;
+        TickDuration started;
+    }
+    
+    GCStats stats;
+    
+    size_t getUsed() nothrow {     
+        size_t bsize;
+        size_t flsize;
+        size_t psize;
+        size_t used;
+        size_t n;
+        for (n = 0; n < npools; n++)
+        {   Pool *pool = pooltable[n];
 
+            psize += pool.npages * PAGESIZE;
+            for (size_t j = 0; j < pool.npages; j++)
+            {
+                Bins bin = cast(Bins)pool.pagetable[j];
+                if (bin < B_PAGE)
+                    bsize += PAGESIZE;
+                else if (bin == B_FREE)
+                    psize -= PAGESIZE;
+            }
+        }
+
+        for (n = 0; n < B_PAGE; n++)
+        {
+            //debug(PRINTF) printf("bin %d\n", n);
+            for (List *list = bucket[n]; list; list = list.next)
+            {
+                //debug(PRINTF) printf("\tlist %p\n", list);
+                flsize += binsize[n];
+            }
+        }
+        
+        used = psize + (bsize - flsize);
+        return used;
+    }
+    
+    size_t getFree() nothrow {
+        size_t flsize;
+        size_t fsize;
+        size_t n;
+        for (n = 0; n < npools; n++)
+        {   Pool *pool = pooltable[n];
+            for (size_t j = 0; j < pool.npages; j++)
+            {
+                Bins bin = cast(Bins)pool.pagetable[j];
+                if (bin == B_FREE)
+                    fsize += PAGESIZE;
+            }
+        }
+        for (n = 0; n < B_PAGE; n++)
+        {
+            //debug(PRINTF) printf("bin %d\n", n);
+            for (List *list = bucket[n]; list; list = list.next)
+            {
+                //debug(PRINTF) printf("\tlist %p\n", list);
+                flsize += binsize[n];
+            }
+        }
+        return flsize + fsize;
+    }
+    
+    
     void initialize()
     {   int dummy;
-
         (cast(byte*)&this)[0 .. Gcx.sizeof] = 0;
         log_init();
         roots.initialize();
@@ -1882,6 +1973,8 @@ struct Gcx
             return pool.freepages < pool.npages;
         }
 
+        TickDuration elapsed_start = void;
+        if (stats.enabled) try elapsed_start = TickDuration.currSystemTick; catch {}
         // semi-stable partition
         for (size_t i = 0; i < npools; ++i)
         {
@@ -1907,13 +2000,21 @@ struct Gcx
             for (j = i; j < npools; ++j)
             {
                 pool = pooltable[j];
+                if (stats.enabled)
+                    stats.bytesFreedToOS += pool.npages * B_PAGE;
                 debug(PRINTF) printFreeInfo(pool);
                 pool.Dtor();
                 cstdlib.free(pool);
             }
             npools = i;
         }
-
+        
+        if (stats.enabled){
+            stats.totalFreeToOS += 1;
+            try stats.elapsedInFreeToOS += TickDuration.currSystemTick - elapsed_start;
+            catch {}
+        }
+        
         if (npools)
         {
             minAddr = pooltable[0].baseAddr;
@@ -2074,6 +2175,8 @@ struct Gcx
         void*  p;
         int    state;
         bool   collected = false;
+        TickDuration elapsed_start = void;
+        if (stats.enabled) try elapsed_start = TickDuration.currSystemTick; catch {}
 
         npages = (size + PAGESIZE - 1) / PAGESIZE;
 
@@ -2150,6 +2253,14 @@ struct Gcx
         debug (MEMSTOMP) memset(p, 0xF1, size);
         if(alloc_size)
             *alloc_size = npages * PAGESIZE;
+            
+        if (stats.enabled){
+            stats.bytesBigAllocations += *alloc_size;
+            stats.bytesReqBigAllocations += size;
+            stats.totalBigAllocations += 1;
+            try stats.elapsedInBigAllocations += TickDuration.currSystemTick - elapsed_start;
+            catch {}
+        }
         //debug(PRINTF) printf("\tp = %p\n", p);
 
         *poolPtr = pool;
@@ -2410,7 +2521,19 @@ struct Gcx
     {
         size_t n;
         Pool*  pool;
+        TickDuration elapsed_start = void;
+        if (stats.enabled) try elapsed_start = TickDuration.currSystemTick; catch {}
 
+        if (stats.enabled){
+            try elapsed_start = TickDuration.currSystemTick; catch {}
+            stats.totalCollections++;
+            long bytesUsed = getUsed();
+            if (bytesUsed > stats.maxBytesUsed)
+                stats.maxBytesUsed = bytesUsed;
+            stats.bytesUsedInCollections += bytesUsed;
+        }
+        
+        
         debug(PROFILING)
         {
             clock_t start, stop;
@@ -2745,7 +2868,17 @@ struct Gcx
 
         debug(COLLECT_PRINTF) printf("\trecovered pages = %d\n", recoveredpages);
         debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u pages from %u pools\n", freed, freedpages, npools);
-
+        
+        if (stats.enabled){
+            try stats.elapsedInCollections += TickDuration.currSystemTick - elapsed_start;
+            catch {}
+            long bytesFree = getFree();
+            if (bytesFree > stats.maxBytesFree)
+                stats.maxBytesFree = bytesFree;
+            stats.bytesFreedInCollections += freed + PAGESIZE * freedpages;
+            
+        }
+        leastUsed = getUsed();
         running = 0; // only clear on success
 
         return freedpages + recoveredpages;

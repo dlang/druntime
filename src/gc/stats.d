@@ -12,16 +12,32 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module gc.stats;
-
+import core.time;
 
 /**
  *
  */
 struct GCStats
 {
-    size_t poolsize;        // total size of pool
-    size_t usedsize;        // bytes allocated
-    size_t freeblocks;      // number of blocks marked FREE
-    size_t freelistsize;    // total of memory on free lists
-    size_t pageblocks;      // number of blocks marked PAGE
+    short ver = 1;
+    long bytesFreedInCollections;
+    long bytesUsedInCollections;
+    long totalCollections;
+    TickDuration elapsedInCollections;
+    long bytesReqBigAllocations;
+    long bytesBigAllocations;
+    long totalBigAllocations;
+    TickDuration elapsedInBigAllocations;
+    long bytesReqSmallAllocations;
+    long bytesSmallAllocations;
+    long totalSmallAllocations;
+    TickDuration elapsedInSmallAllocations;
+    long bytesUsedCurrently;
+    long bytesFreeCurrently;
+    long maxBytesUsed;
+    long maxBytesFree;
+    long bytesFreedToOS;
+    long totalFreeToOS;
+    TickDuration elapsedInFreeToOS;
+    TickDuration elapsed;
 }

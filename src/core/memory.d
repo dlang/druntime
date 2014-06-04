@@ -79,7 +79,7 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module core.memory;
-
+import core.time : TickDuration;
 
 private
 {
@@ -102,6 +102,7 @@ private
     extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz, const TypeInfo = null ) pure nothrow;
     extern (C) size_t   gc_reserve( size_t sz ) nothrow;
     extern (C) void     gc_free( void* p ) pure nothrow;
+    extern (C) void  gc_stats( GCStats* ) pure nothrow;
 
     extern (C) void*   gc_addrOf( void* p ) pure nothrow;
     extern (C) size_t  gc_sizeOf( void* p ) pure nothrow;
@@ -123,6 +124,30 @@ private
     extern (C) void gc_runFinalizers( in void[] segment );
 }
 
+struct GCStats
+{
+    short ver = 1;
+    long bytesFreedInCollections;
+    long bytesUsedInCollections;
+    long totalCollections;
+    TickDuration elapsedInCollections;
+    long bytesReqBigAllocations;
+    long bytesBigAllocations;
+    long totalBigAllocations;
+    TickDuration elapsedInBigAllocations;
+    long bytesReqSmallAllocations;
+    long bytesSmallAllocations;
+    long totalSmallAllocations;
+    TickDuration elapsedInSmallAllocations;
+    long bytesUsedCurrently;
+    long bytesFreeCurrently;
+    long maxBytesUsed;
+    long maxBytesFree;
+    long bytesFreedToOS;
+    long totalFreeToOS;
+    TickDuration elapsedInFreeToOS;
+    TickDuration elapsed;
+}
 
 /**
  * This struct encapsulates all garbage collection functionality for the D
@@ -578,6 +603,40 @@ struct GC
     static size_t sizeOf(void* p) pure nothrow
     {
         return gc_sizeOf( p );
+    }
+
+    /**
+     * Until the GC features a setOption method, the first call to the stats enables it.
+     * Once started, the garbage collector starts counting the sum of bytes allocated,
+     * freed and collected along with the amount of time taken and the number of times
+     * it happened, which can be used to create an average picture of the efficiency
+     * for the program. The GC Stats also allows to analyze the current and edge states.
+     *
+     * Params:
+     *  stats = A pointer to a valid GCStats struct instance.
+     *
+     * Example:
+     *  GCStats* stats = new GCStats();
+     *  GC.stats(stats); // enable stats
+     *  // do some work
+     *  GC.stats(stats); // receive stats
+     *  writeln(stats.bytesUsedCurrently, "B in use after last collection");
+     *  writeln(stats.bytesFreeCurrently, "B immediately available");
+     *  writeln(stats.totalCollections, " collections");
+     *  writeln(stats.bytesFreedInCollections, "B total freed from collections");
+     *  writeln(stats.bytesUsedInCollections, "B total used after collections"); 
+     *  writeln((stats.bytesFreedInCollections.to!float/stats.bytesUsedInCollections.to!float)*100f, " avg freed % per collection");
+     *  writeln(stats.elapsedInCollections.msecs, " ms spent in collections"); 
+     *  writeln(stats.elapsedInBigAllocations.msecs, " ms spent in big allocations"); 
+     *  writeln(stats.elapsedInSmallAllocations.msecs, " ms spent in small allocations");
+     *  writeln(stats.elapsed.msecs, " ms elapsed since GC start");
+     *  writeln(stats.maxBytesUsed, "B Used at Highest Point");
+     *  writeln(stats.maxBytesFree, "B Free at Highest Point");
+     *
+     *  // Some even more detailed stats are also available, see the GCStats object.
+    */
+    static void stats(GCStats* stats) pure nothrow {
+        return gc_stats(stats);
     }
 
     // verify that the reallocation doesn't leave the size cache in a wrong state
