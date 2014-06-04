@@ -868,16 +868,6 @@ class GC
         if (gcx.running)
             onInvalidMemoryOperationError();
             
-        static if (USE_CACHE){
-			if (p == cached_size_key){
-                cached_size_key = cached_size_key.init;
-                cached_size_val = cached_size_val.init;
-			}
-        	if (p == cached_info_key){
-					cached_info_key = cached_info_key.init;
-					cached_info_val = cached_info_val.init;
-			}
-		}
         Pool*  pool;
         size_t pagenum;
         Bins   bin;
