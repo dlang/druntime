@@ -2727,7 +2727,6 @@ struct Gcx
                         {
                             pn++;
                             pool.pagetable[pn] = B_FREE;
-                            freed += B_PAGE;
 
                             // Don't need to update searchStart here because
                             // pn is guaranteed to be greater than last time
@@ -2881,9 +2880,10 @@ struct Gcx
             long bytesFree = getFree();
             if (bytesFree > stats.maxBytesFree)
                 stats.maxBytesFree = bytesFree;
-            stats.bytesFreedInCollections += freed;
+            stats.bytesFreedInCollections += freed + PAGESIZE * freedpages;
             
         }
+        leastUsed = getUsed();
         running = 0; // only clear on success
 
         return freedpages + recoveredpages;
