@@ -54,7 +54,6 @@ private
             void*   function(void*, size_t, uint ba, const TypeInfo) gc_realloc;
             size_t  function(void*, size_t, size_t, const TypeInfo) gc_extend;
             void    function(GCStats*) gc_stats;
-            
             size_t  function(size_t) gc_reserve;
             void    function(void*) gc_free;
 
