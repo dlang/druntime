@@ -32,6 +32,7 @@ enum
     MIimportedModules = 0x400,
     MIlocalClasses = 0x800,
     MIname       = 0x1000,
+    MIunitTest2  = 0x2000,
 }
 
 /*****
@@ -88,8 +89,8 @@ struct ModuleGroup
 
         int findModule(in ModuleInfo* mi)
         {
-            foreach (int i, m; _modules)
-                if (m is mi) return i;
+            foreach (i, m; _modules)
+                if (m is mi) return cast(int)i;
             return -1;
         }
 

@@ -268,7 +268,7 @@ class TypeInfo
     bool equals(in void* p1, in void* p2) const { return p1 == p2; }
 
     /// Compares two instances for &lt;, ==, or &gt;.
-    int compare(in void* p1, in void* p2) const { return 0; }
+    int compare(in void* p1, in void* p2) const { return _xopCmp(p1, p2); }
 
     /// Returns size of the type.
     @property size_t tsize() nothrow pure const @safe { return 0; }
@@ -634,13 +634,6 @@ class TypeInfo_AssociativeArray : TypeInfo
     override bool equals(in void* p1, in void* p2) @trusted const
     {
         return !!_aaEqual(this, *cast(const void**) p1, *cast(const void**) p2);
-    }
-
-    override int compare(in void* p1, in void* p2) const
-    {
-        // This is a hack to fix Issue 10380 because AA uses
-        // `compare` instead of `equals`.
-        return !equals(p1, p2);
     }
 
     override hash_t getHash(in void* p) nothrow @trusted const
@@ -1596,6 +1589,7 @@ enum
     MIimportedModules = 0x400,
     MIlocalClasses = 0x800,
     MIname       = 0x1000,
+    MIunitTest2  = 0x2000,
 }
 
 
@@ -1608,7 +1602,7 @@ const:
     private void* addrOf(int flag) nothrow pure
     in
     {
-        assert(flag >= MItlsctor && flag <= MIname);
+        assert(flag >= MItlsctor && flag <= MIunitTest2);
         assert(!(flag & (flag - 1)) && !(flag & ~(flag - 1) << 1));
     }
     body
@@ -1663,7 +1657,16 @@ const:
         if (true || flags & MIname) // always available for now
         {
             if (flag == MIname) return p;
-            p += .strlen(cast(immutable char*)p);
+            auto len = .strlen(cast(immutable char*)p) + 1;
+            //Align p
+            p += len;
+            if (len % (void*).sizeof != 0)
+                p += (void*).sizeof - (len % (void*).sizeof);
+        }
+        if (flags & MIunitTest2)
+        {
+            if (flag == MIunitTest2) return p;
+            p += (__UnitTest[]).sizeof;
         }
         assert(0);
     }
@@ -1702,9 +1705,18 @@ const:
         return flags & MIictor ? *cast(typeof(return)*)addrOf(MIictor) : null;
     }
 
+    /**
+     * Deprecated:
+     * Please use unitTests instead.
+     */
     @property void function() unitTest() nothrow pure
     {
         return flags & MIunitTest ? *cast(typeof(return)*)addrOf(MIunitTest) : null;
+    }
+
+    @property __UnitTest[] unitTests() nothrow
+    {
+        return flags & MIunitTest2 ? *cast(typeof(return)*)addrOf(MIunitTest2) : null;
     }
 
     @property immutable(ModuleInfo*)[] importedModules() nothrow pure
@@ -3009,4 +3021,17 @@ unittest
     i = s.idup;
     i = s.dup;
     static assert(!__traits(compiles, m = s.dup));
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Unittest support
+///////////////////////////////////////////////////////////////////////////////
+struct __UnitTest
+{
+    void function() func;
+    string file;
+    uint line;
+    bool disabled;
+    string name;
 }
