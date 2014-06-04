@@ -81,7 +81,7 @@ private
 
     __gshared Monitor*[Object] monitors;
 
-    __gshared SpinRWLock monitorsLock;
+    shared static SpinRWLock monitorsLock;
 
     extern(C) Monitor* getMonitor(Object h) nothrow
     {
@@ -90,8 +90,8 @@ private
         if (offset  == size_t.max)
         {
             // The monitor is stored in external hash table
-            (cast(shared)monitorsLock).lockRead();
-            scope(exit) (cast(shared)monitorsLock).unlockRead();
+            monitorsLock.lockRead();
+            scope(exit) monitorsLock.unlockRead();
             try
             {
                 return monitors.get(h, null);
@@ -111,8 +111,8 @@ private
         if (offset == size_t.max)
         {
             // The monitor is stored in external hash table
-            (cast(shared)monitorsLock).lockWrite();
-            scope(exit) (cast(shared)monitorsLock).unlockWrite();
+            monitorsLock.lockWrite();
+            scope(exit) monitorsLock.unlockWrite();
             if (m is null)
             {
                 monitors.remove(h);
