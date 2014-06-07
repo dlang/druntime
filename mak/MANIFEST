@@ -5,6 +5,7 @@ MANIFEST=\
 	posix.mak \
 	win32.mak \
 	win64.mak \
+	project.ddoc \
 	\
 	mak\COPY \
 	mak\DOCS \
@@ -32,8 +33,9 @@ MANIFEST=\
 	src\core\time.d \
 	src\core\vararg.d \
 	\
-	src\core\internal\hash.d \
 	src\core\internal\convert.d \
+	src\core\internal\hash.d \
+	src\core\internal\traits.d \
 	\
 	src\core\stdc\complex.d \
 	src\core\stdc\config.d \
@@ -183,7 +185,6 @@ MANIFEST=\
 	src\rt\deh_win64_posix.d \
 	src\rt\dmain2.d \
 	src\rt\dylib_fixes.c \
-	src\rt\image.d \
 	src\rt\invariant.d \
 	src\rt\lifetime.d \
 	src\rt\llmath.d \
@@ -195,6 +196,7 @@ MANIFEST=\
 	src\rt\obj.d \
 	src\rt\qsort.d \
 	src\rt\sections.d \
+	src\rt\sections_android.d \
 	src\rt\sections_freebsd.d \
 	src\rt\sections_linux.d \
 	src\rt\sections_osx.d \
@@ -242,10 +244,14 @@ MANIFEST=\
 	src\rt\typeinfo\ti_wchar.d \
 	\
 	src\rt\util\array.d \
-	src\rt\util\container.d \
 	src\rt\util\hash.d \
+	src\rt\util\random.d \
 	src\rt\util\string.d \
 	src\rt\util\utf.d \
+	src\rt\util\container\array.d \
+	src\rt\util\container\common.d \
+	src\rt\util\container\hashtab.d \
+	src\rt\util\container\treap.d \
 	\
 	src\etc\linux\memoryerror.d
 

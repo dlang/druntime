@@ -1,7 +1,7 @@
 import core.runtime, core.time : TickDuration;
 import core.stdc.stdio;
 
-ModuleInfo* getModuleInfo(string name)
+immutable(ModuleInfo*) getModuleInfo(string name)
 {
     foreach (m; ModuleInfo)
         if (m.name == name) return m;
@@ -15,28 +15,45 @@ bool tester()
     immutable pkg = ".package";
     immutable pkgLen = pkg.length;
 
-    if(name.length > pkgLen && name[$ - pkgLen .. $] == pkg)
+    if (name.length > pkgLen && name[$ - pkgLen .. $] == pkg)
         name = name[0 .. $ - pkgLen];
 
-    if (auto fp = getModuleInfo(name).unitTest)
+    bool result = true;
+
+    void testFailed(Throwable t)
     {
-        try
+        auto msg = t.toString();
+        printf("****** FAIL %.*s\n%.*s\n", cast(int)name.length, name.ptr,
+               cast(int)msg.length, msg.ptr);
+        result = false;
+    }
+
+    auto mi = getModuleInfo(name);
+    immutable t0 = TickDuration.currSystemTick;
+    if (auto tests = mi.unitTests)
+    {
+        foreach (test; tests)
         {
-            immutable t0 = TickDuration.currSystemTick;
-            fp();
-            immutable t1 = TickDuration.currSystemTick;
-            printf("%.3fs PASS %.*s\n", (t1 - t0).msecs / 1000.,
-                cast(int)name.length, name.ptr);
-        }
-        catch (Throwable e)
-        {
-            auto msg = e.toString();
-            printf("****** FAIL %.*s\n%.*s\n", cast(int)name.length, name.ptr,
-                cast(int)msg.length, msg.ptr);
-            return false;
+            if (test.disabled)
+                continue;
+            try
+                test.func();
+            catch (Throwable t)
+                testFailed(t);
         }
     }
-    return true;
+    else if (auto test = mi.unitTest) // old single test per module
+    {
+        try
+            test();
+        catch (Throwable t)
+            testFailed(t);
+    }
+    immutable t1 = TickDuration.currSystemTick;
+    if (result)
+        printf("%.3fs PASS %.*s\n", (t1 - t0).msecs / 1000.,
+               cast(int)name.length, name.ptr);
+    return result;
 }
 
 shared static this()

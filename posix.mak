@@ -106,9 +106,9 @@ OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o
 ######################## All of'em ##############################
 
 ifeq (linux,$(OS))
-target : import copy dll $(DRUNTIME) doc
+target : import copy dll $(DRUNTIME)
 else
-target : import copy $(DRUNTIME) doc
+target : import copy $(DRUNTIME)
 endif
 
 ######################## Doc .html file generation ##############################
@@ -116,16 +116,16 @@ endif
 doc: $(DOCS)
 
 $(DOCDIR)/object.html : src/object_.d
-	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_%.html : src/core/%.di
-	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_%.html : src/core/%.d
-	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
-	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/objc_%.html : src/objc/%.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
@@ -249,13 +249,11 @@ detab:
 
 zip: druntime.zip
 
-druntime.zip: $(MANIFEST) $(DOCS) $(IMPORTS)
+druntime.zip: $(MANIFEST) $(IMPORTS)
 	rm -rf $@
 	zip $@ $^
 
 install: target
-	mkdir -p $(INSTALL_DIR)/html
-	cp -r doc/* $(INSTALL_DIR)/html/
 	mkdir -p $(INSTALL_DIR)/import
 	cp -r import/* $(INSTALL_DIR)/import/
 	mkdir -p $(INSTALL_DIR)/lib

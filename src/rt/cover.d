@@ -241,7 +241,7 @@ string appendFN( string path, string name )
 
     auto dest = path;
 
-    if( dest.ptr && dest[$ - 1] != sep )
+    if( dest.length && dest[$ - 1] != sep )
         dest ~= sep;
     dest ~= name;
     return dest;
@@ -264,7 +264,7 @@ string baseName( string name, string ext = null )
             ret ~= c;
         }
     }
-    return chomp( ret, ext.ptr ? ext : "" );
+    return ext.length ? chomp(ret,  ext) : ret;
 }
 
 
@@ -417,7 +417,9 @@ void splitLines( char[] buf, ref char[][] lines )
             lines ~= buf[beg .. pos];
             beg = pos + 1;
             if( buf[pos] == '\r' && pos < buf.length - 1 && buf[pos + 1] == '\n' )
-                ++pos, ++beg;
+            {
+                ++pos; ++beg;
+            }
             continue;
         default:
             continue;

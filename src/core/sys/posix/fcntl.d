@@ -23,6 +23,9 @@ public import core.sys.posix.sys.stat;  // for S_IFMT, etc.
 version (Posix):
 extern (C):
 
+nothrow:
+@nogc:
+
 //
 // Required
 //
@@ -147,6 +150,19 @@ version( linux )
         enum O_NONBLOCK     = 0x0080;
         enum O_RSYNC        = O_SYNC;
         enum O_SYNC         = 0x0010;
+    }
+    else version (MIPS64)
+    {
+        enum O_CREAT        = 0x0100;
+        enum O_EXCL         = 0x0400;
+        enum O_NOCTTY       = 0x0800;
+        enum O_TRUNC        = 0x0200;
+
+        enum O_APPEND       = 0x0008;
+        enum O_DSYNC        = 0x0010;
+        enum O_NONBLOCK     = 0x0080;
+        enum O_RSYNC        = O_SYNC;
+        enum O_SYNC         = 0x4010;
     }
     else version (PPC)
     {
@@ -412,6 +428,58 @@ else version (Solaris)
         int creat(in char*, mode_t);
         int open(in char*, int, ...);
     }
+}
+else version( Android )
+{
+    enum F_DUPFD        = 0;
+    enum F_GETFD        = 1;
+    enum F_SETFD        = 2;
+    enum F_GETFL        = 3;
+    enum F_SETFL        = 4;
+    enum F_GETLK        = 5;
+    enum F_SETLK        = 6;
+    enum F_SETLKW       = 7;
+    enum F_SETOWN       = 8;
+    enum F_GETOWN       = 9;
+
+    enum FD_CLOEXEC     = 1;
+
+    enum F_RDLCK        = 0;
+    enum F_WRLCK        = 1;
+    enum F_UNLCK        = 2;
+
+    version (X86)
+    {
+        enum O_CREAT        = 0x40;     // octal     0100
+        enum O_EXCL         = 0x80;     // octal     0200
+        enum O_NOCTTY       = 0x100;    // octal     0400
+        enum O_TRUNC        = 0x200;    // octal    01000
+
+        enum O_APPEND       = 0x400;    // octal    02000
+        enum O_NONBLOCK     = 0x800;    // octal    04000
+        enum O_SYNC         = 0x1000;   // octal   010000
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    enum O_ACCMODE      = 0x3;
+    enum O_RDONLY       = 0x0;
+    enum O_WRONLY       = 0x1;
+    enum O_RDWR         = 0x2;
+
+    struct flock
+    {
+        short   l_type;
+        short   l_whence;
+        off_t   l_start;
+        off_t   l_len;
+        pid_t   l_pid;
+    }
+
+    int   creat(in char*, mode_t);
+    int   open(in char*, int, ...);
 }
 else
 {

@@ -22,6 +22,7 @@ public import core.sys.posix.sys.types; // for off_t, mode_t
 
 version (Posix):
 extern (C):
+nothrow:
 
 //
 // Required
@@ -228,6 +229,70 @@ version( linux )
             {
                 c_long      st_pad4;
                 blkcnt_t    st_blocks;
+            }
+            c_long[14]  st_pad5;
+        }
+    }
+    else version (MIPS64)
+    {
+        struct stat_t
+        {
+            c_ulong     st_dev;
+            int[3]      st_pad1;
+            static if (!__USE_FILE_OFFSET64)
+            {
+                ino_t       st_ino;
+            }
+            else
+            {
+                c_ulong     st_ino;
+            }
+            mode_t      st_mode;
+            nlink_t     st_nlink;
+            uid_t       st_uid;
+            gid_t       st_gid;
+            c_ulong     st_rdev;
+            static if (!__USE_FILE_OFFSET64)
+            {
+                uint[2]     st_pad2;
+                off_t       st_size;
+                int         st_pad3;
+            }
+            else
+            {
+                c_long[3]   st_pad2;
+                c_long      st_size;
+            }
+            static if (__USE_MISC || __USE_XOPEN2K8)
+            {
+                timespec    st_atim;
+                timespec    st_mtim;
+                timespec    st_ctim;
+                extern(D)
+                {
+                    @property ref time_t st_atime() { return st_atim.tv_sec; }
+                    @property ref time_t st_mtime() { return st_mtim.tv_sec; }
+                    @property ref time_t st_ctime() { return st_ctim.tv_sec; }
+                }
+            }
+            else
+            {
+                time_t      st_atime;
+                c_ulong     st_atimensec;
+                time_t      st_mtime;
+                c_ulong     st_mtimensec;
+                time_t      st_ctime;
+                c_ulong     st_ctimensec;
+            }
+            blksize_t   st_blksize;
+            uint        st_pad4;
+            static if (!__USE_FILE_OFFSET64)
+            {
+                blkcnt_t    st_blocks;
+            }
+            else
+            {
+                c_long  st_blocks;
             }
             c_long[14]  st_pad5;
         }
@@ -511,10 +576,20 @@ else version( OSX )
 {
     struct stat_t
     {
+      version ( DARWIN_USE_64_BIT_INODE )
+      {
+        dev_t       st_dev;
+        mode_t      st_mode;
+        nlink_t     st_nlink;
+        ino_t       st_ino;
+      }
+      else
+      {
         dev_t       st_dev;
         ino_t       st_ino;
         mode_t      st_mode;
         nlink_t     st_nlink;
+      }
         uid_t       st_uid;
         gid_t       st_gid;
         dev_t       st_rdev;
@@ -757,22 +832,87 @@ else version (Solaris)
     extern (D) bool S_ISLNK(mode_t mode) { return S_ISTYPE(mode, S_IFLNK); }
     extern (D) bool S_ISSOCK(mode_t mode) { return S_ISTYPE(mode, S_IFSOCK); }
 }
+else version( Android )
+{
+    version (X86)
+    {
+        struct stat_t
+        {
+            ulong       st_dev;
+            ubyte[4]    __pad0;
+            c_ulong     __st_ino;
+            uint        st_mode;
+            uint        st_nlink;
+            c_ulong     st_uid;
+            c_ulong     st_gid;
+            ulong       st_rdev;
+            ubyte[4]    __pad3;
+
+            long        st_size;
+            c_ulong     st_blksize;
+            ulong       st_blocks;
+            c_ulong     st_atime;
+            c_ulong     st_atime_nsec;
+            c_ulong     st_mtime;
+            c_ulong     st_mtime_nsec;
+            c_ulong     st_ctime;
+            c_ulong     st_ctime_nsec;
+            ulong       st_ino;
+        }
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    enum S_IRUSR    = 0x100; // octal 0000400
+    enum S_IWUSR    = 0x080; // octal 0000200
+    enum S_IXUSR    = 0x040; // octal 0000100
+    enum S_IRWXU    = 0x1C0; // octal 0000700
+
+    enum S_IRGRP    = 0x020;  // octal 0000040
+    enum S_IWGRP    = 0x010;  // octal 0000020
+    enum S_IXGRP    = 0x008;  // octal 0000010
+    enum S_IRWXG    = 0x038;  // octal 0000070
+
+    enum S_IROTH    = 0x4; // 0000004
+    enum S_IWOTH    = 0x2; // 0000002
+    enum S_IXOTH    = 0x1; // 0000001
+    enum S_IRWXO    = 0x7; // 0000007
+
+    enum S_ISUID    = 0x800; // octal 0004000
+    enum S_ISGID    = 0x400; // octal 0002000
+    enum S_ISVTX    = 0x200; // octal 0001000
+
+    private
+    {
+        extern (D) bool S_ISTYPE( mode_t mode, uint mask )
+        {
+            return ( mode & S_IFMT ) == mask;
+        }
+    }
+
+    extern (D) bool S_ISBLK( mode_t mode )  { return S_ISTYPE( mode, S_IFBLK );  }
+    extern (D) bool S_ISCHR( mode_t mode )  { return S_ISTYPE( mode, S_IFCHR );  }
+    extern (D) bool S_ISDIR( mode_t mode )  { return S_ISTYPE( mode, S_IFDIR );  }
+    extern (D) bool S_ISFIFO( mode_t mode ) { return S_ISTYPE( mode, S_IFIFO );  }
+    extern (D) bool S_ISREG( mode_t mode )  { return S_ISTYPE( mode, S_IFREG );  }
+    extern (D) bool S_ISLNK( mode_t mode )  { return S_ISTYPE( mode, S_IFLNK );  }
+    extern (D) bool S_ISSOCK( mode_t mode ) { return S_ISTYPE( mode, S_IFSOCK ); }
+}
 else
 {
     static assert(false, "Unsupported platform");
 }
 
-version( Posix )
-{
-    int    chmod(in char*, mode_t);
-    int    fchmod(int, mode_t);
-    //int    fstat(int, stat_t*);
-    //int    lstat(in char*, stat_t*);
-    int    mkdir(in char*, mode_t);
-    int    mkfifo(in char*, mode_t);
-    //int    stat(in char*, stat_t*);
-    mode_t umask(mode_t);
-}
+int    chmod(in char*, mode_t);
+int    fchmod(int, mode_t);
+//int    fstat(int, stat_t*);
+//int    lstat(in char*, stat_t*);
+int    mkdir(in char*, mode_t);
+int    mkfifo(in char*, mode_t);
+//int    stat(in char*, stat_t*);
+mode_t umask(mode_t);
 
 version( linux )
 {
@@ -893,6 +1033,19 @@ else version (Solaris)
     enum S_IFDIR = 0x4000;
     enum S_IFLNK = 0xA000;
     enum S_IFSOCK = 0xC000;
+
+    int mknod(in char*, mode_t, dev_t);
+}
+else version( Android )
+{
+    enum S_IFMT     = 0xF000; // octal 0170000
+    enum S_IFBLK    = 0x6000; // octal 0060000
+    enum S_IFCHR    = 0x2000; // octal 0020000
+    enum S_IFIFO    = 0x1000; // octal 0010000
+    enum S_IFREG    = 0x8000; // octal 0100000
+    enum S_IFDIR    = 0x4000; // octal 0040000
+    enum S_IFLNK    = 0xA000; // octal 0120000
+    enum S_IFSOCK   = 0xC000; // octal 0140000
 
     int mknod(in char*, mode_t, dev_t);
 }

@@ -11,7 +11,7 @@ IMPDIR=import
 
 DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport
 UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport
-DDOCFLAGS=-c -w -o- -Isrc -Iimport
+DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
 
 CFLAGS=
 
@@ -19,9 +19,9 @@ DRUNTIME_BASE=druntime
 DRUNTIME=lib\$(DRUNTIME_BASE).lib
 GCSTUB=lib\gcstub.obj
 
-DOCFMT=-version=CoreDdoc
+DOCFMT=
 
-target : import copydir copy $(DRUNTIME) doc $(GCSTUB)
+target : import copydir copy $(DRUNTIME) $(GCSTUB)
 
 $(mak\COPY)
 $(mak\DOCS)
@@ -182,10 +182,13 @@ $(IMPDIR)\core\time.d : src\core\time.d
 $(IMPDIR)\core\vararg.d : src\core\vararg.d
 	copy $** $@
 
+$(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
+	copy $** $@
+
 $(IMPDIR)\core\internal\hash.d : src\core\internal\hash.d
 	copy $** $@
 
-$(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
+$(IMPDIR)\core\internal\traits.d : src\core\internal\traits.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d
@@ -491,9 +494,9 @@ unittest : $(SRCS) $(DRUNTIME) src\unittest.d
 
 zip: druntime.zip
 
-druntime.zip: doc import
+druntime.zip: import
 	del druntime.zip
-	zip32 -T -ur druntime $(MANIFEST) $(DOCS) $(IMPDIR) src\rt\minit.obj
+	zip32 -T -ur druntime $(MANIFEST) $(IMPDIR) src\rt\minit.obj
 
 install: druntime.zip
 	unzip -o druntime.zip -d \dmd2\src\druntime

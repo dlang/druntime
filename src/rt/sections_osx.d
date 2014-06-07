@@ -21,7 +21,7 @@ import core.sys.posix.pthread;
 import core.sys.osx.mach.dyld;
 import core.sys.osx.mach.getsect;
 import rt.deh, rt.minfo;
-import rt.util.container;
+import rt.util.container.array;
 
 struct SectionGroup
 {
@@ -35,7 +35,7 @@ struct SectionGroup
         return dg(_sections);
     }
 
-    @property inout(ModuleInfo*)[] modules() inout
+    @property immutable(ModuleInfo*)[] modules() const
     {
         return _moduleGroup.modules;
     }
@@ -98,7 +98,7 @@ void finiTLSRanges(void[]* rng)
     .free(rng);
 }
 
-void scanTLSRanges(void[]* rng, scope void delegate(void* pbeg, void* pend) dg)
+void scanTLSRanges(void[]* rng, scope void delegate(void* pbeg, void* pend) nothrow dg) nothrow
 {
     dg(rng.ptr, rng.ptr + rng.length);
 }
@@ -206,7 +206,7 @@ extern (C) void sections_osx_onAddImage(in mach_header* h, intptr_t slide)
         }
 
         debug(PRINTF) printf("  minfodata\n");
-        auto p = cast(ModuleInfo**)sect.ptr;
+        auto p = cast(immutable(ModuleInfo*)*)sect.ptr;
         immutable len = sect.length / (*p).sizeof;
 
         _sections._moduleGroup = ModuleGroup(p[0 .. len]);

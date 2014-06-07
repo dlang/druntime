@@ -359,7 +359,7 @@ extern (C) bool runModuleUnitTests()
     {
         import core.sys.posix.signal; // segv handler
 
-        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
+        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr ) nothrow
         {
             static enum MAXFRAMES = 128;
             void*[MAXFRAMES]  callstack;
@@ -398,9 +398,24 @@ extern (C) bool runModuleUnitTests()
         {
             if( m )
             {
-                auto fp = m.unitTest;
+                foreach(test; m.unitTests)
+                {
+                    if(test.disabled)
+                        continue;
+                    try
+                    {
+                        test.func();
+                    }
+                    catch( Throwable e )
+                    {
+                        e.toString(&printErr); printErr("\n");
+                        failed++;
+                    }
+                }
 
-                if( fp )
+
+                auto fp = m.unitTest;
+                if( m.unitTests.length == 0 && fp )
                 {
                     try
                     {
@@ -442,8 +457,6 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         {
             this()
             {
-                static enum MAXFRAMES = 128;
-                void*[MAXFRAMES]  callstack;
                 numframes = 0; //backtrace( callstack, MAXFRAMES );
                 if (numframes < 2) // backtrace() failed, do it ourselves
                 {
@@ -475,12 +488,6 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                         }
                     }
                 }
-                framelist = backtrace_symbols( callstack.ptr, numframes );
-            }
-
-            ~this()
-            {
-                free( framelist );
             }
 
             override int opApply( scope int delegate(ref const(char[])) dg ) const
@@ -512,6 +519,9 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                 }
                 int ret = 0;
 
+                const framelist = backtrace_symbols( callstack.ptr, numframes );
+                scope(exit) free(cast(void*) framelist);
+
                 for( int i = FIRSTFRAME; i < numframes; ++i )
                 {
                     char[4096] fixbuf;
@@ -535,7 +545,8 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
         private:
             int     numframes;
-            char**  framelist;
+            static enum MAXFRAMES = 128;
+            void*[MAXFRAMES]  callstack = void;
 
         private:
             const(char)[] fixline( const(char)[] buf, ref char[4096] fixbuf ) const
@@ -597,7 +608,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                 }
 
                 assert(symBeg < buf.length && symEnd < buf.length);
-                assert(symBeg < symEnd);
+                assert(symBeg <= symEnd);
 
                 enum min = (size_t a, size_t b) => a <= b ? a : b;
                 if (symBeg == symEnd || symBeg >= fixbuf.length)
