@@ -18,7 +18,8 @@ bool tester()
     if (name.length > pkgLen && name[$ - pkgLen .. $] == pkg)
         name = name[0 .. $ - pkgLen];
 
-    bool result = true;
+    bool ranTests = true;
+    bool result   = true;
 
     void testFailed(Throwable t)
     {
@@ -49,8 +50,12 @@ bool tester()
         catch (Throwable t)
             testFailed(t);
     }
+    else
+    {
+        ranTests = false;
+    }
     immutable t1 = TickDuration.currSystemTick;
-    if (result)
+    if (ranTests && result)
         printf("%.3fs PASS %.*s\n", (t1 - t0).msecs / 1000.,
                cast(int)name.length, name.ptr);
     return result;
