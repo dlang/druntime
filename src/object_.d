@@ -1586,7 +1586,8 @@ enum
 }
 
 
-struct ModuleInfo
+alias ModuleInfo = immutable(_ModuleInfo);
+struct _ModuleInfo
 {
 const:
     uint _flags;
