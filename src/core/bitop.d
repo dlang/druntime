@@ -212,11 +212,35 @@ version (DigitalMars) version (AnyX86) @system // not pure
     uint outpl(uint port_address, uint value);
 }
 
+private int function( uint x ) popcnt_32;
+private int function( ulong x ) popcnt_64;
+
+static this()
+{
+    import core.cpuid;
+    if (hasPopcnt()) {
+        popcnt_32 = &popcnt_hw_32;
+        popcnt_64 = &popcnt_hw_64;
+    } else {
+        popcnt_32 = &popcnt_sw_32;
+        popcnt_64 = &popcnt_sw_64;
+    }
+}
 
 /**
- *  Calculates the number of set bits in a 32-bit integer.
+ *  Calculates the number of set bits in a integer.
  */
-int popcnt( uint x ) pure
+int popcnt(T)(T x) if (__traits(isIntegral, T) && (T.sizeof == 4 || T.sizeof == 8))
+{
+    static if (T.sizeof == 4) {
+        return popcnt_32(x);  
+    }
+    static if (T.sizeof == 8) {
+        return popcnt_64(x);
+    }
+}
+
+private int popcnt_sw_32( uint x ) pure
 {
     // Avoid branches, and the potential for cache misses which
     // could be incurred with a table lookup.
@@ -247,6 +271,42 @@ int popcnt( uint x ) pure
     return x;
 }
 
+@trusted private int popcnt_hw_32( uint x ) pure
+{
+    asm {
+        mov EBX, x;
+        popcnt EAX, EBX;
+    }
+}
+
+private int popcnt_sw_64( ulong x ) pure
+{
+    x -= (x >> 1) & 0x5555_5555_5555_5555;
+    x = (x & 0x3333_3333_3333_3333) + ((x >> 2) & 0x_3333_3333_3333_3333);
+    x = (x + (x >> 4)) & 0x0F0F_0F0F_0F0F_0F0F;
+    x += x >> 8;
+    x += x >> 16;
+    x += x >> 32;
+    return x & 0x7f;
+}
+
+@trusted private int popcnt_hw_64( ulong x ) pure
+{
+    version(X86_64) {
+        asm {
+            mov RBX, x;
+            popcnt RAX, RBX;
+        }
+    } else version(X86) {   // In case there are 32bit processors with popcnt?
+        asm {
+            mov EBX, [EBP+8];  // Get the first 32 bits of x
+            popcnt EAX, EBX;   // count the set bits, save into eax
+            mov EBX, [EBP+12]; // Get the second 32 bits of x
+            popcnt ECX, EBX;   // count the set bits, save into ecx
+            add EAX, ECX;      // add ecx to eax
+        }
+    }
+}
 
 unittest
 {
