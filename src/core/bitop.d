@@ -212,13 +212,20 @@ version (DigitalMars) version (AnyX86) @system // not pure
     uint outpl(uint port_address, uint value);
 }
 
-private int function( uint x ) popcnt_32;
-private int function( ulong x ) popcnt_64;
+
+private immutable int function( uint x ) popcnt_32;
+private immutable int function( ulong x ) popcnt_64;
 
 static this()
 {
     import core.cpuid;
-    if (hasPopcnt()) {
+
+    // Only use popcnt_hw on systems that we have an implementation for.
+    version(AsmX86) {
+        const use_popcnt_asm = true;
+    }
+
+    if (hasPopcnt() && use_popcnt_asm) {
         popcnt_32 = &popcnt_hw_32;
         popcnt_64 = &popcnt_hw_64;
     } else {
@@ -230,9 +237,9 @@ static this()
 /**
  *  Calculates the number of set bits in a integer.
  */
-int popcnt(T)(T x) if (__traits(isIntegral, T) && (T.sizeof == 4 || T.sizeof == 8))
+int popcnt(T)(T x) if (__traits(isIntegral, T) && (T.sizeof <= 8))
 {
-    static if (T.sizeof == 4) {
+    static if (T.sizeof <= 4) {
         return popcnt_32(x);  
     }
     static if (T.sizeof == 8) {
@@ -273,9 +280,11 @@ private int popcnt_sw_32( uint x ) pure
 
 @trusted private int popcnt_hw_32( uint x ) pure
 {
-    asm {
-        mov EBX, x;
-        popcnt EAX, EBX;
+    version(AsmX86) {
+        asm {
+            mov EBX, x;
+            popcnt EAX, EBX;
+        }
     }
 }
 
@@ -292,12 +301,12 @@ private int popcnt_sw_64( ulong x ) pure
 
 @trusted private int popcnt_hw_64( ulong x ) pure
 {
-    version(X86_64) {
+    version(D_InlineAsm_X86_64) {
         asm {
             mov RBX, x;
             popcnt RAX, RBX;
         }
-    } else version(X86) {   // In case there are 32bit processors with popcnt?
+    } else version(D_InlineAsm_X86) {   // In case there are 32bit processors with popcnt?
         asm {
             mov EBX, [EBP+8];  // Get the first 32 bits of x
             popcnt EAX, EBX;   // count the set bits, save into eax
@@ -317,6 +326,10 @@ unittest
     assert( popcnt( 0xFFFF_FFFF ) == 32 );
     assert( popcnt( 0xCCCC_CCCC ) == 16 );
     assert( popcnt( 0x7777_7777 ) == 24 );
+    // 64 bit
+    assert( popcnt( 0xFFFF_FFFF_FFFF_FFFF ) == 64 );
+    assert( popcnt( 0xCCCC_CCCC_CCCC_CCCC ) == 32 );
+    assert( popcnt( 0x7777_7777_7777_7777 ) == 48 );
 }
 
 
