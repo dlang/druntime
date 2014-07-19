@@ -221,14 +221,18 @@ static this()
     import core.cpuid;
 
     // Only use popcnt_hw on systems that we have an implementation for.
-    version(AsmX86) {
+    version(AsmX86)
+    {
         const use_popcnt_asm = true;
     }
 
-    if (hasPopcnt() && use_popcnt_asm) {
+    if (hasPopcnt() && use_popcnt_asm)
+    {
         popcnt_32 = &popcnt_hw_32;
         popcnt_64 = &popcnt_hw_64;
-    } else {
+    }
+    else
+    {
         popcnt_32 = &popcnt_sw_32;
         popcnt_64 = &popcnt_sw_64;
     }
@@ -239,10 +243,12 @@ static this()
  */
 int popcnt(T)(T x) if (__traits(isIntegral, T) && (T.sizeof <= 8))
 {
-    static if (T.sizeof <= 4) {
+    static if (T.sizeof <= 4)
+    {
         return popcnt_32(x);  
     }
-    static if (T.sizeof == 8) {
+    static if (T.sizeof == 8)
+    {
         return popcnt_64(x);
     }
 }
@@ -280,10 +286,22 @@ private int popcnt_sw_32( uint x ) pure
 
 @trusted private int popcnt_hw_32( uint x ) pure
 {
-    version(AsmX86) {
-        asm {
-            mov EBX, x;
-            popcnt EAX, EBX;
+    version(AsmX86)
+    {
+        asm { naked; }
+        version (D_InlineAsm_X86_64)
+        {
+            version (Win64)
+                asm { mov EAX, ECX; }
+            else
+                asm { mov EAX, EDI; }
+        }
+        // On D Win32, fastcall will already put x into EAX
+        asm
+        {
+            popcnt EDX, EAX;
+            mov EAX, EDX;
+            ret;
         }
     }
 }
@@ -301,17 +319,27 @@ private int popcnt_sw_64( ulong x ) pure
 
 @trusted private int popcnt_hw_64( ulong x ) pure
 {
-    version(D_InlineAsm_X86_64) {
-        asm {
-            mov RBX, x;
-            popcnt RAX, RBX;
+    version (D_InlineAsm_X86_64)
+    {
+        asm { naked; }
+        version (Win64)
+        {
+            asm { popcnt RAX, RCX; }
         }
-    } else version(D_InlineAsm_X86) {   // In case there are 32bit processors with popcnt?
-        asm {
-            mov EBX, [EBP+8];  // Get the first 32 bits of x
-            popcnt EAX, EBX;   // count the set bits, save into eax
-            mov EBX, [EBP+12]; // Get the second 32 bits of x
-            popcnt ECX, EBX;   // count the set bits, save into ecx
+        else
+        {
+            asm { popcnt RAX, RDI; }
+        }
+        asm { ret; }
+    }
+    else version (D_InlineAsm_X86)   // In case there are 32bit processors with popcnt?
+    {
+        asm
+        {
+            mov EDX, [EBP+8];  // Get the first 32 bits of x
+            popcnt EAX, EDX;   // count the set bits, save into eax
+            mov EDX, [EBP+12]; // Get the second 32 bits of x
+            popcnt ECX, EDX;   // count the set bits, save into ecx
             add EAX, ECX;      // add ecx to eax
         }
     }
