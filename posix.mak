@@ -65,7 +65,7 @@ else
 endif
 
 DFLAGS=$(MODEL_FLAG) -O -release -inline -w -Isrc -Iimport $(PIC)
-UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport $(PIC)
+UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport -version=CoreUnitTest $(PIC)
 DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
 
 CFLAGS=$(MODEL_FLAG) -O $(PIC)
