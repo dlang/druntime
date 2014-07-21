@@ -142,7 +142,6 @@ ulong mach_absolute_time();
  +/
 struct Duration
 {
-    //Verify Examples.
     unittest
     {
         assert(dur!"days"(12) == Duration(10_368_000_000_000L));
@@ -1671,31 +1670,6 @@ unittest
     (microseconds), $(D "hnsecs") (hecto-nanoseconds, i.e. 100 ns), and
     $(D "nsecs").
 
-    Examples:
---------------------
-// Generic
-assert(dur!"weeks"(142).total!"weeks" == 142);
-assert(dur!"days"(142).total!"days" == 142);
-assert(dur!"hours"(142).total!"hours" == 142);
-assert(dur!"minutes"(142).total!"minutes" == 142);
-assert(dur!"seconds"(142).total!"seconds" == 142);
-assert(dur!"msecs"(142).total!"msecs" == 142);
-assert(dur!"usecs"(142).total!"usecs" == 142);
-assert(dur!"hnsecs"(142).total!"hnsecs" == 142);
-assert(dur!"nsecs"(142).total!"nsecs" == 100);
-
-// Non-generic
-assert(weeks(142).total!"weeks" == 142);
-assert(days(142).total!"days" == 142);
-assert(hours(142).total!"hours" == 142);
-assert(minutes(142).total!"minutes" == 142);
-assert(seconds(142).total!"seconds" == 142);
-assert(msecs(142).total!"msecs" == 142);
-assert(usecs(142).total!"usecs" == 142);
-assert(hnsecs(142).total!"hnsecs" == 142);
-assert(nsecs(142).total!"nsecs" == 100);
---------------------
-
     Params:
         units  = The time units of the $(D Duration) (e.g. $(D "days")).
         length = The number of units in the $(D Duration).
@@ -1724,7 +1698,7 @@ alias usecs   = dur!"usecs";   /// Ditto
 alias hnsecs  = dur!"hnsecs";  /// Ditto
 alias nsecs   = dur!"nsecs";   /// Ditto
 
-//Verify Examples.
+///
 unittest
 {
     // Generic
@@ -2506,23 +2480,6 @@ struct TickDuration
         from  = The units of time to convert from.
         to    = The units of time to convert to.
         value = The value to convert.
-
-    Examples:
---------------------
-assert(convert!("years", "months")(1) == 12);
-assert(convert!("months", "years")(12) == 1);
-
-assert(convert!("weeks", "days")(1) == 7);
-assert(convert!("hours", "seconds")(1) == 3600);
-assert(convert!("seconds", "days")(1) == 0);
-assert(convert!("seconds", "days")(86_400) == 1);
-
-assert(convert!("nsecs", "nsecs")(1) == 1);
-assert(convert!("nsecs", "hnsecs")(1) == 0);
-assert(convert!("hnsecs", "nsecs")(1) == 100);
-assert(convert!("nsecs", "seconds")(1) == 0);
-assert(convert!("seconds", "nsecs")(1) == 1_000_000_000);
---------------------
   +/
 long convert(string from, string to)(long value) @safe pure nothrow
     if(((from == "weeks" ||
@@ -2573,7 +2530,7 @@ long convert(string from, string to)(long value) @safe pure nothrow
         return (hnsecsPer!from * value) / hnsecsPer!to;
 }
 
-//Verify Examples
+///
 unittest
 {
     assert(convert!("years", "months")(1) == 12);
@@ -3385,18 +3342,6 @@ template hnsecsPer(string units)
 
     Returns:
         The number of the given units from converting hnsecs to those units.
-
-    Examples:
---------------------
-auto hnsecs = 2595000000007L;
-immutable days = splitUnitsFromHNSecs!"days"(hnsecs);
-assert(days == 3);
-assert(hnsecs == 3000000007);
-
-immutable minutes = splitUnitsFromHNSecs!"minutes"(hnsecs);
-assert(minutes == 5);
-assert(hnsecs == 7);
---------------------
   +/
 long splitUnitsFromHNSecs(string units)(ref long hnsecs) @safe pure nothrow
     if(units == "weeks" ||
@@ -3414,7 +3359,7 @@ long splitUnitsFromHNSecs(string units)(ref long hnsecs) @safe pure nothrow
     return value;
 }
 
-//Verify Examples.
+//
 unittest
 {
     auto hnsecs = 2595000000007L;
@@ -3441,14 +3386,6 @@ unittest
 
     Returns:
         The split out value.
-
-    Examples:
---------------------
-auto hnsecs = 2595000000007L;
-immutable days = getUnitsFromHNSecs!"days"(hnsecs);
-assert(days == 3);
-assert(hnsecs == 2595000000007L);
---------------------
   +/
 long getUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
     if(units == "weeks" ||
@@ -3463,7 +3400,7 @@ long getUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
     return convert!("hnsecs", units)(hnsecs);
 }
 
-//Verify Examples.
+//
 unittest
 {
     auto hnsecs = 2595000000007L;
@@ -3486,14 +3423,6 @@ unittest
 
     Returns:
         The remaining hnsecs.
-
-    Examples:
---------------------
-auto hnsecs = 2595000000007L;
-auto returned = removeUnitsFromHNSecs!"days"(hnsecs);
-assert(returned == 3000000007);
-assert(hnsecs == 2595000000007L);
---------------------
   +/
 long removeUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
     if(units == "weeks" ||
@@ -3510,7 +3439,7 @@ long removeUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
     return hnsecs - convert!(units, "hnsecs")(value);
 }
 
-//Verify Examples.
+//
 unittest
 {
     auto hnsecs = 2595000000007L;
@@ -3609,12 +3538,6 @@ unittest
 
 /+
     The time units which are one step larger than the given units.
-
-    Examples:
---------------------
-assert(nextLargerTimeUnits!"minutes" == "hours");
-assert(nextLargerTimeUnits!"hnsecs" == "usecs");
---------------------
   +/
 template nextLargerTimeUnits(string units)
     if(units == "days" ||
@@ -3646,7 +3569,7 @@ template nextLargerTimeUnits(string units)
         static assert(0, "Broken template constraint");
 }
 
-//Verify Examples.
+//
 unittest
 {
     assert(nextLargerTimeUnits!"minutes" == "hours");
