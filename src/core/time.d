@@ -142,7 +142,6 @@ ulong mach_absolute_time();
  +/
 struct Duration
 {
-    //Verify Examples.
     unittest
     {
         assert(dur!"days"(12) == Duration(10_368_000_000_000L));
@@ -1424,22 +1423,26 @@ public:
     /++
         Returns the total number of the given units in this $(D Duration).
         So, unlike $(D split), it does not strip out the larger units.
+
+        If T (the return type) is a floating-point type, the return value
+        will include the fractional part as well.
       +/
-    @property long total(string units)() @safe const pure nothrow
-        if(units == "weeks" ||
-           units == "days" ||
-           units == "hours" ||
-           units == "minutes" ||
-           units == "seconds" ||
-           units == "msecs" ||
-           units == "usecs" ||
-           units == "hnsecs" ||
-           units == "nsecs")
+    @property T total(string units, T = long)() @safe const pure nothrow
+        if((units == "weeks" ||
+            units == "days" ||
+            units == "hours" ||
+            units == "minutes" ||
+            units == "seconds" ||
+            units == "msecs" ||
+            units == "usecs" ||
+            units == "hnsecs" ||
+            units == "nsecs")
+           && is(T : real))
     {
         static if(units == "nsecs")
             return convert!("hnsecs", "nsecs")(_hnsecs);
         else
-            return getUnitsFromHNSecs!units(_hnsecs);
+            return getUnitsFromHNSecs!(units, T)(_hnsecs);
     }
 
     ///
@@ -1456,6 +1459,9 @@ public:
 
         assert(dur!"nsecs"(2007).total!"hnsecs" == 20);
         assert(dur!"nsecs"(2007).total!"nsecs" == 2000);
+
+        assert(dur!"hours"(12).total!("days", double).approxEqual(0.5));
+        assert(dur!"msecs"(5).total!("seconds", float).approxEqual(0.005f));
     }
 
     unittest
@@ -1671,36 +1677,11 @@ unittest
     (microseconds), $(D "hnsecs") (hecto-nanoseconds, i.e. 100 ns), and
     $(D "nsecs").
 
-    Examples:
---------------------
-// Generic
-assert(dur!"weeks"(142).total!"weeks" == 142);
-assert(dur!"days"(142).total!"days" == 142);
-assert(dur!"hours"(142).total!"hours" == 142);
-assert(dur!"minutes"(142).total!"minutes" == 142);
-assert(dur!"seconds"(142).total!"seconds" == 142);
-assert(dur!"msecs"(142).total!"msecs" == 142);
-assert(dur!"usecs"(142).total!"usecs" == 142);
-assert(dur!"hnsecs"(142).total!"hnsecs" == 142);
-assert(dur!"nsecs"(142).total!"nsecs" == 100);
-
-// Non-generic
-assert(weeks(142).total!"weeks" == 142);
-assert(days(142).total!"days" == 142);
-assert(hours(142).total!"hours" == 142);
-assert(minutes(142).total!"minutes" == 142);
-assert(seconds(142).total!"seconds" == 142);
-assert(msecs(142).total!"msecs" == 142);
-assert(usecs(142).total!"usecs" == 142);
-assert(hnsecs(142).total!"hnsecs" == 142);
-assert(nsecs(142).total!"nsecs" == 100);
---------------------
-
     Params:
         units  = The time units of the $(D Duration) (e.g. $(D "days")).
         length = The number of units in the $(D Duration).
   +/
-Duration dur(string units)(long length) @safe pure nothrow
+template dur(string units)
     if(units == "weeks" ||
        units == "days" ||
        units == "hours" ||
@@ -1711,7 +1692,11 @@ Duration dur(string units)(long length) @safe pure nothrow
        units == "hnsecs" ||
        units == "nsecs")
 {
-    return Duration(convert!(units, "hnsecs")(length));
+    Duration dur(T)(T length) @safe pure nothrow
+       if (is(T : real))
+    {
+        return Duration(cast(long)convert!(units, "hnsecs")(length));
+    }
 }
 
 alias weeks   = dur!"weeks";   /// Ditto
@@ -1724,7 +1709,7 @@ alias usecs   = dur!"usecs";   /// Ditto
 alias hnsecs  = dur!"hnsecs";  /// Ditto
 alias nsecs   = dur!"nsecs";   /// Ditto
 
-//Verify Examples.
+///
 unittest
 {
     // Generic
@@ -1748,6 +1733,10 @@ unittest
     assert(usecs(142).total!"usecs" == 142);
     assert(hnsecs(142).total!"hnsecs" == 142);
     assert(nsecs(142).total!"nsecs" == 100);
+
+    // Floating-point values are supported as well.
+    assert(dur!"days"(0.5).total!"hours" == 12);
+    assert(seconds(0.005).total!"msecs" == 5);
 }
 
 unittest
@@ -2004,16 +1993,18 @@ struct TickDuration
             units  = The time units of the $(D TickDuration) (e.g. $(D "msecs")).
             length = The number of units in the $(D TickDuration).
       +/
-    static TickDuration from(string units)(long length) @safe pure nothrow
-        if(units == "seconds" ||
-           units == "msecs" ||
-           units == "usecs" ||
-           units == "hnsecs" ||
-           units == "nsecs")
+    static TickDuration from(string units, T)(T length) @safe pure nothrow
+        if((units == "seconds" ||
+            units == "msecs" ||
+            units == "usecs" ||
+            units == "hnsecs" ||
+            units == "nsecs")
+           && is(T : real))
     {
-        enum unitsPerSec = convert!("seconds", units)(1);
+        enum unitsPerSec = convert!("seconds", units)(cast(real)1);
+        static assert(is(typeof(unitsPerSec) == real));
 
-        return TickDuration(cast(long)(length * (ticksPerSec / cast(real)unitsPerSec)));
+        return TickDuration(cast(long)(length * (ticksPerSec / unitsPerSec)));
     }
 
     unittest
@@ -2496,54 +2487,38 @@ struct TickDuration
 
 
 /++
-    Generic way of converting between two time units. Conversions to smaller
-    units use truncating division. Years and months can be converted to each
-    other, small units can be converted to each other, but years and months
-    cannot be converted to or from smaller units (due to the varying number
-    of days in a month or year).
+    Generic way of converting between two time units. For integer values,
+    conversions to smaller units use truncating division. Years and months
+    can be converted to each other, small units can be converted to each
+    other, but years and months cannot be converted to or from smaller
+    units (due to the varying number of days in a month or year).
 
     Params:
         from  = The units of time to convert from.
         to    = The units of time to convert to.
         value = The value to convert.
-
-    Examples:
---------------------
-assert(convert!("years", "months")(1) == 12);
-assert(convert!("months", "years")(12) == 1);
-
-assert(convert!("weeks", "days")(1) == 7);
-assert(convert!("hours", "seconds")(1) == 3600);
-assert(convert!("seconds", "days")(1) == 0);
-assert(convert!("seconds", "days")(86_400) == 1);
-
-assert(convert!("nsecs", "nsecs")(1) == 1);
-assert(convert!("nsecs", "hnsecs")(1) == 0);
-assert(convert!("hnsecs", "nsecs")(1) == 100);
-assert(convert!("nsecs", "seconds")(1) == 0);
-assert(convert!("seconds", "nsecs")(1) == 1_000_000_000);
---------------------
   +/
-long convert(string from, string to)(long value) @safe pure nothrow
-    if(((from == "weeks" ||
-         from == "days" ||
-         from == "hours" ||
-         from == "minutes" ||
-         from == "seconds" ||
-         from == "msecs" ||
-         from == "usecs" ||
-         from == "hnsecs" ||
-         from == "nsecs") &&
-        (to == "weeks" ||
-         to == "days" ||
-         to == "hours" ||
-         to == "minutes" ||
-         to == "seconds" ||
-         to == "msecs" ||
-         to == "usecs" ||
-         to == "hnsecs" ||
-         to == "nsecs")) ||
-       ((from == "years" || from == "months") && (to == "years" || to == "months")))
+auto convert(string from, string to, T)(T value) @safe pure nothrow
+    if ((((from == "weeks" ||
+           from == "days" ||
+           from == "hours" ||
+           from == "minutes" ||
+           from == "seconds" ||
+           from == "msecs" ||
+           from == "usecs" ||
+           from == "hnsecs" ||
+           from == "nsecs") &&
+          (to == "weeks" ||
+           to == "days" ||
+           to == "hours" ||
+           to == "minutes" ||
+           to == "seconds" ||
+           to == "msecs" ||
+           to == "usecs" ||
+           to == "hnsecs" ||
+           to == "nsecs")) ||
+         ((from == "years" || from == "months") && (to == "years" || to == "months")))
+        && is(T : real))
 {
     static if(from == "years")
     {
@@ -2568,12 +2543,17 @@ long convert(string from, string to)(long value) @safe pure nothrow
     else static if(from == "nsecs")
         return convert!("hnsecs", to)(value / 100);
     else static if(to == "nsecs")
-        return convert!(from, "hnsecs")(value) * 100;
+        return convert!(from, "hnsecs")(value) * 100L;
+    else static if(!is(T : long)) // floating-point
+    {
+        enum T frac = cast(T)hnsecsPer!from / cast(T)hnsecsPer!to;
+        return value * frac;
+    }
     else
         return (hnsecsPer!from * value) / hnsecsPer!to;
 }
 
-//Verify Examples
+///
 unittest
 {
     assert(convert!("years", "months")(1) == 12);
@@ -2588,7 +2568,10 @@ unittest
     assert(convert!("nsecs", "hnsecs")(1) == 0);
     assert(convert!("hnsecs", "nsecs")(1) == 100);
     assert(convert!("nsecs", "seconds")(1) == 0);
-    assert(convert!("seconds", "nsecs")(1) == 1_000_000_000);
+
+    // Floating-point values work as well:
+    assert(convert!("days", "hours")(0.5) == 12);
+    assert(convert!("msecs", "seconds")(5.0) == 0.005);
 }
 
 unittest
@@ -2711,11 +2694,12 @@ public:
             greater than or equal to $(D 1) second or less than or equal to
             $(D -1) seconds.
       +/
-    static FracSec from(string units)(long value) @safe pure
-        if(units == "msecs" ||
-           units == "usecs" ||
-           units == "hnsecs" ||
-           units == "nsecs")
+    static FracSec from(string units, T)(T value) @safe pure
+        if((units == "msecs" ||
+            units == "usecs" ||
+            units == "hnsecs" ||
+            units == "nsecs")
+           && is(T : real))
     {
         immutable hnsecs = cast(int)convert!(units, "hnsecs")(value);
         _enforceValid(hnsecs);
@@ -3385,18 +3369,6 @@ template hnsecsPer(string units)
 
     Returns:
         The number of the given units from converting hnsecs to those units.
-
-    Examples:
---------------------
-auto hnsecs = 2595000000007L;
-immutable days = splitUnitsFromHNSecs!"days"(hnsecs);
-assert(days == 3);
-assert(hnsecs == 3000000007);
-
-immutable minutes = splitUnitsFromHNSecs!"minutes"(hnsecs);
-assert(minutes == 5);
-assert(hnsecs == 7);
---------------------
   +/
 long splitUnitsFromHNSecs(string units)(ref long hnsecs) @safe pure nothrow
     if(units == "weeks" ||
@@ -3414,7 +3386,7 @@ long splitUnitsFromHNSecs(string units)(ref long hnsecs) @safe pure nothrow
     return value;
 }
 
-//Verify Examples.
+//
 unittest
 {
     auto hnsecs = 2595000000007L;
@@ -3441,29 +3413,22 @@ unittest
 
     Returns:
         The split out value.
-
-    Examples:
---------------------
-auto hnsecs = 2595000000007L;
-immutable days = getUnitsFromHNSecs!"days"(hnsecs);
-assert(days == 3);
-assert(hnsecs == 2595000000007L);
---------------------
   +/
-long getUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
-    if(units == "weeks" ||
-       units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs")
+T getUnitsFromHNSecs(string units, T=long)(long hnsecs) @safe pure nothrow
+    if((units == "weeks" ||
+        units == "days" ||
+        units == "hours" ||
+        units == "minutes" ||
+        units == "seconds" ||
+        units == "msecs" ||
+        units == "usecs" ||
+        units == "hnsecs")
+       && is(T : real))
 {
-    return convert!("hnsecs", units)(hnsecs);
+    return convert!("hnsecs", units)(cast(T)hnsecs);
 }
 
-//Verify Examples.
+//
 unittest
 {
     auto hnsecs = 2595000000007L;
@@ -3486,14 +3451,6 @@ unittest
 
     Returns:
         The remaining hnsecs.
-
-    Examples:
---------------------
-auto hnsecs = 2595000000007L;
-auto returned = removeUnitsFromHNSecs!"days"(hnsecs);
-assert(returned == 3000000007);
-assert(hnsecs == 2595000000007L);
---------------------
   +/
 long removeUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
     if(units == "weeks" ||
@@ -3510,7 +3467,7 @@ long removeUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow
     return hnsecs - convert!(units, "hnsecs")(value);
 }
 
-//Verify Examples.
+//
 unittest
 {
     auto hnsecs = 2595000000007L;
@@ -3609,12 +3566,6 @@ unittest
 
 /+
     The time units which are one step larger than the given units.
-
-    Examples:
---------------------
-assert(nextLargerTimeUnits!"minutes" == "hours");
-assert(nextLargerTimeUnits!"hnsecs" == "usecs");
---------------------
   +/
 template nextLargerTimeUnits(string units)
     if(units == "days" ||
@@ -3646,7 +3597,7 @@ template nextLargerTimeUnits(string units)
         static assert(0, "Broken template constraint");
 }
 
-//Verify Examples.
+//
 unittest
 {
     assert(nextLargerTimeUnits!"minutes" == "hours");
@@ -3857,4 +3808,25 @@ version(unittest) void assertApprox()(long actual,
         throw new AssertError(msg ~ ": lower: " ~ numToString(actual), __FILE__, line);
     if(actual > upper)
         throw new AssertError(msg ~ ": upper: " ~ numToString(actual), __FILE__, line);
+}
+
+// Local version of std.math.approxEqual.
+version(CoreUnitTest) bool approxEqual(T, U)(T lhs, U rhs)
+{
+    import core.math;
+
+    enum maxRelDiff = 1e-2;
+    enum maxAbsDiff = 1e-5;
+
+    if (rhs == 0)
+    {
+        return fabs(lhs) <= maxAbsDiff;
+    }
+    static if (is(typeof(lhs.infinity)) && is(typeof(rhs.infinity)))
+    {
+        if (lhs == lhs.infinity && rhs == rhs.infinity ||
+            lhs == -lhs.infinity && rhs == -rhs.infinity) return true;
+    }
+    return fabs((lhs - rhs) / rhs) <= maxRelDiff
+        || maxAbsDiff != 0 && fabs(lhs - rhs) <= maxAbsDiff;
 }
