@@ -96,9 +96,9 @@ class Object
     int opCmp(Object o)
     {
         // BUG: this prevents a compacting GC from working, needs to be fixed
-        //return cast(int)cast(void*)this - cast(int)cast(void*)o;
+        return cast(int)cast(void*)this - cast(int)cast(void*)o;
 
-        throw new Exception("need opCmp for class " ~ typeid(this).name);
+        //throw new Exception("need opCmp for class " ~ typeid(this).name);
         //return this !is o;
     }
 
