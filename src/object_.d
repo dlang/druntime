@@ -1587,7 +1587,8 @@ enum
 }
 
 
-struct ModuleInfo
+alias ModuleInfo = immutable(_ModuleInfo);
+struct _ModuleInfo
 {
     uint _flags;
     uint _index; // index into _moduleinfo_array[]
