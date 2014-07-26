@@ -67,6 +67,7 @@ alias immutable(dchar)[] dstring;
  */
 class Object
 {
+    private size_t _hash;
     /**
      * Convert Object to a human readable string.
      */
@@ -80,8 +81,9 @@ class Object
      */
     size_t toHash() @trusted nothrow
     {
-        // BUG: this prevents a compacting GC from working, needs to be fixed
-        return cast(size_t)cast(void*)this;
+        if (_hash > 0) return _hash;
+        _hash = cast(size_t)cast(void*)this;
+        return _hash;
     }
 
     /**
@@ -95,8 +97,8 @@ class Object
      */
     int opCmp(Object o)
     {
-        // BUG: this prevents a compacting GC from working, needs to be fixed
-        return cast(int)cast(void*)this - cast(int)cast(void*)o;
+        if (this is o) return 0;
+        return (cast(ptrdiff_t)cast(void*)this - cast(ptrdiff_t)cast(void*)o > 0) ? 1 : -1;
 
         //throw new Exception("need opCmp for class " ~ typeid(this).name);
         //return this !is o;
