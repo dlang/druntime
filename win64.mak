@@ -17,7 +17,7 @@ IMPDIR=import
 
 DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport
 UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport
-DDOCFLAGS=-c -w -o- -Isrc -Iimport
+DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
 
 #CFLAGS=/O2 /I"$(VCDIR)"\INCLUDE /I"$(SDKDIR)"\Include
 CFLAGS=/Z7 /I"$(VCDIR)"\INCLUDE /I"$(SDKDIR)"\Include
@@ -26,7 +26,7 @@ DRUNTIME_BASE=druntime64
 DRUNTIME=lib\$(DRUNTIME_BASE).lib
 GCSTUB=lib\gcstub64.obj
 
-DOCFMT=-version=CoreDdoc
+DOCFMT=
 
 target : import copydir copy $(DRUNTIME) $(GCSTUB)
 
@@ -57,6 +57,9 @@ $(DOCDIR)\core_atomic.html : src\core\atomic.d
 $(DOCDIR)\core_bitop.html : src\core\bitop.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
+$(DOCDIR)\core_checkedint.html : src\core\checkedint.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
 $(DOCDIR)\core_cpuid.html : src\core\cpuid.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
@@ -78,7 +81,7 @@ $(DOCDIR)\core_runtime.html : src\core\runtime.d
 $(DOCDIR)\core_simd.html : src\core\simd.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
-$(DOCDIR)\core_thread.html : src\core\thread.di
+$(DOCDIR)\core_thread.html : src\core\thread.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 $(DOCDIR)\core_time.html : src\core\time.d
@@ -159,6 +162,9 @@ $(IMPDIR)\core\atomic.d : src\core\atomic.d
 $(IMPDIR)\core\bitop.d : src\core\bitop.d
 	copy $** $@
 
+$(IMPDIR)\core\checkedint.d : src\core\checkedint.d
+	copy $** $@
+
 $(IMPDIR)\core\cpuid.d : src\core\cpuid.d
 	copy $** $@
 
@@ -180,7 +186,7 @@ $(IMPDIR)\core\runtime.d : src\core\runtime.d
 $(IMPDIR)\core\simd.d : src\core\simd.d
 	copy $** $@
 
-$(IMPDIR)\core\thread.di : src\core\thread.di
+$(IMPDIR)\core\thread.d : src\core\thread.d
 	copy $** $@
 
 $(IMPDIR)\core\time.d : src\core\time.d
@@ -189,10 +195,13 @@ $(IMPDIR)\core\time.d : src\core\time.d
 $(IMPDIR)\core\vararg.d : src\core\vararg.d
 	copy $** $@
 
+$(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
+	copy $** $@
+
 $(IMPDIR)\core\internal\hash.d : src\core\internal\hash.d
 	copy $** $@
 
-$(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
+$(IMPDIR)\core\internal\traits.d : src\core\internal\traits.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d
@@ -498,9 +507,9 @@ unittest : $(SRCS) $(DRUNTIME) src\unittest.d
 
 zip: druntime.zip
 
-druntime.zip: doc import
+druntime.zip: import
 	del druntime.zip
-	zip32 -T -ur druntime $(MANIFEST) $(DOCS) $(IMPDIR) src\rt\minit.obj
+	zip32 -T -ur druntime $(MANIFEST) $(IMPDIR) src\rt\minit.obj
 
 install: druntime.zip
 	unzip -o druntime.zip -d \dmd2\src\druntime

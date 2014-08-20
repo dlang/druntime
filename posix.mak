@@ -31,7 +31,11 @@ ifeq (,$(OS))
 endif
 
 ifeq (,$(MODEL))
-  uname_M:=$(shell uname -m)
+  ifeq ($(OS),solaris)
+    uname_M:=$(shell isainfo -n)
+  else
+    uname_M:=$(shell uname -m)
+  endif
   ifneq (,$(findstring $(uname_M),x86_64 amd64))
     MODEL:=64
   endif
@@ -65,6 +69,9 @@ UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport $(PIC)
 DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
 
 CFLAGS=$(MODEL_FLAG) -O $(PIC)
+ifeq (solaris,$(OS))
+    CFLAGS+=-D_REENTRANT  # for thread-safe errno
+endif
 
 ifeq (osx,$(OS))
     ASMFLAGS =
@@ -101,14 +108,14 @@ SRCS:=$(subst \,/,$(SRCS))
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32	 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/threadasm.o
+OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/bss_section.o $(OBJDIR)/threadasm.o
 
 ######################## All of'em ##############################
 
 ifeq (linux,$(OS))
-target : import copy dll $(DRUNTIME) doc
+target : import copy dll $(DRUNTIME)
 else
-target : import copy $(DRUNTIME) doc
+target : import copy $(DRUNTIME)
 endif
 
 ######################## Doc .html file generation ##############################
@@ -116,9 +123,6 @@ endif
 doc: $(DOCS)
 
 $(DOCDIR)/object.html : src/object_.d
-	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
-
-$(DOCDIR)/core_%.html : src/core/%.di
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_%.html : src/core/%.d
@@ -201,7 +205,7 @@ $(addprefix $(OBJDIR)/,$(DISABLED_TESTS)) :
 ifneq (linux,$(OS))
 
 $(OBJDIR)/test_runner: $(OBJS) $(SRCS) src/test_runner.d
-	$(DMD) $(UDFLAGS) -version=druntime_unittest -unittest -of$@ src/test_runner.d $(SRCS) $(OBJS) -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -unittest -of$@ src/test_runner.d $(SRCS) $(OBJS) -debuglib= -defaultlib=
 
 else
 
@@ -210,7 +214,7 @@ UT_DRUNTIME:=$(OBJDIR)/lib$(DRUNTIME_BASE)-ut$(DOTDLL)
 $(UT_DRUNTIME): override PIC:=-fPIC
 $(UT_DRUNTIME): UDFLAGS+=-version=Shared
 $(UT_DRUNTIME): $(OBJS) $(SRCS)
-	$(DMD) $(UDFLAGS) -shared -version=druntime_unittest -unittest -of$@ $(SRCS) $(OBJS) -L-ldl -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -shared -unittest -of$@ $(SRCS) $(OBJS) -L-ldl -debuglib= -defaultlib=
 
 $(OBJDIR)/test_runner: $(UT_DRUNTIME) src/test_runner.d
 	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L$(UT_DRUNTIME) -debuglib= -defaultlib=
@@ -242,13 +246,11 @@ detab:
 
 zip: druntime.zip
 
-druntime.zip: $(MANIFEST) $(DOCS) $(IMPORTS)
+druntime.zip: $(MANIFEST) $(IMPORTS)
 	rm -rf $@
 	zip $@ $^
 
 install: target
-	mkdir -p $(INSTALL_DIR)/html
-	cp -r doc/* $(INSTALL_DIR)/html/
 	mkdir -p $(INSTALL_DIR)/import
 	cp -r import/* $(INSTALL_DIR)/import/
 	mkdir -p $(INSTALL_DIR)/lib
