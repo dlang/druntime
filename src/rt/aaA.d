@@ -352,7 +352,7 @@ inout(ArrayRet_t) _aaValues(inout AA aa, in size_t keysize, in size_t valuesize)
 /********************************************
  * Rehash an array.
  */
-void* _aaRehash(AA* paa, in TypeInfo keyti) pure nothrow
+void* _aaRehash(AA* paa, in TypeInfo keyti) @trusted pure nothrow
 in
 {
     //_aaInvAh(paa);
