@@ -35,7 +35,7 @@ extern (C):
 nothrow:
 @nogc:
 
-version( Win32 )
+version( CRuntime_DigitalMars )
 {
     enum
     {
@@ -52,7 +52,7 @@ version( Win32 )
     enum wstring _wP_tmpdir = "\\"; // non-standard
     enum int     L_tmpnam   = _P_tmpdir.length + 12;
 }
-else version( Win64 )
+else version( CRuntime_Microsoft )
 {
     enum
     {
@@ -178,7 +178,7 @@ enum
     SEEK_END
 }
 
-version( Win32 )
+version( CRuntime_DigitalMars )
 {
     alias int fpos_t; //check this
 
@@ -196,7 +196,7 @@ version( Win32 )
 
     alias shared(_iobuf) FILE;
 }
-else version( Win64 )
+else version( CRuntime_Microsoft )
 {
     alias int fpos_t; //check this
 
@@ -401,7 +401,7 @@ enum
     _F_TERM = 0x0200, // non-standard
 }
 
-version( Win32 )
+version( CRuntime_DigitalMars )
 {
     enum
     {
@@ -429,7 +429,7 @@ version( Win32 )
     shared stdaux = &_iob[3];
     shared stdprn = &_iob[4];
 }
-else version( Win64 )
+else version( CRuntime_Microsoft )
 {
     enum
     {
@@ -662,8 +662,8 @@ version( MinGW )
   // No unsafe pointer manipulation.
   extern (D) @trusted
   {
-    void rewind(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag&=~_IOERR; }
-    pure void clearerr(FILE* stream) { stream._flag &= ~(_IOERR|_IOEOF);                 }
+    void rewind(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag = stream._flag & ~_IOERR; }
+    pure void clearerr(FILE* stream) { stream._flag = stream._flag & ~(_IOERR|_IOEOF);                 }
     pure int  feof(FILE* stream)     { return stream._flag&_IOEOF;                       }
     pure int  ferror(FILE* stream)   { return stream._flag&_IOERR;                       }
   }
@@ -675,13 +675,13 @@ version( MinGW )
     alias __mingw_vsnprintf _vsnprintf;
     alias __mingw_vsnprintf vsnprintf;
 }
-else version( Win32 )
+else version( CRuntime_DigitalMars )
 {
   // No unsafe pointer manipulation.
   extern (D) @trusted
   {
-    void rewind(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag&=~_IOERR; }
-    pure void clearerr(FILE* stream) { stream._flag &= ~(_IOERR|_IOEOF);                 }
+    void rewind(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag= stream._flag & ~_IOERR; }
+    pure void clearerr(FILE* stream) { stream._flag = stream._flag & ~(_IOERR|_IOEOF);                 }
     pure int  feof(FILE* stream)     { return stream._flag&_IOEOF;                       }
     pure int  ferror(FILE* stream)   { return stream._flag&_IOERR;                       }
   }
@@ -691,13 +691,13 @@ else version( Win32 )
     int   _vsnprintf(char* s, size_t n, in char* format, va_list arg);
     alias _vsnprintf vsnprintf;
 }
-else version( Win64 )
+else version( CRuntime_Microsoft )
 {
   // No unsafe pointer manipulation.
   extern (D) @trusted
   {
-    void rewind(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag&=~_IOERR; }
-    pure void clearerr(FILE* stream) { stream._flag &= ~(_IOERR|_IOEOF);                 }
+    void rewind(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag = stream._flag & ~_IOERR; }
+    pure void clearerr(FILE* stream) { stream._flag = stream._flag & ~(_IOERR|_IOEOF);                 }
     pure int  feof(FILE* stream)     { return stream._flag&_IOEOF;                       }
     pure int  ferror(FILE* stream)   { return stream._flag&_IOERR;                       }
     pure int  fileno(FILE* stream)   { return stream._file;                              }
@@ -716,16 +716,26 @@ else version( Win64 )
 
     int _fputc_nolock(int c, FILE *fp)
     {
-        if (--fp._cnt >= 0)
-            return *fp._ptr++ = cast(char)c;
+        fp._cnt = fp._cnt - 1;
+        if (fp._cnt >= 0)
+        {
+            *fp._ptr = cast(char)c;
+            fp._ptr = fp._ptr + 1;
+            return cast(char)c;
+        }
         else
             return _flsbuf(c, fp);
     }
 
     int _fgetc_nolock(FILE *fp)
     {
-        if (--fp._cnt >= 0)
-            return *fp._ptr++;
+        fp._cnt = fp._cnt - 1;
+        if (fp._cnt >= 0)
+        {
+            char c = *fp._ptr;
+            fp._ptr = fp._ptr + 1;
+            return c;
+        }
         else
             return _filbuf(fp);
     }
@@ -818,7 +828,7 @@ else
 
 void perror(in char* s);
 
-version (DigitalMars) version (Win32)
+version(CRuntime_DigitalMars)
 {
     import core.sys.windows.windows;
 
@@ -834,9 +844,9 @@ version (DigitalMars) version (Win32)
     private enum _MAX_SEMAPHORES = 10 + _NFILE;
     private enum _semIO = 3;
 
-    private extern __gshared short _iSemLockCtrs[_MAX_SEMAPHORES];
-    private extern __gshared int _iSemThreadIds[_MAX_SEMAPHORES];
-    private extern __gshared int _iSemNestCount[_MAX_SEMAPHORES];
+    private extern __gshared short[_MAX_SEMAPHORES] _iSemLockCtrs;
+    private extern __gshared int[_MAX_SEMAPHORES] _iSemThreadIds;
+    private extern __gshared int[_MAX_SEMAPHORES] _iSemNestCount;
     private extern __gshared HANDLE[_NFILE] _osfhnd;
     private extern __gshared ubyte[_NFILE] __fhnd_info;
 

@@ -20,6 +20,7 @@ MANIFEST=\
 	\
 	src\core\atomic.d \
 	src\core\bitop.d \
+	src\core\checkedint.d \
 	src\core\cpuid.d \
 	src\core\demangle.d \
 	src\core\exception.d \
@@ -28,7 +29,6 @@ MANIFEST=\
 	src\core\runtime.d \
 	src\core\simd.d \
 	src\core\thread.d \
-	src\core\thread.di \
 	src\core\threadasm.S \
 	src\core\time.d \
 	src\core\vararg.d \
@@ -119,6 +119,7 @@ MANIFEST=\
 	src\core\sys\posix\signal.d \
 	src\core\sys\posix\stdio.d \
 	src\core\sys\posix\stdlib.d \
+	src\core\sys\posix\syslog.d \
 	src\core\sys\posix\termios.d \
 	src\core\sys\posix\time.d \
 	src\core\sys\posix\ucontext.d \
@@ -148,6 +149,11 @@ MANIFEST=\
 	src\core\sys\posix\sys\utsname.d \
 	src\core\sys\posix\sys\wait.d \
 	\
+	src\core\sys\solaris\sys\priocntl.d \
+	src\core\sys\solaris\sys\procset.d \
+	src\core\sys\solaris\sys\types.d \
+	src\core\sys\solaris\execinfo.d \
+	\
 	src\core\sys\windows\dbghelp.d \
 	src\core\sys\windows\dll.d \
 	src\core\sys\windows\stacktrace.d \
@@ -176,6 +182,7 @@ MANIFEST=\
 	src\rt\arrayint.d \
 	src\rt\arrayreal.d \
 	src\rt\arrayshort.d \
+	src\rt\bss_section.c \
 	src\rt\cast_.d \
 	src\rt\cmath2.d \
 	src\rt\cover.d \

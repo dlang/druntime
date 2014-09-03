@@ -19,6 +19,7 @@ module gc.gc;
 
 //debug = PRINTF;               // turn on printf's
 //debug = COLLECT_PRINTF;       // turn on printf's
+//debug = PRINTF_TO_FILE;       // redirect printf's ouptut to file "gcx.log"
 //debug = LOGGING;              // log allocations / frees
 //debug = MEMSTOMP;             // stomp on memory
 //debug = SENTINEL;             // add underrun/overrrun protection
@@ -54,10 +55,33 @@ private alias BlkInfo = core.memory.GC.BlkInfo;
 
 version (GNU) import gcc.builtins;
 
-debug (PRINTF) import core.stdc.stdio : printf;
-debug (CACHE_HITRATE) import core.stdc.stdio : printf;
-debug (COLLECT_PRINTF) import core.stdc.stdio : printf;
+     debug (PRINTF_TO_FILE) import core.stdc.stdio : fprintf, fopen, fflush, FILE;
+else debug (PRINTF) import core.stdc.stdio : printf;
+else debug (CACHE_HITRATE) import core.stdc.stdio : printf;
+else debug (COLLECT_PRINTF) import core.stdc.stdio : printf;
 debug private import core.stdc.stdio;
+
+debug(PRINTF_TO_FILE)
+{
+    import core.time;
+
+    private __gshared MonoTime gcStartTick;
+    private __gshared FILE* gcx_fh;
+
+    private int printf(ARGS...)(const char* fmt, ARGS args) nothrow
+    {
+        if (gcStartTick == MonoTime.init)
+            gcStartTick = MonoTime.currTime;
+        if (!gcx_fh)
+            gcx_fh = fopen("gcx.log", "w");
+        immutable timeElapsed = MonoTime.currTime - gcStartTick;
+        immutable secondsAsDouble = diff.total!"hnsecs" / cast(double)convert!("seconds", "hnsecs")(1);
+        int len = fprintf(gcx_fh, "%10.6lf: ", secondsAsDouble);
+        len += fprintf(gcx_fh, fmt, args);
+        fflush(gcx_fh);
+        return len;
+    }
+}
 
 debug(PRINTF) void printFreeInfo(Pool* pool) nothrow
 {
@@ -87,7 +111,10 @@ private
     // The maximum number of recursions of mark() before transitioning to
     // multiple heap traversals to avoid consuming O(D) stack space where
     // D is the depth of the heap graph.
-    enum MAX_MARK_RECURSIONS = 64;
+    version(Win64)
+        enum MAX_MARK_RECURSIONS = 32; // stack overflow in fibers
+    else
+        enum MAX_MARK_RECURSIONS = 64;
 }
 
 private
@@ -97,12 +124,6 @@ private
     extern (C) void rt_finalize2(void* p, bool det, bool resetMemory) nothrow;
     extern (C) int rt_hasFinalizerInSegment(void* p, in void[] segment) nothrow;
 
-    enum IsMarked : int
-    {
-        no,
-        yes,
-        unknown, // memory is not managed by GC, treated as yes by lifetime.processGCMarks
-    }
     enum
     {
         OPFAIL = ~cast(size_t)0
@@ -220,7 +241,7 @@ const uint GCVERSION = 1;       // increment every time we change interface
                                 // to GC.
 
 // This just makes Mutex final to de-virtualize member function calls.
-final class GCMutex : Mutex 
+final class GCMutex : Mutex
 {
     // it doesn't make sense to use Exception throwing functions here, because allocating
     //  the exception will try to lock the mutex again, probably resulting in stack overflow
@@ -313,6 +334,7 @@ class GC
 
             if (pool)
             {
+                p = sentinel_sub(p);
                 auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
                 oldb = gcx.getBits(pool, biti);
@@ -344,6 +366,7 @@ class GC
 
             if (pool)
             {
+                p = sentinel_sub(p);
                 auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
                 oldb = gcx.getBits(pool, biti);
@@ -376,6 +399,7 @@ class GC
 
             if (pool)
             {
+                p = sentinel_sub(p);
                 auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
                 oldb = gcx.getBits(pool, biti);
@@ -412,7 +436,7 @@ class GC
         // when allocating.
         {
             gcLock.lock();
-            p = mallocNoSync(size, bits, alloc_size, ti);
+            p = mallocNoSync(size, bits, *alloc_size, ti);
             gcLock.unlock();
         }
 
@@ -428,7 +452,7 @@ class GC
     //
     //
     //
-    private void *mallocNoSync(size_t size, uint bits = 0, size_t *alloc_size = null, const TypeInfo ti = null) nothrow
+    private void *mallocNoSync(size_t size, uint bits, ref size_t alloc_size, const TypeInfo ti = null) nothrow
     {
         assert(size != 0);
 
@@ -448,8 +472,7 @@ class GC
 
         if (bin < B_PAGE)
         {
-            if(alloc_size)
-                *alloc_size = binsize[bin];
+            alloc_size = binsize[bin];
             int  state     = gcx.disabled ? 1 : 0;
             bool collected = false;
 
@@ -504,13 +527,13 @@ class GC
             size -= SENTINEL_EXTRA;
             p = sentinel_add(p);
             sentinel_init(p, size);
-            *alloc_size = size;
+            alloc_size = size;
         }
         gcx.log_malloc(p, size);
 
         if (bits)
         {
-            gcx.setBits(pool, cast(size_t)(p - pool.baseAddr) >> pool.shiftBy, bits);
+            gcx.setBits(pool, cast(size_t)(sentinel_sub(p) - pool.baseAddr) >> pool.shiftBy, bits);
         }
         return p;
     }
@@ -537,7 +560,7 @@ class GC
         // when allocating.
         {
             gcLock.lock();
-            p = mallocNoSync(size, bits, alloc_size, ti);
+            p = mallocNoSync(size, bits, *alloc_size, ti);
             gcLock.unlock();
         }
 
@@ -564,7 +587,7 @@ class GC
         // when allocating.
         {
             gcLock.lock();
-            p = reallocNoSync(p, size, bits, alloc_size, ti);
+            p = reallocNoSync(p, size, bits, *alloc_size, ti);
             gcLock.unlock();
         }
 
@@ -578,9 +601,9 @@ class GC
 
 
     //
+    // bits will be set to the resulting bits of the new block
     //
-    //
-    private void *reallocNoSync(void *p, size_t size, uint bits = 0, size_t *alloc_size = null, const TypeInfo ti = null) nothrow
+    private void *reallocNoSync(void *p, size_t size, ref uint bits, ref size_t alloc_size, const TypeInfo ti = null) nothrow
     {
         if (gcx.running)
             onInvalidMemoryOperationError();
@@ -590,8 +613,7 @@ class GC
             {   freeNoSync(p);
                 p = null;
             }
-            if(alloc_size)
-                *alloc_size = 0;
+            alloc_size = 0;
         }
         else if (!p)
         {
@@ -614,7 +636,7 @@ class GC
 
                         if (pool)
                         {
-                            auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
+                            auto biti = cast(size_t)(sentinel_sub(p) - pool.baseAddr) >> pool.shiftBy;
 
                             if (bits)
                             {
@@ -664,6 +686,8 @@ class GC
                         pool.freepages -= (newsz - psz);
                         debug(PRINTF) printFreeInfo(pool);
                     }
+                    else
+                        goto Lfallthrough; // does not fit into current pool
                     pool.updateOffsets(pagenum);
                     if (bits)
                     {
@@ -671,8 +695,7 @@ class GC
                         gcx.clrBits(pool, biti, ~BlkAttr.NONE);
                         gcx.setBits(pool, biti, bits);
                     }
-                    if(alloc_size)
-                        *alloc_size = newsz * PAGESIZE;
+                    alloc_size = newsz * PAGESIZE;
                     return p;
                     Lfallthrough:
                         {}
@@ -701,8 +724,8 @@ class GC
                     memcpy(p2, p, size);
                     p = p2;
                 }
-                else if(alloc_size)
-                    *alloc_size = psize;
+                else
+                    alloc_size = psize;
             }
         }
         return p;
@@ -851,17 +874,27 @@ class GC
         pool = gcx.findPool(p);
         if (!pool)                              // if not one of ours
             return;                             // ignore
-        sentinel_Invariant(p);
-        p = sentinel_sub(p);
+
         pagenum = pool.pagenumOf(p);
 
         debug(PRINTF) printf("pool base = %p, PAGENUM = %d of %d, bin = %d\n", pool.baseAddr, pagenum, pool.npages, pool.pagetable[pagenum]);
         debug(PRINTF) if(pool.isLargeObject) printf("Block size = %d\n", pool.bPageOffsets[pagenum]);
+
+        bin = cast(Bins)pool.pagetable[pagenum];
+
+        // Verify that the pointer is at the beginning of a block,
+        //  no action should be taken if p is an interior pointer
+        if (bin > B_PAGE) // B_PAGEPLUS or B_FREE
+            return;
+        if ((sentinel_sub(p) - pool.baseAddr) & (binsize[bin] - 1))
+            return;
+
+        sentinel_Invariant(p);
+        p = sentinel_sub(p);
         biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
         gcx.clrBits(pool, biti, ~BlkAttr.NONE);
 
-        bin = cast(Bins)pool.pagetable[pagenum];
         if (bin == B_PAGE)              // if large alloc
         {   size_t npages;
 
@@ -913,7 +946,10 @@ class GC
             return null;
         }
 
-        return gcx.findBase(p);
+        auto q = gcx.findBase(p);
+        if (q)
+            q = sentinel_add(q);
+        return q;
     }
 
 
@@ -996,7 +1032,16 @@ class GC
     {
         assert(p);
 
-        return gcx.getInfo(p);
+        BlkInfo info = gcx.getInfo(p);
+        debug(SENTINEL)
+        {
+            if (info.base)
+            {
+                info.base = sentinel_add(info.base);
+                info.size = *sentinel_size(info.base);
+            }
+        }
+        return info;
     }
 
 
@@ -1339,8 +1384,8 @@ struct Root
 }
 
 
-immutable uint binsize[B_MAX] = [ 16,32,64,128,256,512,1024,2048,4096 ];
-immutable size_t notbinsize[B_MAX] = [ ~(16-1),~(32-1),~(64-1),~(128-1),~(256-1),
+immutable uint[B_MAX] binsize = [ 16,32,64,128,256,512,1024,2048,4096 ];
+immutable size_t[B_MAX] notbinsize = [ ~(16-1),~(32-1),~(64-1),~(128-1),~(256-1),
                                 ~(512-1),~(1024-1),~(2048-1),~(4096-1) ];
 
 /* ============================ Gcx =============================== */
@@ -1373,7 +1418,7 @@ struct Gcx
     size_t npools;
     Pool **pooltable;
 
-    List *bucket[B_MAX];        // free list for each size
+    List*[B_MAX]bucket;        // free list for each size
 
 
     void initialize()
@@ -1984,13 +2029,7 @@ struct Gcx
         usePools();
 
         {
-            version (Bug7068_FIXED)
-                Pool*[NPOOLS] opools = gcx.pooltable[0 .. NPOOLS];
-            else
-            {
-                Pool*[NPOOLS] opools = void;
-                memcpy(opools.ptr, gcx.pooltable, (Pool*).sizeof * NPOOLS);
-            }
+            Pool*[NPOOLS] opools = gcx.pooltable[0 .. NPOOLS];
             gcx.pooltable[2].freepages = NPAGES;
 
             gcx.minimize();
@@ -2062,7 +2101,7 @@ struct Gcx
      * Allocate a chunk of memory that is larger than a page.
      * Return null if out of memory.
      */
-    void *bigAlloc(size_t size, Pool **poolPtr, size_t *alloc_size = null) nothrow
+    void *bigAlloc(size_t size, Pool **poolPtr, ref size_t alloc_size) nothrow
     {
         debug(PRINTF) printf("In bigAlloc.  Size:  %d\n", size);
 
@@ -2148,8 +2187,7 @@ struct Gcx
         p = pool.baseAddr + pn * PAGESIZE;
         debug(PRINTF) printf("Got large alloc:  %p, pt = %d, np = %d\n", p, pool.pagetable[pn], npages);
         debug (MEMSTOMP) memset(p, 0xF1, size);
-        if(alloc_size)
-            *alloc_size = npages * PAGESIZE;
+        alloc_size = npages * PAGESIZE;
         //debug(PRINTF) printf("\tp = %p\n", p);
 
         *poolPtr = pool;
@@ -2339,7 +2377,7 @@ struct Gcx
                     {
                         auto offsetBase = offset & notbinsize[bin];
                         base = pool.baseAddr + offsetBase;
-                        pointsToBase = offsetBase == offset;
+                        pointsToBase = (base == sentinel_sub(p));
                         biti = offsetBase >> pool.shiftBy;
                         //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
 
@@ -2425,7 +2463,7 @@ struct Gcx
         running = 1;
 
         thread_suspendAll();
-        
+
         anychanges = 0;
         for (n = 0; n < npools; n++)
         {
@@ -3362,8 +3400,13 @@ debug (SENTINEL)
 
     void sentinel_Invariant(const void *p) nothrow
     {
-        assert(*sentinel_pre(p) == SENTINEL_PRE);
-        assert(*sentinel_post(p) == SENTINEL_POST);
+        debug
+        {
+            assert(*sentinel_pre(p) == SENTINEL_PRE);
+            assert(*sentinel_post(p) == SENTINEL_POST);
+        }
+        else if(*sentinel_pre(p) != SENTINEL_PRE || *sentinel_post(p) != SENTINEL_POST)
+            onInvalidMemoryOperationError(); // also trigger in release build
     }
 
 

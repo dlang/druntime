@@ -18,8 +18,7 @@ private import core.sys.posix.config;
 private import core.sys.posix.signal; // for sigset_t
 
 version (Posix):
-extern (C):
-@nogc:
+extern (C) nothrow @nogc:
 
 //
 // Required
@@ -83,7 +82,7 @@ version( linux )
             {
                 void * __pc;
                 void * __sp;
-                int __regs[8];
+                int[8] __regs;
                 void * __fp;
                 void * __gp;
             }
@@ -91,15 +90,15 @@ version( linux )
             {
                 long __pc;
                 long __sp;
-                long __regs[8];
+                long[8] __regs;
                 long __fp;
                 long __gp;
             }
             int __fpc_csr;
             version (MIPS_N64)
-                double __fpregs[8];
+                double[8] __fpregs;
             else
-                double __fpregs[6];
+                double[6] __fpregs;
         }
     }
     else version (MIPS64)
@@ -108,14 +107,14 @@ version( linux )
         {
             long __pc;
             long __sp;
-            long __regs[8];
+            long[8] __regs;
             long __fp;
             long __gp;
             int __fpc_csr;
             version (MIPS_N64)
-                double __fpregs[8];
+                double[8] __fpregs;
             else
-                double __fpregs[6];
+                double[6] __fpregs;
         }
     }
     else

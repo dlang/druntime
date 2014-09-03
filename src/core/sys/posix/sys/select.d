@@ -24,7 +24,7 @@ public import core.sys.posix.signal;    // for sigset_t
 version(unittest) import core.stdc.stdio: printf;
 
 version (Posix):
-extern (C):
+extern (C) nothrow @nogc:
 
 //
 // Required
@@ -181,7 +181,7 @@ else version( FreeBSD )
 
     struct fd_set
     {
-        __fd_mask __fds_bits[(FD_SETSIZE + (_NFDBITS - 1)) / _NFDBITS];
+        __fd_mask[(FD_SETSIZE + (_NFDBITS - 1)) / _NFDBITS] __fds_bits;
     }
 
     extern (D) __fd_mask __fdset_mask(uint n)

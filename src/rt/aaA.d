@@ -72,7 +72,7 @@ struct Impl
     TypeInfo _keyti;
     Entry*[4] binit;    // initial value of buckets[]
 
-    @property const(TypeInfo) keyti() const @safe pure nothrow
+    @property const(TypeInfo) keyti() const @safe pure nothrow @nogc
     { return _keyti; }
 }
 
@@ -89,7 +89,7 @@ struct AA
  * GC won't be faced with misaligned pointers
  * in value.
  */
-size_t aligntsize(in size_t tsize) @safe pure nothrow
+size_t aligntsize(in size_t tsize) @safe pure nothrow @nogc
 {
     version (D_LP64) {
         // align to 16 bytes on 64-bit
@@ -105,7 +105,7 @@ extern (C):
 /****************************************************
  * Determine number of entries in associative array.
  */
-size_t _aaLen(in AA aa) pure nothrow
+size_t _aaLen(in AA aa) pure nothrow @nogc
 in
 {
     //printf("_aaLen()+\n");
@@ -441,7 +441,7 @@ inout(ArrayRet_t) _aaKeys(inout AA aa, in size_t keysize) pure nothrow
     return *cast(inout ArrayRet_t*)(&a);
 }
 
-unittest
+pure nothrow unittest
 {
     int[string] aa;
 
@@ -626,7 +626,7 @@ Impl* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, vo
 }
 
 
-const(TypeInfo_AssociativeArray) _aaUnwrapTypeInfo(const(TypeInfo) tiRaw) pure nothrow
+const(TypeInfo_AssociativeArray) _aaUnwrapTypeInfo(const(TypeInfo) tiRaw) pure nothrow @nogc
 {
     const(TypeInfo)* p = &tiRaw;
     TypeInfo_AssociativeArray ti;
@@ -762,7 +762,7 @@ hash_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow
     import rt.util.hash;
 
     if (aa.impl is null)
-    	return 0;
+        return 0;
 
     hash_t h = 0;
     const TypeInfo_AssociativeArray ti = _aaUnwrapTypeInfo(tiRaw);
@@ -772,33 +772,33 @@ hash_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow
 
     foreach (const(Entry)* e; aa.impl.buckets)
     {
-	while (e)
-	{
-	    auto pkey = cast(void*)(e + 1);
-	    auto pvalue = pkey + keysize;
+        while (e)
+        {
+            auto pkey = cast(void*)(e + 1);
+            auto pvalue = pkey + keysize;
 
-	    // Compute a hash for the key/value pair by hashing their
-	    // respective hash values.
-	    hash_t[2] hpair;
-	    hpair[0] = e.hash;
-	    hpair[1] = valueti.getHash(pvalue);
+            // Compute a hash for the key/value pair by hashing their
+            // respective hash values.
+            hash_t[2] hpair;
+            hpair[0] = e.hash;
+            hpair[1] = valueti.getHash(pvalue);
 
-	    // Combine the hash of the key/value pair with the running hash
-	    // value using an associative operator (+) so that the resulting
-	    // hash value is independent of the actual order the pairs are
-	    // stored in (important to ensure equality of hash value for two
-	    // AA's containing identical pairs but with different hashtable
-	    // sizes).
-	    h += hashOf(hpair.ptr, hpair.length * hash_t.sizeof);
+            // Combine the hash of the key/value pair with the running hash
+            // value using an associative operator (+) so that the resulting
+            // hash value is independent of the actual order the pairs are
+            // stored in (important to ensure equality of hash value for two
+            // AA's containing identical pairs but with different hashtable
+            // sizes).
+            h += hashOf(hpair.ptr, hpair.length * hash_t.sizeof);
 
-	    e = e.next;
-	}
+            e = e.next;
+        }
     }
 
     return h;
 }
 
-unittest
+pure nothrow unittest
 {
     string[int] key1 = [1: "true", 2: "false"];
     string[int] key2 = [1: "false", 2: "true"];
@@ -825,7 +825,7 @@ unittest
 }
 
 // Issue 9852
-unittest
+pure nothrow unittest
 {
     // Original test case (revised, original assert was wrong)
     int[string] a;
@@ -857,7 +857,7 @@ struct Range
 }
 
 
-Range _aaRange(AA aa)
+Range _aaRange(AA aa) pure nothrow @nogc
 {
     typeof(return) res;
     if (aa.impl is null)
@@ -876,13 +876,13 @@ Range _aaRange(AA aa)
 }
 
 
-bool _aaRangeEmpty(Range r)
+bool _aaRangeEmpty(Range r) pure nothrow @nogc
 {
     return r.current is null;
 }
 
 
-void* _aaRangeFrontKey(Range r)
+void* _aaRangeFrontKey(Range r) pure nothrow @nogc
 in
 {
     assert(r.current !is null);
@@ -893,7 +893,7 @@ body
 }
 
 
-void* _aaRangeFrontValue(Range r)
+void* _aaRangeFrontValue(Range r) pure nothrow @nogc
 in
 {
     assert(r.current !is null);
@@ -905,7 +905,7 @@ body
 }
 
 
-void _aaRangePopFront(ref Range r)
+void _aaRangePopFront(ref Range r) pure nothrow @nogc
 {
     if (r.current.next !is null)
     {

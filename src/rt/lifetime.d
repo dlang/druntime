@@ -73,10 +73,11 @@ extern (C) Object _d_newclass(const ClassInfo ci)
     else
     {
         // TODO: should this be + 1 to avoid having pointers to the next block?
-        BlkAttr attr = BlkAttr.FINALIZE;
+        BlkAttr attr = BlkAttr.NONE;
         // extern(C++) classes don't have a classinfo pointer in their vtable so the GC can't finalize them
-        if (ci.m_flags & TypeInfo_Class.ClassFlags.isCPPclass)
-            attr &= ~BlkAttr.FINALIZE;
+        if (ci.m_flags & TypeInfo_Class.ClassFlags.hasDtor
+            && !(ci.m_flags & TypeInfo_Class.ClassFlags.isCPPclass))
+            attr |= BlkAttr.FINALIZE;
         if (ci.m_flags & TypeInfo_Class.ClassFlags.noPointers)
             attr |= BlkAttr.NO_SCAN;
         p = GC.malloc(ci.init.length, attr, ci);
@@ -154,6 +155,24 @@ extern (C) void _d_delclass(Object* p)
             rt_finalize(cast(void*) *p);
         }
         GC.free(cast(void*) *p);
+        *p = null;
+    }
+}
+
+/**
+ * This is called for a delete statement where the value
+ * being deleted is a pointer to a struct with a destructor
+ * but doesn't have an overloaded delete operator.
+ */
+extern (C) void _d_delstruct(void** p, TypeInfo_Struct inf)
+{
+    if (*p)
+    {
+        debug(PRINTF) printf("_d_delstruct(%p, %p)\n", *p, cast(void*)inf);
+
+        inf.xdtor(*p);
+
+        GC.free(*p);
         *p = null;
     }
 }
@@ -990,9 +1009,7 @@ extern (C) void[] _d_newarraymiT(const TypeInfo ti, size_t ndims, ...)
 
 extern (C) void* _d_newitemT(TypeInfo ti)
 {
-    // BUG ti is actually still the array typeinfo.  Not that this is a
-    // difficult thing to workaround...
-    auto size = ti.next.tsize;                  // array element size
+    auto size = ti.tsize;                  // array element size
 
     debug(PRINTF) printf("_d_newitemT(size = %d)\n", size);
     /* not sure if we need this...
@@ -1001,7 +1018,7 @@ extern (C) void* _d_newitemT(TypeInfo ti)
     else
     {*/
         // allocate a block to hold this item
-        auto ptr = GC.malloc(size, !(ti.next.flags & 1) ? BlkAttr.NO_SCAN : 0, ti);
+        auto ptr = GC.malloc(size, !(ti.flags & 1) ? BlkAttr.NO_SCAN : 0, ti);
         debug(PRINTF) printf(" p = %p\n", ptr);
         if(size == ubyte.sizeof)
             *cast(ubyte*)ptr = 0;
@@ -1018,9 +1035,7 @@ extern (C) void* _d_newitemT(TypeInfo ti)
 
 extern (C) void* _d_newitemiT(TypeInfo ti)
 {
-    // BUG ti is actually still the array typeinfo.  Not that this is a
-    // difficult thing to workaround...
-    auto size = ti.next.tsize;                  // array element size
+    auto size = ti.tsize;                  // array element size
 
     debug(PRINTF) printf("_d_newitemiT(size = %d)\n", size);
 
@@ -1028,11 +1043,11 @@ extern (C) void* _d_newitemiT(TypeInfo ti)
         result = null;
     else
     {*/
-        auto initializer = ti.next.init();
+        auto initializer = ti.init();
         auto isize = initializer.length;
         auto q = initializer.ptr;
 
-        auto ptr = GC.malloc(size, !(ti.next.flags & 1) ? BlkAttr.NO_SCAN : 0, ti);
+        auto ptr = GC.malloc(size, !(ti.flags & 1) ? BlkAttr.NO_SCAN : 0, ti);
         debug(PRINTF) printf(" p = %p\n", ptr);
         if (isize == 1)
             *cast(ubyte*)ptr =  *cast(ubyte*)q;
@@ -1938,6 +1953,90 @@ extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c)
 
 
 /**
+ * Append wchar[] to char[]
+ */
+extern (C) void _d_arrayappendcwa(ref char[] chars, in wchar[] wchars)
+{
+    auto arr = cast(byte[]*)&chars;
+    foreach(dchar c; wchars)
+        *arr = cast(byte[])_d_arrayappendcd(*arr, c);
+}
+
+
+/**
+ * Append dchar[] to char[]
+ */
+extern (C) void _d_arrayappendcda(ref char[] chars, in dchar[] dchars)
+{
+    auto arr = cast(byte[]*)&chars;
+    foreach(dchar c; dchars)
+        *arr = cast(byte[])_d_arrayappendcd(*arr, c);
+}
+
+
+/**
+ * Append char[] to wchar[]
+ */
+extern (C) void _d_arrayappendwca(ref wchar[] wchars, in char[] chars)
+{
+    auto arr = cast(byte[]*)&wchars;
+    foreach(dchar c; chars)
+        *arr = cast(byte[])_d_arrayappendwd(*arr, c);
+}
+
+
+/**
+ * Append dchar[] to wchar[]
+ */
+extern (C) void _d_arrayappendwda(ref wchar[] wchars, in dchar[] dchars)
+{
+    auto arr = cast(byte[]*)&wchars;
+    foreach(dchar c; dchars)
+        *arr = cast(byte[])_d_arrayappendwd(*arr, c);
+}
+
+
+/**
+ * Append char[] to dchar[]
+ */
+extern (C) void _d_arrayappenddca(ref dchar[] dchars, in char[] chars)
+{
+    foreach(dchar c; chars)
+        dchars ~= c;
+}
+
+
+/**
+ * Append wchar[] to dchar[]
+ */
+extern (C) void _d_arrayappenddwa(ref dchar[] dchars, in wchar[] wchars)
+{
+    foreach(dchar c; wchars)
+        dchars ~= c;
+}
+
+
+unittest
+{
+    auto chars = "a"c.dup;
+    auto wchars = "b"w.dup;
+    auto dchars = "c"d.dup;
+
+    _d_arrayappendcwa(chars, "b"w);
+    _d_arrayappendcda(chars, "c"d);
+    assert(chars == "abc");
+
+    _d_arrayappendwca(wchars, "a"c);
+    _d_arrayappendwda(wchars, "c"d);
+    assert(wchars == "bac");
+
+    _d_arrayappenddca(dchars, "a"c);
+    _d_arrayappenddwa(dchars, "b"w);
+    assert(dchars == "cab");
+}
+
+
+/**
  *
  */
 extern (C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y)
@@ -2278,7 +2377,8 @@ unittest
         }
     }
     auto sarr = new S[1];
-    assert(sarr.capacity == 1);
+    debug(SENTINEL) {} else
+        assert(sarr.capacity == 1);
 
     // length extend
     auto sarr2 = sarr;
@@ -2354,7 +2454,8 @@ unittest
     auto s3 = new S3(1);
     assert(s3.x == [1,1,1,1]);
     assert(GC.getAttr(s3) == BlkAttr.NO_SCAN);
-    assert(GC.sizeOf(s3) == 16);
+    debug(SENTINEL) {} else
+        assert(GC.sizeOf(s3) == 16);
 
     auto s4 = new S4;
     assert(s4.x == null);

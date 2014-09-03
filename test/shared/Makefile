@@ -7,9 +7,9 @@ DRUNTIMESO:=
 QUIET:=
 
 SRC:=src
-ROOT:=obj/$(OS)/$(MODEL)
+ROOT:=./obj/$(OS)/$(MODEL)
 TESTS:=link load linkD linkDR loadDR host finalize
-TESTS+=link_linkdep load_linkdep link_loaddep load_loaddep
+TESTS+=link_linkdep load_linkdep link_loaddep load_loaddep load_13414
 
 ifneq (default,$(MODEL))
 	MODEL_FLAG:=-m$(MODEL)
@@ -24,7 +24,7 @@ $(ROOT)/loadDR.done: RUN_ARGS:=$(DRUNTIMESO)
 
 $(ROOT)/%.done: $(ROOT)/%
 	@echo Testing $*
-	$(QUIET)./$(ROOT)/$* $(RUN_ARGS)
+	$(QUIET)$(ROOT)/$* $(RUN_ARGS)
 	@touch $@
 
 $(ROOT)/link: $(SRC)/link.d $(ROOT)/lib.so $(DRUNTIMESO)
@@ -43,6 +43,9 @@ $(ROOT)/load_loaddep: $(SRC)/load_loaddep.d $(ROOT)/lib.so $(ROOT)/libloaddep.so
 	$(QUIET)$(DMD) $(DFLAGS) -of$@ $< $(LINKFLAGS) -L-ldl
 
 $(ROOT)/load $(ROOT)/finalize: $(ROOT)/%: $(SRC)/%.d $(ROOT)/lib.so $(DRUNTIMESO)
+	$(QUIET)$(DMD) $(DFLAGS) -of$@ $< -L-ldl
+
+$(ROOT)/load_13414: $(ROOT)/%: $(SRC)/%.d $(ROOT)/lib_13414.so $(DRUNTIMESO)
 	$(QUIET)$(DMD) $(DFLAGS) -of$@ $< -L-ldl
 
 $(ROOT)/linkD: $(SRC)/linkD.c $(ROOT)/lib.so $(DRUNTIMESO)

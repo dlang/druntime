@@ -57,6 +57,8 @@ private
         import core.sys.freebsd.execinfo;
     else version( Windows )
         import core.sys.windows.stacktrace;
+    else version( Solaris )
+        import core.sys.solaris.execinfo;
 
     // For runModuleUnitTests error reporting.
     version( Windows )
@@ -250,7 +252,7 @@ struct Runtime
 
 
     /**
-     * Overrides the default trace mechanism with s user-supplied version.  A
+     * Overrides the default trace mechanism with a user-supplied version.  A
      * trace represents the context from which an exception was thrown, and the
      * trace handler will be called when this occurs.  The pointer supplied to
      * this routine indicates the base address from which tracing should occur.
@@ -398,24 +400,9 @@ extern (C) bool runModuleUnitTests()
         {
             if( m )
             {
-                foreach(test; m.unitTests)
-                {
-                    if(test.disabled)
-                        continue;
-                    try
-                    {
-                        test.func();
-                    }
-                    catch( Throwable e )
-                    {
-                        e.toString(&printErr); printErr("\n");
-                        failed++;
-                    }
-                }
-
-
                 auto fp = m.unitTest;
-                if( m.unitTests.length == 0 && fp )
+
+                if( fp )
                 {
                     try
                     {
@@ -594,6 +581,18 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                 {
                     // format is: 0x00000000 <_D6module4funcAFZv+0x78> at module
                     auto bptr = cast(char*) memchr( buf.ptr, '<', buf.length );
+                    auto eptr = cast(char*) memchr( buf.ptr, '+', buf.length );
+
+                    if( bptr++ && eptr )
+                    {
+                        symBeg = bptr - buf.ptr;
+                        symEnd = eptr - buf.ptr;
+                    }
+                }
+                else version( Solaris )
+                {
+                    // format is object'symbol+offset [pc]
+                    auto bptr = cast(char*) memchr( buf.ptr, '\'', buf.length );
                     auto eptr = cast(char*) memchr( buf.ptr, '+', buf.length );
 
                     if( bptr++ && eptr )

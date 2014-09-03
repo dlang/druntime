@@ -9,7 +9,7 @@
  *
  * Notes_to_implementors:
  * $(UL
- * $(LI On POSIX systems, the signals SIGUSR1 and SIGUSR2 and reserved
+ * $(LI On POSIX systems, the signals SIGUSR1 and SIGUSR2 are reserved
  *   by this module for use in the garbage collector implementation.
  *   Typically, they will be used to stop and resume other threads
  *   when performing a collection, but an implementation may choose
@@ -431,6 +431,19 @@ struct GC
     static void* realloc( void* p, size_t sz, uint ba = 0, const TypeInfo ti = null ) pure nothrow
     {
         return gc_realloc( p, sz, ba, ti );
+    }
+
+    /// Issue 13111
+    unittest
+    {
+        enum size1 = 1 << 11 + 1; // page in large object pool
+        enum size2 = 1 << 22 + 1; // larger than large object pool size
+
+        auto data1 = cast(ubyte*)GC.calloc(size1);
+        auto data2 = cast(ubyte*)GC.realloc(data1, size2);
+
+        BlkInfo info = query(data2);
+        assert(info.size >= size2);
     }
 
 
