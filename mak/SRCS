@@ -162,6 +162,14 @@ SRCS=\
 ifeq ($(GC_TYPE),stub)
 	SRCS += \
 		src\gc\stub\gc.d
+else ifeq ($(GC_TYPE),concurrent)
+	SRCS += \
+	    src\gc\concurrent\gc.d \
+		src\gc\concurrent\os.d \
+		src\gc\concurrent\opts.d \
+		src\gc\concurrent\bits.d \
+		src\gc\concurrent\stats.d \
+		src\gc\concurrent\dynarray.d
 else
 	SRCS += \
 		src\gc\basic\gc.d \

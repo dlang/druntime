@@ -259,9 +259,16 @@ MANIFEST=\
 ifeq ($(GC_TYPE),stub)
 	MANIFEST += \
 		src\gc\stub\gc.d
+else ifeq ($(GC_TYPE),concurrent)
+	MANIFEST += \
+		src\gc\concurrent\gc.d \
+		src\gc\concurrent\os.d \
+		src\gc\concurrent\opts.d \
+		src\gc\concurrent\bits.d \
+		src\gc\concurrent\stats.d \
+		src\gc\concurrent\dynarray.d
 else
 	MANIFEST += \
-		src\gc\basic\gc.d \
 		src\gc\basic\os.d \
 		src\gc\basic\bits.d \
 		src\gc\basic\stats.d \
