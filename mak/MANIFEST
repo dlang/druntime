@@ -162,15 +162,6 @@ MANIFEST=\
 	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\windows.d \
 	\
-	src\gc\gc.d \
-	src\gc\os.d \
-	src\gc\bits.d \
-	src\gc\config.d \
-	src\gc\stats.d \
-	src\gc\proxy.d \
-	\
-	src\gcstub\gc.d \
-	\
 	src\rt\aApply.d \
 	src\rt\aApplyR.d \
 	src\rt\aaA.d \
@@ -264,3 +255,15 @@ MANIFEST=\
 	src\rt\util\container\treap.d \
 	\
 	src\etc\linux\memoryerror.d
+
+ifeq ($(GC_TYPE),stub)
+	MANIFEST += \
+		src\gc\stub\gc.d
+else
+	MANIFEST += \
+		src\gc\basic\gc.d \
+		src\gc\basic\os.d \
+		src\gc\basic\bits.d \
+		src\gc\basic\stats.d \
+		src\gc\basic\proxy.d
+endif

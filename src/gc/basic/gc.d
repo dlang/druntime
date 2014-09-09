@@ -11,7 +11,7 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-module gc.gc;
+module gc.basic.gc;
 
 // D Programming Language Garbage Collector implementation
 
@@ -25,6 +25,7 @@ module gc.gc;
 //debug = SENTINEL;             // add underrun/overrrun protection
 //debug = PTRCHECK;             // more pointer checking
 //debug = PTRCHECK2;            // thorough but slow pointer checking
+//debug = PROFILING;            // measure performance of various steps.
 //debug = INVARIANT;            // enable invariants
 //debug = CACHE_HITRATE;        // enable hit rate measure
 
@@ -36,10 +37,9 @@ version = STACKGROWSDOWN;       // growing the stack means subtracting from the 
 
 /***************************************************/
 
-import gc.bits;
-import gc.stats;
-import gc.os;
-import gc.config;
+import gc.basic.bits;
+import gc.basic.stats;
+import gc.basic.os;
 
 import rt.util.container.treap;
 
@@ -93,14 +93,16 @@ debug(PRINTF) void printFreeInfo(Pool* pool) nothrow
     printf("Pool %p:  %d really free, %d supposedly free\n", pool, nReallyFree, pool.freepages);
 }
 
-// Track total time spent preparing for GC,
-// marking, sweeping and recovering pages.
-import core.stdc.stdio, core.stdc.time;
-__gshared long prepTime;
-__gshared long markTime;
-__gshared long sweepTime;
-__gshared long recoverTime;
-__gshared size_t maxPoolMemory;
+debug(PROFILING)
+{
+    // Track total time spent preparing for GC,
+    // marking, sweeping and recovering pages.
+    import core.stdc.stdio, core.stdc.time;
+    __gshared long prepTime;
+    __gshared long markTime;
+    __gshared long sweepTime;
+    __gshared long recoverTime;
+}
 
 private
 {
@@ -263,12 +265,8 @@ class GC
     __gshared GCMutex gcLock;    // global lock
     __gshared byte[__traits(classInstanceSize, GCMutex)] mutexStorage;
 
-    __gshared Config config;
-
     void initialize()
     {
-        config.initialize();
-
         mutexStorage[] = typeid(GCMutex).init[];
         gcLock = cast(GCMutex) mutexStorage.ptr;
         gcLock.__ctor();
@@ -276,11 +274,6 @@ class GC
         if (!gcx)
             onOutOfMemoryError();
         gcx.initialize();
-
-        if (config.initReserve)
-            gcx.reserve(config.initReserve << 20);
-        if (config.disable)
-            gcx.disabled++;
     }
 
 
@@ -1442,7 +1435,7 @@ struct Gcx
 
     void Dtor()
     {
-        if (GC.config.profile)
+        debug(PROFILING)
         {
             printf("\tTotal GC prep time:  %d milliseconds\n",
                 prepTime * 1000 / CLOCKS_PER_SEC);
@@ -1452,11 +1445,9 @@ struct Gcx
                 sweepTime * 1000 / CLOCKS_PER_SEC);
             printf("\tTotal page recovery time:  %d milliseconds\n",
                 recoverTime * 1000 / CLOCKS_PER_SEC);
-            long pauseTime = recoverTime + sweepTime + markTime + prepTime;
             printf("\tGrand total GC time:  %d milliseconds\n",
-                pauseTime * 1000 / CLOCKS_PER_SEC);
-            printf("maxPoolMemory = %lld MB, pause time = %lld ms\n", 
-                   cast(long) maxPoolMemory >> 20, 1000 * pauseTime / CLOCKS_PER_SEC);
+                1000 * (recoverTime + sweepTime + markTime + prepTime)
+                / CLOCKS_PER_SEC);
         }
 
         debug(CACHE_HITRATE)
@@ -2222,10 +2213,9 @@ struct Gcx
         //debug(PRINTF) printf("************Gcx::newPool(npages = %d)****************\n", npages);
 
         // Minimum of POOLSIZE
-        size_t minPages = (GC.config.minPoolSize << 20) / PAGESIZE;
-        if (npages < minPages)
-            npages = minPages;
-        else if (npages > minPages)
+        if (npages < POOLSIZE/PAGESIZE)
+            npages = POOLSIZE/PAGESIZE;
+        else if (npages > POOLSIZE/PAGESIZE)
         {   // Give us 150% of requested size, so there's room to extend
             auto n = npages + (npages >> 1);
             if (n < size_t.max/PAGESIZE)
@@ -2236,10 +2226,9 @@ struct Gcx
         if (npools)
         {   size_t n;
 
-            n = GC.config.minPoolSize + GC.config.incPoolSize * npools;
-            if (n > GC.config.maxPoolSize)
-                n = GC.config.maxPoolSize;                 // cap pool size
-            n *= (1 << 20) / PAGESIZE;                     // convert MB to pages
+            n = npools * 3;
+            
+            n *= (POOLSIZE / PAGESIZE);
             if (npages < n)
                 npages = n;
         }
@@ -2272,15 +2261,6 @@ struct Gcx
 
             minAddr = pooltable[0].baseAddr;
             maxAddr = pooltable[npools - 1].topAddr;
-        }
-
-        if (GC.config.profile)
-        {
-            size_t gcmem = 0;
-            for(i = 0; i < npools; i++)
-                gcmem += pooltable[i].topAddr - pooltable[i].baseAddr;
-            if(gcmem > maxPoolMemory)
-                maxPoolMemory = gcmem;
         }
         return pool;
 
@@ -2465,10 +2445,10 @@ struct Gcx
     {
         size_t n;
         Pool*  pool;
-        clock_t start, stop;
 
-        if (GC.config.profile)
+        debug(PROFILING)
         {
+            clock_t start, stop;
             start = clock();
         }
 
@@ -2515,7 +2495,7 @@ struct Gcx
             }
         }
 
-        if (GC.config.profile)
+        debug(PROFILING)
         {
             stop = clock();
             prepTime += (stop - start);
@@ -2610,7 +2590,7 @@ struct Gcx
         thread_processGCMarks(&isMarked);
         thread_resumeAll();
 
-        if (GC.config.profile)
+        debug(PROFILING)
         {
             stop = clock();
             markTime += (stop - start);
@@ -2731,7 +2711,7 @@ struct Gcx
             }
         }
 
-        if (GC.config.profile)
+        debug(PROFILING)
         {
             stop = clock();
             sweepTime += (stop - start);
@@ -2792,7 +2772,7 @@ struct Gcx
             }
         }
 
-        if (GC.config.profile)
+        debug(PROFILING)
         {
             stop = clock();
             recoverTime += (stop - start);
