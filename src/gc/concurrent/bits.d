@@ -24,11 +24,11 @@
  * Authors:   Walter Bright, David Friedman, Sean Kelly
  */
 
-module rt.gc.cdgc.bits;
+module gc.concurrent.bits;
 
-import os = rt.gc.cdgc.os;
+import os = gc.concurrent.os;
 
-import cstring = tango.stdc.string;
+import cstring = core.stdc.string;
 
 private extern (C) void onOutOfMemoryError();
 
@@ -36,7 +36,7 @@ private extern (C) void onOutOfMemoryError();
 version (DigitalMars)
 {
     version = bitops;
-    import std.intrinsic;
+    import core.bitop;
 }
 else version (GNU)
 {
@@ -53,9 +53,9 @@ else version (D_InlineAsm_X86)
 
 struct GCBits
 {
-    const int BITS_PER_WORD = 32;
-    const int BITS_SHIFT = 5;
-    const int BITS_MASK = 31;
+    enum int BITS_PER_WORD = 32;
+    enum int BITS_SHIFT = 5;
+    enum int BITS_MASK = 31;
 
     uint*  data = null;
     size_t nwords = 0;    // allocated words in data[] excluding sentinals
@@ -133,7 +133,7 @@ struct GCBits
     {
         version (bitops)
         {
-            return std.intrinsic.btr(cast(size_t*) (data + 1), i);
+            return btr(cast(size_t*) (data + 1), i);
         }
         else version (Asm86)
         {

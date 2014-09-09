@@ -24,14 +24,14 @@
  * Authors:   Walter Bright, Sean Kelly, Leandro Lucarella
  */
 
-module rt.gc.cdgc.stats;
+module gc.concurrent.stats;
 
-import gc = rt.gc.cdgc.gc;
-import rt.gc.cdgc.bits: GCBits;
-import rt.gc.cdgc.opts: options;
+import gc = gc.concurrent.gc;
+import gc.concurrent.bits: GCBits;
+import gc.concurrent.opts: options;
 
-import cstdio = tango.stdc.stdio;
-import ctime = tango.stdc.posix.sys.time;
+import cstdio = core.stdc.stdio;
+import ctime = core.sys.posix.sys.time;
 
 
 private:
@@ -229,7 +229,7 @@ private:
         }
     }
 
-    cstdio.FILE* start_file(char* filename, char* header)
+    cstdio.FILE* start_file(const char* filename, const char* header)
     {
         cstdio.FILE* file = cstdio.fopen(filename, "w");
         if (file !is null)

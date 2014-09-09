@@ -31,14 +31,14 @@
  * Authors: Leandro Lucarella
  */
 
-module rt.gc.cdgc.opts;
+module gc.concurrent.opts;
 
 //debug = PRINTF;
 
-import cstdlib = tango.stdc.stdlib;
-import cstring = tango.stdc.string;
-import cerrno = tango.stdc.errno;
-debug (PRINTF) import tango.stdc.stdio: printf;
+import cstdlib = core.stdc.stdlib;
+import cstring = core.stdc.string;
+import cerrno = core.stdc.errno;
+debug (PRINTF) import core.stdc.stdio: printf;
 
 
 private:
@@ -62,7 +62,7 @@ struct Options
     bool fork = true;
     bool eager_alloc = false;
     bool early_collect = true;
-    uint min_free = 10; // percent of the heap (0-100)
+    long min_free = 10; // percent of the heap (0-100)
     size_t prealloc_psize = 0;
     size_t prealloc_npools = 0;
 }
@@ -75,7 +75,7 @@ void print_options()
 {
     int b(bool v) { return v; }
     with (options)
-    printf("rt.gc.cdgc.opts: verbose=%u, log_file='%s', "
+    printf("gc.concurrent.opts: verbose=%u, log_file='%s', "
             "malloc_stats_file='%s', collect_stats_file='%s', sentinel=%d, "
             "mem_stomp=%d, conservative=%d, fork=%d, eager_alloc=%d, "
             "early_collect=%d, min_free=%u, prealloc_psize=%lu, "
@@ -86,13 +86,13 @@ void print_options()
 }
 
 
-bool cstr_eq(char* s1, char* s2)
+bool cstr_eq(const char* s1,const char* s2)
 {
     return cstring.strcmp(s1, s2) == 0;
 }
 
 
-bool parse_bool(char* value)
+bool parse_bool(const char* value)
 {
     if (value[0] == '\0')
         return true;
@@ -100,7 +100,7 @@ bool parse_bool(char* value)
 }
 
 
-void parse_prealloc(char* value)
+void parse_prealloc(const char* value)
 {
     char* end;
     cerrno.errno = 0;
@@ -125,17 +125,17 @@ void parse_prealloc(char* value)
 }
 
 
-void parse_min_free(char* value)
+void parse_min_free(const char* value)
 {
     char* end;
-    long free = cstdlib.strtol(value, &end, 10);
+    auto free = cstdlib.strtol(value, &end, 10);
     if (*end != '\0' || end == value || cerrno.errno || free < 0 || free > 100)
         return;
     options.min_free = free;
 }
 
 
-void process_option(char* opt_name, char* opt_value)
+void process_option(const char* opt_name,const char* opt_value)
 {
     if (cstr_eq(opt_name, "verbose"))
         options.verbose = cstdlib.atoi(opt_value);
@@ -164,7 +164,7 @@ void process_option(char* opt_name, char* opt_value)
 }
 
 
-package void parse(char* opts_string)
+package void parse(const(char)* opts_string)
 {
     char[MAX_OPT_LEN] opt_name;
     opt_name[0] = '\0';
@@ -173,7 +173,7 @@ package void parse(char* opts_string)
     char* curr = opt_name.ptr;
     size_t i = 0;
     if (opts_string is null) {
-        debug (PRINTF) printf("rt.gc.cdgc.opts: no options overriden\n");
+        debug (PRINTF) printf("gc.concurrent.opts: no options overriden\n");
         return;
     }
     for (; *opts_string != '\0'; opts_string++)

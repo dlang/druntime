@@ -11,13 +11,13 @@
  * Authors:   Leandro Lucarella <llucax@gmail.com>
  */
 
-module rt.gc.cdgc.dynarray;
+module gc.concurrent.dynarray;
 
-import tango.stdc.stdlib: realloc;
-import tango.stdc.string: memmove;
+import core.stdc.stdlib: realloc;
+import core.stdc.string: memmove;
 
 
-private void Invariant(T)(DynArray!(T)* a)
+private void Invariant(T)(const(DynArray!(T))* a)
 {
         assert ((a._data && a._capacity)
                     || ((a._data is null) && (a._capacity == 0)));
@@ -52,15 +52,12 @@ public:
 
     invariant()
     {
-        .Invariant(this);
+        .Invariant!(T)(&this);
     }
 
-    /**
-     * Check the structure invariant.
-     */
     void Invariant()
     {
-        .Invariant(this);
+        .Invariant!(T)(&this);
     }
 
     /**
@@ -121,7 +118,7 @@ public:
      * successful, null otherwise (i.e. an allocation was triggered but the
      * allocation failed) in which case the internal state is not changed.
      */
-    T* append(in T x)
+    T* append(T x)
     {
         if (this._size == this._capacity)
             if (!this.resize())
@@ -149,7 +146,7 @@ public:
      * successful, null otherwise (i.e. an allocation was triggered but the
      * allocation failed) in which case the internal state is not changed.
      */
-    T* insert_sorted(char[] cmp = "a < b")(in T x)
+    T* insert_sorted(string cmp = "a < b")(T x)
     {
         size_t i = 0;
         for (; i < this._size; i++) {
@@ -204,7 +201,7 @@ public:
      * Returns true if the resize was successful, false otherwise (and the
      * internal state is not changed).
      */
-    bool resize(in size_t new_capacity=0)
+    bool resize(size_t new_capacity = 0)
     {
         // adjust new_capacity if necessary
         if (new_capacity == 0)
@@ -249,21 +246,20 @@ unittest // DynArray
     assert (array.ptr !is null);
     for (auto i = 0; i < array.length; i++)
         assert (array[i] == 5);
-        assert (*array[i] == 5);
     assert (array.append(6));
     assert (array.length == 2);
     assert (array.capacity >= 2);
     assert (array.ptr !is null);
     int j = 0;
     while (j < array.length)
-        assert (*array[j] == (5 + j++));
+        assert (array[j] == (5 + j++));
     assert (j == 2);
     array.remove(5);
     assert (array.length == 1);
     assert (array.capacity >= 1);
     assert (array.ptr !is null);
     for (auto i = 0; i < array.length; i++)
-        assert (*array[i] == 6);
+        assert (array[i] == 6);
     assert (array.resize(100));
     assert (array.length == 1);
     assert (array.capacity >= 100);

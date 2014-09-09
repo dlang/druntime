@@ -24,7 +24,7 @@
  * Authors:   Walter Bright, David Friedman, Sean Kelly
  */
 
-module rt.gc.cdgc.gc;
+module gc.concurrent.gc;
 
 // D Programming Language Garbage Collector implementation
 
@@ -40,17 +40,55 @@ version = STACKGROWSDOWN;       // growing the stack means subtracting from the 
                                 // (use for Intel X86 CPUs)
                                 // else growing the stack means adding to the stack pointer
 
+import core.stdc.stdio : printf;
+
+// pointer map stub
+// not used, to be removed completely
+
+struct PointerMap
+{
+     size_t[] bits = [1, 1, 0];
+
+     private enum BITS = size_t.sizeof * 8;
+
+     size_t size()
+     {
+         return 0;
+     }
+
+     private bool getbit(size_t offset, bool pointer_bit)
+     {
+         return false;
+     }
+
+     bool mustScanWordAt(size_t offset)
+     {
+         return false;
+     }
+
+     bool isPointerAt(size_t offset)
+     {
+         return false;
+     }
+
+     bool canUpdatePointers()
+     {
+         return false;
+     }
+}
+
 /***************************************************/
 
-import rt.gc.cdgc.bits: GCBits;
-import rt.gc.cdgc.stats: GCStats, Stats;
-import dynarray = rt.gc.cdgc.dynarray;
-import os = rt.gc.cdgc.os;
-import opts = rt.gc.cdgc.opts;
+import gc.concurrent.bits: GCBits;
+import gc.concurrent.stats: GCStats, Stats;
+import dynarray = gc.concurrent.dynarray;
+import os = gc.concurrent.os;
+import opts = gc.concurrent.opts;
+import core.thread;
 
-import cstdlib = tango.stdc.stdlib;
-import cstring = tango.stdc.string;
-import cstdio = tango.stdc.stdio;
+import cstdlib = core.stdc.stdlib;
+import cstring = core.stdc.string;
+import cstdio = core.stdc.stdio;
 debug(COLLECT_PRINTF) alias cstdio.printf printf;
 
 /*
@@ -58,7 +96,7 @@ debug(COLLECT_PRINTF) alias cstdio.printf printf;
  * or memory memset() seems to be slower (probably because of the call) that
  * simply doing a simple loop to set the memory.
  */
-void memset(void* dst, int c, size_t n)
+void memset(void* dst, ubyte c, size_t n)
 {
     // This number (32) has been determined empirically
     if (n > 32) {
@@ -100,21 +138,8 @@ package bool has_pointermap(uint attrs)
 }
 
 private size_t round_up(size_t n, size_t to)
-in
 {
-    assert (n > 0);
-    assert (to > 0);
-}
-body
-{
-    // checks if (n-1) + to overflows
-    if ((n-1) + to < to)
-        // This effectively will try to allocate all the theoretically
-        // addressable memory, which will probably fail, but we do as we are
-        // told, you want it round it up, there you go! :)
-        return (n / to) + 1;
-
-    return ((n-1) + to) / to;
+    return (n + to - 1) / to;
 }
 
 private
@@ -128,18 +153,15 @@ private
         version (DigitalMars) version(OSX)
             void _d_osx_image_init();
 
-        void* rt_stackBottom();
-        void* rt_stackTop();
+        void* thread_stackBottom();
+        void* thread_stackTop();
         void rt_finalize( void* p, bool det = true );
         void rt_attachDisposeEvent(Object h, DEvent e);
-        bool rt_detachDisposeEventNoLock(Object h, DEvent e);
-        void rt_scanStaticData( scanFn scan );
+        bool rt_detachDisposeEvent(Object h, DEvent e);
 
         void thread_init();
-        bool thread_needLock();
         void thread_suspendAll();
         void thread_resumeAll();
-        void thread_scanAll( scanFn fn, void* curStackTop = null );
 
         void onOutOfMemoryError();
     }
@@ -198,8 +220,8 @@ struct Range
 }
 
 
-const uint binsize[B_MAX] = [ 16,32,64,128,256,512,1024,2048,4096 ];
-const uint notbinsize[B_MAX] = [ ~(16u-1),~(32u-1),~(64u-1),~(128u-1),~(256u-1),
+enum uint binsize[B_MAX] = [ 16,32,64,128,256,512,1024,2048,4096 ];
+enum uint notbinsize[B_MAX] = [ ~(16u-1),~(32u-1),~(64u-1),~(128u-1),~(256u-1),
                                 ~(512u-1),~(1024u-1),~(2048u-1),~(4096u-1) ];
 
 
@@ -249,16 +271,13 @@ struct GC
 
     // Monitoring callbacks
     void delegate() collect_begin_cb;
-    void delegate(int freed, int pagebytes) collect_end_cb;
+    void delegate(ulong freed, ulong pagebytes) collect_end_cb;
 }
 
 // call locked if necessary
 private T locked(T, alias Code)()
 {
-    if (thread_needLock())
-        synchronized (gc.lock) return Code();
-    else
-       return Code();
+    synchronized (gc.lock) return Code();
 }
 
 private GC* gc;
@@ -649,7 +668,7 @@ void mark_range(void *pbot, void *ptop, size_t* pm_bitmask)
     // TODO: make our own assert because assert uses the GC
     assert (pbot <= ptop);
 
-    const BITS_PER_WORD = size_t.sizeof * 8;
+    enum BITS_PER_WORD = size_t.sizeof * 8;
 
     void **p1 = cast(void **)pbot;
     void **p2 = cast(void **)ptop;
@@ -886,7 +905,7 @@ size_t fullcollect(void *stackTop, bool early = false, bool force_block = false)
     if (collect_in_progress()) {
         os.WRes r = os.wait_pid(gc.mark_proc_pid, block);
         assert (r != os.WRes.ERROR);
-        switch (r) {
+        final switch (r) {
             case os.WRes.DONE:
                 debug(COLLECT_PRINTF) printf("\t\tmark proc DONE (block=%d)\n",
                         cast(int) block);
@@ -989,18 +1008,26 @@ void mark(void *stackTop)
     }
 
     /// Marks a range of memory in conservative mode.
-    void mark_conservative_range(void* pbot, void* ptop)
+    void mark_conservative_range(void* pbot, void* ptop) nothrow
     {
-        mark_range(pbot, ptop, PointerMap.init.bits.ptr);
+        try
+        {
+            mark_range(pbot, ptop, PointerMap.init.bits.ptr);
+        }
+        catch (Exception e)
+        {
+            throw new Error(e.msg);
+        }
     }
 
-    rt_scanStaticData(&mark_conservative_range);
+    thread_scanAll(&mark_conservative_range);
 
+/*
     if (!gc.no_stack)
     {
         // Scan stacks and registers for each paused thread
         thread_scanAll(&mark_conservative_range, stackTop);
-    }
+    } */
 
     // Scan roots
     debug(COLLECT_PRINTF) printf("scan roots[]\n");
@@ -1389,7 +1416,8 @@ void initialize()
     //       before its first collection.
     thread_init();
 
-    setStackBottom(rt_stackBottom());
+    setStackBottom(thread_stackBottom());
+
     gc.stats = Stats(gc);
     if (opts.options.prealloc_npools) {
         size_t pages = round_up(opts.options.prealloc_psize, PAGESIZE);
@@ -1424,8 +1452,9 @@ void early_collect()
 //
 //
 //
-private void *malloc(size_t size, uint attrs, size_t* pm_bitmask)
+private void *malloc(size_t size, uint attrs, size_t* pm_bitmask = null)
 {
+//    printf("gc malloc called\n");
     assert(size != 0);
 
     void *p = null;
@@ -1439,19 +1468,11 @@ private void *malloc(size_t size, uint attrs, size_t* pm_bitmask)
         gc.stats.malloc_finished(p);
 
     if (opts.options.sentinel)
-    {
-        if (size + SENTINEL_EXTRA < size) // overflow check
-            onOutOfMemoryError();
         size += SENTINEL_EXTRA;
-    }
 
     bool has_pm = has_pointermap(attrs);
     if (has_pm)
-    {
-        if (size + size_t.sizeof < size) // overflow check
-            onOutOfMemoryError();
         size += size_t.sizeof;
-    }
 
     // Compute size bin
     // Cache previous binsize lookup - Dave Fladebo.
@@ -1477,18 +1498,7 @@ private void *malloc(size_t size, uint attrs, size_t* pm_bitmask)
         {
             if (!allocPage(bin) && !gc.disabled)   // try to find a new page
             {
-                if (!thread_needLock())
-                {
-                    /* Then we haven't locked it yet. Be sure
-                     * and gc.lock for a collection, since a finalizer
-                     * may start a new thread.
-                     */
-                    synchronized (gc.lock)
-                    {
-                        fullcollectshell();
-                    }
-                }
-                else if (!fullcollectshell())       // collect to find a new page
+                if (!fullcollectshell())       // collect to find a new page
                 {
                     //newPool(1);
                 }
@@ -1586,7 +1596,7 @@ private void *malloc(size_t size, uint attrs, size_t* pm_bitmask)
 //
 //
 //
-private void *calloc(size_t size, uint attrs, size_t* pm_bitmask)
+private void *calloc(size_t size, uint attrs, size_t* pm_bitmask = null)
 {
     assert(size != 0);
 
@@ -1599,8 +1609,7 @@ private void *calloc(size_t size, uint attrs, size_t* pm_bitmask)
 //
 //
 //
-private void *realloc(void *p, size_t size, uint attrs,
-        size_t* pm_bitmask)
+private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = null)
 {
     if (!size) {
         if (p)
@@ -2096,9 +2105,8 @@ void weakpointerDestroy( void* p )
         // finalizing the reference at the same time
         return locked!(void, () {
             if (wp.reference)
-                rt_detachDisposeEventNoLock(wp.reference, &wp.ondestroy);
+                rt_detachDisposeEvent(wp.reference, &wp.ondestroy);
         })();
-        cstdlib.free(wp);
     }
 }
 
@@ -2234,7 +2242,7 @@ struct Pool
     }
 
 
-    bool Invariant()
+    bool Invariant() const
     {
         return true;
     }
@@ -2358,9 +2366,9 @@ struct Pool
 /* ============================ SENTINEL =============================== */
 
 
-const size_t SENTINEL_PRE = cast(size_t) 0xF4F4F4F4F4F4F4F4UL; // 32 or 64 bits
-const ubyte SENTINEL_POST = 0xF5;           // 8 bits
-const uint SENTINEL_EXTRA = 2 * size_t.sizeof + 1;
+enum size_t SENTINEL_PRE = cast(size_t) 0xF4F4F4F4F4F4F4F4UL; // 32 or 64 bits
+enum ubyte SENTINEL_POST = 0xF5;           // 8 bits
+enum uint SENTINEL_EXTRA = 2 * size_t.sizeof + 1;
 
 
 size_t* sentinel_size(void *p)  { return &(cast(size_t *)p)[-2]; }
@@ -2427,7 +2435,9 @@ void gc_init()
     scope (exit) assert (Invariant());
     gc = cast(GC*) cstdlib.calloc(1, GC.sizeof);
     *gc = GC.init;
+
     initialize();
+
     version (DigitalMars) version(OSX) {
         _d_osx_image_init();
     }
@@ -2545,34 +2555,31 @@ uint gc_clrAttr(void* p, uint attrs)
     })();
 }
 
-void* gc_malloc(size_t size, uint attrs = 0,
-        PointerMap ptrmap = PointerMap.init)
+void* gc_malloc(size_t size, uint attrs = 0)
 {
     if (size == 0)
         return null;
     return locked!(void*, () {
         assert (Invariant()); scope (exit) assert (Invariant());
-        return malloc(size, attrs, ptrmap.bits.ptr);
+        return malloc(size, attrs);
     })();
 }
 
-void* gc_calloc(size_t size, uint attrs = 0,
-        PointerMap ptrmap = PointerMap.init)
+void* gc_calloc(size_t size, uint attrs = 0)
 {
     if (size == 0)
         return null;
     return locked!(void*, () {
         assert (Invariant()); scope (exit) assert (Invariant());
-        return calloc(size, attrs, ptrmap.bits.ptr);
+        return calloc(size, attrs);
     })();
 }
 
-void* gc_realloc(void* p, size_t size, uint attrs = 0,
-        PointerMap ptrmap = PointerMap.init)
+void* gc_realloc(void* p, size_t size, uint attrs = 0)
 {
     return locked!(void*, () {
         assert (Invariant()); scope (exit) assert (Invariant());
-        return realloc(p, size, attrs, ptrmap.bits.ptr);
+        return realloc(p, size, attrs);
     })();
 }
 
@@ -2724,6 +2731,21 @@ void gc_usage(size_t* used, size_t* free)
 {
     *free = gc.free_mem;
     *used = gc.total_mem - gc.free_mem;
+}
+
+BlkInfo gc_qalloc( size_t sz, uint ba = 0 )
+{
+    BlkInfo retval;
+ //   retval.base = malloc( sz, ba, &retval.size );
+    retval.base = malloc( sz, ba );
+    retval.size = sz;
+    retval.attr = ba;
+    return retval;
+}
+
+void gc_runFinalizers( in void[] segment ) nothrow
+{
+    // TODO
 }
 
 // vim: set et sw=4 sts=4 :

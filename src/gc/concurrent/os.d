@@ -24,7 +24,7 @@
  * Authors:   Walter Bright, David Friedman, Sean Kelly, Leandro Lucarella
  */
 
-module rt.gc.cdgc.os;
+module gc.concurrent.os;
 
 
 // Fork
@@ -61,15 +61,15 @@ const HAVE_FORK = true;
  */
 WRes wait_pid(pid_t pid, bool block = true);
 
-public import tango.stdc.posix.unistd: pid_t, fork;
+public import core.sys.posix.unistd: pid_t, fork;
 
 }
 
 // Implementations
 else version (Posix) {
     enum { HAVE_FORK = true }
-    public import tango.stdc.posix.unistd: pid_t, fork;
-    import tango.stdc.posix.sys.wait: waitpid, WNOHANG;
+    public import core.sys.posix.unistd: pid_t, fork;
+    import core.sys.posix.sys.wait: waitpid, WNOHANG;
     public WRes wait_pid(pid_t pid, bool block = true) {
         int status = void;
         pid_t waited_pid = waitpid(pid, &status, block ? 0 : WNOHANG);
@@ -95,11 +95,11 @@ else {
 ////////////////////////////////////////////////////////////////////////
 
 version (Win32)
-    import tango.sys.win32.UserGdi;
+    import core.sys.win32.UserGdi;
 else version (Posix)
-    import tango.stdc.posix.sys.mman;
+    import core.sys.linux.sys.mman;
 else
-    import tango.stdc.stdlib;
+    import core.stdc.stdlib;
 
 
 // Public interface/Documentation
@@ -186,7 +186,7 @@ else static if (is(typeof(malloc))) {
     //       to PAGESIZE alignment, there will be space for a void* at the end
     //       after PAGESIZE bytes used by the GC.
 
-    import rt.gc.cdgc.gc: PAGESIZE;
+    import gc.concurrent.gc: PAGESIZE;
 
     const size_t PAGE_MASK = PAGESIZE - 1;
 
