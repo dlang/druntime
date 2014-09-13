@@ -369,7 +369,7 @@ extern (C)
     // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
     inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize) pure nothrow;
     inout(void)[] _aaKeys(inout void* p, in size_t keysize) pure nothrow;
-    void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
+    void* _aaRehash(void** pp, in TypeInfo keyti) @trusted pure nothrow;
 
     // extern (D) alias scope int delegate(void *) _dg_t;
     // int _aaApply(void* aa, size_t keysize, _dg_t dg);
