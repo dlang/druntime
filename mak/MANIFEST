@@ -119,6 +119,7 @@ MANIFEST=\
 	src\core\sys\posix\signal.d \
 	src\core\sys\posix\stdio.d \
 	src\core\sys\posix\stdlib.d \
+	src\core\sys\posix\syslog.d \
 	src\core\sys\posix\termios.d \
 	src\core\sys\posix\time.d \
 	src\core\sys\posix\ucontext.d \
@@ -176,6 +177,7 @@ MANIFEST=\
 	src\rt\arrayint.d \
 	src\rt\arrayreal.d \
 	src\rt\arrayshort.d \
+	src\rt\bss_section.c \
 	src\rt\cast_.d \
 	src\rt\cmath2.d \
 	src\rt\cover.d \
