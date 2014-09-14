@@ -117,20 +117,11 @@ version (GNU)
     static import gcc.builtins; // for __builtin_unwind_int
 }
 
-struct BlkInfo
-{
-    void*  base;
-    size_t size;
-    uint   attr;
-}
+static import core.memory;
 
-package enum BlkAttr : uint
-{
-    FINALIZE = 0b0000_0001,
-    NO_SCAN  = 0b0000_0010,
-    NO_MOVE  = 0b0000_0100,
-    ALL_BITS = 0b1111_1111
-}
+alias BlkInfo = core.memory.GC.BlkInfo;
+alias BlkAttr = core.memory.GC.BlkAttr;
+
 
 package bool has_pointermap(uint attrs)
 {
@@ -1168,7 +1159,7 @@ version(none) // BUG: doesn't work because freebits() must also be cleared
                             else
                                 rt_finalize(p, false/*gc.no_stack > 0*/);
                         }
-                        clrAttr(pool, bit_i, BlkAttr.ALL_BITS);
+                        clrAttr(pool, bit_i, uint.max);
 
                         if (opts.options.mem_stomp)
                             memset(p, 0xF3, size);
@@ -1192,7 +1183,7 @@ version(none) // BUG: doesn't work because freebits() must also be cleared
                             else
                                 rt_finalize(p, false/*gc.no_stack > 0*/);
                         }
-                        clrAttr(pool, bit_i, BlkAttr.ALL_BITS);
+                        clrAttr(pool, bit_i, uint.max);
 
                         if (opts.options.mem_stomp)
                             memset(p, 0xF3, size);
@@ -1216,7 +1207,7 @@ version(none) // BUG: doesn't work because freebits() must also be cleared
                         else
                             rt_finalize(p, false/*gc.no_stack > 0*/);
                     }
-                    clrAttr(pool, bit_i, BlkAttr.ALL_BITS);
+                    clrAttr(pool, bit_i, uint.max);
 
                     debug(COLLECT_PRINTF) printf("\tcollecting big %p\n", p);
                     pool.pagetable[pn] = B_FREE;
@@ -1332,12 +1323,19 @@ in
 body
 {
     uint attrs;
+
+    debug (CDGC_TRACE_PRINTF)
+    {
+        printf("> getAttr(%p, %u, %u)\n", pool, bit_i);
+        scope(exit) printf("< getAttr() : %u\n", attrs);
+    }
+
     if (pool.finals.test(bit_i))
         attrs |= BlkAttr.FINALIZE;
     if (pool.noscan.test(bit_i))
         attrs |= BlkAttr.NO_SCAN;
-//        if (pool.nomove.test(bit_i))
-//            attrs |= BlkAttr.NO_MOVE;
+    if (pool.appendable.test(bit_i))
+        attrs |= BlkAttr.APPENDABLE;
     return attrs;
 }
 
@@ -1352,6 +1350,13 @@ in
 }
 body
 {
+    debug (CDGC_TRACE_PRINTF)
+    {
+        printf("> setAttr(%p, %u, %u)\n", pool, bit_i, mask);
+        scope(exit)
+            printf("< setAttr()\n");
+    }
+
     if (mask & BlkAttr.FINALIZE)
     {
         pool.finals.set(bit_i);
@@ -1360,12 +1365,10 @@ body
     {
         pool.noscan.set(bit_i);
     }
-//        if (mask & BlkAttr.NO_MOVE)
-//        {
-//            if (!pool.nomove.nbits)
-//                pool.nomove.alloc(pool.mark.nbits);
-//            pool.nomove.set(bit_i);
-//        }
+    if (mask & BlkAttr.APPENDABLE)
+    {
+        pool.appendable.set(bit_i);
+    }
 }
 
 
@@ -1379,12 +1382,19 @@ in
 }
 body
 {
+    debug (CDGC_TRACE_PRINTF)
+    {
+        printf("> clrAttr(%p, %u, %u)\n", pool, bit_i, mask);
+        scope(exit)
+            printf("< clrAttr()\n");
+    }
+
     if (mask & BlkAttr.FINALIZE)
         pool.finals.clear(bit_i);
     if (mask & BlkAttr.NO_SCAN)
         pool.noscan.clear(bit_i);
-//        if (mask & BlkAttr.NO_MOVE && pool.nomove.nbits)
-//            pool.nomove.clear(bit_i);
+    if (mask & BlkAttr.APPENDABLE)
+        pool.appendable.clear(bit_i);
 }
 
 
@@ -1627,7 +1637,7 @@ private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = nul
     // Set or retrieve attributes as appropriate
     auto bit_i = cast(size_t)(p - pool.baseAddr) / 16;
     if (attrs) {
-        clrAttr(pool, bit_i, BlkAttr.ALL_BITS);
+        clrAttr(pool, bit_i, uint.max);
         setAttr(pool, bit_i, attrs);
     }
     else
@@ -1850,7 +1860,7 @@ private void free(void *p)
     }
     pagenum = cast(size_t)(p - pool.baseAddr) / PAGESIZE;
     bit_i = cast(size_t)(p - pool.baseAddr) / 16;
-    clrAttr(pool, bit_i, BlkAttr.ALL_BITS);
+    clrAttr(pool, bit_i, uint.max);
 
     bin = cast(Bins)pool.pagetable[pagenum];
     if (bin == B_PAGE)              // if large alloc
@@ -2144,6 +2154,7 @@ struct Pool
     GCBits freebits; // entries that are on the free list
     GCBits finals;   // entries that need finalizer run on them
     GCBits noscan;   // entries that should not be scanned
+    GCBits appendable;  // entries that can be appended to without re-allocation
 
     size_t npages;
     ubyte* pagetable;
@@ -2194,6 +2205,7 @@ struct Pool
         scan.alloc(nbits); // only used in the mark phase
         finals.alloc(nbits); // not used by the mark phase
         noscan.alloc(nbits); // mark phase *MUST* have a snapshot
+        appendable.alloc(nbits); // used only by runtime, ignored in mark phase
 
         // all is free when we start
         freebits.set_all();
@@ -2239,6 +2251,7 @@ struct Pool
         scan.Dtor();
         finals.Dtor();
         noscan.Dtor();
+        appendable.Dtor();
     }
 
 
