@@ -91,10 +91,8 @@ extern (C)
 
     version (ModernAPI)
     {
-
         objc_property_t class_getProperty(Class cls, const(char)* name);
         objc_property_t* class_copyPropertyList(Class cls, uint* outCount);
-
     }
 
     // Methods
@@ -104,7 +102,6 @@ extern (C)
 
     version (ModernAPI)
     {
-
         BOOL class_addMethod(Class cls, SEL name, IMP imp, const(char)* types);
         Method* class_copyMethodList(Class cls, uint* outCount);
         IMP class_replaceMethod(Class cls, SEL name, IMP imp, const(char)* types);
@@ -115,7 +112,6 @@ extern (C)
 
     version (LegacyRuntime)
     {
-
         objc_method_list* class_nextMethodList(Class c, void** iterator);
 
         /** Add a new method list to given class. */
@@ -123,14 +119,12 @@ extern (C)
 
         /** Remove a method list from given class. */
         void class_removeMethods(Class c, objc_method_list* methodList);
-
     }
 
     // Implemented Protocols
 
     version (ModernAPI)
     {
-
         BOOL class_addProtocol(Class cls, Protocol* protocol);
         BOOL class_conformsToProtocol(Class cls, Protocol* protocol);
         Protocol** class_copyProtocolList(Class cls, uint* outCount);
@@ -148,21 +142,16 @@ extern (C)
 
     version (ModernAPI)
     {
-
         Class objc_allocateClassPair(Class superclass, const(char)* name, size_t extraBytes);
         void objc_registerClassPair(Class cls);
 
-        deprecated
-        void objc_addClass(Class myClass);
-
+        deprecated void objc_addClass(Class myClass);
     }
 
     version (LegacyRuntime)
     {
-
         /** Register a class with the runtime. */
         void objc_addClass(Class myClass);
-
     }
 
 
@@ -170,10 +159,8 @@ extern (C)
 
     version (LegacyRuntime)
     {
-
         /** Make a class pose as another class, overriding it. */
         Class class_poseAs(Class imposter, Class original);
-
     }
 
     // MARK: Instantiating Classes
@@ -191,10 +178,8 @@ extern (C)
 
     version (ModernAPI)
     {
-
         id object_copy(id obj, size_t size);
         id object_dispose(id obj);
-
     }
 
     /** Assign new value to instance variable name of object. */
@@ -205,14 +190,12 @@ extern (C)
 
     version (ModernAPI)
     {
-
         void* object_getIndexedIvars(id obj);
         id object_getIvar(id object, Ivar ivar);
         void object_setIvar(id object, Ivar ivar, id value);
         const(char)* object_getClassName(id obj);
         Class object_getClass(id object);
         Class object_setClass(id object, Class cls);
-
     }
 
     // MARK: Obtaining Class Definitions
@@ -242,11 +225,7 @@ extern (C)
     Class objc_getMetaClass(const(char)* name);
 
     version (ModernAPI)
-    {
-
         Class objc_getRequiredClass(const(char)* name);
-
-    }
 
     version (LegacyRuntime)
     {
@@ -267,11 +246,9 @@ extern (C)
 
     version (ModernAPI)
     {
-
         void objc_setAssociatedObject(id object, void *key, id value, objc_AssociationPolicy policy);
         id objc_getAssociatedObject(id object, void *key);
         void objc_removeAssociatedObjects(id object);
-
     }
 
     // MARK: Sending Messages
@@ -401,7 +378,6 @@ extern (C)
 
     version (ModernAPI)
     {
-
         SEL method_getName(Method method);
         IMP method_getImplementation(Method method);
         const(char)* method_getTypeEncoding(Method method);
@@ -412,18 +388,15 @@ extern (C)
         void method_getArgumentType(Method method, uint index, char* dst, size_t dst_len);
         IMP method_setImplementation(Method method, IMP imp);
         void method_exchangeImplementations(Method m1, Method m2);
-
     }
 
     version (LegacyRuntime)
     {
-
         /** Get the size of the stack frame required for method's arguments. */
         uint method_getSizeOfArguments(Method method);
 
         /** Get information about argument index of given method. */
         uint method_getArgumentInfo(Method method, int index, char** type, int* offset);
-
     }
 
     // MARK: Working with Selectors
@@ -444,10 +417,8 @@ extern (C)
 
     version (LegacyRuntime)
     {
-
         /** Tell if a selector has been registered. */
         BOOL sel_isMapped(SEL aSelector);
-
     }
 
     // MARK: Working with Protocols
@@ -457,7 +428,6 @@ extern (C)
 
     version (ModernAPI)
     {
-
         Protocol* objc_getProtocol(const(char)* name);
         Protocol** objc_copyProtocolList(uint* outCount);
         const(char)* protocol_getName(Protocol *p);
@@ -468,20 +438,15 @@ extern (C)
         objc_property_t protocol_getProperty(Protocol *proto, const(char)* name, BOOL isRequiredProperty, BOOL isInstanceProperty);
         Protocol **protocol_copyProtocolList(Protocol *proto, uint *outCount);
         BOOL protocol_conformsToProtocol(Protocol *proto, Protocol *other);
-
     }
-
 
     // MARK: Working with Properties
 
     version (ModernAPI)
     {
-
         const(char)* property_getName(objc_property_t property);
         const(char)* property_getAttributes(objc_property_t property);
-
     }
-
 }
 
 // MARK: Data Types
@@ -499,13 +464,11 @@ alias objc_ivar* Ivar;
 
 version (ModernAPI)
 {
-
     // category
     alias objc_category* Category;
 
     // property
     alias objc_property* objc_property_t;
-
 }
 
 /** Pointer to a method implementation. */
@@ -546,24 +509,24 @@ struct objc_super
 // Boolean
 
 /** Objective-C boolean type, defined as one (signed) byte. */
-enum BOOL : byte { NO = 0, YES = 1 }
-alias BOOL.YES YES;
-alias BOOL.NO  NO;
+enum BOOL : byte
+{
+    NO = 0,
+    YES = 1
+}
+
+alias YES = BOOL.YES;
+alias NO = BOOL.NO;
 
 // Associative References
 
 version (ModernAPI)
-{
-
-    alias uintptr_t objc_AssociationPolicy;
-
-}
+    alias objc_AssociationPolicy = uintptr_t;
 
 // Type Implementation
 
 version (LegacyRuntime)
 {
-
     /** Objective-C class definition. */
     pragma (objc_selectortarget)
     struct objc_class
@@ -672,14 +635,12 @@ version (LegacyRuntime)
          * Indicate a class using multiple method arrays instead of a single one
          * (use methodLists instead of singleMethodList in the objc_class).
          */
-        CLS_METHOD_ARRAY = 0x100,
-
+        CLS_METHOD_ARRAY = 0x100
     }
 
     /** Definition of an Objective-C method. */
     struct objc_method
     {
-
         /** Selector for the method. */
         SEL method_name;
 
@@ -688,13 +649,11 @@ version (LegacyRuntime)
 
         /** Pointer to the method implementation. This is null for protocols. */
         IMP method_imp;
-
     }
 
     /** Instance variable definition. */
     struct objc_ivar
     {
-
         /** Pointer to a C string with the variable name. */
         const(char)* ivar_name;
 
@@ -706,7 +665,6 @@ version (LegacyRuntime)
          * instance.
          */
         int ivar_offset;
-
     }
 
     struct objc_category;
@@ -717,30 +675,23 @@ version (LegacyRuntime)
     pragma (objc_selectortarget)
     struct objc_object
     {
-
         /** Pointer to the class definition of this instance. */
         Class isa;
-
-        // Additional data for subclass-specific instance variables goes here...
-
     }
 
     /** List of instance variable definitions. */
     struct objc_ivar_list
     {
-
         /** Number of instance variables in this list. */
         int ivar_count;
 
         /** Array of instance variable definition. [variable length] */
         objc_ivar[0] ivar_list;
-
     }
 
     /** List of method definitions. */
     struct objc_method_list
     {
-
         /** Reserved. */
         void* obsolete;
 
@@ -749,13 +700,11 @@ version (LegacyRuntime)
 
         /** Array with all the methods in this list. [variable length] */
         objc_method[0] method_list;
-
     }
 
     /** Cache to speedup method lookup. */
     struct objc_cache
     {
-
         /**
          * Number of cached methods minus one. Used with an AND mask it serves as
          * a simple hashing algorithm for starting the search at the right bucket.
@@ -766,13 +715,12 @@ version (LegacyRuntime)
         uint occupied;
 
         /** Array of pointers to cached method definitions. */
-        Method buckets[0];
+        Method[0] buckets;
     }
 
     /** List of protocols for use in a class definition. */
     struct objc_protocol_list
     {
-
         /** Pointer to the next protocol list. */
         objc_protocol_list *next;
 
@@ -781,13 +729,10 @@ version (LegacyRuntime)
 
         /** Inline array of pointers to protocol object instances. [variable length] */
         Protocol*[0] list;
-
     }
-
 }
 else
 {
-
     // Modern runtime uses opaque types
 
     pragma (objc_selectortarget)
@@ -799,8 +744,10 @@ else
     struct objc_property;
 
     pragma (objc_selectortarget)
-    struct objc_object;
-
+    struct objc_object
+    {
+        Class isa;
+    }
 }
 
 pragma (objc_isselector)
@@ -814,11 +761,9 @@ version (LegacyRuntime)
     {}
     else
     {
-
         // This is not exhaustive, functions are added as needed.
 
         Class object_getClass(id object) { return object.isa; }
         Class class_getSuperclass(Class cls) { return cls.super_class; }
-
     }
 }

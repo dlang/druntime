@@ -91,103 +91,6 @@ extern (C) void _dobjc_invariant(id obj)
         d_invariant(obj);
 }
 
-/+
-// Memory management
-
-/**
- * Reference counting using retain/release/autorelease methods. Those have
- * no effect when the Objective-C GC is active, or when passed a null object.
- */
-private id _dobjc_retain(id obj) nothrow
-{
-    version (D_ObjC_GCOnly)
-        return obj;
-    else
-    {
-        auto retain = cast(id __selector() nothrow)"retain";
-        return retain(obj);
-    }
-}
-/// ditto
-private void _dobjc_release(id obj) nothrow
-{
-    version (D_ObjC_GCOnly)
-        return;
-    else
-    {
-        auto release = cast(id __selector() nothrow)"release";
-        release(obj);
-    }
-}
-/// ditto
-private id _dobjc_autorelease(id obj) nothrow
-{
-    version (D_ObjC_GCOnly)
-        return obj;
-    else
-    {
-        auto autorelease = cast(id __selector() nothrow)"autorelease";
-        return autorelease(obj);
-    }
-}
-
-private {
-    // Using CFRetain/CFRelease allows us to make sure retain works even when
-    // the Objective-C garbage collector is used.
-    extern (C) void CFRetain(void* obj) nothrow;
-    extern (C) void CFRelease(void* obj) nothrow;
-}
-
-/**
- * Reference counting retain/release functions which works even when the
- * Objective-C GC is active. Those are used when tracking Objective-C objects
- * using the D GC.
- */
-private extern (C) id _dobjc_gc_retain(id obj) nothrow
-{
-    CFRetain(obj);
-    return obj;
-}
-/// ditto
-private extern (D) void _dobjc_gc_release(id obj) nothrow
-{
-    CFRelease(obj);
-}
-
-import core.memory;
-
-/**
- * Start tracking the given Objective-C object using the D GC. Calls
- * _dobjc_gc_retain when starting tracking, then _dobjc_gc_release when the
- * D GC says it's time for collection. If the object is already being tracked,
- * a call to this function will have no effect.
- *
- * The non-retain variant will autorelease the object.
- *
- * Normally, _dobjc_gc_trackObject is called when receiving a retained object
- * while _dobjc_gc_trackObject_retain is called when receiving an autoreleased
- * objects.
- */
-extern (C) id _dobjc_track(id obj)
-{
-    // Check if object is already being tracked.
-    // If not, add block to GC tracking list.
-    if (obj && GC.addrOf(obj) is null)
-    {
-        size_t size = class_getInstanceSize(object_getClass(obj));
-        GC.trackBlock(obj, size, &_dobjc_gc_release, false/*no scan*/);
-        obj = _dobjc_gc_retain(obj);
-    }
-    return obj;
-}
-/// ditto
-extern (C) id _dobjc_track_release(id obj)
-{
-    // called when starting tracking retained objects
-    return _dobjc_release(_dobjc_track(obj));
-}
-+/
-
 // Exception wrapping
 
 private
@@ -207,7 +110,7 @@ private
             auto ddesc = throwable.toString();
             auto reason = new NSString(ddesc.ptr, ddesc.length, NSString.Encoding.UTF8);
 
-            super("D exception", "D reaseon", null);
+            super(name, reason, null);
         }
 
         override NSString description() @property [description]
@@ -248,7 +151,7 @@ private
         override string toString()
         {
             auto desc = except.description;
-            return desc.utf8String[0..desc.length].idup;
+            return desc.utf8String[0 .. desc.length].idup;
         }
     }
 }
@@ -294,7 +197,7 @@ extern (C) size_t _dobjc_exception_select(id ex, Class[] clist)
 private:
 
 // Minimal declarations of some Foundation classes necessary for the
-// implementtion of this module.
+// implementation of this module.
 
 extern (Objective-C)
 class NSObject
