@@ -82,6 +82,10 @@ DRUNTIMESOLIB=lib/lib$(DRUNTIME_BASE)so.a
 
 DOCFMT=
 
+ifeq (osx,$(OS))
+D_OBJC := 1
+endif
+
 include mak/COPY
 COPY:=$(subst \,/,$(COPY))
 
