@@ -936,7 +936,7 @@ size_t fullcollect(void *stackTop, bool early = false, bool force_block = false)
             break;
         case 0: // child process (i.e. the collectors mark phase)
             mark(stackTop);
-            cstdlib.exit(0);
+            cstdlib._Exit(0);
             break; // bogus, will never reach here
         default: // parent process (i.e. the mutator)
             thread_resumeAll();
