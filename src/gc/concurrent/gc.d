@@ -1384,6 +1384,11 @@ void initialize()
     gc.lock = GCLock.classinfo;
     gc.inited = 1;
     gc.no_stack = 0;
+
+    // NOTE: The GC must initialize the thread library
+    //       before its first collection.
+    thread_init();
+
     setStackBottom(rt_stackBottom());
     gc.stats = Stats(gc);
     if (opts.options.prealloc_npools) {
@@ -2426,9 +2431,6 @@ void gc_init()
     version (DigitalMars) version(OSX) {
         _d_osx_image_init();
     }
-    // NOTE: The GC must initialize the thread library
-    //       before its first collection.
-    thread_init();
 }
 
 void gc_term()
