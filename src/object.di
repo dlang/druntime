@@ -393,36 +393,10 @@ extern (C)
     void* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, void[] values) pure;
 }
 
-auto aaLiteral(Key, Value, T...)(auto ref T args) if (T.length % 2 == 0)
+auto aaLiteral(Key, Value)(Key[] keys, Value[] values)
 {
-    static if(!T.length) 
-    {
-        return cast(void*)null;
-    }
-    else
-    {
-        import core.internal.traits;
-        Key[] keys;
-        Value[] values;
-        keys.reserve(T.length / 2);
-        values.reserve(T.length / 2);
-
-        foreach (i; staticIota!(0, args.length / 2))
-        {
-            keys ~= args[2*i];
-            values ~= args[2*i + 1];
-        }
-
-        void[] key_slice;
-        void[] value_slice;
-        void *ret;
-        () @trusted {
-            key_slice = *cast(void[]*)&keys;
-            value_slice = *cast(void[]*)&values;
-            ret = _d_assocarrayliteralTX(typeid(Value[Key]), key_slice, value_slice);
-        }();
-        return ret;
-    }
+    import core.internal.aa;
+    return core.internal.aa.aaLiteral!(Key, Value)(keys,  values);
 }
 
 alias AssociativeArray(Key, Value) = Value[Key];
