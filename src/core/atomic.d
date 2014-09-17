@@ -19,17 +19,17 @@ version( D_InlineAsm_X86 )
 {
     version = AsmX86;
     version = AsmX86_32;
-    enum has64BitCAS = true;
+    enum hasDWCAS = true;
 }
 else version( D_InlineAsm_X86_64 )
 {
     version = AsmX86;
     version = AsmX86_64;
-    enum has64BitCAS = true;
+    enum hasDWCAS = true;
 }
 else
 {
-    enum has64BitCAS = false;
+    enum hasDWCAS = false;
 }
 
 private
@@ -284,7 +284,7 @@ else version( AsmX86_32 )
                 setz AL;
             }
         }
-        else static if( T.sizeof == long.sizeof && has64BitCAS )
+        else static if( T.sizeof == long.sizeof && hasDWCAS )
         {
             //////////////////////////////////////////////////////////////////
             // 8 Byte CAS on a 32-Bit Processor
@@ -447,7 +447,7 @@ else version( AsmX86_32 )
                 }
             }
         }
-        else static if( T.sizeof == long.sizeof && has64BitCAS )
+        else static if( T.sizeof == long.sizeof && hasDWCAS )
         {
             //////////////////////////////////////////////////////////////////
             // 8 Byte Load on a 32-Bit Processor
@@ -555,7 +555,7 @@ else version( AsmX86_32 )
                 }
             }
         }
-        else static if( T.sizeof == long.sizeof && has64BitCAS )
+        else static if( T.sizeof == long.sizeof && hasDWCAS )
         {
             //////////////////////////////////////////////////////////////////
             // 8 Byte Store on a 32-Bit Processor
@@ -769,6 +769,30 @@ else version( AsmX86_64 )
                 setz AL;
             }
         }
+        else static if( T.sizeof == long.sizeof * 2 && hasDWCAS )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 16 Byte CAS on a 64-Bit Processor
+            //////////////////////////////////////////////////////////////////
+
+            asm
+            {
+                push RDI;
+                push RBX;
+                lea RDI, writeThis;
+                mov RBX, [RDI];
+                mov RCX, 8[RDI];
+                lea RDI, ifThis;
+                mov RAX, [RDI];
+                mov RDX, 8[RDI];
+                mov RDI, here;
+                lock; // lock always needed to make this op atomic
+                cmpxchg16b [RDI];
+                setz AL;
+                pop RBX;
+                pop RDI;
+            }
+        }
         else
         {
             static assert( false, "Invalid template type specified." );
@@ -929,6 +953,27 @@ else version( AsmX86_64 )
                 }
             }
         }
+        else static if( T.sizeof == long.sizeof * 2 && hasDWCAS )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 16 Byte Load on a 64-Bit Processor
+            //////////////////////////////////////////////////////////////////
+
+            asm
+            {
+                push RDI;
+                push RBX;
+                mov RBX, 0;
+                mov RCX, 0;
+                mov RAX, 0;
+                mov RDX, 0;
+                mov RDI, val;
+                lock; // lock always needed to make this op atomic
+                cmpxchg16b [RDI];
+                pop RBX;
+                pop RDI;
+            }
+        }
         else
         {
             static assert( false, "Invalid template type specified." );
@@ -1017,7 +1062,7 @@ else version( AsmX86_64 )
                 }
             }
         }
-        else static if( T.sizeof == long.sizeof && has64BitCAS )
+        else static if( T.sizeof == long.sizeof )
         {
             //////////////////////////////////////////////////////////////////
             // 8 Byte Store on a 64-Bit Processor
@@ -1041,6 +1086,29 @@ else version( AsmX86_64 )
                     mov RDX, newval;
                     mov [RAX], RDX;
                 }
+            }
+        }
+        else static if( T.sizeof == long.sizeof * 2 && hasDWCAS )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 16 Byte Store on a 64-Bit Processor
+            //////////////////////////////////////////////////////////////////
+
+            asm
+            {
+                push RDI;
+                push RBX;
+                lea RDI, newval;
+                mov RBX, [RDI];
+                mov RCX, 8[RDI];
+                mov RDI, val;
+                mov RAX, [RDI];
+                mov RDX, 8[RDI];
+            L1: lock; // lock always needed to make this op atomic
+                cmpxchg16b [RDI];
+                jne L1;
+                pop RBX;
+                pop RDI;
             }
         }
         else
@@ -1097,74 +1165,116 @@ if(__traits(isFloating, T))
 
 version( unittest )
 {
-    void testCAS(T)( T val ) pure nothrow
+    void testCAS(T)( T init, T newval ) /+pure+/ nothrow
+        if( !is(T == class) )
     in
     {
-        assert(val !is T.init);
+        assert( init != newval );
     }
     body
     {
-        T         base;
-        shared(T) atom;
+        T         base = init;
+        shared(T) atom = init;
 
-        assert( base !is val, T.stringof );
+        assert( base != newval, T.stringof );
+        assert( atom == base, T.stringof );
+
+        assert( cas( &atom, base, newval ), T.stringof );
+        assert( atom == newval, T.stringof );
+        assert( !cas( &atom, base, base ), T.stringof );
+        assert( atom == newval, T.stringof );
+    }
+
+    void testCAS(T)( T init, T newval ) /+pure+/ nothrow
+        if( is(T == class) )
+    in
+    {
+        assert( init !is newval );
+    }
+    body
+    {
+        T         base = init;
+        shared(T) atom = init;
+
+        assert( base !is newval, T.stringof );
         assert( atom is base, T.stringof );
 
-        assert( cas( &atom, base, val ), T.stringof );
-        assert( atom is val, T.stringof );
+        assert( cas( &atom, base, newval ), T.stringof );
+        assert( atom is newval, T.stringof );
         assert( !cas( &atom, base, base ), T.stringof );
-        assert( atom is val, T.stringof );
+        assert( atom is newval, T.stringof );
     }
 
-    void testLoadStore(MemoryOrder ms = MemoryOrder.seq, T)( T val = T.init + 1 ) pure nothrow
+    void testLoadStore(MemoryOrder ms = MemoryOrder.seq, T)( T init, T newval ) /+pure+/ nothrow
     {
-        T         base = cast(T) 0;
-        shared(T) atom = cast(T) 0;
+        T         base = init;
+        shared(T) atom = init;
 
-        assert( base !is val );
-        assert( atom is base );
-        atomicStore!(ms)( atom, val );
+        assert( base != newval );
+        assert( atom == base );
+        atomicStore!(ms)( atom, newval );
         base = atomicLoad!(ms)( atom );
 
-        assert( base is val, T.stringof );
-        assert( atom is val );
+        assert( base == newval, T.stringof );
+        assert( atom == newval );
     }
 
 
-    void testType(T)( T val = T.init + 1 ) pure nothrow
+    void testType(T)( T init, T newval ) /+pure+/ nothrow
     {
-        testCAS!(T)( val );
-        testLoadStore!(MemoryOrder.seq, T)( val );
-        testLoadStore!(MemoryOrder.raw, T)( val );
+        testCAS!(T)( init, newval );
+        testLoadStore!(MemoryOrder.seq, T)( init, newval );
+        testLoadStore!(MemoryOrder.raw, T)( init, newval );
     }
 
 
     //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=8081
     /+pure nothrow+/ unittest
     {
-        testType!(bool)();
+        testType!(bool)( false, true );
 
-        testType!(byte)();
-        testType!(ubyte)();
+        testType!(byte)( 0, 1 );
+        testType!(ubyte)( 0, 1 );
 
-        testType!(short)();
-        testType!(ushort)();
+        testType!(short)( 0, 1 );
+        testType!(ushort)( 0, 1 );
 
-        testType!(int)();
-        testType!(uint)();
+        testType!(int)( 0, 1 );
+        testType!(uint)( 0, 1 );
 
-        testType!(shared int*)();
+        shared int si;
+        testType!(shared int*)( null, &si );
 
-        static class Klass {}
-        testCAS!(shared Klass)( new shared(Klass) );
+        static class C {}
+        testCAS!(shared(C))( null, new shared(C) );
 
-        testType!(float)(1.0f);
-        testType!(double)(1.0);
+        testType!(float)( 0.0f, 1.0f );
+        testType!(double)( 0.0, 1.0 );
 
-        static if( has64BitCAS )
+        static if( size_t.sizeof == long.sizeof || hasDWCAS )
         {
-            testType!(long)();
-            testType!(ulong)();
+            testType!(long)( 0, 1 );
+            testType!(ulong)( 0, 1 );
+        }
+
+        static if( size_t.sizeof == long.sizeof && hasDWCAS )
+        {
+            static struct S
+            {
+                long a; long b;
+
+                bool opEquals( S other ) nothrow
+                {
+                    return a == other.a && b == other.b;
+                }
+
+                shared bool opEquals( S other ) nothrow
+                {
+                    return a == other.a && b == other.b;
+                }
+            }
+
+            testType!(S)( S( 0, 0 ), S( 1, 2 ) );
         }
 
         shared(size_t) i;
@@ -1187,7 +1297,11 @@ version( unittest )
     //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=8081
     /+pure nothrow+/ unittest
     {
-        static struct S { int val; }
+        static struct S
+        {
+            int val;
+        }
+
         auto s = shared(S)(1);
 
         shared(S*) ptr;
