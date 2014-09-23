@@ -265,10 +265,47 @@ version (AnyX86)
     }
 }
 
+private immutable int function( uint x ) popcnt_32;
+private immutable int function( ulong x ) popcnt_64;
+
+static this()
+{
+    import core.cpuid;
+
+    // Only use popcnt_hw on systems that we have an implementation for.
+    version(AsmX86)
+    {
+        const use_popcnt_asm = true;
+    }
+
+    if (hasPopcnt() && use_popcnt_asm)
+    {
+        popcnt_32 = &popcnt_hw_32;
+        popcnt_64 = &popcnt_hw_64;
+    }
+    else
+    {
+        popcnt_32 = &popcnt_sw_32;
+        popcnt_64 = &popcnt_sw_64;
+    }
+}
+
 /**
- *  Calculates the number of set bits in a 32-bit integer.
+ *  Calculates the number of set bits in a integer.
  */
-int popcnt( uint x ) pure
+int popcnt(T)(T x) if (__traits(isIntegral, T) && (T.sizeof <= 8))
+{
+    static if (T.sizeof <= 4)
+    {
+        return popcnt_32(x);  
+    }
+    static if (T.sizeof == 8)
+    {
+        return popcnt_64(x);
+    }
+}
+
+private int popcnt_sw_32( uint x ) pure
 {
     // Avoid branches, and the potential for cache misses which
     // could be incurred with a table lookup.
@@ -299,6 +336,66 @@ int popcnt( uint x ) pure
     return x;
 }
 
+@trusted private int popcnt_hw_32( uint x ) pure
+{
+    version(AsmX86)
+    {
+        asm { naked; }
+        version (D_InlineAsm_X86_64)
+        {
+            version (Win64)
+                asm { mov EAX, ECX; }
+            else
+                asm { mov EAX, EDI; }
+        }
+        // On D Win32, fastcall will already put x into EAX
+        asm
+        {
+            popcnt EDX, EAX;
+            mov EAX, EDX;
+            ret;
+        }
+    }
+}
+
+private int popcnt_sw_64( ulong x ) pure
+{
+    x -= (x >> 1) & 0x5555_5555_5555_5555;
+    x = (x & 0x3333_3333_3333_3333) + ((x >> 2) & 0x_3333_3333_3333_3333);
+    x = (x + (x >> 4)) & 0x0F0F_0F0F_0F0F_0F0F;
+    x += x >> 8;
+    x += x >> 16;
+    x += x >> 32;
+    return x & 0x7f;
+}
+
+@trusted private int popcnt_hw_64( ulong x ) pure
+{
+    version (D_InlineAsm_X86_64)
+    {
+        asm { naked; }
+        version (Win64)
+        {
+            asm { popcnt RAX, RCX; }
+        }
+        else
+        {
+            asm { popcnt RAX, RDI; }
+        }
+        asm { ret; }
+    }
+    else version (D_InlineAsm_X86)   // In case there are 32bit processors with popcnt?
+    {
+        asm
+        {
+            mov EDX, [EBP+8];  // Get the first 32 bits of x
+            popcnt EAX, EDX;   // count the set bits, save into eax
+            mov EDX, [EBP+12]; // Get the second 32 bits of x
+            popcnt ECX, EDX;   // count the set bits, save into ecx
+            add EAX, ECX;      // add ecx to eax
+        }
+    }
+}
 
 unittest
 {
@@ -309,6 +406,10 @@ unittest
     assert( popcnt( 0xFFFF_FFFF ) == 32 );
     assert( popcnt( 0xCCCC_CCCC ) == 16 );
     assert( popcnt( 0x7777_7777 ) == 24 );
+    // 64 bit
+    assert( popcnt( 0xFFFF_FFFF_FFFF_FFFF ) == 64 );
+    assert( popcnt( 0xCCCC_CCCC_CCCC_CCCC ) == 32 );
+    assert( popcnt( 0x7777_7777_7777_7777 ) == 48 );
 }
 
 
