@@ -2180,6 +2180,9 @@ struct Pool
     {
         this.cached_ptr = ptr;
         this.cached_size = size;
+
+        if (gc.p_cache is ptr)
+            gc.size_cache = size;
     }
 
     void initialize(size_t npages)
