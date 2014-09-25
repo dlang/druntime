@@ -1459,10 +1459,16 @@ void early_collect()
 }
 
 
-//
-//
-//
 private void *malloc(size_t size, uint attrs, size_t* pm_bitmask = null)
+{
+    size_t capacity_not_used;
+    return malloc(size, attrs, capacity_not_used, pm_bitmask);
+}
+
+//
+//
+//
+private void *malloc(size_t size, uint attrs, out size_t capacity, size_t* pm_bitmask = null)
 {
 //    printf("gc malloc called\n");
     assert(size != 0);
@@ -1499,7 +1505,6 @@ private void *malloc(size_t size, uint attrs, size_t* pm_bitmask = null)
 
     Pool* pool = void;
     size_t bit_i = void;
-    size_t capacity = void; // to figure out where to store the bitmask
     bool collected = false;
     if (bin < B_PAGE)
     {
@@ -2749,9 +2754,7 @@ void gc_usage(size_t* used, size_t* free)
 BlkInfo gc_qalloc( size_t sz, uint ba = 0 )
 {
     BlkInfo retval;
- //   retval.base = malloc( sz, ba, &retval.size );
-    retval.base = malloc( sz, ba );
-    retval.size = sz;
+    retval.base = malloc( sz, ba, retval.size );
     retval.attr = ba;
     return retval;
 }
