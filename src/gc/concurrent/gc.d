@@ -271,7 +271,7 @@ private T locked(T, alias Code)()
     synchronized (gc.lock) return Code();
 }
 
-private GC* gc;
+private __gshared GC* gc;
 
 
 bool collect_in_progress()
