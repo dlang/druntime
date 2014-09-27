@@ -259,7 +259,7 @@ version( CRuntime_DigitalMars )
 else version( CRuntime_Microsoft )
 {
     ///
-    alias int fpos_t; //check this
+    alias long fpos_t;
 
     ///
     struct _iobuf
