@@ -949,7 +949,17 @@ else version( CRuntime_Microsoft )
     ///
     pure int  fileno(FILE* stream)   { return stream._file;                              }
   }
-  ///
+
+  version( None ) // requires MSVCRT >= 14 (VS 2015)
+  {
+    ///
+    int snprintf(char* s, size_t n, in char* fmt, ...);
+    ///
+    int vsnprintf(char* s, size_t n, in char* format, va_list arg);
+  }
+  else
+  {
+    ///
     int   _snprintf(char* s, size_t n, in char* fmt, ...);
     ///
     alias _snprintf snprintf;
@@ -996,6 +1006,7 @@ else version( CRuntime_Microsoft )
         else
             return _filbuf(fp);
     }
+  }
 
     ///
     int _lock_file(FILE *fp);
