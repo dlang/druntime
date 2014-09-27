@@ -965,12 +965,12 @@ else version( CRuntime_Microsoft )
     enum _TWO_DIGIT_EXPONENT = 1;
 
     ///
-    int _filbuf(FILE *fp);
+    int _filbuf(_iobuf* fp);
     ///
-    int _flsbuf(int c, FILE *fp);
+    int _flsbuf(int c, _iobuf* fp);
 
     ///
-    int _fputc_nolock(int c, FILE *fp)
+    int _fputc_nolock(int c, _iobuf* fp)
     {
         fp._cnt = fp._cnt - 1;
         if (fp._cnt >= 0)
@@ -984,7 +984,7 @@ else version( CRuntime_Microsoft )
     }
 
     ///
-    int _fgetc_nolock(FILE *fp)
+    int _fgetc_nolock(_iobuf* fp)
     {
         fp._cnt = fp._cnt - 1;
         if (fp._cnt >= 0)
