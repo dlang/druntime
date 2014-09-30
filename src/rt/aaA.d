@@ -309,18 +309,20 @@ bool _aaDelX(AA aa, in TypeInfo keyti, in void* pkey)
                 if (keyti.equals(pkey, e + 1))
                 {
                     *pe = e.next;
-                    if (aa.impl.nodes--)
+                    if (--aa.impl.nodes)
                     {
-                      if (i+1 == aa.impl.firstUsedBucket && *pe is null) {
-                          // rebuild cache
-                          size_t len = aa.impl.buckets.length;
-                          while (++i < len) {
-                              if (aa.impl.buckets[i] !is null) break;
-                          }
-                          aa.impl.firstUsedBucket = (i < len ? i+1 : 0);
-                      }
+                        if (i+1 == aa.impl.firstUsedBucket && aa.impl.buckets[i] is null)
+                        {
+                            // rebuild cache
+                            size_t len = aa.impl.buckets.length;
+                            while (++i < len)
+                            {
+                                if (aa.impl.buckets[i] !is null) break;
+                            }
+                            aa.impl.firstUsedBucket = (i < len ? i+1 : 0);
+                        }
                     } else {
-                      aa.impl.firstUsedBucket = 0;
+                        aa.impl.firstUsedBucket = 0;
                     }
                     GC.free(e);
                     return true;
@@ -881,7 +883,7 @@ Entry* _aaGetFirstEntry(AA aa) pure nothrow @nogc
         {
             if (entry !is null)
             {
-                aa.impl.firstUsedBucket = idx+1;
+                aa.impl.firstUsedBucket = idx+1; //FIXME: can we have immutable AAs?
                 return entry;
             }
         }
