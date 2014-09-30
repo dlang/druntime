@@ -321,7 +321,9 @@ bool _aaDelX(AA aa, in TypeInfo keyti, in void* pkey)
                             }
                             aa.impl.firstUsedBucket = (i < len ? i+1 : 0);
                         }
-                    } else {
+                    }
+                    else
+                    {
                         aa.impl.firstUsedBucket = 0;
                     }
                     GC.free(e);
