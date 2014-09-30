@@ -1863,6 +1863,14 @@ private void free(void *p)
         sentinel_Invariant(p);
         p = sentinel_sub(p);
     }
+
+    {
+        // ignore interior pointers
+        size_t size = pool.findSize(p);
+        if (cast(size_t)p & (size - 1) & (PAGESIZE - 1))
+            return;
+    }
+
     pagenum = cast(size_t)(p - pool.baseAddr) / PAGESIZE;
     bit_i = cast(size_t)(p - pool.baseAddr) / 16;
     clrAttr(pool, bit_i, uint.max);
