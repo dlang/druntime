@@ -69,6 +69,7 @@ struct Impl
 {
     Entry*[] buckets;
     size_t nodes;       // total number of entries
+    size_t firstUsedBucket; // index in buckets[]+1 or 0 for 'not used'
     TypeInfo _keyti;
     Entry*[4] binit;    // initial value of buckets[]
 
@@ -200,6 +201,10 @@ body
             //printf("rehash\n");
             _aaRehash(aa,keyti);
         }
+        else
+        {
+            if (i+1 < aa.impl.firstUsedBucket) aa.impl.firstUsedBucket = i+1;
+        }
     }
 
 Lret:
@@ -304,7 +309,23 @@ bool _aaDelX(AA aa, in TypeInfo keyti, in void* pkey)
                 if (keyti.equals(pkey, e + 1))
                 {
                     *pe = e.next;
-                    aa.impl.nodes--;
+                    if (--aa.impl.nodes)
+                    {
+                        if (i+1 == aa.impl.firstUsedBucket && aa.impl.buckets[i] is null)
+                        {
+                            // rebuild cache
+                            size_t len = aa.impl.buckets.length;
+                            while (++i < len)
+                            {
+                                if (aa.impl.buckets[i] !is null) break;
+                            }
+                            aa.impl.firstUsedBucket = (i < len ? i+1 : 0);
+                        }
+                    }
+                    else
+                    {
+                        aa.impl.firstUsedBucket = 0;
+                    }
                     GC.free(e);
                     return true;
                 }
@@ -398,6 +419,7 @@ body
 
             newImpl.nodes = oldImpl.nodes;
             newImpl._keyti = oldImpl._keyti;
+            newImpl.firstUsedBucket = 0; // cache is not initialized yet
 
             *paa.impl = newImpl;
         }
@@ -406,6 +428,7 @@ body
             if (paa.impl.buckets.ptr != paa.impl.binit.ptr)
                 GC.free(paa.impl.buckets.ptr);
             paa.impl.buckets = paa.impl.binit[];
+            paa.impl.firstUsedBucket = 0; // cache is not initialized yet
         }
     }
     return (*paa).impl;
@@ -586,6 +609,7 @@ Impl* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, vo
         }
         auto len = prime_list[i];
         result.buckets = newBuckets(len);
+        result.firstUsedBucket = size_t.max-1;
 
         size_t keytsize = aligntsize(keysize);
 
@@ -597,6 +621,7 @@ Impl* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, vo
             auto key_hash = keyti.getHash(pkey);
             //printf("hash = %d\n", key_hash);
             i = key_hash % len;
+            if (i+1 < result.firstUsedBucket) result.firstUsedBucket = i+1;
             auto pe = &result.buckets[i];
             while (1)
             {
@@ -847,6 +872,28 @@ pure nothrow unittest
 }
 
 
+Entry* _aaGetFirstEntry(AA aa) pure nothrow @nogc
+{
+    if (aa.impl !is null)
+    {
+        if (aa.impl.firstUsedBucket && aa.impl.firstUsedBucket+1 < aa.impl.buckets.length)
+        {
+          auto e = aa.impl.buckets[aa.impl.firstUsedBucket-1];
+          if (e !is null) return e;
+        }
+        foreach (immutable idx, entry; aa.impl.buckets)
+        {
+            if (entry !is null)
+            {
+                aa.impl.firstUsedBucket = idx+1; //FIXME: can we have immutable AAs?
+                return entry;
+            }
+        }
+    }
+    return null;
+}
+
+
 /**
  * _aaRange implements a ForwardRange
  */
@@ -864,14 +911,7 @@ Range _aaRange(AA aa) pure nothrow @nogc
         return res;
 
     res.impl = aa.impl;
-    foreach (entry; aa.impl.buckets)
-    {
-        if (entry !is null)
-        {
-            res.current = entry;
-            break;
-        }
-    }
+    res.current = _aaGetFirstEntry(aa);
     return res;
 }
 
