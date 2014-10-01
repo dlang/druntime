@@ -42,41 +42,6 @@ version = STACKGROWSDOWN;       // growing the stack means subtracting from the 
 
 import core.stdc.stdio : printf;
 
-// pointer map stub
-// not used, to be removed completely
-
-struct PointerMap
-{
-     size_t[] bits = [1, 1, 0];
-
-     private enum BITS = size_t.sizeof * 8;
-
-     size_t size()
-     {
-         return 0;
-     }
-
-     private bool getbit(size_t offset, bool pointer_bit)
-     {
-         return false;
-     }
-
-     bool mustScanWordAt(size_t offset)
-     {
-         return false;
-     }
-
-     bool isPointerAt(size_t offset)
-     {
-         return false;
-     }
-
-     bool canUpdatePointers()
-     {
-         return false;
-     }
-}
-
 /***************************************************/
 
 import gc.concurrent.bits: GCBits;
@@ -121,12 +86,6 @@ static import core.memory;
 
 alias BlkInfo = core.memory.GC.BlkInfo;
 alias BlkAttr = core.memory.GC.BlkAttr;
-
-
-package bool has_pointermap(uint attrs)
-{
-    return !opts.options.conservative && !(attrs & BlkAttr.NO_SCAN);
-}
 
 private size_t round_up(size_t n, size_t to)
 {
@@ -376,13 +335,6 @@ BlkInfo getInfo(void* p)
     info.size = pool.findSize(info.base);
     size_t bit_i = (info.base - pool.baseAddr) / 16;
     info.attr = getAttr(pool, bit_i);
-    if (has_pointermap(info.attr)) {
-        info.size -= size_t.sizeof; // PointerMap bitmask
-        // Points to the PointerMap bitmask pointer, not user data
-        if (p >= (info.base + info.size)) {
-            return BlkInfo.init;
-        }
-    }
     if (opts.options.sentinel) {
         info.base = sentinel_add(info.base);
         // points to sentinel data, not user data
@@ -654,7 +606,7 @@ int allocPage(Bins bin)
  * Search a range of memory values and mark any pointers into the GC pool using
  * type information (bitmask of pointer locations).
  */
-void mark_range(void *pbot, void *ptop, size_t* pm_bitmask)
+void mark_range(void *pbot, void *ptop)
 {
     // TODO: make our own assert because assert uses the GC
     assert (pbot <= ptop);
@@ -666,18 +618,9 @@ void mark_range(void *pbot, void *ptop, size_t* pm_bitmask)
     size_t pcache = 0;
     bool changes = false;
 
-    size_t type_size = pm_bitmask[0];
-    size_t* pm_bits = pm_bitmask + 1;
-    bool has_type_info = type_size != 1 || pm_bits[0] != 1 || pm_bits[1] != 0;
-
     //printf("marking range: %p -> %p\n", pbot, ptop);
-    for (; p1 + type_size <= p2; p1 += type_size) {
-        for (size_t n = 0; n < type_size; n++) {
-            // scan bit set for this word
-            if (has_type_info &&
-                    !(pm_bits[n / BITS_PER_WORD] & (1 << (n % BITS_PER_WORD))))
-                continue;
-
+    for (; p1 + size_t.sizeof <= p2; p1 += size_t.sizeof) {
+        for (size_t n = 0; n < size_t.sizeof; n++) {
             void* p = *(p1 + n);
 
             if (p < gc.min_addr || p >= gc.max_addr)
@@ -1003,7 +946,7 @@ void mark(void *stackTop)
     {
         try
         {
-            mark_range(pbot, ptop, PointerMap.init.bits.ptr);
+            mark_range(pbot, ptop);
         }
         catch (Exception e)
         {
@@ -1081,8 +1024,7 @@ void mark(void *stackTop)
                         else {
                             auto end_of_blk = cast(size_t**)(o +
                                     binsize[bin] - size_t.sizeof);
-                            size_t* pm_bitmask = *end_of_blk;
-                            mark_range(o, end_of_blk, pm_bitmask);
+                            mark_range(o, end_of_blk);
                         }
                     }
                     else if (bin == B_PAGE || bin == B_PAGEPLUS)
@@ -1103,8 +1045,7 @@ void mark(void *stackTop)
                         else {
                             auto end_of_blk = cast(size_t**)(o + blk_size -
                                     size_t.sizeof);
-                            size_t* pm_bitmask = *end_of_blk;
-                            mark_range(o, end_of_blk, pm_bitmask);
+                            mark_range(o, end_of_blk);
                         }
                     }
                 }
@@ -1459,16 +1400,16 @@ void early_collect()
 }
 
 
-private void *malloc(size_t size, uint attrs, size_t* pm_bitmask = null)
+private void *malloc(size_t size, uint attrs)
 {
     size_t capacity_not_used;
-    return malloc(size, attrs, capacity_not_used, pm_bitmask);
+    return malloc(size, attrs, capacity_not_used);
 }
 
 //
 //
 //
-private void *malloc(size_t size, uint attrs, out size_t capacity, size_t* pm_bitmask = null)
+private void *malloc(size_t size, uint attrs, out size_t capacity)
 {
 //    printf("gc malloc called\n");
     assert(size != 0);
@@ -1476,7 +1417,7 @@ private void *malloc(size_t size, uint attrs, out size_t capacity, size_t* pm_bi
     void *p = null;
     Bins bin;
 
-    gc.stats.malloc_started(size, attrs, pm_bitmask,
+    gc.stats.malloc_started(size, attrs,
                             gc.total_mem - gc.free_mem,
                             gc.free_mem);
 
@@ -1485,10 +1426,6 @@ private void *malloc(size_t size, uint attrs, out size_t capacity, size_t* pm_bi
 
     if (opts.options.sentinel)
         size += SENTINEL_EXTRA;
-
-    bool has_pm = has_pointermap(attrs);
-    if (has_pm)
-        size += size_t.sizeof;
 
     // Compute size bin
     // Cache previous binsize lookup - Dave Fladebo.
@@ -1569,12 +1506,6 @@ private void *malloc(size_t size, uint attrs, out size_t capacity, size_t* pm_bi
 
     // Store the bit mask AFTER SENTINEL_POST
     // TODO: store it BEFORE, so the bitmask is protected too
-    if (has_pm) {
-        auto end_of_blk = cast(size_t**)(p + capacity - size_t.sizeof);
-        *end_of_blk = pm_bitmask;
-        size -= size_t.sizeof;
-    }
-
     if (opts.options.sentinel) {
         size -= SENTINEL_EXTRA;
         p = sentinel_add(p);
@@ -1611,11 +1542,11 @@ private void *malloc(size_t size, uint attrs, out size_t capacity, size_t* pm_bi
 //
 //
 //
-private void *calloc(size_t size, uint attrs, size_t* pm_bitmask = null)
+private void *calloc(size_t size, uint attrs)
 {
     assert(size != 0);
 
-    void *p = malloc(size, attrs, pm_bitmask);
+    void *p = malloc(size, attrs);
     memset(p, 0, size);
     return p;
 }
@@ -1624,7 +1555,7 @@ private void *calloc(size_t size, uint attrs, size_t* pm_bitmask = null)
 //
 //
 //
-private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = null)
+private void *realloc(void *p, size_t size, uint attrs)
 {
     if (!size) {
         if (p)
@@ -1633,7 +1564,7 @@ private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = nul
     }
 
     if (p is null)
-        return malloc(size, attrs, pm_bitmask);
+        return malloc(size, attrs);
 
     Pool* pool = findPool(p);
     if (pool is null)
@@ -1650,23 +1581,12 @@ private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = nul
 
     void* blk_base_addr = pool.findBase(p);
     size_t blk_size = pool.findSize(p);
-    bool has_pm = has_pointermap(attrs);
-    size_t pm_bitmask_size = 0;
-    if (has_pm) {
-        pm_bitmask_size = size_t.sizeof;
-        // Retrieve pointer map bit mask if appropriate
-        if (pm_bitmask is null) {
-            auto end_of_blk = cast(size_t**)(
-                    blk_base_addr + blk_size - size_t.sizeof);
-            pm_bitmask = *end_of_blk;
-        }
-    }
 
     if (opts.options.sentinel) {
         sentinel_Invariant(p);
         size_t sentinel_stored_size = *sentinel_size(p);
         if (sentinel_stored_size != size) {
-            void* p2 = malloc(size, attrs, pm_bitmask);
+            void* p2 = malloc(size, attrs);
             if (sentinel_stored_size < size)
                 size = sentinel_stored_size;
             cstring.memcpy(p2, p, size);
@@ -1675,7 +1595,6 @@ private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = nul
         return p;
     }
 
-    size += pm_bitmask_size;
     if (blk_size >= PAGESIZE && size >= PAGESIZE) {
         auto psz = blk_size / PAGESIZE;
         auto newsz = round_up(size, PAGESIZE);
@@ -1687,19 +1606,15 @@ private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = nul
         if (newsz < psz) {
             // Shrink in place
             if (opts.options.mem_stomp)
-                memset(p + size - pm_bitmask_size, 0xF2,
-                        blk_size - size - pm_bitmask_size);
+                memset(p + size, 0xF2,
+                        blk_size - size);
             pool.freePages(pagenum + newsz, psz - newsz);
             auto new_blk_size = (PAGESIZE * newsz);
             gc.free_mem += blk_size - new_blk_size;
             // update the size cache, assuming that is very likely the
             // size of this block will be queried in the near future
             pool.update_cache(p, new_blk_size);
-            if (has_pm) {
-                auto end_of_blk = cast(size_t**)(blk_base_addr +
-                        new_blk_size - pm_bitmask_size);
-                *end_of_blk = pm_bitmask;
-            }
+
             return p;
         }
 
@@ -1708,8 +1623,8 @@ private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = nul
             for (size_t i = pagenum + psz; 1;) {
                 if (i == pagenum + newsz) {
                     if (opts.options.mem_stomp)
-                        memset(p + blk_size - pm_bitmask_size, 0xF0,
-                                size - blk_size - pm_bitmask_size);
+                        memset(p + blk_size, 0xF0,
+                                size - blk_size);
                     memset(pool.pagetable + pagenum + psz, B_PAGEPLUS,
                             newsz - psz);
                     auto new_blk_size = (PAGESIZE * newsz);
@@ -1718,11 +1633,6 @@ private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = nul
                     // likely the size of this block will be queried in
                     // the near future
                     pool.update_cache(p, new_blk_size);
-                    if (has_pm) {
-                        auto end_of_blk = cast(size_t**)(
-                                blk_base_addr + new_blk_size - pm_bitmask_size);
-                        *end_of_blk = pm_bitmask;
-                    }
                     early_collect();
                     return p;
                 }
@@ -1737,9 +1647,7 @@ private void *realloc(void *p, size_t size, uint attrs, size_t* pm_bitmask = nul
 
     // if new size is bigger or less than half
     if (blk_size < size || blk_size > size * 2) {
-        size -= pm_bitmask_size;
-        blk_size -= pm_bitmask_size;
-        void* p2 = malloc(size, attrs, pm_bitmask);
+        void* p2 = malloc(size, attrs);
         if (blk_size < size)
             size = blk_size;
         cstring.memcpy(p2, p, size);
@@ -1779,20 +1687,7 @@ body
 
     void* blk_base_addr = pool.findBase(p);
     size_t blk_size = pool.findSize(p);
-    bool has_pm = has_pointermap(attrs);
-    size_t* pm_bitmask = null;
-    size_t pm_bitmask_size = 0;
-    if (has_pm) {
-        pm_bitmask_size = size_t.sizeof;
-        // Retrieve pointer map bit mask
-        auto end_of_blk = cast(size_t**)(blk_base_addr +
-                blk_size - size_t.sizeof);
-        pm_bitmask = *end_of_blk;
-
-        minsize += size_t.sizeof;
-        maxsize += size_t.sizeof;
-    }
-
+    
     if (blk_size < PAGESIZE)
         return 0; // cannot extend buckets
 
@@ -1821,8 +1716,8 @@ body
     size_t new_size = (psz + sz) * PAGESIZE;
 
     if (opts.options.mem_stomp)
-        memset(p + blk_size - pm_bitmask_size, 0xF0,
-                new_size - blk_size - pm_bitmask_size);
+        memset(p + blk_size, 0xF0,
+                new_size - blk_size);
     memset(pool.pagetable + pagenum + psz, B_PAGEPLUS, sz);
     gc.p_cache = null;
     gc.size_cache = 0;
@@ -1830,12 +1725,6 @@ body
     // update the size cache, assuming that is very likely the size of this
     // block will be queried in the near future
     pool.update_cache(p, new_size);
-
-    if (has_pm) {
-        new_size -= size_t.sizeof;
-        auto end_of_blk = cast(size_t**)(blk_base_addr + new_size);
-        *end_of_blk = pm_bitmask;
-    }
 
     early_collect();
 
@@ -1931,9 +1820,6 @@ private size_t sizeOf(void *p)
     uint attrs = getAttr(pool, biti);
 
     size_t size = pool.findSize(p);
-    size_t pm_bitmask_size = 0;
-    if (has_pointermap(attrs))
-        pm_bitmask_size = size_t.sizeof;
 
     if (opts.options.sentinel) {
         // Check for interior pointer
@@ -1942,7 +1828,7 @@ private size_t sizeOf(void *p)
         // 2) base of memory pool is aligned on PAGESIZE boundary
         if (cast(size_t)p & (size - 1) & (PAGESIZE - 1))
             return 0;
-        return size - SENTINEL_EXTRA - pm_bitmask_size;
+        return size - SENTINEL_EXTRA;
     }
     else {
         if (p == gc.p_cache)
@@ -1956,7 +1842,7 @@ private size_t sizeOf(void *p)
             return 0;
 
         gc.p_cache = p;
-        gc.size_cache = size - pm_bitmask_size;
+        gc.size_cache = size;
 
         return gc.size_cache;
     }
