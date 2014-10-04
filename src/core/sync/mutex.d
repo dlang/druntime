@@ -31,6 +31,9 @@ else
     static assert(false, "Platform not supported");
 }
 
+extern(C) void* getMonitor(Object h) nothrow;
+extern(C) void setMonitor(Object h, void* m) nothrow;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Mutex
@@ -44,7 +47,7 @@ else
 /**
  * This class represents a general purpose, recursive mutex.
  */
-class Mutex :
+@monitor class Mutex :
     Object.Monitor
 {
     ////////////////////////////////////////////////////////////////////////////
@@ -92,12 +95,12 @@ class Mutex :
     this( Object o )
     in
     {
-        assert( o.__monitor is null );
+        assert( getMonitor(o) is null );
     }
     body
     {
         this();
-        o.__monitor = &m_proxy;
+        setMonitor(o, &m_proxy);
     }
 
 
@@ -204,7 +207,6 @@ class Mutex :
             return pthread_mutex_trylock( &m_hndl ) == 0;
         }
     }
-
 
 private:
     version( Windows )

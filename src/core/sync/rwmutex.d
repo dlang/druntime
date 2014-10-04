@@ -168,7 +168,7 @@ class ReadWriteMutex
      * This class can be considered a mutex in its own right, and is used to
      * negotiate a read lock for the enclosing mutex.
      */
-    class Reader :
+    @monitor class Reader :
         Object.Monitor
     {
         /**
@@ -271,7 +271,7 @@ class ReadWriteMutex
      * This class can be considered a mutex in its own right, and is used to
      * negotiate a write lock for the enclosing mutex.
      */
-    class Writer :
+    @monitor class Writer :
         Object.Monitor
     {
         /**

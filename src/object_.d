@@ -205,6 +205,8 @@ struct OffsetTypeInfo
     TypeInfo ti;        /// TypeInfo for this member
 }
 
+struct monitor; // Should be used as a class attribute
+
 /**
  * Runtime type information about a type.
  * Can be retrieved for any type using a
@@ -828,6 +830,7 @@ class TypeInfo_Class : TypeInfo
     @property auto info() @safe nothrow pure const { return this; }
     @property auto typeinfo() @safe nothrow pure const { return this; }
 
+    size_t monitorOffset;
     byte[]      init;           /** class static initializer
                                  * (init.length gives size in bytes of class)
                                  */
@@ -848,6 +851,7 @@ class TypeInfo_Class : TypeInfo
         isAbstract = 0x40,
         isCPPclass = 0x80,
         hasDtor = 0x100,
+        hasAllocatedMonitors = 0x200,
     }
     ClassFlags m_flags;
     void*       deallocator;
@@ -1776,47 +1780,38 @@ struct Monitor
     /* stuff */
 }
 
-Monitor* getMonitor(Object h) pure nothrow
-{
-    return cast(Monitor*) h.__monitor;
-}
-
-void setMonitor(Object h, Monitor* m) pure nothrow
-{
-    h.__monitor = m;
-}
+extern(C) Monitor* getMonitor(Object h) nothrow;
+extern(C) void setMonitor(Object h, Monitor* m) nothrow;
 
 void setSameMutex(shared Object ownee, shared Object owner) nothrow
 in
 {
-    assert(ownee.__monitor is null);
+    assert(getMonitor(cast()ownee) is null);
 }
 body
 {
-    auto m = cast(shared(Monitor)*) owner.__monitor;
+    auto m = cast(shared(Monitor)*) getMonitor(cast(Object)owner);
 
     if (m is null)
     {
-        _d_monitor_create(cast(Object) owner);
-        m = cast(shared(Monitor)*) owner.__monitor;
+        m = cast(shared(Monitor)*)_d_monitor_create(cast(Object) owner);
     }
 
     auto i = m.impl;
     if (i is null)
     {
         atomicOp!("+=")(m.refs, cast(size_t)1);
-        ownee.__monitor = owner.__monitor;
-        return;
     }
+    setMonitor(cast()ownee, cast(Monitor*)m);
+
     // If m.impl is set (ie. if this is a user-created monitor), assume
     // the monitor is garbage collected and simply copy the reference.
-    ownee.__monitor = owner.__monitor;
 }
 
-extern (C) void _d_monitor_create(Object) nothrow;
+extern (C) Monitor* _d_monitor_create(Object) nothrow;
 extern (C) void _d_monitor_destroy(Object) nothrow;
-extern (C) void _d_monitor_lock(Object) nothrow;
-extern (C) int  _d_monitor_unlock(Object) nothrow;
+extern (C) void _d_monitor_lock(Monitor*) nothrow;
+extern (C) int  _d_monitor_unlock(Monitor*) nothrow;
 
 extern (C) void _d_monitordelete(Object h, bool det)
 {
@@ -1834,7 +1829,6 @@ extern (C) void _d_monitordelete(Object h, bool det)
             {
                 _d_monitor_devt(m, h);
                 _d_monitor_destroy(h);
-                setMonitor(h, null);
             }
             return;
         }
@@ -1852,21 +1846,22 @@ extern (C) void _d_monitordelete(Object h, bool det)
     }
 }
 
+
+
 extern (C) void _d_monitorenter(Object h)
 {
     Monitor* m = getMonitor(h);
 
     if (m is null)
     {
-        _d_monitor_create(h);
-        m = getMonitor(h);
+        m = _d_monitor_create(h);
     }
 
     IMonitor i = m.impl;
 
     if (i is null)
     {
-        _d_monitor_lock(h);
+        _d_monitor_lock(m);
         return;
     }
     i.lock();
@@ -1879,7 +1874,7 @@ extern (C) void _d_monitorexit(Object h)
 
     if (i is null)
     {
-        _d_monitor_unlock(h);
+        _d_monitor_unlock(m);
         return;
     }
     i.unlock();
@@ -3112,3 +3107,23 @@ unittest
     i = s.dup;
     static assert(!__traits(compiles, m = s.dup));
 }
+
+// Check object size. An empty class without monitor should contain only vtbl pointer
+version(unittest)
+{
+    class A {}
+    @monitor class B {}
+    class C : A {}
+    class D : B {}
+    @monitor class E : B {}
+}
+
+unittest
+{
+    assert(__traits(classInstanceSize, A) == (void*).sizeof);
+    assert(__traits(classInstanceSize, B) == (void*).sizeof * 2);
+    assert(__traits(classInstanceSize, C) == (void*).sizeof);
+    assert(__traits(classInstanceSize, D) == (void*).sizeof * 2);
+    assert(__traits(classInstanceSize, E) == (void*).sizeof * 2);
+}
+

@@ -63,6 +63,8 @@ struct OffsetTypeInfo
     TypeInfo ti;
 }
 
+struct monitor; // Should be used as a class attribute
+
 class TypeInfo
 {
     override string toString() const pure @safe nothrow;
@@ -154,6 +156,7 @@ class TypeInfo_Class : TypeInfo
     @property auto info() @safe nothrow pure const { return this; }
     @property auto typeinfo() @safe nothrow pure const { return this; }
 
+    size_t      monitorOffset;
     byte[]      init;   // class static initializer
     string      name;   // class name
     void*[]     vtbl;   // virtual function pointer table

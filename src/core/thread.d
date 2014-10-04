@@ -517,7 +517,7 @@ else
  *
  * ----------------------------------------------------------------------------
  */
-class Thread
+@monitor class Thread
 {
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
@@ -877,11 +877,9 @@ class Thread
         }
     }
 
-
     ///////////////////////////////////////////////////////////////////////////
     // Thread Priority Actions
     ///////////////////////////////////////////////////////////////////////////
-
 
     /**
      * The minimum scheduling priority that may be set for a thread.  On
@@ -3157,7 +3155,7 @@ body
 /**
  * This class is intended to simplify certain common programming techniques.
  */
-class ThreadGroup
+@monitor class ThreadGroup
 {
     /**
      * Creates and starts a new Thread object that executes fn and adds it to
@@ -3834,7 +3832,7 @@ private
  *
  * Authors: Based on a design by Mikola Lysenko.
  */
-class Fiber
+@monitor class Fiber
 {
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
@@ -4176,7 +4174,6 @@ private:
         FN,
         DG
     }
-
 
     //
     // Standard fiber data
