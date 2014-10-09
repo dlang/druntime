@@ -170,8 +170,8 @@ struct Range
 }
 
 
-enum uint binsize[B_MAX] = [ 16,32,64,128,256,512,1024,2048,4096 ];
-enum uint notbinsize[B_MAX] = [ ~(16u-1),~(32u-1),~(64u-1),~(128u-1),~(256u-1),
+immutable uint[B_MAX] binsize = [ 16,32,64,128,256,512,1024,2048,4096 ];
+immutable uint[B_MAX] notbinsize = [ ~(16u-1),~(32u-1),~(64u-1),~(128u-1),~(256u-1),
                                 ~(512u-1),~(1024u-1),~(2048u-1),~(4096u-1) ];
 
 
