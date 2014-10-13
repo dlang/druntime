@@ -104,14 +104,20 @@ void parse_prealloc(const char* value)
 {
     char* end;
     cerrno.errno = 0;
-    long size = cstdlib.strtol(value, &end, 10);
+    long size_ = cstdlib.strtol(value, &end, 10);
+    assert(size_ <= size_t.max);
+    auto size = cast(size_t) size_;
+
     if (end == value || cerrno.errno) // error parsing
         return;
     size *= 1024 * 1024; // size is supposed to be in MiB
-    long npools = 1;
+    size_t npools = 1;
     if (*end == 'x') { // number of pools specified
         char* start = end + 1;
-        npools = cstdlib.strtol(start, &end, 10);
+        auto npools_ = cstdlib.strtol(start, &end, 10);
+        assert(npools_ <= size_t.max);
+        npools = cast(size_t) npools_;
+
         if (*end != '\0' || end == start || cerrno.errno) // error parsing
             return;
     }
