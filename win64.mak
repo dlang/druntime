@@ -1,15 +1,25 @@
-# Makefile to build D runtime library druntime64.lib for Win64
+# Makefile to build D runtime library druntime64.lib for Win64 or Win32/COFF
 
+# To cross-compile 64-bit Druntime using 32-bit C++ compilers, run:
+# make -f win64.mak VCBIN_SUBDIR=bin\x86_amd64
+
+# To build for Win32/COFF, run:
+# make -f win64.mak MODEL=32mscoff VCBIN_SUBDIR=bin
+
+## Memory model (32 or 64)
 MODEL=64
 
-VCDIR=\Program Files (x86)\Microsoft Visual Studio 10.0\VC
-SDKDIR=\Program Files (x86)\Microsoft SDKs\Windows\v7.0A
+## Visual C settings
+VC=10
+VCDIR=$(ProgramFiles)\Microsoft Visual Studio $(VC).0\VC
+VCBIN_SUBDIR=bin\amd64
+VCBIN_DIR=$(VCDIR)\$(VCBIN_SUBDIR)
+CC="$(VCBIN_DIR)\cl"
+#LD="$(VCBIN_DIR)\link"
+#AR="$(VCBIN_DIR)\lib"
 
+SDKDIR=$(ProgramFiles)\Microsoft SDKs\Windows\v7.0A
 DMD=dmd
-
-CC="$(VCDIR)\bin\amd64\cl"
-LD="$(VCDIR)\bin\amd64\link"
-AR="$(VCDIR)\bin\amd64\lib"
 CP=cp
 
 DOCDIR=doc
@@ -40,9 +50,9 @@ $(mak\SRCS)
 #       as both are used for debugging features (profiling and coverage)
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
-
-OBJS= errno_c.obj
-OBJS_TO_DELETE= errno_c.obj
+ERRNO_C_OBJ=errno_c$(MODEL).obj
+OBJS= $(ERRNO_C_OBJ)
+OBJS_TO_DELETE= $(ERRNO_C_OBJ)
 
 ######################## Doc .html file generation ##############################
 
@@ -637,8 +647,8 @@ $(IMPDIR)\etc\linux\memoryerror.d : src\etc\linux\memoryerror.d
 
 ################### C\ASM Targets ############################
 
-errno_c.obj : src\core\stdc\errno.c
-	$(CC) -c $(CFLAGS) src\core\stdc\errno.c -Foerrno_c.obj
+$(ERRNO_C_OBJ) : src\core\stdc\errno.c
+	$(CC) -c $(CFLAGS) src\core\stdc\errno.c -Fo$(ERRNO_C_OBJ)
 
 src\rt\minit.obj : src\rt\minit.asm
 	$(CC) -c $(CFLAGS) src\rt\minit.asm
