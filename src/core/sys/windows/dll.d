@@ -369,6 +369,8 @@ public:
                 return false;
         }
 
+        alias ghInstance = externDFunc!("rt.dmain2.hInstance", void function(HINSTANCE) @property);
+        ghInstance = hInstance;
         Runtime.initialize();
 
         if( !attach_threads )

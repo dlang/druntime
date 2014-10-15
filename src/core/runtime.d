@@ -15,6 +15,7 @@
 module core.runtime;
 
 version (Windows) import core.stdc.wchar_ : wchar_t;
+version (Windows) import core.sys.windows.windows : HINSTANCE;
 
 
 /// C interface for Runtime.loadLibrary
@@ -158,6 +159,25 @@ struct Runtime
     static @property CArgs cArgs()
     {
         return rt_cArgs();
+    }
+
+    version(CoreDdoc) alias HINSTANCE = void*;
+
+    /**
+     * Returns the Windows module _instance ($(D HINSTANCE)) for the current module.
+     * Windows only.
+     *
+     * Returns:
+     *  The Windows module _instance ($(D HINSTANCE)) for the current module.
+     */
+    version(CoreDdoc) static @property HINSTANCE instance();
+    else
+    version(Windows)
+    static @property HINSTANCE instance()
+    {
+        version (Windows) import core.internal.traits : externDFunc;
+        alias hInstance = externDFunc!("rt.dmain2.hInstance", HINSTANCE function() @property);
+        return hInstance();
     }
 
     /**
