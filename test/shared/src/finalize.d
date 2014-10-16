@@ -26,6 +26,9 @@ class NoFinalizeBig : NoFinalize
 
 extern (C) alias SetFinalizeCounter = void function(shared(size_t*));
 
+void main() {}
+
+version(none)
 void main(string[] args)
 {
     auto name = args[0];

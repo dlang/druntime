@@ -11,10 +11,10 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-module gc.proxy;
+module gc.basic.proxy;
 
-import gc.gc;
-import gc.stats;
+import gc.basic.gc;
+import gc.basic.stats;
 import core.stdc.stdlib;
 
 private
