@@ -17,6 +17,8 @@
  */
 module object;
 
+import core.internal.traits;
+
 //debug=PRINTF;
 
 private
@@ -2784,12 +2786,55 @@ bool _xopCmp(in void*, in void*)
     throw new Error("TypeInfo.compare is not implemented");
 }
 
+struct rtInfo(CustomInfos...) {}
+
 /******************************************
  * Create RTInfo for type T
  */
 
 template RTInfo(T)
 {
+    template _instantiateRTInfos(Infos...)
+    {
+        static if (Infos.length == 0)
+            alias _instantiateRTInfos = TypeTuple!();
+        else
+        {
+            alias Info = Infos[0];
+            alias _instantiateRTInfos = TypeTuple!(Info!(T), _instantiateRTInfos!(Infos[1 .. $]));
+        }
+    }
+
+    template _instantiateRTInfoFromAttributes(Attrs...)
+    {
+        static if (Attrs.length == 0)
+            alias _instantiateRTInfoFromAttributes = TypeTuple!();
+        else static if (is(Attrs[0] == rtInfo!(CustomRTInfos), CustomRTInfos...))
+            alias _instantiateRTInfoFromAttributes = _instantiateRTInfos!(CustomRTInfos);
+        else
+            alias _instantiateRTInfoFromAttributes = _instantiateRTInfoFromAttributes!(Attrs[1 .. $]);
+    }
+
+    template _instantiateRTInfoFromSupers(Args...)
+    {
+        static if (Args.length == 0)
+            alias _getRTInfov = TypeTuple!();
+        else static if (is(Args[0] == Object))
+            alias _getRTInfov = _instantiateRTInfoFromSupers!(Args[1 .. $]);
+        else
+            alias _getRTInfov = TypeTuple!(_instantiateRTInfo!(Args[0]), _instantiateRTInfoFromSupers!(Args[1 .. $]));
+    }
+
+    template _instantiateRTInfo(U = T)
+    {
+        alias OwnRTInfo = _instantiateRTInfoFromAttributes!(__traits(getAttributes, U));
+        static if (is(U Super == super))
+            alias _instantiateRTInfo = TypeTuple!(OwnRTInfo, _instantiateRTInfoFromSupers!(Super));
+        else
+            alias _instantiateRTInfo = OwnRTInfo;
+    }
+
+    alias InstantiateRTInfo = _instantiateRTInfo!();
     enum RTInfo = null;
 }
 
