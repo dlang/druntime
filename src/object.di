@@ -370,6 +370,7 @@ extern (C)
     inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize) pure nothrow;
     inout(void)[] _aaKeys(inout void* p, in size_t keysize) pure nothrow;
     void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
+    void _aaClear(void* aa) pure @safe nothrow @nogc;
 
     // extern (D) alias scope int delegate(void *) _dg_t;
     // int _aaApply(void* aa, size_t keysize, _dg_t dg);
@@ -551,6 +552,11 @@ inout(V) get(K, V)(inout(V[K]) aa, K key, lazy inout(V) defaultValue)
 inout(V) get(K, V)(inout(V[K])* aa, K key, lazy inout(V) defaultValue)
 {
     return (*aa).get(key, defaultValue);
+}
+
+void removeAll(K, V)(V[K] aa) 
+{
+    _aaClear(cast(void *)aa);
 }
 
 // Originally scheduled for deprecation in December 2012.
