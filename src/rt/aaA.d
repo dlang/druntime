@@ -93,6 +93,15 @@ struct Impl
                 break;
         return firstUsedBucket = i;
     }
+
+    void clear() pure @safe nothrow @nogc
+    {
+        // reset all data
+        binit[] = null;
+        buckets = binit[];
+        nodes = 0;
+        firstUsedBucket = buckets.length;
+    }
 }
 
 /* This is the type actually seen by the programmer, although
@@ -959,5 +968,15 @@ void _aaRangePopFront(ref Range r) pure nothrow @nogc
                 break;
             }
         }
+    }
+}
+
+// remove all elements from the aa, this is different than setting
+// the impl to null.
+void _aaClear(AA aa) pure @safe nothrow @nogc
+{
+    if(aa.impl !is null)
+    {
+        aa.impl.clear();
     }
 }

@@ -1963,6 +1963,7 @@ extern (C)
     inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize) pure nothrow;
     inout(void)[] _aaKeys(inout void* p, in size_t keysize) pure nothrow;
     void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
+    void _aaClear(void* aa) pure @safe nothrow @nogc;
 
     // extern (D) alias scope int delegate(void *) _dg_t;
     // int _aaApply(void* aa, size_t keysize, _dg_t dg);
@@ -2148,6 +2149,12 @@ inout(V) get(K, V)(inout(V[K])* aa, K key, lazy inout(V) defaultValue)
 {
     return (*aa).get(key, defaultValue);
 }
+
+void removeAll(K, V)(V[K] aa) 
+{
+    _aaClear(cast(void *)aa);
+}
+
 
 pure nothrow unittest
 {
@@ -2365,6 +2372,25 @@ pure nothrow unittest
     testFwdRange(aa.byKey, "a");
     testFwdRange(aa.byValue, 1);
     //testFwdRange(aa.byPair, tuple("a", 1));
+}
+
+pure nothrow unittest
+{
+    // test removeall functionality
+    int[int] aa;
+    assert(aa.length == 0);
+    foreach(i; 0..100)
+        aa[i] = i * 2;
+    assert(aa.length == 100);
+    auto aa2 = aa;
+    assert(aa2.length == 100);
+    aa.removeAll();
+    assert(aa.length == 0);
+    assert(aa2.length == 0);
+
+    aa2[5] = 6;
+    assert(aa.length == 1);
+    assert(aa[5] == 6);
 }
 
 deprecated("Please use destroy instead of clear.")
