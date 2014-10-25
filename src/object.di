@@ -12,6 +12,8 @@
  */
 module object;
 
+import core.internal.traits : Unconst;
+
 private
 {
     extern(C) void rt_finalize(void *ptr, bool det=true);
@@ -674,18 +676,14 @@ template RTInfo(T)
 }
 
 /// Provide the .dup array property.
-@property auto dup(T)(T[] a)
-    if (!is(const(T) : T))
+@property T[] dup(T)(T[] a)
+    if (!is(const(T) : Unconst!T))
 {
-    import core.internal.traits : Unconst;
-    static assert(is(T : Unconst!T), "Cannot implicitly convert type "~T.stringof~
-                  " to "~Unconst!T.stringof~" in dup.");
-
     // wrap unsafe _dup in @trusted to preserve @safe postblit
     static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(T, Unconst!T)(a);
+        return _trustedDup!(T, T)(a);
     else
-        return _dup!(T, Unconst!T)(a);
+        return _dup!(T, T)(a);
 }
 
 /// ditto

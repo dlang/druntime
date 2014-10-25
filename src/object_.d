@@ -22,6 +22,7 @@ module object;
 private
 {
     import core.atomic;
+    import core.internal.traits : Unconst;
     import core.stdc.string;
     import core.stdc.stdlib;
     import core.memory;
@@ -2892,18 +2893,14 @@ unittest
 public:
 
 /// Provide the .dup array property.
-@property auto dup(T)(T[] a)
-    if (!is(const(T) : T))
+@property T[] dup(T)(T[] a)
+    if (!is(const(T) : Unconst!T))
 {
-    import core.internal.traits : Unconst;
-    static assert(is(T : Unconst!T), "Cannot implicitly convert type "~T.stringof~
-                  " to "~Unconst!T.stringof~" in dup.");
-
     // wrap unsafe _dup in @trusted to preserve @safe postblit
     static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(T, Unconst!T)(a);
+        return _trustedDup!(T, T)(a);
     else
-        return _dup!(T, Unconst!T)(a);
+        return _dup!(T, T)(a);
 }
 
 /// ditto
@@ -3023,8 +3020,8 @@ unittest
            immutable(S1)[] i;
            m = m.dup;
            i = i.idup;
+           i = i.dup;
            static assert(!is(typeof(m.idup)));
-           static assert(!is(typeof(i.dup)));
         }
         {
             S3[] m;
