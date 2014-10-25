@@ -210,7 +210,7 @@ version( Windows )
 
             version( D_InlineAsm_X86 )
             {
-                asm { fninit; }
+                asm nothrow @nogc { fninit; }
             }
 
             try
@@ -292,7 +292,7 @@ else version( Posix )
             obj.m_main.tstack = obj.m_main.bstack;
             obj.m_tlsgcdata = rt_tlsgc_init();
 
-            obj.m_isRunning = true;
+            atomicStore!(MemoryOrder.raw)(obj.m_isRunning, true);
             Thread.setThis( obj );
             //Thread.add( obj );
             scope( exit )
@@ -301,7 +301,7 @@ else version( Posix )
                 //       removed or a double-removal could occur between this
                 //       function and thread_suspendAll.
                 Thread.remove( obj );
-                obj.m_isRunning = false;
+                atomicStore!(MemoryOrder.raw)(obj.m_isRunning,false);
             }
             Thread.add( &obj.m_main );
 
@@ -314,7 +314,7 @@ else version( Posix )
                 //       not running and let thread_suspendAll remove it from
                 //       the thread list.  This is safer and is consistent
                 //       with the Windows thread code.
-                obj.m_isRunning = false;
+                atomicStore!(MemoryOrder.raw)(obj.m_isRunning,false);
             }
 
             // NOTE: Using void to skip the initialization here relies on
@@ -405,11 +405,11 @@ else version( Posix )
         extern (C) void thread_suspendHandler( int sig ) nothrow
         in
         {
-            assert( sig == SIGUSR1 );
+            assert( sig == suspendSignalNumber );
         }
         body
         {
-            void op(void* sp)
+            void op(void* sp) nothrow
             {
                 // NOTE: Since registers are being pushed and popped from the
                 //       stack, any other stack data used by this function should
@@ -433,7 +433,7 @@ else version( Posix )
                 status = sigfillset( &sigres );
                 assert( status == 0 );
 
-                status = sigdelset( &sigres, SIGUSR2 );
+                status = sigdelset( &sigres, resumeSignalNumber );
                 assert( status == 0 );
 
                 status = sem_post( &suspendCount );
@@ -454,7 +454,7 @@ else version( Posix )
         extern (C) void thread_resumeHandler( int sig ) nothrow
         in
         {
-            assert( sig == SIGUSR2 );
+            assert( sig == resumeSignalNumber );
         }
         body
         {
@@ -484,38 +484,6 @@ else
  * class, and instances of this class should never be explicitly deleted.
  * A new thread may be created using either derivation or composition, as
  * in the following example.
- *
- * Example:
- * ----------------------------------------------------------------------------
- *
- * class DerivedThread : Thread
- * {
- *     this()
- *     {
- *         super( &run );
- *     }
- *
- * private :
- *     void run()
- *     {
- *         printf( "Derived thread running.\n" );
- *     }
- * }
- *
- * void threadFunc()
- * {
- *     printf( "Composed thread running.\n" );
- * }
- *
- * // create instances of each type
- * Thread derived = new DerivedThread();
- * Thread composed = new Thread( &threadFunc );
- *
- * // start both threads
- * derived.start();
- * composed.start();
- *
- * ----------------------------------------------------------------------------
  */
 class Thread
 {
@@ -621,7 +589,7 @@ class Thread
      * Throws:
      *  ThreadException if the thread fails to start.
      */
-    final void start()
+    final Thread start()
     in
     {
         assert( !next && !prev );
@@ -684,8 +652,8 @@ class Thread
                 // NOTE: This is also set to true by thread_entryPoint, but set it
                 //       here as well so the calling thread will see the isRunning
                 //       state immediately.
-                m_isRunning = true;
-                scope( failure ) m_isRunning = false;
+                atomicStore!(MemoryOrder.raw)(m_isRunning, true);
+                scope( failure ) atomicStore!(MemoryOrder.raw)(m_isRunning, false);
 
                 version (Shared)
                 {
@@ -726,9 +694,9 @@ class Thread
             //
             // VERIFY: does this actually also apply to other platforms?
             add( this );
+            return this;
         }
     }
-
 
     /**
      * Waits for this thread to complete.  If the thread terminated as the
@@ -873,10 +841,7 @@ class Thread
         }
         else version( Posix )
         {
-            // NOTE: It should be safe to access this value without
-            //       memory barriers because word-tearing and such
-            //       really isn't an issue for boolean values.
-            return m_isRunning;
+            return atomicLoad(m_isRunning);
         }
     }
 
@@ -916,6 +881,9 @@ class Thread
     /**
      * Gets the scheduling priority for the associated thread.
      *
+     * Note: Getting the priority of a thread that already terminated
+     * might return the default priority.
+     *
      * Returns:
      *  The scheduling priority of this thread.
      */
@@ -930,8 +898,12 @@ class Thread
             int         policy;
             sched_param param;
 
-            if( pthread_getschedparam( m_addr, &policy, &param ) )
-                throw new ThreadException( "Unable to get thread priority" );
+            if (auto err = pthread_getschedparam(m_addr, &policy, &param))
+            {
+                // ignore error if thread is not running => Bugzilla 8960
+                if (!atomicLoad(m_isRunning)) return PRIORITY_DEFAULT;
+                throw new ThreadException("Unable to get thread priority");
+            }
             return param.sched_priority;
         }
     }
@@ -939,6 +911,9 @@ class Thread
 
     /**
      * Sets the scheduling priority for the associated thread.
+     *
+     * Note: Setting the priority of a thread that already terminated
+     * might have no effect.
      *
      * Params:
      *  val = The new scheduling priority of this thread.
@@ -984,10 +959,14 @@ class Thread
         }
         else version( Posix )
         {
-            static if( __traits( compiles, pthread_setschedprio ) )
+            static if(__traits(compiles, pthread_setschedprio))
             {
-                if( pthread_setschedprio( m_addr, val ) )
-                    throw new ThreadException( "Unable to set thread priority" );
+                if (auto err = pthread_setschedprio(m_addr, val))
+                {
+                    // ignore error if thread is not running => Bugzilla 8960
+                    if (!atomicLoad(m_isRunning)) return;
+                    throw new ThreadException("Unable to set thread priority");
+                }
             }
             else
             {
@@ -996,11 +975,19 @@ class Thread
                 int         policy;
                 sched_param param;
 
-                if( pthread_getschedparam( m_addr, &policy, &param ) )
-                    throw new ThreadException( "Unable to set thread priority" );
+                if (auto err = pthread_getschedparam(m_addr, &policy, &param))
+                {
+                    // ignore error if thread is not running => Bugzilla 8960
+                    if (!atomicLoad(m_isRunning)) return;
+                    throw new ThreadException("Unable to set thread priority");
+                }
                 param.sched_priority = val;
-                if( pthread_setschedparam( m_addr, policy, &param ) )
-                    throw new ThreadException( "Unable to set thread priority" );
+                if (auto err = pthread_setschedparam(m_addr, policy, &param))
+                {
+                    // ignore error if thread is not running => Bugzilla 8960
+                    if (!atomicLoad(m_isRunning)) return;
+                    throw new ThreadException("Unable to set thread priority");
+                }
             }
         }
     }
@@ -1018,6 +1005,18 @@ class Thread
         assert(thr.priority == PRIORITY_MIN);
         thr.priority = PRIORITY_MAX;
         assert(thr.priority == PRIORITY_MAX);
+    }
+
+    unittest // Bugzilla 8960
+    {
+        import core.sync.semaphore;
+
+        auto thr = new Thread({});
+        thr.start();
+        Thread.sleep(1.msecs);       // wait a little so the thread likely has finished
+        thr.priority = PRIORITY_MAX; // setting priority doesn't cause error
+        auto prio = thr.priority;    // getting priority doesn't cause error
+        assert(prio >= PRIORITY_MIN && prio <= PRIORITY_MAX);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1392,7 +1391,7 @@ private:
     size_t              m_sz;
     version( Posix )
     {
-        bool            m_isRunning;
+        shared bool     m_isRunning;
     }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
@@ -1435,7 +1434,7 @@ private:
     ///////////////////////////////////////////////////////////////////////////
 
 
-    final void pushContext( Context* c )
+    final void pushContext( Context* c ) nothrow
     in
     {
         assert( !c.within );
@@ -1447,7 +1446,7 @@ private:
     }
 
 
-    final void popContext()
+    final void popContext() nothrow
     in
     {
         assert( m_curr && m_curr.within );
@@ -1460,7 +1459,7 @@ private:
     }
 
 
-    final Context* topContext()
+    final Context* topContext() nothrow
     in
     {
         assert( m_curr );
@@ -1774,16 +1773,41 @@ private:
     }
 }
 
+///
+unittest
+{
+    class DerivedThread : Thread
+    {
+        this()
+        {
+            super(&run);
+        }
+
+    private:
+        void run()
+        {
+            // Derived thread running.
+        }
+    }
+
+    void threadFunc()
+    {
+        // Composed thread running.
+    }
+
+    // create and start instances of each type
+    auto derived = new DerivedThread().start();
+    auto composed = new Thread(&threadFunc).start();
+}
 
 unittest
 {
     int x = 0;
 
-    auto t = new Thread(
+    new Thread(
     {
         x++;
-    });
-    t.start(); t.join();
+    }).start().join();
     assert( x == 1 );
 }
 
@@ -1795,11 +1819,10 @@ unittest
 
     try
     {
-        auto t = new Thread(
+        new Thread(
         {
             throw new Exception( MSG );
-        });
-        t.start(); t.join();
+        }).start().join();
         assert( false, "Expected rethrown exception." );
     }
     catch( Throwable t )
@@ -1813,6 +1836,45 @@ unittest
 // GC Support Routines
 ///////////////////////////////////////////////////////////////////////////////
 
+version( CoreDdoc )
+{
+    /**
+     * Instruct the thread module, when initialized, to use a different set of
+     * signals besides SIGUSR1 and SIGUSR2 for suspension and resumption of threads.
+     * This function should be called at most once, prior to thread_init().
+     * This function is Posix-only.
+     */
+    extern (C) void thread_setGCSignals(int suspendSignalNo, int resumeSignalNo)
+    {
+    }
+}
+else version( Posix )
+{
+    extern (C) void thread_setGCSignals(int suspendSignalNo, int resumeSignalNo)
+    in
+    {
+        assert(suspendSignalNumber == 0);
+        assert(resumeSignalNumber  == 0);
+        assert(suspendSignalNo != 0);
+        assert(resumeSignalNo  != 0);
+    }
+    out
+    {
+        assert(suspendSignalNumber != 0);
+        assert(resumeSignalNumber  != 0);
+    }
+    body
+    {
+        suspendSignalNumber = suspendSignalNo;
+        resumeSignalNumber  = resumeSignalNo;
+    }
+}
+
+version( Posix )
+{
+    __gshared int suspendSignalNumber;
+    __gshared int resumeSignalNumber;
+}
 
 /**
  * Initializes the thread module.  This function must be called by the
@@ -1834,6 +1896,16 @@ extern (C) void thread_init()
     }
     else version( Posix )
     {
+        if( suspendSignalNumber == 0 )
+        {
+            suspendSignalNumber = SIGUSR1;
+        }
+
+        if( resumeSignalNumber == 0 )
+        {
+            resumeSignalNumber = SIGUSR2;
+        }
+
         int         status;
         sigaction_t sigusr1 = void;
         sigaction_t sigusr2 = void;
@@ -1856,7 +1928,7 @@ extern (C) void thread_init()
         status = sigfillset( &sigusr1.sa_mask );
         assert( status == 0 );
 
-        // NOTE: Since SIGUSR2 should only be issued for threads within the
+        // NOTE: Since resumeSignalNumber should only be issued for threads within the
         //       suspend handler, we don't want this signal to trigger a
         //       restart.
         sigusr2.sa_flags   = 0;
@@ -1866,10 +1938,10 @@ extern (C) void thread_init()
         status = sigfillset( &sigusr2.sa_mask );
         assert( status == 0 );
 
-        status = sigaction( SIGUSR1, &sigusr1, null );
+        status = sigaction( suspendSignalNumber, &sigusr1, null );
         assert( status == 0 );
 
-        status = sigaction( SIGUSR2, &sigusr2, null );
+        status = sigaction( resumeSignalNumber, &sigusr2, null );
         assert( status == 0 );
 
         status = sem_init( &suspendCount, 0, 0 );
@@ -1943,7 +2015,7 @@ extern (C) Thread thread_attachThis()
         thisContext.bstack = getStackBottom();
         thisContext.tstack = thisContext.bstack;
 
-        thisThread.m_isRunning = true;
+        atomicStore!(MemoryOrder.raw)(thisThread.m_isRunning, true);
     }
     thisThread.m_isDaemon = true;
     thisThread.m_tlsgcdata = rt_tlsgc_init();
@@ -2073,8 +2145,7 @@ unittest
     auto t = new Thread(
     {
         Thread.sleep(100.msecs);
-    });
-    t.start();
+    }).start();
     thread_detachInstance(t);
     foreach (t2; Thread)
         assert(t !is t2);
@@ -2176,12 +2247,12 @@ version (PPC64) version = ExternStackShell;
 
 version (ExternStackShell)
 {
-    extern(D) public void callWithStackShell(scope void delegate(void* sp) fn) nothrow;
+    extern(D) public void callWithStackShell(scope void delegate(void* sp) nothrow fn) nothrow;
 }
 else
 {
     // Calls the given delegate, passing the current thread's stack pointer to it.
-    private void callWithStackShell(scope void delegate(void* sp) fn) nothrow
+    private void callWithStackShell(scope void delegate(void* sp) nothrow fn) nothrow
     in
     {
         assert(fn);
@@ -2201,7 +2272,7 @@ else
         else version (AsmX86_Posix)
         {
             size_t[3] regs = void;
-            asm
+            asm pure nothrow @nogc
             {
                 mov [regs + 0 * 4], EBX;
                 mov [regs + 1 * 4], ESI;
@@ -2213,7 +2284,7 @@ else
         else version (AsmX86_Windows)
         {
             size_t[3] regs = void;
-            asm
+            asm pure nothrow @nogc
             {
                 mov [regs + 0 * 4], EBX;
                 mov [regs + 1 * 4], ESI;
@@ -2225,7 +2296,7 @@ else
         else version (AsmX86_64_Posix)
         {
             size_t[5] regs = void;
-            asm
+            asm pure nothrow @nogc
             {
                 mov [regs + 0 * 8], RBX;
                 mov [regs + 1 * 8], R12;
@@ -2239,7 +2310,7 @@ else
         else version (AsmX86_64_Windows)
         {
             size_t[7] regs = void;
-            asm
+            asm pure nothrow @nogc
             {
                 mov [regs + 0 * 8], RBX;
                 mov [regs + 1 * 8], RSI;
@@ -2407,7 +2478,7 @@ private void suspend( Thread t ) nothrow
     {
         if( t.m_addr != pthread_self() )
         {
-            if( pthread_kill( t.m_addr, SIGUSR1 ) != 0 )
+            if( pthread_kill( t.m_addr, suspendSignalNumber ) != 0 )
             {
                 if( !t.isRunning )
                 {
@@ -2562,7 +2633,7 @@ private void resume( Thread t ) nothrow
     {
         if( t.m_addr != pthread_self() )
         {
-            if( pthread_kill( t.m_addr, SIGUSR2 ) != 0 )
+            if( pthread_kill( t.m_addr, resumeSignalNumber ) != 0 )
             {
                 if( !t.isRunning )
                 {
@@ -2955,9 +3026,9 @@ nothrow:
 private void* getStackTop() nothrow
 {
     version (D_InlineAsm_X86)
-        asm { naked; mov EAX, ESP; ret; }
+        asm pure nothrow @nogc { naked; mov EAX, ESP; ret; }
     else version (D_InlineAsm_X86_64)
-        asm { naked; mov RAX, RSP; ret; }
+        asm pure nothrow @nogc { naked; mov RAX, RSP; ret; }
     else version (GNU)
         return __builtin_frame_address(0);
     else
@@ -2970,9 +3041,9 @@ private void* getStackBottom() nothrow
     version (Windows)
     {
         version (D_InlineAsm_X86)
-            asm { naked; mov EAX, FS:4; ret; }
+            asm pure nothrow @nogc { naked; mov EAX, FS:4; ret; }
         else version(D_InlineAsm_X86_64)
-            asm
+            asm pure nothrow @nogc
             {    naked;
                  mov RAX, 8;
                  mov RAX, GS:[RAX];
@@ -3039,7 +3110,7 @@ private void* getStackBottom() nothrow
  * Returns:
  *  The address of the stack top.
  */
-extern (C) void* thread_stackTop()
+extern (C) void* thread_stackTop() nothrow
 in
 {
     // Not strictly required, but it gives us more flexibility.
@@ -3061,7 +3132,7 @@ body
  * Returns:
  *  The address of the stack bottom.
  */
-extern (C) void* thread_stackBottom()
+extern (C) void* thread_stackBottom() nothrow
 in
 {
     assert(Thread.getThis());
@@ -3094,9 +3165,8 @@ class ThreadGroup
      */
     final Thread create( void function() fn )
     {
-        Thread t = new Thread( fn );
+        Thread t = new Thread( fn ).start();
 
-        t.start();
         synchronized( this )
         {
             m_all[t] = t;
@@ -3117,9 +3187,8 @@ class ThreadGroup
      */
     final Thread create( void delegate() dg )
     {
-        Thread t = new Thread( dg );
+        Thread t = new Thread( dg ).start();
 
-        t.start();
         synchronized( this )
         {
             m_all[t] = t;
@@ -3384,7 +3453,7 @@ private
 
         version( AsmX86_Windows )
         {
-            asm
+            asm pure nothrow @nogc
             {
                 naked;
 
@@ -3422,7 +3491,7 @@ private
         }
         else version( AsmX86_64_Windows )
         {
-            asm
+            asm pure nothrow @nogc
             {
                 naked;
 
@@ -3490,7 +3559,7 @@ private
         }
         else version( AsmX86_Posix )
         {
-            asm
+            asm pure nothrow @nogc
             {
                 naked;
 
@@ -3522,7 +3591,7 @@ private
         }
         else version( AsmX86_64_Posix )
         {
-            asm
+            asm pure nothrow @nogc
             {
                 naked;
 
@@ -4370,7 +4439,7 @@ private:
             {
                 static EXCEPTION_REGISTRATION* fs0()
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         naked;
                         mov EAX, FS:[0];
@@ -4409,7 +4478,7 @@ private:
             // to 16 bytes.
             static void trampoline()
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     naked;
                     sub RSP, 32; // Shadow space (Win64 calling convention)
@@ -4916,8 +4985,7 @@ unittest
     static void unreferencedThreadObject()
     {
         static void sleep() { Thread.sleep(dur!"msecs"(100)); }
-        auto thread = new Thread(&sleep);
-        thread.start();
+        auto thread = new Thread(&sleep).start();
     }
     unreferencedThreadObject();
     GC.collect();
@@ -4996,13 +5064,13 @@ version( AsmX86_64_Windows )
         void testNonvolatileRegister(alias REG)()
         {
             auto zeroRegister = new Fiber(() {
-                mixin("asm { xor "~REG~", "~REG~"; }");
+                mixin("asm pure nothrow @nogc { xor "~REG~", "~REG~"; }");
             });
             long after;
 
-            mixin("asm { mov "~REG~", 0xFFFFFFFFFFFFFFFF; }");
+            mixin("asm pure nothrow @nogc { mov "~REG~", 0xFFFFFFFFFFFFFFFF; }");
             zeroRegister.call();
-            mixin("asm { mov after, "~REG~"; }");
+            mixin("asm pure nothrow @nogc { mov after, "~REG~"; }");
 
             assert(after == -1);
         }
@@ -5010,13 +5078,13 @@ version( AsmX86_64_Windows )
         void testNonvolatileRegisterSSE(alias REG)()
         {
             auto zeroRegister = new Fiber(() {
-                mixin("asm { xorpd "~REG~", "~REG~"; }");
+                mixin("asm pure nothrow @nogc { xorpd "~REG~", "~REG~"; }");
             });
             long[2] before = [0xFFFFFFFF_FFFFFFFF, 0xFFFFFFFF_FFFFFFFF], after;
 
-            mixin("asm { movdqu "~REG~", before; }");
+            mixin("asm pure nothrow @nogc { movdqu "~REG~", before; }");
             zeroRegister.call();
-            mixin("asm { movdqu after, "~REG~"; }");
+            mixin("asm pure nothrow @nogc { movdqu after, "~REG~"; }");
 
             assert(before == after);
         }
@@ -5050,7 +5118,7 @@ version( D_InlineAsm_X86_64 )
         void testStackAlignment()
         {
             void* pRSP;
-            asm
+            asm pure nothrow @nogc
             {
                 mov pRSP, RSP;
             }

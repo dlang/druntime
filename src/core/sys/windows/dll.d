@@ -327,7 +327,7 @@ public:
             return true;
 
         void** peb;
-        asm
+        asm pure nothrow @nogc
         {
             mov EAX,FS:[0x30];
             mov peb, EAX;
@@ -341,6 +341,8 @@ public:
         dll_aux.LdrpTlsListEntry* entry = dll_aux.addTlsListEntry( peb, tlsstart, tlsend, tls_callbacks_a, tlsindex );
         if( !entry )
             return false;
+
+        scope (failure) assert(0); // enforce nothrow, Bugzilla 13561
 
         if( !enumProcessThreads(
             function (uint id, void* context) nothrow {

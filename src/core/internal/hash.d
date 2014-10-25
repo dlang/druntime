@@ -3,7 +3,7 @@
  * This module provides functions to uniform calculating hash values for different types
  *
  * Copyright: Copyright Igor Stepanov 2013-2013.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Igor Stepanov
  * Source: $(DRUNTIMESRC core/internal/_hash.d)
  */
@@ -12,17 +12,12 @@ module core.internal.hash;
 import core.internal.convert;
 
 //enum hash. CTFE depends on base type
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (is(T == enum) || is(T == typedef))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (is(T == enum))
 {
     static if (is(T EType == enum)) //for EType
     {
         EType e_val = cast(EType)val;
         return hashOf(e_val, seed);
-    }
-    else static if (is(T TDType == typedef)) //for EType
-    {
-        TDType td_val = cast(TDType)val;
-        return hashOf(td_val, seed);
     }
     else
     {
@@ -31,7 +26,7 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (is(T == enum) || is(T == t
 }
 
 //CTFE ready (depends on base type). Can be merged with dynamic array hash
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && __traits(isStaticArray, T))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && __traits(isStaticArray, T))
 {
     size_t cur_hash = seed;
     foreach (ref cur; val)
@@ -42,7 +37,7 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T ==
 }
 
 //dynamic array hash
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStaticArray, T))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStaticArray, T))
 {
     alias ElementType = typeof(val[0]);
     static if (is(ElementType == interface) || is(ElementType == class) ||
@@ -72,7 +67,7 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T ==
 
 //arithmetic type hash
 @trusted nothrow pure
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && __traits(isArithmetic, T))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && __traits(isArithmetic, T))
 {
     static if(__traits(isFloating, val))
     {
@@ -89,14 +84,14 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T ==
 
 //typeof(null) hash. CTFE supported
 @trusted nothrow pure
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && is(T : typeof(null)))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T : typeof(null)))
 {
     return hashOf(cast(void*)null);
 }
 
 //Pointers hash. CTFE unsupported if not null
 @trusted nothrow pure
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && is(T V : V*) && !is(T : typeof(null)))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null)))
 {
     if(__ctfe)
     {
@@ -114,11 +109,11 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T ==
 }
 
 //struct or union hash
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && (is(T == struct) || is(T == union)))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && (is(T == struct) || is(T == union)))
 {
     static if (is(typeof(val.toHash()) == size_t)) //CTFE depends on toHash()
     {
-        return mixHash(val.toHash(), seed);
+        return hashOf(val.toHash(), seed);
     }
     else
     {
@@ -143,7 +138,7 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T ==
 
 //delegate hash. CTFE unsupported
 @trusted nothrow pure
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && is(T == delegate))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T == delegate))
 {
     assert(!__ctfe, "unable to compute hash of "~T.stringof);
     const(ubyte)[] bytes = (cast(const(ubyte)*)&val)[0 .. T.sizeof];
@@ -151,33 +146,26 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T ==
 }
 
 //class or interface hash. CTFE depends on toHash
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && is(T == interface) || is(T == class))
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T == interface) || is(T == class))
 {
-    return mixHash(val ? (cast(Object)val).toHash() : 0, seed);
+    return hashOf(val ? (cast(Object)val).toHash() : 0, seed);
 }
 
 //associative array hash. CTFE depends on base types
-size_t hashOf(T)(auto ref T aa, size_t seed = 0) if (!is(T == enum) && !is(T == typedef) && __traits(isAssociativeArray, T))
+size_t hashOf(T)(auto ref T aa, size_t seed = 0) if (!is(T == enum) && __traits(isAssociativeArray, T))
 {
-    try
-    {
-        if (!aa.length) return mixHash(0, seed);
-        size_t h = 0;
+    if (!aa.length) return hashOf(0, seed);
+    size_t h = 0;
 
-        // The computed hash is independent of the foreach traversal order.
-        foreach (key, ref val; aa)
-        {
-            size_t[2] hpair;
-            hpair[0] = key.hashOf();
-            hpair[1] = val.hashOf();
-            h ^= hpair.hashOf();
-        }
-        return mixHash(h, seed);
-    }
-    catch (Throwable thr)
+    // The computed hash is independent of the foreach traversal order.
+    foreach (key, ref val; aa)
     {
-        assert(0);
+        size_t[2] hpair;
+        hpair[0] = key.hashOf();
+        hpair[1] = val.hashOf();
+        h ^= hpair.hashOf();
     }
+    return h.hashOf(seed);
 }
 
 unittest
@@ -504,14 +492,6 @@ size_t bytesHash(const(void)* buf, size_t len, size_t seed = 0)
     h1 ^= len;
     h1 = fmix32(h1);
     return h1;
-}
-
-
-@trusted pure nothrow
-size_t mixHash(size_t hash, size_t seed)
-{
-    auto h = hash.toUbyte();
-    return bytesHash(h.ptr, h.length, seed);
 }
 
 //  Check that bytesHash works with CTFE

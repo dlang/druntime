@@ -3,7 +3,7 @@
  * qsort().
  *
  * Copyright: Copyright Digital Mars 2000 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Martin Nowak
  */
 
@@ -98,7 +98,7 @@ unittest
     a[8] = 0;
     a[9] = -1;
 
-    a.sort;
+    _adSort(*cast(void[]*)&a, typeid(a[0]));
 
     for (int i = 0; i < a.length - 1; i++)
     {

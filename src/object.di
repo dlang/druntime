@@ -2,7 +2,7 @@
  * Contains all implicitly declared types and variables.
  *
  * Copyright: Copyright Digital Mars 2000 - 2011.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Sean Kelly
  *
  *          Copyright Digital Mars 2000 - 2011.
@@ -391,6 +391,46 @@ extern (C)
     void* _aaRangeFrontKey(AARange r) pure nothrow @nogc;
     void* _aaRangeFrontValue(AARange r) pure nothrow @nogc;
     void _aaRangePopFront(ref AARange r) pure nothrow @nogc;
+
+    /*
+        _d_assocarrayliteralTX marked as pure, because aaLiteral can be called from pure code.
+        This is a typesystem hole, however this is existing hole.
+        Early compiler didn't check purity of toHash or postblit functions, if key is a UDT thus
+        copiler allowed to create AA literal with keys, which have impure unsafe toHash methods.
+    */
+    void* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, void[] values) pure;
+}
+
+auto aaLiteral(Key, Value, T...)(auto ref T args) if (T.length % 2 == 0)
+{
+    static if(!T.length) 
+    {
+        return cast(void*)null;
+    }
+    else
+    {
+        import core.internal.traits;
+        Key[] keys;
+        Value[] values;
+        keys.reserve(T.length / 2);
+        values.reserve(T.length / 2);
+
+        foreach (i; staticIota!(0, args.length / 2))
+        {
+            keys ~= args[2*i];
+            values ~= args[2*i + 1];
+        }   
+
+        void[] key_slice;
+        void[] value_slice;
+        void *ret;
+        () @trusted {
+            key_slice = *cast(void[]*)&keys;
+            value_slice = *cast(void[]*)&values;
+            ret = _d_assocarrayliteralTX(typeid(Value[Key]), key_slice, value_slice);
+        }();
+        return ret;
+    }
 }
 
 alias AssociativeArray(Key, Value) = Value[Key];
@@ -600,6 +640,34 @@ bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
             return false;
     }
     return true;
+}
+
+/**
+Calculates the hash value of $(D arg) with $(D seed) initial value.
+Result may be non-equals with $(D typeid(T).getHash(&arg))
+The $(D seed) value may be used for hash chaining:
+----
+struct Test
+{
+    int a;
+    string b;
+    MyObject c;
+
+    size_t toHash() const @safe pure nothrow
+    {
+        size_t hash = a.hashOf();
+        hash = b.hashOf(hash);
+        size_t h1 = c.myMegaHash();
+        hash = h1.hashOf(hash); //Mix two hash values
+        return hash;
+    }
+}
+----
+*/
+size_t hashOf(T)(auto ref T arg, size_t seed = 0)
+{
+    import core.internal.hash;
+    return core.internal.hash.hashOf(arg, seed);
 }
 
 bool _xopEquals(in void* ptr, in void* ptr);

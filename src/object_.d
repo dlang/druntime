@@ -6,7 +6,7 @@
  *      WIKI = Object
  *
  * Copyright: Copyright Digital Mars 2000 - 2011.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Sean Kelly
  */
 
@@ -29,7 +29,6 @@ private
     import rt.util.string;
     debug(PRINTF) import core.stdc.stdio;
 
-    extern (C) void onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure nothrow @nogc; /* dmd @@@BUG11461@@@ */
     extern (C) Object _d_newclass(const TypeInfo_Class ci);
     extern (C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) nothrow;
     extern (C) size_t _d_arraysetcapacity(const TypeInfo ti, size_t newcapacity, void *arrptr) pure nothrow;
@@ -222,7 +221,7 @@ class TypeInfo
         try
         {
             auto data = this.toString();
-            return hashOf(data.ptr, data.length);
+            return rt.util.hash.hashOf(data.ptr, data.length);
         }
         catch (Throwable)
         {
@@ -983,7 +982,7 @@ class TypeInfo_Struct : TypeInfo
         }
         else
         {
-            return hashOf(p, init().length);
+            return rt.util.hash.hashOf(p, init().length);
         }
     }
 
@@ -1085,7 +1084,7 @@ unittest
 {
     struct S
     {
-        const bool opEquals(ref const S rhs)
+        bool opEquals(ref const S rhs) const
         {
             return false;
         }
@@ -1936,6 +1935,7 @@ extern (C) void rt_attachDisposeEvent(Object h, DEvent e)
         auto len = m.devt.length + 4; // grow by 4 elements
         auto pos = m.devt.length;     // insert position
         auto p = realloc(m.devt.ptr, DEvent.sizeof * len);
+        import core.exception : onOutOfMemoryError;
         if (!p)
             onOutOfMemoryError();
         m.devt = (cast(DEvent*)p)[0 .. len];
@@ -1991,6 +1991,46 @@ extern (C)
 
     int _aaEqual(in TypeInfo tiRaw, in void* e1, in void* e2);
     hash_t _aaGetHash(in void* aa, in TypeInfo tiRaw) nothrow;
+
+    /*
+        _d_assocarrayliteralTX marked as pure, because aaLiteral can be called from pure code.
+        This is a typesystem hole, however this is existing hole.
+        Early compiler didn't check purity of toHash or postblit functions, if key is a UDT thus
+        copiler allowed to create AA literal with keys, which have impure unsafe toHash methods.
+    */
+    void* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, void[] values) pure;
+}
+
+auto aaLiteral(Key, Value, T...)(auto ref T args) if (T.length % 2 == 0)
+{
+    static if(!T.length)
+    {
+        return cast(void*)null;
+    }
+    else
+    {
+        import core.internal.traits;
+        Key[] keys;
+        Value[] values;
+        keys.reserve(T.length / 2);
+        values.reserve(T.length / 2);
+
+        foreach (i; staticIota!(0, args.length / 2))
+        {
+            keys ~= args[2*i];
+            values ~= args[2*i + 1];
+        }
+
+        void[] key_slice;
+        void[] value_slice;
+        void *ret;
+        () @trusted {
+            key_slice = *cast(void[]*)&keys;
+            value_slice = *cast(void[]*)&values;
+            ret = _d_assocarrayliteralTX(typeid(Value[Key]), key_slice, value_slice);
+        }();
+        return ret;
+    }
 }
 
 alias AssociativeArray(Key, Value) = Value[Key];
@@ -2147,10 +2187,9 @@ pure /*nothrow @@@BUG5555@@@*/ unittest
     }
 
     assert(c.length == 3);
-    c.sort;
-    assert(c[0] == 1);
-    assert(c[1] == 2);
-    assert(c[2] == 3);
+    assert(c[0] == 1 || c[1] == 1 || c[2] == 1);
+    assert(c[0] == 2 || c[1] == 2 || c[2] == 2);
+    assert(c[0] == 3 || c[1] == 3 || c[2] == 3);
 }
 
 pure nothrow unittest
@@ -2741,6 +2780,12 @@ bool _ArrayEq(T1, T2)(T1[] a1, T2[] a2)
 }
 
 
+size_t hashOf(T)(auto ref T arg, size_t seed = 0)
+{
+    import core.internal.hash;
+    return core.internal.hash.hashOf(arg, seed);
+}
+
 bool _xopEquals(in void*, in void*)
 {
     throw new Error("TypeInfo.equals is not implemented");
@@ -2807,7 +2852,7 @@ size_t getArrayHash(in TypeInfo element, in void* ptr, in size_t count) @trusted
     }
 
     if(!hasCustomToHash(element))
-        return hashOf(ptr, elementSize * count);
+        return rt.util.hash.hashOf(ptr, elementSize * count);
 
     size_t hash = 0;
     foreach(size_t i; 0 .. count)

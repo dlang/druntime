@@ -2,7 +2,7 @@
  * Contains traits for runtime internal usage.
  *
  * Copyright: Copyright Digital Mars 2014 -.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Martin Nowak
  * Source: $(DRUNTIMESRC core/internal/_traits.d)
  */
@@ -70,3 +70,24 @@ template externDFunc(string fqn, T:FT*, FT) if(is(FT == function))
     else
         static assert(0);
 }
+
+template staticIota(int beg, int end)
+{
+    static if (beg + 1 >= end)
+    {
+        static if (beg >= end)
+        {
+            alias staticIota = TypeTuple!();
+        }
+        else
+        {
+            alias staticIota = TypeTuple!(+beg);
+        }
+    }
+    else
+    {
+        enum mid = beg + (end - beg) / 2;
+        alias staticIota = TypeTuple!(staticIota!(beg, mid), staticIota!(mid, end));
+    }
+}
+
