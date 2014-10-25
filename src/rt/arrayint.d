@@ -52,25 +52,25 @@ else
     }
     else
     {
-        alias core.cpuid.mmx mmx;
-        alias core.cpuid.sse sse;
-        alias core.cpuid.sse2 sse2;
+        alias mmx = core.cpuid.mmx;
+        alias sse = core.cpuid.sse;
+        alias sse2 = core.cpuid.sse2;
     }
-    alias core.cpuid.sse3 sse3;
-    alias core.cpuid.sse41 sse41;
-    alias core.cpuid.sse42 sse42;
-    alias core.cpuid.sse4a sse4a;
-    alias core.cpuid.avx avx;
-    alias core.cpuid.avx2 avx2;
-    alias core.cpuid.amd3dnow amd3dnow;
-    alias core.cpuid.amd3dnowExt and3dnowExt;
-    alias core.cpuid.amdMmx amdMmx;
-    alias core.cpuid.has3dnowPrefetch has3dnowPrefetch;
+    alias sse3 = core.cpuid.sse3;
+    alias sse41 = core.cpuid.sse41;
+    alias sse42 = core.cpuid.sse42;
+    alias sse4a = core.cpuid.sse4a;
+    alias avx = core.cpuid.avx;
+    alias avx2 = core.cpuid.avx2;
+    alias amd3dnow = core.cpuid.amd3dnow;
+    alias and3dnowExt = core.cpuid.amd3dnowExt;
+    alias amdMmx = core.cpuid.amdMmx;
+    alias has3dnowPrefetch = core.cpuid.has3dnowPrefetch;
 }
 
 //version = log;
 
-alias int T;
+alias T = int;
 
 extern (C) @trusted nothrow:
 

@@ -134,8 +134,8 @@ int     socketpair(int, int, int, ref int[2]);
 
 version( linux )
 {
-    alias uint   socklen_t;
-    alias ushort sa_family_t;
+    alias socklen_t = uint;
+    alias sa_family_t = ushort;
 
     struct sockaddr
     {
@@ -193,7 +193,7 @@ version( linux )
     }
 
     private cmsghdr* __cmsg_nxthdr(msghdr*, cmsghdr*);
-    alias            __cmsg_nxthdr CMSG_NXTHDR;
+    alias            CMSG_NXTHDR = __cmsg_nxthdr;
 
     extern (D) size_t CMSG_FIRSTHDR( msghdr* mhdr )
     {
@@ -507,8 +507,8 @@ version( linux )
 }
 else version( OSX )
 {
-    alias uint   socklen_t;
-    alias ubyte  sa_family_t;
+    alias socklen_t = uint;
+    alias sa_family_t = ubyte;
 
     struct sockaddr
     {
@@ -662,8 +662,8 @@ else version( OSX )
 }
 else version( FreeBSD )
 {
-    alias uint   socklen_t;
-    alias ubyte  sa_family_t;
+    alias socklen_t = uint;
+    alias sa_family_t = ubyte;
 
     struct sockaddr
     {
@@ -838,8 +838,8 @@ else version( FreeBSD )
 }
 else version (Solaris)
 {
-    alias uint socklen_t;
-    alias ushort sa_family_t;
+    alias socklen_t = uint;
+    alias sa_family_t = ushort;
 
     struct sockaddr
     {
@@ -847,7 +847,7 @@ else version (Solaris)
         char[14] sa_data;
     }
 
-    alias double sockaddr_maxalign_t;
+    alias sockaddr_maxalign_t = double;
 
     private enum _SS_PAD1SIZE = sockaddr_maxalign_t.sizeof - sa_family_t.sizeof;
     private enum _SS_PAD2SIZE = 256 - sa_family_t.sizeof + _SS_PAD1SIZE + sockaddr_maxalign_t.sizeof;
@@ -973,8 +973,8 @@ else version (Solaris)
 }
 else version( Android )
 {
-    alias int    socklen_t;
-    alias ushort sa_family_t;
+    alias socklen_t = int;
+    alias sa_family_t = ushort;
 
     struct sockaddr
     {

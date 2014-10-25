@@ -17,7 +17,7 @@ private import rt.util.hash;
 
 // delegate
 
-alias void delegate(int) dg;
+alias dg = void delegate(int);
 
 class TypeInfo_D : TypeInfo
 {

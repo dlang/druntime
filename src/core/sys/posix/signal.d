@@ -85,14 +85,14 @@ int raise(int sig);                    (defined in core.stdc.signal)
 
 version( Posix )
 {
-    private alias void function(int) sigfn_t;
-    private alias void function(int, siginfo_t*, void*) sigactfn_t;
+    private alias sigfn_t = void function(int);
+    private alias sigactfn_t = void function(int, siginfo_t*, void*);
 
     // nothrow versions
     nothrow @nogc
     {
-        private alias void function(int) sigfn_t2;
-        private alias void function(int, siginfo_t*, void*) sigactfn_t2;
+        private alias sigfn_t2 = void function(int);
+        private alias sigactfn_t2 = void function(int, siginfo_t*, void*);
     }
 
     enum
@@ -114,8 +114,8 @@ version( Posix )
         private int _sigrtmin() { return cast(int) sysconf(_SC_SIGRT_MIN); }
         private int _sigrtmax() { return cast(int) sysconf(_SC_SIGRT_MAX); }
 
-        alias _sigrtmin SIGRTMIN;
-        alias _sigrtmax SIGRTMAX;
+        alias SIGRTMIN = _sigrtmin;
+        alias SIGRTMAX = _sigrtmax;
     }
     else
     {
@@ -125,8 +125,8 @@ version( Posix )
             int __libc_current_sigrtmax();
         }
 
-        alias __libc_current_sigrtmin SIGRTMIN;
-        alias __libc_current_sigrtmax SIGRTMAX;
+        alias SIGRTMIN = __libc_current_sigrtmin;
+        alias SIGRTMAX = __libc_current_sigrtmax;
     }
 }
 
@@ -701,7 +701,7 @@ else version( OSX )
 {
     enum SIG_HOLD = cast(sigfn_t2) 5;
 
-    alias uint sigset_t;
+    alias sigset_t = uint;
     // pid_t  (defined in core.sys.types)
 
     //SIGABRT (defined in core.stdc.signal)
@@ -929,7 +929,7 @@ else version( Android )
 
     version (X86)
     {
-        alias c_ulong sigset_t;
+        alias sigset_t = c_ulong;
         enum int LONG_BIT = 32;
     }
     else
@@ -1852,7 +1852,7 @@ else version (Solaris)
         c_long tv_nsec;
     }
 
-    alias timespec timestruc_t;
+    alias timestruc_t = timespec;
 }
 else version( Android )
 {

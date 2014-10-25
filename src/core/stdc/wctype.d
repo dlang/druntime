@@ -19,8 +19,8 @@ extern (C):
 nothrow:
 @nogc:
 
-alias wchar_t wctrans_t;
-alias wchar_t wctype_t;
+alias wctrans_t = wchar_t;
+alias wctype_t = wchar_t;
 
 pure int iswalnum(wint_t wc);
 pure int iswalpha(wint_t wc);

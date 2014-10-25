@@ -18,7 +18,7 @@ version (Windows)
 {
     import core.sys.windows.windows;
 
-    alias int pthread_t;
+    alias pthread_t = int;
 
     pthread_t pthread_self() nothrow
     {

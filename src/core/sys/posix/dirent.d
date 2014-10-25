@@ -74,7 +74,7 @@ version( linux )
     static if( __USE_FILE_OFFSET64 )
     {
         dirent* readdir64(DIR*);
-        alias   readdir64 readdir;
+        alias   readdir = readdir64;
     }
     else
     {
@@ -138,7 +138,7 @@ else version( FreeBSD )
         char[256] d_name;
     }
 
-    alias void* DIR;
+    alias DIR = void*;
 
     dirent* readdir(DIR*);
 }
@@ -163,7 +163,7 @@ else version (Solaris)
     static if (__USE_LARGEFILE64)
     {
         dirent* readdir64(DIR*);
-        alias readdir64 readdir;
+        alias readdir = readdir64;
     }
     else
     {
@@ -229,7 +229,7 @@ version( linux )
   static if( __USE_LARGEFILE64 )
   {
     int   readdir64_r(DIR*, dirent*, dirent**);
-    alias readdir64_r readdir_r;
+    alias readdir_r = readdir64_r;
   }
   else
   {
@@ -249,7 +249,7 @@ else version (Solaris)
     static if (__USE_LARGEFILE64)
     {
         int readdir64_r(DIR*, dirent*, dirent**);
-        alias readdir64_r readdir_r;
+        alias readdir_r = readdir64_r;
     }
     else
     {

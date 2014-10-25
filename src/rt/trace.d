@@ -23,12 +23,12 @@ private
     import rt.util.string;
 
     version (CRuntime_Microsoft)
-        alias core.stdc.stdlib._strtoui64 strtoull;
+        alias strtoull = core.stdc.stdlib._strtoui64;
 }
 
 extern (C):
 
-alias long timer_t;
+alias timer_t = long;
 
 /////////////////////////////////////
 //

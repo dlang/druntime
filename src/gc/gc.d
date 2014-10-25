@@ -129,7 +129,7 @@ private
 }
 
 
-alias GC gc_t;
+alias gc_t = GC;
 
 
 /* ======================= Leak Detector =========================== */
@@ -1367,7 +1367,7 @@ enum
 }
 
 
-alias ubyte Bins;
+alias Bins = ubyte;
 
 
 struct List

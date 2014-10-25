@@ -60,8 +60,8 @@ version ( Posix )
 }
 else
 {
-    alias c_long time_t;
-    alias c_long clock_t;
+    alias time_t = c_long;
+    alias clock_t = c_long;
 }
 
 version( Windows )

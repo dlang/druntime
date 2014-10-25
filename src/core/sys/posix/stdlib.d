@@ -251,7 +251,7 @@ version( linux )
   static if( __USE_LARGEFILE64 )
   {
     int    mkstemp64(char*);
-    alias  mkstemp64 mkstemp;
+    alias  mkstemp = mkstemp64;
   }
   else
   {
@@ -403,14 +403,14 @@ else version( Solaris )
         int mkstemp(char*);
 
         static if ( __USE_LARGEFILE64 )
-            alias mkstemp mkstemp64;
+            alias mkstemp64 = mkstemp;
     }
     else
     {
         int mkstemp64(char*);
 
         static if ( __USE_LARGEFILE64 )
-            alias mkstemp64 mkstemp;
+            alias mkstemp = mkstemp64;
         else
             int mkstemp(char*);
     }

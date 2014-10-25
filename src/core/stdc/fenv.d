@@ -138,8 +138,8 @@ else version ( OSX )
 {
     version ( BigEndian )
     {
-        alias uint fenv_t;
-        alias uint fexcept_t;
+        alias fenv_t = uint;
+        alias fexcept_t = uint;
     }
     version ( LittleEndian )
     {
@@ -151,7 +151,7 @@ else version ( OSX )
             byte[8] __reserved;
         }
 
-        alias ushort fexcept_t;
+        alias fexcept_t = ushort;
     }
 }
 else version ( FreeBSD )
@@ -166,7 +166,7 @@ else version ( FreeBSD )
         byte[16] __other;
     }
 
-    alias ushort fexcept_t;
+    alias fexcept_t = ushort;
 }
 else version( Android )
 {
@@ -182,7 +182,7 @@ else version( Android )
             byte[16] __other;
         }
 
-        alias ushort fexcept_t;
+        alias fexcept_t = ushort;
     }
     else
     {
@@ -207,7 +207,7 @@ else version( Solaris )
         c_ulong                     __fsr;
     }
 
-    alias int fexcept_t;
+    alias fexcept_t = int;
 }
 else
 {

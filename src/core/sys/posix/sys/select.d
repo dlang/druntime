@@ -52,7 +52,7 @@ version( linux )
 {
     private
     {
-        alias c_long __fd_mask;
+        alias __fd_mask = c_long;
         enum uint __NFDBITS = 8 * __fd_mask.sizeof;
 
         extern (D) auto __FDELT( int d )
@@ -173,7 +173,7 @@ else version( FreeBSD )
 {
     private
     {
-        alias c_ulong __fd_mask;
+        alias __fd_mask = c_ulong;
         enum _NFDBITS = __fd_mask.sizeof * 8;
     }
 
@@ -222,7 +222,7 @@ else version (Solaris)
 {
     private
     {
-        alias c_long fds_mask;
+        alias fds_mask = c_long;
 
         enum _NBBY = 8;
         enum FD_NFDBITS = fds_mask.sizeof * _NBBY;
@@ -265,7 +265,7 @@ else version( Android )
 {
     private
     {
-        alias c_ulong __fd_mask;
+        alias __fd_mask = c_ulong;
         enum uint __NFDBITS = 8 * __fd_mask.sizeof;
 
         extern (D) auto __FDELT( int d )

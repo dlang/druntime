@@ -742,7 +742,7 @@ else version (Solaris)
             char[_ST_FSTYPSZ] st_fstype;
         }
 
-        static if (__USE_LARGEFILE64) alias stat_t stat64_t;
+        static if (__USE_LARGEFILE64) alias stat64_t = stat_t;
     }
     else
     {
@@ -791,9 +791,9 @@ else version (Solaris)
         }
 
         static if (__USE_FILE_OFFSET64)
-            alias stat64_t stat_t;
+            alias stat_t = stat64_t;
         else
-            alias stat32_t stat_t;
+            alias stat_t = stat32_t;
 
     }
 
@@ -921,13 +921,13 @@ version( linux )
   static if( __USE_LARGEFILE64 )
   {
     int   fstat64(int, stat_t*);
-    alias fstat64 fstat;
+    alias fstat = fstat64;
 
     int   lstat64(in char*, stat_t*);
-    alias lstat64 lstat;
+    alias lstat = lstat64;
 
     int   stat64(in char*, stat_t*);
-    alias stat64 stat;
+    alias stat = stat64;
   }
   else
   {
@@ -946,9 +946,9 @@ else version (Solaris)
 
         static if (__USE_LARGEFILE64)
         {
-            alias fstat fstat64;
-            alias lstat lstat64;
-            alias stat stat64;
+            alias fstat64 = fstat;
+            alias lstat64 = lstat;
+            alias stat64 = stat;
         }
     }
     else
@@ -956,13 +956,13 @@ else version (Solaris)
         static if (__USE_LARGEFILE64)
         {
             int   fstat64(int, stat_t*);
-            alias fstat64 fstat;
+            alias fstat = fstat64;
 
             int   lstat64(in char*, stat_t*);
-            alias lstat64 lstat;
+            alias lstat = lstat64;
 
             int   stat64(in char*, stat_t*);
-            alias stat64 stat;
+            alias stat = stat64;
         }
         else
         {

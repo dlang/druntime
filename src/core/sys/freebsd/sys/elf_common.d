@@ -435,7 +435,7 @@ enum STV_ELIMINATE =   6;
 enum STN_UNDEF =       0;
 
 enum VER_DEF_CURRENT = 1;
-alias VER_NDX VER_DEF_IDX;
+alias VER_DEF_IDX = VER_NDX;
 
 enum VER_FLG_BASE =    0x1;
 enum VER_FLG_WEAK =    0x2;
@@ -443,7 +443,7 @@ enum VER_FLG_WEAK =    0x2;
 enum VER_NEED_CURRENT = 1;
 enum VER_NEED_WEAK =    32768;
 enum VER_NEED_HIDDEN = VER_NDX_HIDDEN;
-alias VER_NDX VER_NEED_IDX;
+alias VER_NEED_IDX = VER_NDX;
 
 enum VER_NDX_LOCAL =           0;
 enum VER_NDX_GLOBAL =          1;

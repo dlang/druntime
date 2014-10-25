@@ -43,23 +43,23 @@ private
 
 version(D_LP64)
 {
-    alias ulong size_t;
-    alias long  ptrdiff_t;
+    alias size_t = ulong;
+    alias ptrdiff_t = long;
 }
 else
 {
-    alias uint  size_t;
-    alias int   ptrdiff_t;
+    alias size_t = uint;
+    alias ptrdiff_t = int;
 }
 
-alias ptrdiff_t sizediff_t; //For backwards compatibility only.
+alias sizediff_t = ptrdiff_t; //For backwards compatibility only.
 
-alias size_t hash_t; //For backwards compatibility only.
-alias bool equals_t; //For backwards compatibility only.
+alias hash_t = size_t; //For backwards compatibility only.
+alias equals_t = bool; //For backwards compatibility only.
 
-alias immutable(char)[]  string;
-alias immutable(wchar)[] wstring;
-alias immutable(dchar)[] dstring;
+alias string = immutable(char)[];
+alias wstring = immutable(wchar)[];
+alias dstring = immutable(dchar)[];
 
 /**
  * All D class objects inherit from Object.
@@ -192,7 +192,7 @@ struct Interface
  * or instance by using the .classinfo property.
  * A pointer to this appears as the first entry in the class's vtbl[].
  */
-alias TypeInfo_Class Classinfo;
+alias Classinfo = TypeInfo_Class;
 
 /**
  * Array of pairs giving the offset and type information for each
@@ -736,7 +736,7 @@ class TypeInfo_Delegate : TypeInfo
 
     override @property size_t tsize() nothrow pure const
     {
-        alias int delegate() dg;
+        alias dg = int delegate();
         return dg.sizeof;
     }
 
@@ -747,7 +747,7 @@ class TypeInfo_Delegate : TypeInfo
 
     override @property size_t talign() nothrow pure const
     {
-        alias int delegate() dg;
+        alias dg = int delegate();
         return dg.alignof;
     }
 
@@ -894,7 +894,7 @@ class TypeInfo_Class : TypeInfo
     }
 }
 
-alias TypeInfo_Class ClassInfo;
+alias ClassInfo = TypeInfo_Class;
 
 class TypeInfo_Interface : TypeInfo
 {
@@ -1396,7 +1396,7 @@ class Throwable : Object
 }
 
 
-alias Throwable.TraceInfo function(void* ptr) TraceHandler;
+alias TraceHandler = Throwable.TraceInfo function(void* ptr);
 private __gshared TraceHandler traceHandler = null;
 
 
@@ -1757,8 +1757,8 @@ unittest
 // Monitor
 ///////////////////////////////////////////////////////////////////////////////
 
-alias Object.Monitor        IMonitor;
-alias void delegate(Object) DEvent;
+alias IMonitor = Object.Monitor;
+alias DEvent = void delegate(Object);
 
 // NOTE: The dtor callback feature is only supported for monitors that are not
 //       supplied by the user.  The assumption is that any object with a user-
@@ -2368,7 +2368,7 @@ pure nothrow unittest
 }
 
 deprecated("Please use destroy instead of clear.")
-alias destroy clear;
+alias clear = destroy;
 
 /++
     Destroys the given object and puts it in an invalid state. It's used to

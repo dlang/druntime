@@ -57,7 +57,7 @@ version( linux )
         short   revents;
     }
 
-    alias c_ulong nfds_t;
+    alias nfds_t = c_ulong;
 
     enum
     {
@@ -84,7 +84,7 @@ else version( OSX )
         short   revents;
     };
 
-    alias uint nfds_t;
+    alias nfds_t = uint;
 
     enum
     {
@@ -111,7 +111,7 @@ else version( OSX )
 }
 else version( FreeBSD )
 {
-    alias uint nfds_t;
+    alias nfds_t = uint;
 
     struct pollfd
     {
@@ -152,7 +152,7 @@ else version( Android )
         short   revents;
     }
 
-    alias uint nfds_t;
+    alias nfds_t = uint;
 
     enum
     {

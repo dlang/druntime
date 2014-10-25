@@ -51,8 +51,8 @@ int       inet_pton(int, in char*, void*);
 
 version( linux )
 {
-    alias uint16_t in_port_t;
-    alias uint32_t in_addr_t;
+    alias in_port_t = uint16_t;
+    alias in_addr_t = uint32_t;
 
     struct in_addr
     {
@@ -76,8 +76,8 @@ version( linux )
 }
 else version( OSX )
 {
-    alias uint16_t in_port_t;
-    alias uint32_t in_addr_t;
+    alias in_port_t = uint16_t;
+    alias in_addr_t = uint32_t;
 
     struct in_addr
     {
@@ -101,8 +101,8 @@ else version( OSX )
 }
 else version( FreeBSD )
 {
-    alias uint16_t in_port_t;
-    alias uint32_t in_addr_t;
+    alias in_port_t = uint16_t;
+    alias in_addr_t = uint32_t;
 
     struct in_addr
     {
@@ -126,7 +126,7 @@ else version( FreeBSD )
 }
 else version( Android )
 {
-    alias uint32_t in_addr_t;
+    alias in_addr_t = uint32_t;
 
     struct in_addr
     {

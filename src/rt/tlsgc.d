@@ -53,7 +53,7 @@ void destroy(void* data)
     .free(data);
 }
 
-alias void delegate(void* pstart, void* pend) nothrow ScanDg;
+alias ScanDg = void delegate(void* pstart, void* pend) nothrow;
 
 /**
  * GC scan hook, called FOR each thread. Can be used to scan
@@ -65,7 +65,7 @@ void scan(void* data, scope ScanDg dg) nothrow
     rt.sections.scanTLSRanges((cast(Data*)data).tlsRanges, dg);
 }
 
-alias int delegate(void* addr) nothrow IsMarkedDg;
+alias IsMarkedDg = int delegate(void* addr) nothrow;
 
 /**
  * GC sweep hook, called FOR each thread. Can be used to free

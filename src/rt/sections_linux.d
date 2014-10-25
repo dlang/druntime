@@ -27,7 +27,7 @@ import rt.minfo;
 import rt.util.container.array;
 import rt.util.container.hashtab;
 
-alias DSO SectionGroup;
+alias SectionGroup = DSO;
 struct DSO
 {
     static int opApply(scope int delegate(ref DSO) dg)

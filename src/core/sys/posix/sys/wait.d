@@ -243,7 +243,7 @@ else version( Android )
     enum WCONTINUED = 8;
     enum WNOWAIT    = 0x01000000;
 
-    alias int idtype_t;
+    alias idtype_t = int;
 
     int waitid(idtype_t, id_t, siginfo_t*, int);
 }

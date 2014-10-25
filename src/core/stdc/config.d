@@ -47,18 +47,18 @@ version( Windows )
      * cpp_xxxx.
      */
 
-    alias __c_long   cpp_long;
-    alias __c_ulong  cpp_ulong;
+    alias cpp_long = __c_long;
+    alias cpp_ulong = __c_ulong;
 
-    alias int   c_long;
-    alias uint  c_ulong;
+    alias c_long = int;
+    alias c_ulong = uint;
 }
 else
 {
   static if( (void*).sizeof > int.sizeof )
   {
-    alias long  c_long;
-    alias ulong c_ulong;
+    alias c_long = long;
+    alias c_ulong = ulong;
   }
   else
   {
@@ -78,11 +78,11 @@ else
         alias lng this;
     }
 
-    alias __c_long   cpp_long;
-    alias __c_ulong  cpp_ulong;
+    alias cpp_long = __c_long;
+    alias cpp_ulong = __c_ulong;
 
-    alias int   c_long;
-    alias uint  c_ulong;
+    alias c_long = int;
+    alias c_ulong = uint;
   }
 }
 
@@ -104,37 +104,37 @@ version( DigitalMars )
             alias ld this;
         }
 
-        alias __c_long_double c_long_double;
+        alias c_long_double = __c_long_double;
     }
     else version( X86 )
     {
-        alias real c_long_double;
+        alias c_long_double = real;
     }
     else version( X86_64 )
     {
         version( linux )
-            alias real c_long_double;
+            alias c_long_double = real;
         else version( FreeBSD )
-            alias real c_long_double;
+            alias c_long_double = real;
         else version( OSX )
-            alias real c_long_double;
+            alias c_long_double = real;
     }
 }
 else version( GNU )
-    alias real c_long_double;
+    alias c_long_double = real;
 else version( LDC )
 {
     version( X86 )
-        alias real c_long_double;
+        alias c_long_double = real;
     else version( X86_64 )
-        alias real c_long_double;
+        alias c_long_double = real;
 }
 else version( SDC )
 {
     version( X86 )
-        alias real c_long_double;
+        alias c_long_double = real;
     else version( X86_64 )
-        alias real c_long_double;
+        alias c_long_double = real;
 }
 
 static assert(is(c_long_double), "c_long_double needs to be declared for this platform/architecture.");

@@ -26,7 +26,7 @@ struct imaxdiv_t
                 rem;
 }
 
-private alias immutable(char)* _cstr;
+private alias _cstr = immutable(char)*;
 
 enum _cstr PRId8            = "hhd";
 enum _cstr PRId16           = "hd";

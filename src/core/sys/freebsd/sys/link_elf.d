@@ -42,7 +42,7 @@ struct link_map
     void*           l_ld;
     link_map*       l_next, l_prev;
 }
-alias link_map Link_map;
+alias Link_map = link_map;
 
 enum
 {
@@ -71,7 +71,7 @@ struct dl_phdr_info
 };
 
 
-private alias extern(C) int function(dl_phdr_info*, size_t, void*) __dl_iterate_hdr_callback;
+private alias __dl_iterate_hdr_callback = extern(C) int function(dl_phdr_info*, size_t, void*);
 extern int dl_iterate_phdr(__dl_iterate_hdr_callback, void*);
 extern int _rtld_addr_phdr(const void*, dl_phdr_info*);
 extern int _rtld_get_stack_prot();

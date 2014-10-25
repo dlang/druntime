@@ -42,7 +42,7 @@ int sem_wait(sem_t*);
 
 version( linux )
 {
-    private alias int __atomic_lock_t;
+    private alias __atomic_lock_t = int;
 
     private struct _pthread_fastlock
     {
@@ -61,7 +61,7 @@ version( linux )
 }
 else version( OSX )
 {
-    alias int sem_t;
+    alias sem_t = int;
 
     enum SEM_FAILED = cast(sem_t*) null;
 }

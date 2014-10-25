@@ -124,7 +124,7 @@ private:
 
 __gshared sigaction_t old_sigaction;
 
-alias typeof(ucontext_t.init.uc_mcontext.gregs[0]) RegType;
+alias RegType = typeof(ucontext_t.init.uc_mcontext.gregs[0]);
 
 version (X86_64)
 {

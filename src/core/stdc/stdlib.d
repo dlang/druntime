@@ -20,7 +20,7 @@ extern (C):
 
 /* Placed outside @nogc in order to not constrain what the callback does.
  */
-alias int function(in void*, in void*) _compare_fp_t;
+alias _compare_fp_t = int function(in void*, in void*);
 void*   bsearch(in void* key, in void* base, size_t nmemb, size_t size, _compare_fp_t compar);
 void    qsort(void* base, size_t nmemb, size_t size, _compare_fp_t compar);
 
@@ -81,7 +81,7 @@ version (CRuntime_Microsoft)
 else version (MinGW)
 {
     real __mingw_strtold(in char* nptr, char** endptr);
-    alias __mingw_strtold strtold;
+    alias strtold = __mingw_strtold;
 }
 else version (Android)
 {
@@ -101,8 +101,8 @@ else
     version(Android)
     {
        import core.sys.posix.stdlib: lrand48, srand48;
-       alias core.sys.posix.stdlib.lrand48 rand;
-       alias core.sys.posix.stdlib.srand48 srand;
+       alias rand = core.sys.posix.stdlib.lrand48;
+       alias srand = core.sys.posix.stdlib.srand48;
     }
     else
     {

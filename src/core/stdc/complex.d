@@ -17,8 +17,8 @@ extern (C):
 nothrow:
 @nogc:
 
-alias creal complex;
-alias ireal imaginary;
+alias complex = creal;
+alias imaginary = ireal;
 
 cdouble cacos(cdouble z);
 cfloat  cacosf(cfloat z);

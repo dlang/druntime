@@ -35,10 +35,10 @@ nothrow:
 }
 else
 {
-    alias core.cpuid.mmx mmx;
-    alias core.cpuid.sse sse;
-    alias core.cpuid.sse2 sse2;
-    alias core.cpuid.amd3dnow amd3dnow;
+    alias mmx = core.cpuid.mmx;
+    alias sse = core.cpuid.sse;
+    alias sse2 = core.cpuid.sse2;
+    alias amd3dnow = core.cpuid.amd3dnow;
 }
 
 //version = log;
@@ -46,7 +46,7 @@ else
 /* Performance figures measured by Burton Radons
  */
 
-alias double T;
+alias T = double;
 
 extern (C) @trusted nothrow:
 

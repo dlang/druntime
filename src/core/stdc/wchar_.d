@@ -24,8 +24,8 @@ extern (C):
 nothrow:
 @nogc:
 
-alias int     mbstate_t;
-alias wchar_t wint_t;
+alias mbstate_t = int;
+alias wint_t = wchar_t;
 
 enum wchar_t WEOF = 0xFFFF;
 

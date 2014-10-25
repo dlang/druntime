@@ -275,7 +275,7 @@ version( Posix )
 
 version( linux )
 {
-    alias void function(void*) _pthread_cleanup_routine;
+    alias _pthread_cleanup_routine = void function(void*);
 
     struct _pthread_cleanup_buffer
     {
@@ -305,7 +305,7 @@ version( linux )
 }
 else version( OSX )
 {
-    alias void function(void*) _pthread_cleanup_routine;
+    alias _pthread_cleanup_routine = void function(void*);
 
     struct _pthread_cleanup_buffer
     {
@@ -340,7 +340,7 @@ else version( OSX )
 }
 else version( FreeBSD )
 {
-    alias void function(void*) _pthread_cleanup_routine;
+    alias _pthread_cleanup_routine = void function(void*);
 
     struct _pthread_cleanup_info
     {
@@ -367,7 +367,7 @@ else version( FreeBSD )
 }
 else version (Solaris)
 {
-    alias void function(void*) _pthread_cleanup_routine;
+    alias _pthread_cleanup_routine = void function(void*);
 
     caddr_t _getfp();
 
@@ -396,7 +396,7 @@ else version (Solaris)
 }
 else version( Android )
 {
-    alias void function(void*) __pthread_cleanup_func_t;
+    alias __pthread_cleanup_func_t = void function(void*);
 
     struct __pthread_cleanup_t
     {

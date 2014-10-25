@@ -232,7 +232,7 @@ struct GC
      * size = The size of the block, calculated from base.
      * attr = Attribute bits set on the memory block.
      */
-    alias BlkInfo_ BlkInfo;
+    alias BlkInfo = BlkInfo_;
 
 
     /**

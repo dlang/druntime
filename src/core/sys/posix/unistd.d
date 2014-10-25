@@ -98,7 +98,7 @@ version( linux )
   static if( __USE_FILE_OFFSET64 )
   {
     off_t lseek64(int, off_t, int) @trusted;
-    alias lseek64 lseek;
+    alias lseek = lseek64;
   }
   else
   {
@@ -107,7 +107,7 @@ version( linux )
   static if( __USE_LARGEFILE64 )
   {
     int   ftruncate64(int, off_t) @trusted;
-    alias ftruncate64 ftruncate;
+    alias ftruncate = ftruncate64;
   }
   else
   {
@@ -124,20 +124,20 @@ else version( Solaris )
     version ( D_LP64 )
     {
         off_t   lseek(int, off_t, int) @trusted;
-        alias   lseek lseek64;
+        alias   lseek64 = lseek;
 
         int     ftruncate(int, off_t) @trusted;
-        alias   ftruncate ftruncate64;
+        alias   ftruncate64 = ftruncate;
     }
     else
     {
         static if( __USE_LARGEFILE64 )
         {
             off64_t lseek64(int, off64_t, int) @trusted;
-            alias   lseek64 lseek;
+            alias   lseek = lseek64;
 
             int     ftruncate64(int, off64) @trusted;
-            alias   ftruncate64 ftruncate;
+            alias   ftruncate = ftruncate64;
         }
         else
         {
@@ -1036,16 +1036,16 @@ version( linux )
   static if( __USE_FILE_OFFSET64 )
   {
     int        lockf64(int, int, off_t) @trusted;
-    alias      lockf64 lockf;
+    alias      lockf = lockf64;
 
     ssize_t    pread64(int, void*, size_t, off_t);
-    alias      pread64 pread;
+    alias      pread = pread64;
 
     ssize_t    pwrite64(int, in void*, size_t, off_t);
-    alias      pwrite64 pwrite;
+    alias      pwrite = pwrite64;
 
     int        truncate64(in char*, off_t);
-    alias      truncate64 truncate;
+    alias      truncate = truncate64;
   }
   else
   {
@@ -1149,32 +1149,32 @@ else version( Solaris )
     version (D_LP64)
     {
         int         lockf(int, int, off_t);
-        alias       lockf lockf64;
+        alias       lockf64 = lockf;
 
         ssize_t     pread(int, void*, size_t, off_t);
-        alias       pread pread64;
+        alias       pread64 = pread;
 
         ssize_t     pwrite(int, in void*, size_t, off_t);
-        alias       pwrite pwrite64;
+        alias       pwrite64 = pwrite;
 
         int         truncate(in char*, off_t);
-        alias       truncate truncate64;
+        alias       truncate64 = truncate;
     }
     else
     {
         static if( __USE_FILE_OFFSET64 )
         {
             int        lockf64(int, int, off64_t);
-            alias      lockf64 lockf;
+            alias      lockf = lockf64;
 
             ssize_t    pread64(int, void*, size_t, off64_t);
-            alias      pread64 pread;
+            alias      pread = pread64;
 
             ssize_t    pwrite64(int, in void*, size_t, off_t);
-            alias      pwrite64 pwrite;
+            alias      pwrite = pwrite64;
 
             int        truncate64(in char*, off_t);
-            alias      truncate64 truncate;
+            alias      truncate = truncate64;
         }
         else
         {

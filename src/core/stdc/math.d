@@ -18,8 +18,8 @@ extern (C):
 nothrow:
 @nogc:
 
-alias float  float_t;
-alias double double_t;
+alias float_t = float;
+alias double_t = double;
 
 enum double HUGE_VAL      = double.infinity;
 enum double HUGE_VALF     = float.infinity;

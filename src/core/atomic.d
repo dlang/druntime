@@ -37,9 +37,9 @@ private
     template HeadUnshared(T)
     {
         static if( is( T U : shared(U*) ) )
-            alias shared(U)* HeadUnshared;
+            alias HeadUnshared = shared(U)*;
         else
-            alias T HeadUnshared;
+            alias HeadUnshared = T;
     }
 }
 
@@ -143,7 +143,7 @@ version( CoreDdoc )
     }
 
     deprecated("Please use MemoryOrder instead.")
-    alias MemoryOrder msync;
+    alias msync = MemoryOrder;
 
     /**
      * Inserts a full load/store memory fence (on platforms that need it). This ensures
@@ -324,7 +324,7 @@ else version( AsmX86_32 )
     }
 
     deprecated("Please use MemoryOrder instead.")
-    alias MemoryOrder msync;
+    alias msync = MemoryOrder;
 
 
     private
@@ -785,7 +785,7 @@ else version( AsmX86_64 )
     }
 
     deprecated("Please use MemoryOrder instead.")
-    alias MemoryOrder msync;
+    alias msync = MemoryOrder;
 
 
     private
