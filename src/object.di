@@ -554,7 +554,7 @@ inout(V) get(K, V)(inout(V[K])* aa, K key, lazy inout(V) defaultValue)
 }
 
 // Originally scheduled for deprecation in December 2012.
-// Marked 'deprecated' in 2.066, released August 2014.  Scheduled for remove 
+// Marked 'deprecated' in 2.066, released August 2014.  Scheduled for removal 
 // in the release that occurs in or after February 2015
 deprecated("Please use destroy instead.")
 alias clear = destroy;
