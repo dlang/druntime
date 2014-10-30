@@ -22,9 +22,9 @@ private
     version = GCCLASS;
 
     version( GCCLASS )
-        alias GC gc_t;
+        alias gc_t = GC;
     else
-        alias GC* gc_t;
+        alias gc_t = GC*;
 
     __gshared gc_t _gc;
 

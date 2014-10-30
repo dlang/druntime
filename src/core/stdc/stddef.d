@@ -21,9 +21,9 @@ nothrow:
 
 version( Windows )
 {
-    alias wchar wchar_t;
+    alias wchar_t = wchar;
 }
 else
 {
-    alias dchar wchar_t;
+    alias wchar_t = dchar;
 }

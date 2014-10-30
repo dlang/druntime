@@ -13,15 +13,15 @@ nothrow:
 import core.stdc.stdint;
 public import core.sys.freebsd.sys.elf_common;
 
-alias uint16_t Elf32_Half;
-alias uint32_t Elf32_Word;
-alias int32_t  Elf32_Sword;
-alias uint64_t Elf32_Lword;
-alias uint32_t Elf32_Addr;
-alias uint32_t Elf32_Off;
-alias Elf32_Word Elf32_Hashelt;
-alias Elf32_Word Elf32_Size;
-alias Elf32_Sword Elf32_Ssize;
+alias Elf32_Half = uint16_t;
+alias Elf32_Word = uint32_t;
+alias Elf32_Sword = int32_t;
+alias Elf32_Lword = uint64_t;
+alias Elf32_Addr = uint32_t;
+alias Elf32_Off = uint32_t;
+alias Elf32_Hashelt = Elf32_Word;
+alias Elf32_Size = Elf32_Word;
+alias Elf32_Ssize = Elf32_Sword;
 
 struct Elf32_Ehdr
 {
@@ -97,7 +97,7 @@ extern (D)
     auto ELF32_R_INFO(S, T)(S sym, T type) { return (sym << 8) + (type & 0xff); }
 }
 
-alias Elf_Note Elf32_Nhdr;
+alias Elf32_Nhdr = Elf_Note;
 
 struct Elf32_Move
 {
@@ -178,7 +178,7 @@ struct Elf32_Vernaux
     Elf32_Word    vna_next;
 }
 
-alias Elf32_Half Elf32_Versym;
+alias Elf32_Versym = Elf32_Half;
 
 struct Elf32_Syminfo
 {

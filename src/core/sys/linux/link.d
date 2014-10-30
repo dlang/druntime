@@ -18,50 +18,50 @@ import core.sys.linux.elf;
 version (X86)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
-    alias __WORDSIZE __ELF_NATIVE_CLASS;
-    alias uint32_t Elf_Symndx;
+    alias __ELF_NATIVE_CLASS = __WORDSIZE;
+    alias Elf_Symndx = uint32_t;
 }
 else version (X86_64)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
-    alias __WORDSIZE __ELF_NATIVE_CLASS;
-    alias uint32_t Elf_Symndx;
+    alias __ELF_NATIVE_CLASS = __WORDSIZE;
+    alias Elf_Symndx = uint32_t;
 }
 else version (MIPS32)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
-    alias __WORDSIZE __ELF_NATIVE_CLASS;
-    alias uint32_t Elf_Symndx;
+    alias __ELF_NATIVE_CLASS = __WORDSIZE;
+    alias Elf_Symndx = uint32_t;
 }
 else version (MIPS64)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
-    alias __WORDSIZE __ELF_NATIVE_CLASS;
-    alias uint32_t Elf_Symndx;
+    alias __ELF_NATIVE_CLASS = __WORDSIZE;
+    alias Elf_Symndx = uint32_t;
 }
 else version (PPC)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
-    alias __WORDSIZE __ELF_NATIVE_CLASS;
-    alias uint32_t Elf_Symndx;
+    alias __ELF_NATIVE_CLASS = __WORDSIZE;
+    alias Elf_Symndx = uint32_t;
 }
 else version (PPC64)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
-    alias __WORDSIZE __ELF_NATIVE_CLASS;
-    alias uint32_t Elf_Symndx;
+    alias __ELF_NATIVE_CLASS = __WORDSIZE;
+    alias Elf_Symndx = uint32_t;
 }
 else version (ARM)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
-    alias __WORDSIZE __ELF_NATIVE_CLASS;
-    alias uint32_t Elf_Symndx;
+    alias __ELF_NATIVE_CLASS = __WORDSIZE;
+    alias Elf_Symndx = uint32_t;
 }
 else version (AArch64)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
-    alias __WORDSIZE __ELF_NATIVE_CLASS;
-    alias uint32_t Elf_Symndx;
+    alias __ELF_NATIVE_CLASS = __WORDSIZE;
+    alias Elf_Symndx = uint32_t;
 }
 else
     static assert(0, "unimplemented");
@@ -149,7 +149,7 @@ struct dl_phdr_info
     void *dlpi_tls_data;
 }
 
-private alias extern(C) int function(dl_phdr_info*, size_t, void *) __Callback;
+private alias __Callback = extern(C) int function(dl_phdr_info*, size_t, void *);
 extern int dl_iterate_phdr(__Callback __callback, void*__data);
 
 

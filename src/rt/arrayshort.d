@@ -35,15 +35,15 @@ nothrow:
 }
 else
 {
-    alias core.cpuid.mmx mmx;
-    alias core.cpuid.sse sse;
-    alias core.cpuid.sse2 sse2;
-    alias core.cpuid.sse2 sse2;
+    alias mmx = core.cpuid.mmx;
+    alias sse = core.cpuid.sse;
+    alias sse2 = core.cpuid.sse2;
+    alias sse2 = core.cpuid.sse2;
 }
 
 //version = log;
 
-alias short T;
+alias T = short;
 
 extern (C) @trusted nothrow:
 

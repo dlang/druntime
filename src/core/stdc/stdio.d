@@ -180,7 +180,7 @@ enum
 
 version( CRuntime_DigitalMars )
 {
-    alias int fpos_t; //check this
+    alias fpos_t = int; //check this
 
     struct _iobuf
     {
@@ -194,11 +194,11 @@ version( CRuntime_DigitalMars )
         char* __tmpnum;
     }
 
-    alias shared(_iobuf) FILE;
+    alias FILE = shared(_iobuf);
 }
 else version( CRuntime_Microsoft )
 {
-    alias int fpos_t; //check this
+    alias fpos_t = int; //check this
 
     struct _iobuf
     {
@@ -212,11 +212,11 @@ else version( CRuntime_Microsoft )
         char* _tmpfname;
     }
 
-    alias shared(_iobuf) FILE;
+    alias FILE = shared(_iobuf);
 }
 else version( linux )
 {
-    alias int fpos_t; //this is probably wrong, fix this
+    alias fpos_t = int; //this is probably wrong, fix this
 
     struct _IO_FILE
     {
@@ -243,12 +243,12 @@ else version( linux )
         void*   _lock;
     }
 
-    alias _IO_FILE _iobuf; //remove later
-    alias shared(_IO_FILE) FILE;
+    alias _iobuf = _IO_FILE; //remove later
+    alias FILE = shared(_IO_FILE);
 }
 else version( OSX )
 {
-    alias int fpos_t; //check this
+    alias fpos_t = int; //check this
 
     struct __sFILE
     {
@@ -279,12 +279,12 @@ else version( OSX )
         fpos_t    _offset;
     }
 
-    alias __sFILE _iobuf; //remove later
-    alias shared(__sFILE) FILE;
+    alias _iobuf = __sFILE; //remove later
+    alias FILE = shared(__sFILE);
 }
 else version( FreeBSD )
 {
-    alias int fpos_t; //check this
+    alias fpos_t = int; //check this
 
     struct __sFILE
     {
@@ -321,12 +321,12 @@ else version( FreeBSD )
         __mbstate_t     _mbstate;
     }
 
-    alias __sFILE _iobuf; //remove later
-    alias shared(__sFILE) FILE;
+    alias _iobuf = __sFILE; //remove later
+    alias FILE = shared(__sFILE);
 }
 else version (Solaris)
 {
-    alias int fpos_t; //check this
+    alias fpos_t = int; //check this
 
     struct _iobuf
     {
@@ -343,11 +343,11 @@ else version (Solaris)
                         // __filler:10
     }
 
-    alias shared(_iobuf) FILE;
+    alias FILE = shared(_iobuf);
 }
 else version( Android )
 {
-    alias off_t fpos_t;
+    alias fpos_t = off_t;
 
     struct __sFILE
     {
@@ -378,8 +378,8 @@ else version( Android )
         fpos_t    _offset;
     }
 
-    alias __sFILE _iobuf; //remove later
-    alias shared(__sFILE) FILE;
+    alias _iobuf = __sFILE; //remove later
+    alias FILE = shared(__sFILE);
 }
 else
 {
@@ -483,9 +483,9 @@ else version( OSX )
     private extern shared FILE* __stdoutp;
     private extern shared FILE* __stderrp;
 
-    alias __stdinp  stdin;
-    alias __stdoutp stdout;
-    alias __stderrp stderr;
+    alias stdin = __stdinp;
+    alias stdout = __stdoutp;
+    alias stderr = __stderrp;
 }
 else version( FreeBSD )
 {
@@ -500,9 +500,9 @@ else version( FreeBSD )
     private extern shared FILE* __stdoutp;
     private extern shared FILE* __stderrp;
 
-    alias __stdinp  stdin;
-    alias __stdoutp stdout;
-    alias __stderrp stderr;
+    alias stdin = __stdinp;
+    alias stdout = __stdoutp;
+    alias stderr = __stderrp;
 }
 else version (Solaris)
 {
@@ -570,40 +570,40 @@ version (MinGW)
     // Prefer the MinGW versions over the MSVC ones, as the latter don't handle
     // reals at all.
     int __mingw_fprintf(FILE* stream, in char* format, ...);
-    alias __mingw_fprintf fprintf;
+    alias fprintf = __mingw_fprintf;
 
     int __mingw_fscanf(FILE* stream, in char* format, ...);
-    alias __mingw_fscanf fscanf;
+    alias fscanf = __mingw_fscanf;
 
     int __mingw_sprintf(char* s, in char* format, ...);
-    alias __mingw_sprintf sprintf;
+    alias sprintf = __mingw_sprintf;
 
     int __mingw_sscanf(in char* s, in char* format, ...);
-    alias __mingw_sscanf sscanf;
+    alias sscanf = __mingw_sscanf;
 
     int __mingw_vfprintf(FILE* stream, in char* format, va_list arg);
-    alias __mingw_vfprintf vfprintf;
+    alias vfprintf = __mingw_vfprintf;
 
     int __mingw_vfscanf(FILE* stream, in char* format, va_list arg);
-    alias __mingw_vfscanf vfscanf;
+    alias vfscanf = __mingw_vfscanf;
 
     int __mingw_vsprintf(char* s, in char* format, va_list arg);
-    alias __mingw_vsprintf vsprintf;
+    alias vsprintf = __mingw_vsprintf;
 
     int __mingw_vsscanf(in char* s, in char* format, va_list arg);
-    alias __mingw_vsscanf vsscanf;
+    alias vsscanf = __mingw_vsscanf;
 
     int __mingw_vprintf(in char* format, va_list arg);
-    alias __mingw_vprintf vprintf;
+    alias vprintf = __mingw_vprintf;
 
     int __mingw_vscanf(in char* format, va_list arg);
-    alias __mingw_vscanf vscanf;
+    alias vscanf = __mingw_vscanf;
 
     int __mingw_printf(in char* format, ...);
-    alias __mingw_printf printf;
+    alias printf = __mingw_printf;
 
     int __mingw_scanf(in char* format, ...);
-    alias __mingw_scanf scanf;
+    alias scanf = __mingw_scanf;
 }
 else
 {
@@ -668,12 +668,12 @@ version( MinGW )
     pure int  ferror(FILE* stream)   { return stream._flag&_IOERR;                       }
   }
     int   __mingw_snprintf(char* s, size_t n, in char* fmt, ...);
-    alias __mingw_snprintf _snprintf;
-    alias __mingw_snprintf snprintf;
+    alias _snprintf = __mingw_snprintf;
+    alias snprintf = __mingw_snprintf;
 
     int   __mingw_vsnprintf(char* s, size_t n, in char* format, va_list arg);
-    alias __mingw_vsnprintf _vsnprintf;
-    alias __mingw_vsnprintf vsnprintf;
+    alias _vsnprintf = __mingw_vsnprintf;
+    alias vsnprintf = __mingw_vsnprintf;
 }
 else version( CRuntime_DigitalMars )
 {
@@ -686,10 +686,10 @@ else version( CRuntime_DigitalMars )
     pure int  ferror(FILE* stream)   { return stream._flag&_IOERR;                       }
   }
     int   _snprintf(char* s, size_t n, in char* fmt, ...);
-    alias _snprintf snprintf;
+    alias snprintf = _snprintf;
 
     int   _vsnprintf(char* s, size_t n, in char* format, va_list arg);
-    alias _vsnprintf vsnprintf;
+    alias vsnprintf = _vsnprintf;
 }
 else version( CRuntime_Microsoft )
 {
@@ -703,10 +703,10 @@ else version( CRuntime_Microsoft )
     pure int  fileno(FILE* stream)   { return stream._file;                              }
   }
     int   _snprintf(char* s, size_t n, in char* fmt, ...);
-    alias _snprintf snprintf;
+    alias snprintf = _snprintf;
 
     int   _vsnprintf(char* s, size_t n, in char* format, va_list arg);
-    alias _vsnprintf vsnprintf;
+    alias vsnprintf = _vsnprintf;
 
     uint _set_output_format(uint format);
     enum _TWO_DIGIT_EXPONENT = 1;

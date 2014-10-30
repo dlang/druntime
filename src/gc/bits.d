@@ -35,7 +35,7 @@ else version (D_InlineAsm_X86)
 
 struct GCBits
 {
-    alias size_t wordtype;
+    alias wordtype = size_t;
 
     enum BITS_PER_WORD = (wordtype.sizeof * 8);
     enum BITS_SHIFT = (wordtype.sizeof == 8 ? 6 : 5);

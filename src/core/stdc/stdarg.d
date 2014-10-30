@@ -18,7 +18,7 @@ version( X86 )
     /*********************
      * The argument pointer type.
      */
-    alias char* va_list;
+    alias va_list = char*;
 
     /**********
      * Initialize ap.
@@ -87,7 +87,7 @@ else version (Windows) // Win64
     /*********************
      * The argument pointer type.
      */
-    alias char* va_list;
+    alias va_list = char*;
 
     /**********
      * Initialize ap.
@@ -213,7 +213,7 @@ else version (X86_64)
             }
             else static if (U.length == 1)
             {   // Arg is passed in one register
-                alias U[0] T1;
+                alias T1 = U[0];
                 static if (is(T1 == double) || is(T1 == float) || isVectorType!(T1))
                 {   // Passed in XMM register
                     if (ap.offset_fpregs < (6 * 8 + 16 * 8))
@@ -244,8 +244,8 @@ else version (X86_64)
             }
             else static if (U.length == 2)
             {   // Arg is passed in two registers
-                alias U[0] T1;
-                alias U[1] T2;
+                alias T1 = U[0];
+                alias T2 = U[1];
                 auto p = cast(void*)&parmn + 8;
 
                 // Both must be in registers, or both on stack, hence 4 cases

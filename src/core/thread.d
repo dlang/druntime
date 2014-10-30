@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The thread module provides support for thread creation and management.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2012.
@@ -52,11 +52,11 @@ version = StackGrowsDown;
  */
 version(Posix)
 {
-    alias core.sys.posix.unistd.getpid getpid;
+    alias getpid = core.sys.posix.unistd.getpid;
 }
 else version (Windows)
 {
-    alias core.sys.windows.windows.GetCurrentProcessId getpid;
+    alias getpid = core.sys.windows.windows.GetCurrentProcessId;
 }
 
 
@@ -139,7 +139,7 @@ private
     extern (C) void  rt_moduleTlsCtor();
     extern (C) void  rt_moduleTlsDtor();
 
-    alias void delegate() gc_atom;
+    alias gc_atom = void delegate();
     extern (C) void function(scope gc_atom) gc_atomic;
 }
 
@@ -161,7 +161,7 @@ version( Windows )
         const DWORD TLS_OUT_OF_INDEXES  = 0xFFFFFFFF;
         const CREATE_SUSPENDED = 0x00000004;
 
-        extern (Windows) alias uint function(void*) btex_fptr;
+        extern (Windows) alias btex_fptr = uint function(void*);
         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*);
 
         //
@@ -1332,13 +1332,13 @@ private:
     //
     version( Windows )
     {
-        alias uint TLSKey;
-        alias uint ThreadAddr;
+        alias TLSKey = uint;
+        alias ThreadAddr = uint;
     }
     else version( Posix )
     {
-        alias pthread_key_t TLSKey;
-        alias pthread_t     ThreadAddr;
+        alias TLSKey = pthread_key_t;
+        alias ThreadAddr = pthread_t;
     }
 
 
@@ -2699,8 +2699,8 @@ enum ScanType
     tls, /// TLS data is being scanned.
 }
 
-alias void delegate(void*, void*) nothrow ScanAllThreadsFn; /// The scanning function.
-alias void delegate(ScanType, void*, void*) nothrow ScanAllThreadsTypeFn; /// ditto
+alias ScanAllThreadsFn = void delegate(void*, void*) nothrow; /// The scanning function.
+alias ScanAllThreadsTypeFn = void delegate(ScanType, void*, void*) nothrow; /// ditto
 
 /**
  * The main entry point for garbage collection.  The supplied delegate
@@ -2986,7 +2986,7 @@ enum IsMarked : int
     unknown, /// Address is not managed by the GC.
 }
 
-alias int delegate( void* addr ) nothrow IsMarkedDg; /// The isMarked callback function.
+alias IsMarkedDg = int delegate( void* addr ) nothrow; /// The isMarked callback function.
 
 /**
  * This routine allows the runtime to process any special per-thread handling
@@ -4426,7 +4426,7 @@ private:
             // Thus, it should not have any effects on OSes not implementing
             // exception chain verification.
 
-            alias void function() fp_t; // Actual signature not relevant.
+            alias fp_t = void function(); // Actual signature not relevant.
             static struct EXCEPTION_REGISTRATION
             {
                 EXCEPTION_REGISTRATION* next; // sehChainEnd if last one.

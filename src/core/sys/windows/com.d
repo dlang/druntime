@@ -7,7 +7,7 @@ import core.atomic;
 import core.sys.windows.windows;
 //import std.string;
 
-alias WCHAR OLECHAR;
+alias OLECHAR = WCHAR;
 alias LPOLESTR = OLECHAR*;
 alias LPCOLESTR = OLECHAR*;
 

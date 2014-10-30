@@ -44,8 +44,8 @@ private
     }
 
     // This is what the monitor reference in Object points to
-    alias Object.Monitor        IMonitor;
-    alias void delegate(Object) DEvent;
+    alias IMonitor = Object.Monitor;
+    alias DEvent = void delegate(Object);
 
     version( Windows )
     {

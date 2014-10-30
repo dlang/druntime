@@ -44,7 +44,7 @@ version( linux )
         //enum JB_PC      = 7;
         //enum JB_SIZE    = 64;
 
-        alias long[8] __jmp_buf;
+        alias __jmp_buf = long[8];
     }
     else version( X86 )
     {
@@ -56,23 +56,23 @@ version( linux )
         //enum JB_PC      = 5;
         //enum JB_SIZE    = 24;
 
-        alias int[6] __jmp_buf;
+        alias __jmp_buf = int[6];
     }
     else version ( SPARC )
     {
-        alias int[3] __jmp_buf;
+        alias __jmp_buf = int[3];
     }
     else version (ARM)
     {
-        alias int[64] __jmp_buf;
+        alias __jmp_buf = int[64];
     }
     else version (PPC)
     {
-        alias int[64 + (12*4)] __jmp_buf;
+        alias __jmp_buf = int[64 + (12*4)];
     }
     else version (PPC64)
     {
-        alias long[64] __jmp_buf;
+        alias __jmp_buf = long[64];
     }
     else version (MIPS)
     {
@@ -127,9 +127,9 @@ version( linux )
         sigset_t    __saved_mask;
     }
 
-    alias __jmp_buf_tag[1] jmp_buf;
+    alias jmp_buf = __jmp_buf_tag[1];
 
-    alias _setjmp setjmp; // see XOpen block
+    alias setjmp = _setjmp; // see XOpen block
     void longjmp(ref jmp_buf, int);
 }
 else version( FreeBSD )
@@ -152,7 +152,7 @@ else version( FreeBSD )
     }
     else
         static assert(0);
-    alias _jmp_buf[1] jmp_buf;
+    alias jmp_buf = _jmp_buf[1];
 
     int  setjmp(ref jmp_buf);
     void longjmp(ref jmp_buf, int);
@@ -169,7 +169,7 @@ else version( Android )
         static assert(false, "Architecture not supported.");
     }
 
-    alias c_long[_JBLEN] jmp_buf;
+    alias jmp_buf = c_long[_JBLEN];
 
     int  setjmp(ref jmp_buf);
     void longjmp(ref jmp_buf, int);
@@ -187,10 +187,10 @@ void siglongjmp(sigjmp_buf, int);
 
 version( linux )
 {
-    alias jmp_buf sigjmp_buf;
+    alias sigjmp_buf = jmp_buf;
 
     int __sigsetjmp(sigjmp_buf, int);
-    alias __sigsetjmp sigsetjmp;
+    alias sigsetjmp = __sigsetjmp;
     void siglongjmp(sigjmp_buf, int);
 }
 else version( FreeBSD )
@@ -216,14 +216,14 @@ else version( FreeBSD )
     }
     else
         static assert(0);
-    alias _sigjmp_buf[1] sigjmp_buf;
+    alias sigjmp_buf = _sigjmp_buf[1];
 
     int  sigsetjmp(ref sigjmp_buf);
     void siglongjmp(ref sigjmp_buf, int);
 }
 else version( Android )
 {
-    alias c_long[_JBLEN + 1] sigjmp_buf;
+    alias sigjmp_buf = c_long[_JBLEN + 1];
 
     int  sigsetjmp(ref sigjmp_buf, int);
     void siglongjmp(ref sigjmp_buf, int);

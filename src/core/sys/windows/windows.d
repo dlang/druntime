@@ -17,168 +17,188 @@ extern (Windows):
 nothrow:
 //@nogc:
 
-    alias uint ULONG;
-    alias ULONG *PULONG;
-    alias ushort USHORT;
-    alias USHORT *PUSHORT;
-    alias ubyte UCHAR;
-    alias UCHAR *PUCHAR;
-    alias char *PSZ;
+    alias ULONG = uint;
+    alias PULONG = ULONG*;
+    alias USHORT = ushort;
+    alias PUSHORT = USHORT*;
+    alias UCHAR = ubyte;
+    alias PUCHAR = UCHAR*;
+    alias PSZ = char*;
 
-    alias void VOID;
-    alias char CHAR;
-    alias short SHORT;
-    alias int LONG;
+    alias VOID = void;
+    alias CHAR = char;
+    alias SHORT = short;
+    alias LONG = int;
 
-    alias long  LONGLONG;
-    alias ulong ULONGLONG;
+    alias LONGLONG = long;
+    alias ULONGLONG = ulong;
 
-    alias CHAR*         LPCH,  LPSTR,  PCH,  PSTR;
-    alias const(CHAR)*  LPCCH, LPCSTR, PCCH, PCSTR;
+    alias LPCH = CHAR*;
+    alias LPSTR = CHAR*;
+    alias PCH = CHAR*;
+    alias PSTR = CHAR*;
+    alias LPCCH = const(CHAR)*;
+    alias LPCSTR = const(CHAR)*;
+    alias PCCH = const(CHAR)*;
+    alias PCSTR = const(CHAR)*;
 
-    alias wchar WCHAR;
-    alias WCHAR*        LPWCH,  LPWSTR,  PWCH,  PWSTR;
-    alias const(WCHAR)* LPCWCH, LPCWSTR, PCWCH, PCWSTR;
+    alias WCHAR = wchar;
+    alias LPWCH = WCHAR*;
+    alias LPWSTR = WCHAR*;
+    alias PWCH = WCHAR*;
+    alias PWSTR = WCHAR*;
+    alias LPCWCH = const(WCHAR)*;
+    alias LPCWSTR = const(WCHAR)*;
+    alias PCWCH = const(WCHAR)*;
+    alias PCWSTR = const(WCHAR)*;
 
-    alias CHAR*         LPTCH,  LPTSTR,  PTCH,  PTSTR;
-    alias const(CHAR)*  LPCTCH, LPCTSTR, PCTCH, PCTSTR;
+    alias LPTCH = CHAR*;
+    alias LPTSTR = CHAR*;
+    alias PTCH = CHAR*;
+    alias PTSTR = CHAR*;
+    alias LPCTCH = const(CHAR)*;
+    alias LPCTSTR = const(CHAR)*;
+    alias PCTCH = const(CHAR)*;
+    alias PCTSTR = const(CHAR)*;
 
-    alias uint DWORD;
-    alias ulong DWORD64;
-    alias int BOOL;
-    alias ubyte BYTE;
-    alias ushort WORD;
-    alias float FLOAT;
-    alias FLOAT* PFLOAT;
-    alias BOOL*  LPBOOL,  PBOOL;
-    alias BYTE*  LPBYTE,  PBYTE;
-    alias int*   LPINT,   PINT;
-    alias WORD*  LPWORD,  PWORD;
-    alias int*   LPLONG;
-    alias DWORD* LPDWORD, PDWORD;
-    alias void*  LPVOID;
-    alias const(void)* LPCVOID;
+    alias DWORD = uint;
+    alias DWORD64 = ulong;
+    alias BOOL = int;
+    alias BYTE = ubyte;
+    alias WORD = ushort;
+    alias FLOAT = float;
+    alias PFLOAT = FLOAT*;
+    alias LPBOOL = BOOL*;
+    alias PBOOL = BOOL*;
+    alias LPBYTE = BYTE*;
+    alias PBYTE = BYTE*;
+    alias LPINT = int*;
+    alias PINT = int*;
+    alias LPWORD = WORD*;
+    alias PWORD = WORD*;
+    alias LPLONG = int*;
+    alias LPDWORD = DWORD*;
+    alias PDWORD = DWORD*;
+    alias LPVOID = void*;
+    alias LPCVOID = const(void)*;
 
-    alias int INT;
-    alias uint UINT;
-    alias uint* PUINT;
+    alias INT = int;
+    alias UINT = uint;
+    alias PUINT = uint*;
 
-    alias size_t SIZE_T;
+    alias SIZE_T = size_t;
 
 // ULONG_PTR must be able to store a pointer as an integral type
 version (Win64)
 {
-    alias  long INT_PTR;
-    alias ulong UINT_PTR;
-    alias  long LONG_PTR;
-    alias ulong ULONG_PTR;
-    alias  long * PINT_PTR;
-    alias ulong * PUINT_PTR;
-    alias  long * PLONG_PTR;
-    alias ulong * PULONG_PTR;
+    alias  INT_PTR = long;
+    alias UINT_PTR = ulong;
+    alias  LONG_PTR = long;
+    alias ULONG_PTR = ulong;
+    alias  PINT_PTR = long*;
+    alias PUINT_PTR = ulong*;
+    alias  PLONG_PTR = long*;
+    alias PULONG_PTR = ulong*;
 }
 else // Win32
 {
-    alias  int INT_PTR;
-    alias uint UINT_PTR;
-    alias  int LONG_PTR;
-    alias uint ULONG_PTR;
-    alias  int * PINT_PTR;
-    alias uint * PUINT_PTR;
-    alias  int * PLONG_PTR;
-    alias uint * PULONG_PTR;
+    alias  INT_PTR = int;
+    alias UINT_PTR = uint;
+    alias  LONG_PTR = int;
+    alias ULONG_PTR = uint;
+    alias  PINT_PTR = int*;
+    alias PUINT_PTR = uint*;
+    alias  PLONG_PTR = int*;
+    alias PULONG_PTR = uint*;
 }
 
-    alias ULONG_PTR DWORD_PTR;
+    alias DWORD_PTR = ULONG_PTR;
 
-    alias void *HANDLE;
-    alias void *PVOID;
-    alias HANDLE HGLOBAL;
-    alias HANDLE HLOCAL;
-    alias LONG HRESULT;
-    alias LONG SCODE;
-    alias HANDLE HINSTANCE;
-    alias HINSTANCE HMODULE;
-    alias HANDLE HWND;
-    alias HANDLE* PHANDLE;
+    alias HANDLE = void*;
+    alias PVOID = void*;
+    alias HGLOBAL = HANDLE;
+    alias HLOCAL = HANDLE;
+    alias HRESULT = LONG;
+    alias SCODE = LONG;
+    alias HINSTANCE = HANDLE;
+    alias HMODULE = HINSTANCE;
+    alias HWND = HANDLE;
+    alias PHANDLE = HANDLE*;
 
-    alias HANDLE HGDIOBJ;
-    alias HANDLE HACCEL;
-    alias HANDLE HBITMAP;
-    alias HANDLE HBRUSH;
-    alias HANDLE HCOLORSPACE;
-    alias HANDLE HDC;
-    alias HANDLE HGLRC;
-    alias HANDLE HDESK;
-    alias HANDLE HENHMETAFILE;
-    alias HANDLE HFONT;
-    alias HANDLE HICON;
-    alias HANDLE HMENU;
-    alias HANDLE HMETAFILE;
-    alias HANDLE HPALETTE;
-    alias HANDLE HPEN;
-    alias HANDLE HRGN;
-    alias HANDLE HRSRC;
-    alias HANDLE HSTR;
-    alias HANDLE HTASK;
-    alias HANDLE HWINSTA;
-    alias HANDLE HKL;
-    alias HICON HCURSOR;
+    alias HGDIOBJ = HANDLE;
+    alias HACCEL = HANDLE;
+    alias HBITMAP = HANDLE;
+    alias HBRUSH = HANDLE;
+    alias HCOLORSPACE = HANDLE;
+    alias HDC = HANDLE;
+    alias HGLRC = HANDLE;
+    alias HDESK = HANDLE;
+    alias HENHMETAFILE = HANDLE;
+    alias HFONT = HANDLE;
+    alias HICON = HANDLE;
+    alias HMENU = HANDLE;
+    alias HMETAFILE = HANDLE;
+    alias HPALETTE = HANDLE;
+    alias HPEN = HANDLE;
+    alias HRGN = HANDLE;
+    alias HRSRC = HANDLE;
+    alias HSTR = HANDLE;
+    alias HTASK = HANDLE;
+    alias HWINSTA = HANDLE;
+    alias HKL = HANDLE;
+    alias HCURSOR = HICON;
 
-    alias HANDLE HKEY;
-    alias HKEY *PHKEY;
-    alias DWORD ACCESS_MASK;
-    alias ACCESS_MASK *PACCESS_MASK;
-    alias ACCESS_MASK REGSAM;
+    alias HKEY = HANDLE;
+    alias PHKEY = HKEY*;
+    alias ACCESS_MASK = DWORD;
+    alias PACCESS_MASK = ACCESS_MASK*;
+    alias REGSAM = ACCESS_MASK;
 
     version (Win64)
-        alias INT_PTR function() FARPROC;
+        alias FARPROC = INT_PTR function();
     else
-        alias int function() FARPROC;
+        alias FARPROC = int function();
 
-    alias UINT_PTR WPARAM;
-    alias LONG_PTR LPARAM;
-    alias LONG_PTR LRESULT;
+    alias WPARAM = UINT_PTR;
+    alias LPARAM = LONG_PTR;
+    alias LRESULT = LONG_PTR;
 
-    alias DWORD   COLORREF;
-    alias DWORD   *LPCOLORREF;
-    alias WORD    ATOM;
+    alias COLORREF = DWORD;
+    alias LPCOLORREF = DWORD*;
+    alias ATOM = WORD;
 
 version (all)
 {
     // Properly prototyped versions
-    alias INT_PTR function(HWND, UINT, WPARAM, LPARAM) DLGPROC;
-    alias VOID function(HWND, UINT, UINT_PTR, DWORD) TIMERPROC;
-    alias BOOL function(HDC, LPARAM, int) GRAYSTRINGPROC;
-    alias BOOL function(HWND, LPARAM) WNDENUMPROC;
-    alias LRESULT function(int code, WPARAM wParam, LPARAM lParam) HOOKPROC;
-    alias VOID function(HWND, UINT, ULONG_PTR, LRESULT) SENDASYNCPROC;
-    alias BOOL function(HWND, LPCSTR, HANDLE) PROPENUMPROCA;
-    alias BOOL function(HWND, LPCWSTR, HANDLE) PROPENUMPROCW;
-    alias BOOL function(HWND, LPSTR, HANDLE, ULONG_PTR) PROPENUMPROCEXA;
-    alias BOOL function(HWND, LPWSTR, HANDLE, ULONG_PTR) PROPENUMPROCEXW;
-    alias int function(LPSTR lpch, int ichCurrent, int cch, int code)
-       EDITWORDBREAKPROCA;
-    alias int function(LPWSTR lpch, int ichCurrent, int cch, int code)
-       EDITWORDBREAKPROCW;
-    alias BOOL function(HDC hdc, LPARAM lData, WPARAM wData, int cx, int cy)
-       DRAWSTATEPROC;
+    alias DLGPROC = INT_PTR function(HWND, UINT, WPARAM, LPARAM);
+    alias TIMERPROC = VOID function(HWND, UINT, UINT_PTR, DWORD);
+    alias GRAYSTRINGPROC = BOOL function(HDC, LPARAM, int);
+    alias WNDENUMPROC = BOOL function(HWND, LPARAM);
+    alias HOOKPROC = LRESULT function(int code, WPARAM wParam, LPARAM lParam);
+    alias SENDASYNCPROC = VOID function(HWND, UINT, ULONG_PTR, LRESULT);
+    alias PROPENUMPROCA = BOOL function(HWND, LPCSTR, HANDLE);
+    alias PROPENUMPROCW = BOOL function(HWND, LPCWSTR, HANDLE);
+    alias PROPENUMPROCEXA = BOOL function(HWND, LPSTR, HANDLE, ULONG_PTR);
+    alias PROPENUMPROCEXW = BOOL function(HWND, LPWSTR, HANDLE, ULONG_PTR);
+    alias EDITWORDBREAKPROCA = int function(LPSTR lpch, int ichCurrent, int cch, int code);
+    alias EDITWORDBREAKPROCW = int function(LPWSTR lpch, int ichCurrent, int cch, int code);
+    alias DRAWSTATEPROC = BOOL function(HDC hdc, LPARAM lData, WPARAM wData, int cx, int cy);
 }
 else
 {
-    alias FARPROC DLGPROC;
-    alias FARPROC TIMERPROC;
-    alias FARPROC GRAYSTRINGPROC;
-    alias FARPROC WNDENUMPROC;
-    alias FARPROC HOOKPROC;
-    alias FARPROC SENDASYNCPROC;
-    alias FARPROC EDITWORDBREAKPROCA;
-    alias FARPROC EDITWORDBREAKPROCW;
-    alias FARPROC PROPENUMPROCA;
-    alias FARPROC PROPENUMPROCW;
-    alias FARPROC PROPENUMPROCEXA;
-    alias FARPROC PROPENUMPROCEXW;
-    alias FARPROC DRAWSTATEPROC;
+    alias DLGPROC = FARPROC;
+    alias TIMERPROC = FARPROC;
+    alias GRAYSTRINGPROC = FARPROC;
+    alias WNDENUMPROC = FARPROC;
+    alias HOOKPROC = FARPROC;
+    alias SENDASYNCPROC = FARPROC;
+    alias EDITWORDBREAKPROCA = FARPROC;
+    alias EDITWORDBREAKPROCW = FARPROC;
+    alias PROPENUMPROCA = FARPROC;
+    alias PROPENUMPROCW = FARPROC;
+    alias PROPENUMPROCEXA = FARPROC;
+    alias PROPENUMPROCEXW = FARPROC;
+    alias DRAWSTATEPROC = FARPROC;
 }
 
 extern (D) pure @nogc
@@ -341,7 +361,7 @@ union LARGE_INTEGER
     }
     long QuadPart;
 }
-alias LARGE_INTEGER* PLARGE_INTEGER;
+alias PLARGE_INTEGER = LARGE_INTEGER*;
 
 union ULARGE_INTEGER
 {
@@ -352,7 +372,7 @@ union ULARGE_INTEGER
     }
     ulong QuadPart;
 }
-alias ULARGE_INTEGER* PULARGE_INTEGER;
+alias PULARGE_INTEGER = ULARGE_INTEGER*;
 
 struct OVERLAPPED {
     ULONG_PTR Internal;
@@ -366,7 +386,7 @@ struct OVERLAPPED {
     }
     HANDLE hEvent;
 }
-alias OVERLAPPED* LPOVERLAPPED;
+alias LPOVERLAPPED = OVERLAPPED*;
 
 struct SECURITY_ATTRIBUTES {
     DWORD nLength;
@@ -374,13 +394,15 @@ struct SECURITY_ATTRIBUTES {
     BOOL bInheritHandle;
 }
 
-alias SECURITY_ATTRIBUTES* PSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES;
+alias PSECURITY_ATTRIBUTES = SECURITY_ATTRIBUTES*;
+alias LPSECURITY_ATTRIBUTES = SECURITY_ATTRIBUTES*;
 
 struct FILETIME {
     DWORD dwLowDateTime;
     DWORD dwHighDateTime;
 }
-alias FILETIME* PFILETIME, LPFILETIME;
+alias PFILETIME = FILETIME*;
+alias LPFILETIME = FILETIME*;
 
 struct WIN32_FIND_DATA {
     DWORD dwFileAttributes;
@@ -415,7 +437,7 @@ struct _LIST_ENTRY
     _LIST_ENTRY *Flink;
     _LIST_ENTRY *Blink;
 }
-alias _LIST_ENTRY LIST_ENTRY;
+alias LIST_ENTRY = _LIST_ENTRY;
 
 struct _RTL_CRITICAL_SECTION_DEBUG
 {
@@ -427,7 +449,7 @@ struct _RTL_CRITICAL_SECTION_DEBUG
     DWORD ContentionCount;
     DWORD[2] Spare;
 }
-alias _RTL_CRITICAL_SECTION_DEBUG RTL_CRITICAL_SECTION_DEBUG;
+alias RTL_CRITICAL_SECTION_DEBUG = _RTL_CRITICAL_SECTION_DEBUG;
 
 struct _RTL_CRITICAL_SECTION
 {
@@ -444,7 +466,7 @@ struct _RTL_CRITICAL_SECTION
     HANDLE LockSemaphore;
     ULONG_PTR SpinCount;        // force size on 64-bit systems when packed
 }
-alias _RTL_CRITICAL_SECTION CRITICAL_SECTION;
+alias CRITICAL_SECTION = _RTL_CRITICAL_SECTION;
 
 
 enum
@@ -469,7 +491,7 @@ struct WIN32_FILE_ATTRIBUTE_DATA
     DWORD    nFileSizeHigh;
     DWORD    nFileSizeLow;
 }
-alias WIN32_FILE_ATTRIBUTE_DATA* LPWIN32_FILE_ATTRIBUTE_DATA;
+alias LPWIN32_FILE_ATTRIBUTE_DATA = WIN32_FILE_ATTRIBUTE_DATA*;
 
 export @nogc
 {
@@ -540,7 +562,7 @@ struct MEMORYSTATUS {
     DWORD dwTotalVirtual;
     DWORD dwAvailVirtual;
 };
-alias MEMORYSTATUS *LPMEMORYSTATUS;
+alias LPMEMORYSTATUS = MEMORYSTATUS*;
 
 @nogc
 {
@@ -768,7 +790,7 @@ struct MEMORY_BASIC_INFORMATION {
     DWORD Protect;
     DWORD Type;
 }
-alias MEMORY_BASIC_INFORMATION* PMEMORY_BASIC_INFORMATION;
+alias PMEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION*;
 
 enum
 {
@@ -1213,7 +1235,7 @@ version (Win64)
         ULONGLONG Low;
         LONGLONG High;
     }
-    alias M128A* PM128A;
+    alias PM128A = M128A*;
 
     struct XMM_SAVE_AREA32
     {
@@ -1234,7 +1256,7 @@ version (Win64)
         M128A[16] XmmRegisters;
         BYTE[96] Reserved4;
     }
-    alias XMM_SAVE_AREA32 PXMM_SAVE_AREA32;
+    alias PXMM_SAVE_AREA32 = XMM_SAVE_AREA32;
 
     align(16) struct CONTEXT // sizeof(1232)
     {
@@ -1562,7 +1584,7 @@ struct SYSTEM_INFO
     WORD      wProcessorRevision;
 }
 
-alias SYSTEM_INFO* LPSYSTEM_INFO;
+alias LPSYSTEM_INFO = SYSTEM_INFO*;
 
 @nogc
 {
@@ -2068,7 +2090,9 @@ struct RECT
     LONG    right;
     LONG    bottom;
 }
-alias RECT* PRECT, NPRECT, LPRECT;
+alias PRECT = RECT*;
+alias NPRECT = RECT*;
+alias LPRECT = RECT*;
 
 struct PAINTSTRUCT {
     HDC         hdc;
@@ -2078,7 +2102,9 @@ struct PAINTSTRUCT {
     BOOL        fIncUpdate;
     BYTE[32]    rgbReserved;
 }
-alias PAINTSTRUCT* PPAINTSTRUCT, NPPAINTSTRUCT, LPPAINTSTRUCT;
+alias PPAINTSTRUCT = PAINTSTRUCT*;
+alias NPPAINTSTRUCT = PAINTSTRUCT*;
+alias LPPAINTSTRUCT = PAINTSTRUCT*;
 
 // flags for GetDCEx()
 
@@ -2281,7 +2307,7 @@ struct RGBQUAD {
         BYTE    rgbRed;
         BYTE    rgbReserved;
 }
-alias RGBQUAD* LPRGBQUAD;
+alias LPRGBQUAD = RGBQUAD*;
 
 struct BITMAPINFOHEADER
 {
@@ -2297,13 +2323,15 @@ struct BITMAPINFOHEADER
         DWORD      biClrUsed;
         DWORD      biClrImportant;
 }
-alias BITMAPINFOHEADER* LPBITMAPINFOHEADER, PBITMAPINFOHEADER;
+alias LPBITMAPINFOHEADER = BITMAPINFOHEADER*;
+alias PBITMAPINFOHEADER = BITMAPINFOHEADER*;
 
 struct BITMAPINFO {
     BITMAPINFOHEADER    bmiHeader;
     RGBQUAD[1]          bmiColors;
 }
-alias BITMAPINFO* LPBITMAPINFO, PBITMAPINFO;
+alias LPBITMAPINFO = BITMAPINFO*;
+alias PBITMAPINFO = BITMAPINFO*;
 
 struct PALETTEENTRY {
     BYTE        peRed;
@@ -2311,14 +2339,17 @@ struct PALETTEENTRY {
     BYTE        peBlue;
     BYTE        peFlags;
 }
-alias PALETTEENTRY* PPALETTEENTRY, LPPALETTEENTRY;
+alias PPALETTEENTRY = PALETTEENTRY*;
+alias LPPALETTEENTRY = PALETTEENTRY*;
 
 struct LOGPALETTE {
     WORD        palVersion;
     WORD        palNumEntries;
     PALETTEENTRY[1]  palPalEntry;
 }
-alias LOGPALETTE* PLOGPALETTE, NPLOGPALETTE, LPLOGPALETTE;
+alias PLOGPALETTE = LOGPALETTE*;
+alias NPLOGPALETTE = LOGPALETTE*;
+alias LPLOGPALETTE = LOGPALETTE*;
 
 /* Pixel format descriptor flags */
 enum : DWORD
@@ -2386,7 +2417,8 @@ struct PIXELFORMATDESCRIPTOR
     DWORD dwVisibleMask;
     DWORD dwDamageMask;
 }
-alias PIXELFORMATDESCRIPTOR* PPIXELFORMATDESCRIPTOR, LPPIXELFORMATDESCRIPTOR;
+alias PPIXELFORMATDESCRIPTOR = PIXELFORMATDESCRIPTOR*;
+alias LPPIXELFORMATDESCRIPTOR = PIXELFORMATDESCRIPTOR*;
 
 export @nogc
 {
@@ -2453,7 +2485,9 @@ struct POINT
     LONG  x;
     LONG  y;
 }
-alias POINT* PPOINT, NPPOINT, LPPOINT;
+alias PPOINT = POINT*;
+alias NPPOINT = POINT*;
+alias LPPOINT = POINT*;
 
 
 export @nogc
@@ -2472,7 +2506,7 @@ export HMODULE GetModuleHandleA(LPCSTR lpModuleName);
 export HMODULE GetModuleHandleW(LPCWSTR lpModuleName);
 }
 
-alias LRESULT function (HWND, UINT, WPARAM, LPARAM) WNDPROC;
+alias WNDPROC = LRESULT function(HWND, UINT, WPARAM, LPARAM);
 
 struct WNDCLASSEXA {
     UINT        cbSize;
@@ -2490,7 +2524,9 @@ struct WNDCLASSEXA {
     /* Win 4.0 */
     HICON       hIconSm;
 }
-alias WNDCLASSEXA* PWNDCLASSEXA, NPWNDCLASSEXA, LPWNDCLASSEXA;
+alias PWNDCLASSEXA = WNDCLASSEXA*;
+alias NPWNDCLASSEXA = WNDCLASSEXA*;
+alias LPWNDCLASSEXA = WNDCLASSEXA*;
 
 
 struct WNDCLASSA {
@@ -2505,8 +2541,10 @@ struct WNDCLASSA {
     LPCSTR      lpszMenuName;
     LPCSTR      lpszClassName;
 }
-alias WNDCLASSA* PWNDCLASSA, NPWNDCLASSA, LPWNDCLASSA;
-alias WNDCLASSA WNDCLASS;
+alias PWNDCLASSA = WNDCLASSA*;
+alias NPWNDCLASSA = WNDCLASSA*;
+alias LPWNDCLASSA = WNDCLASSA*;
+alias WNDCLASS = WNDCLASSA;
 
 
 struct WNDCLASSEXW {
@@ -2539,7 +2577,9 @@ struct WNDCLASSW {
     LPCWSTR     lpszMenuName;
     LPCWSTR     lpszClassName;
 }
-alias WNDCLASSW* PWNDCLASSW, NPWNDCLASSW, LPWNDCLASSW;
+alias PWNDCLASSW = WNDCLASSW*;
+alias NPWNDCLASSW = WNDCLASSW*;
+alias LPWNDCLASSW = WNDCLASSW*;
 
 
 /*
@@ -2820,7 +2860,9 @@ struct MSG {
     DWORD       time;
     POINT       pt;
 }
-alias MSG* PMSG, NPMSG, LPMSG;
+alias PMSG = MSG*;
+alias NPMSG = MSG*;
+alias LPMSG = MSG*;
 
 export @nogc
 {
@@ -3145,7 +3187,7 @@ enum
 
 export @nogc LRESULT SendMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 
-alias UINT function (HWND, UINT, WPARAM, LPARAM) LPOFNHOOKPROC;
+alias LPOFNHOOKPROC = UINT function(HWND, UINT, WPARAM, LPARAM);
 
 struct OPENFILENAMEA {
    DWORD        lStructSize;
@@ -3169,7 +3211,7 @@ struct OPENFILENAMEA {
    LPOFNHOOKPROC lpfnHook;
    LPCSTR       lpTemplateName;
 }
-alias OPENFILENAMEA *LPOPENFILENAMEA;
+alias LPOPENFILENAMEA = OPENFILENAMEA*;
 
 struct OPENFILENAMEW {
    DWORD        lStructSize;
@@ -3193,7 +3235,7 @@ struct OPENFILENAMEW {
    LPOFNHOOKPROC lpfnHook;
    LPCWSTR      lpTemplateName;
 }
-alias OPENFILENAMEW *LPOPENFILENAMEW;
+alias LPOPENFILENAMEW = OPENFILENAMEW*;
 
 @nogc
 {
@@ -3225,7 +3267,9 @@ struct BITMAP
     WORD        bmBitsPixel;
     LPVOID      bmBits;
 }
-alias BITMAP* PBITMAP, NPBITMAP, LPBITMAP;
+alias PBITMAP = BITMAP*;
+alias NPBITMAP = BITMAP*;
+alias LPBITMAP = BITMAP*;
 
 @nogc
 {
@@ -3253,7 +3297,9 @@ struct LOGFONTA
     BYTE      lfPitchAndFamily;
     CHAR[32]  lfFaceName;
 }
-alias LOGFONTA* PLOGFONTA, NPLOGFONTA, LPLOGFONTA;
+alias PLOGFONTA = LOGFONTA*;
+alias NPLOGFONTA = LOGFONTA*;
+alias LPLOGFONTA = LOGFONTA*;
 
 @nogc
 {
@@ -3305,17 +3351,17 @@ align (2) struct DLGTEMPLATE {
     short cx;
     short cy;
 }
-alias DLGTEMPLATE *LPDLGTEMPLATEA;
-alias DLGTEMPLATE *LPDLGTEMPLATEW;
+alias LPDLGTEMPLATEA = DLGTEMPLATE*;
+alias LPDLGTEMPLATEW = DLGTEMPLATE*;
 
 
-alias LPDLGTEMPLATEA LPDLGTEMPLATE;
+alias LPDLGTEMPLATE = LPDLGTEMPLATEA;
 
-alias  DLGTEMPLATE *LPCDLGTEMPLATEA;
-alias  DLGTEMPLATE *LPCDLGTEMPLATEW;
+alias  LPCDLGTEMPLATEA = DLGTEMPLATE*;
+alias  LPCDLGTEMPLATEW = DLGTEMPLATE*;
 
 
-alias LPCDLGTEMPLATEA LPCDLGTEMPLATE;
+alias LPCDLGTEMPLATE = LPCDLGTEMPLATEA;
 
 
 export @nogc int DialogBoxParamA(HINSTANCE hInstance, LPCSTR lpTemplateName,
@@ -3384,7 +3430,9 @@ struct LOGPEN
     POINT       lopnWidth;
     COLORREF    lopnColor;
 }
-alias LOGPEN* PLOGPEN, NPLOGPEN, LPLOGPEN;
+alias PLOGPEN = LOGPEN*;
+alias NPLOGPEN = LOGPEN*;
+alias LPLOGPEN = LOGPEN*;
 
 enum
 {
@@ -3488,7 +3536,7 @@ struct COORD {
     SHORT X;
     SHORT Y;
 }
-alias COORD *PCOORD;
+alias PCOORD = COORD*;
 
 struct SMALL_RECT {
     SHORT Left;
@@ -3496,7 +3544,7 @@ struct SMALL_RECT {
     SHORT Right;
     SHORT Bottom;
 }
-alias SMALL_RECT *PSMALL_RECT;
+alias PSMALL_RECT = SMALL_RECT*;
 
 struct KEY_EVENT_RECORD {
     BOOL bKeyDown;
@@ -3509,7 +3557,7 @@ struct KEY_EVENT_RECORD {
     }
     DWORD dwControlKeyState;
 }
-alias KEY_EVENT_RECORD *PKEY_EVENT_RECORD;
+alias PKEY_EVENT_RECORD = KEY_EVENT_RECORD*;
 
 //
 // ControlKeyState flags
@@ -3534,7 +3582,7 @@ struct MOUSE_EVENT_RECORD {
     DWORD dwControlKeyState;
     DWORD dwEventFlags;
 }
-alias MOUSE_EVENT_RECORD *PMOUSE_EVENT_RECORD;
+alias PMOUSE_EVENT_RECORD = MOUSE_EVENT_RECORD*;
 
 //
 // ButtonState flags
@@ -3561,17 +3609,17 @@ enum
 struct WINDOW_BUFFER_SIZE_RECORD {
     COORD dwSize;
 }
-alias WINDOW_BUFFER_SIZE_RECORD *PWINDOW_BUFFER_SIZE_RECORD;
+alias PWINDOW_BUFFER_SIZE_RECORD = WINDOW_BUFFER_SIZE_RECORD*;
 
 struct MENU_EVENT_RECORD {
     UINT dwCommandId;
 }
-alias MENU_EVENT_RECORD *PMENU_EVENT_RECORD;
+alias PMENU_EVENT_RECORD = MENU_EVENT_RECORD*;
 
 struct FOCUS_EVENT_RECORD {
     BOOL bSetFocus;
 }
-alias FOCUS_EVENT_RECORD *PFOCUS_EVENT_RECORD;
+alias PFOCUS_EVENT_RECORD = FOCUS_EVENT_RECORD*;
 
 struct INPUT_RECORD {
     WORD EventType;
@@ -3583,7 +3631,7 @@ struct INPUT_RECORD {
         FOCUS_EVENT_RECORD FocusEvent;
     }
 }
-alias INPUT_RECORD *PINPUT_RECORD;
+alias PINPUT_RECORD = INPUT_RECORD*;
 
 //
 //  EventType flags:
@@ -3605,7 +3653,7 @@ struct CHAR_INFO {
     }
     WORD Attributes;
 }
-alias CHAR_INFO *PCHAR_INFO;
+alias PCHAR_INFO = CHAR_INFO*;
 
 //
 // Attributes flags:
@@ -3630,13 +3678,13 @@ struct CONSOLE_SCREEN_BUFFER_INFO {
     SMALL_RECT srWindow;
     COORD dwMaximumWindowSize;
 }
-alias CONSOLE_SCREEN_BUFFER_INFO *PCONSOLE_SCREEN_BUFFER_INFO;
+alias PCONSOLE_SCREEN_BUFFER_INFO = CONSOLE_SCREEN_BUFFER_INFO*;
 
 struct CONSOLE_CURSOR_INFO {
     DWORD  dwSize;
     BOOL   bVisible;
 }
-alias CONSOLE_CURSOR_INFO *PCONSOLE_CURSOR_INFO;
+alias PCONSOLE_CURSOR_INFO = CONSOLE_CURSOR_INFO*;
 
 enum
 {
@@ -3709,7 +3757,7 @@ UINT GetConsoleOutputCP();
 BOOL SetConsoleOutputCP(UINT wCodePageID);
 }
 
-alias BOOL function(DWORD CtrlType) PHANDLER_ROUTINE;
+alias PHANDLER_ROUTINE = BOOL function(DWORD CtrlType);
 
 enum
 {
@@ -3860,8 +3908,8 @@ struct STARTUPINFO_W
     HANDLE hStdError;
 }
 
-alias STARTUPINFO *LPSTARTUPINFO;
-alias STARTUPINFO_W *LPSTARTUPINFO_W;
+alias LPSTARTUPINFO = STARTUPINFO*;
+alias LPSTARTUPINFO_W = STARTUPINFO_W*;
 
 struct PROCESS_INFORMATION
 {
@@ -3871,7 +3919,7 @@ struct PROCESS_INFORMATION
     DWORD  dwThreadId;
 }
 
-alias PROCESS_INFORMATION *LPPROCESS_INFORMATION;
+alias LPPROCESS_INFORMATION = PROCESS_INFORMATION*;
 
 export @nogc
 {

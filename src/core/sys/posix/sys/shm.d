@@ -56,9 +56,9 @@ version( linux )
     enum SHM_RND        = 0x02000; // 020000
 
     int   __getpagesize();
-    alias __getpagesize SHMLBA;
+    alias SHMLBA = __getpagesize;
 
-    alias c_ulong   shmatt_t;
+    alias shmatt_t = c_ulong;
 
     struct shmid_ds
     {
@@ -88,7 +88,7 @@ else version( FreeBSD )
     enum SHM_RND        = 0x02000; // 020000
     enum SHMLBA         = 1 << 12; // PAGE_SIZE = (1<<PAGE_SHIFT)
 
-    alias c_ulong   shmatt_t;
+    alias shmatt_t = c_ulong;
 
     struct shmid_ds_old // <= FreeBSD7
     {

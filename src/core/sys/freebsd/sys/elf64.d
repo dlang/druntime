@@ -13,17 +13,17 @@ nothrow:
 import core.stdc.stdint;
 public import core.sys.freebsd.sys.elf_common;
 
-alias uint16_t Elf64_Half;
-alias uint32_t Elf64_Word;
-alias int32_t  Elf64_Sword;
-alias uint64_t Elf64_Lword;
-alias uint64_t Elf64_Xword;
-alias int64_t  Elf64_Sxword;
-alias uint64_t Elf64_Addr;
-alias uint64_t Elf64_Off;
-alias Elf64_Word Elf64_Hashelt;
-alias Elf64_Xword Elf64_Size;
-alias Elf64_Sxword Elf64_Ssize;
+alias Elf64_Half = uint16_t;
+alias Elf64_Word = uint32_t;
+alias Elf64_Sword = int32_t;
+alias Elf64_Lword = uint64_t;
+alias Elf64_Xword = uint64_t;
+alias Elf64_Sxword = int64_t;
+alias Elf64_Addr = uint64_t;
+alias Elf64_Off = uint64_t;
+alias Elf64_Hashelt = Elf64_Word;
+alias Elf64_Size = Elf64_Xword;
+alias Elf64_Ssize = Elf64_Sxword;
 
 struct Elf64_Ehdr
 {
@@ -103,7 +103,7 @@ extern (D)
     auto ELF64_R_TYPE_INFO(D, T)(D d, T t) { return cast(Elf64_Xword) d << 8 + cast(Elf64_Xword) t; }
 }
 
-alias Elf_Note Elf64_Nhdr;
+alias Elf64_Nhdr = Elf_Note;
 
 struct Elf64_Move
 {
@@ -184,7 +184,7 @@ struct Elf64_Vernaux
     Elf64_Word    vna_next;
 }
 
-alias Elf64_Half Elf64_Versym;
+alias Elf64_Versym = Elf64_Half;
 
 struct Elf64_Syminfo
 {

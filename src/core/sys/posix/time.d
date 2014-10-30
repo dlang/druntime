@@ -202,8 +202,8 @@ version( linux )
         alias CLOCK_REALTIME_COARSE = core.sys.linux.time.CLOCK_REALTIME_COARSE; // non-standard
     enum TIMER_ABSTIME          = 0x01;
 
-    alias int clockid_t;
-    alias int timer_t;
+    alias clockid_t = int;
+    alias timer_t = int;
 
     int clock_getres(clockid_t, timespec*);
     int clock_gettime(clockid_t, timespec*);
@@ -241,8 +241,8 @@ else version( FreeBSD )
     enum CLOCK_REALTIME      = 0;
     enum TIMER_ABSTIME       = 0x01;
 
-    alias int clockid_t; // <sys/_types.h>
-    alias int timer_t;
+    alias clockid_t = int; // <sys/_types.h>
+    alias timer_t = int;
 
     int clock_getres(clockid_t, timespec*);
     int clock_gettime(clockid_t, timespec*);
@@ -264,8 +264,8 @@ else version (Solaris)
 
     enum TIMER_ABSOLUTE = 0x1;
 
-    alias int clockid_t;
-    alias int timer_t;
+    alias clockid_t = int;
+    alias timer_t = int;
 
     int clock_getres(clockid_t, timespec*);
     int clock_gettime(clockid_t, timespec*);
@@ -297,8 +297,8 @@ else version( Android )
 
     version(X86)
     {
-        alias int clockid_t;
-        alias int timer_t;
+        alias clockid_t = int;
+        alias timer_t = int;
     }
     else
     {
@@ -410,7 +410,7 @@ else version (Solaris)
 
     tm* getdate(in char*);
     char* __strptime_dontzero(in char*, in char*, tm*);
-    alias __strptime_dontzero strptime;
+    alias strptime = __strptime_dontzero;
 }
 else version( Android )
 {

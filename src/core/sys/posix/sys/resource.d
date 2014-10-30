@@ -84,9 +84,9 @@ version (linux)
     }
 
     static if (__USE_FILE_OFFSET64)
-         alias ulong rlim_t;
+         alias rlim_t = ulong;
     else
-         alias c_ulong rlim_t;
+         alias rlim_t = c_ulong;
 
     static if (__USE_FILE_OFFSET64)
         enum RLIM_INFINITY = 0xffffffffffffffffUL;
@@ -142,7 +142,7 @@ else version (OSX)
         PRIO_USER    = 2,
     }
 
-    alias ulong rlim_t;
+    alias rlim_t = ulong;
 
     enum
     {
@@ -184,7 +184,7 @@ else version (FreeBSD)
         PRIO_USER    = 2,
     }
 
-    alias long rlim_t;
+    alias rlim_t = long;
 
     enum
     {
@@ -205,7 +205,7 @@ else version (FreeBSD)
         timeval ru_utime;
         timeval ru_stime;
         c_long ru_maxrss;
-        alias ru_ixrss ru_first;
+        alias ru_first = ru_ixrss;
         c_long ru_ixrss;
         c_long ru_idrss;
         c_long ru_isrss;
@@ -219,7 +219,7 @@ else version (FreeBSD)
         c_long ru_nsignals;
         c_long ru_nvcsw;
         c_long ru_nivcsw;
-        alias ru_nivcsw ru_last;
+        alias ru_last = ru_nivcsw;
     }
 
     enum
@@ -242,7 +242,7 @@ else version (Solaris)
         PRIO_USER    = 2,
     }
 
-    alias c_ulong rlim_t;
+    alias rlim_t = c_ulong;
 
     enum : c_long
     {
@@ -297,7 +297,7 @@ else version (Android)
         PRIO_USER    = 2,
     }
 
-    alias c_ulong rlim_t;
+    alias rlim_t = c_ulong;
     enum RLIM_INFINITY = cast(c_ulong)(~0UL);
 
     enum

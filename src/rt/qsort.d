@@ -20,7 +20,7 @@ private import core.stdc.stdlib;
 
 version (linux)
 {
-    alias extern (C) int function(const void *, const void *, void *) Cmp;
+    alias Cmp = extern(C) int function(const void *, const void *, void *);
     extern (C) void qsort_r(void *base, size_t nmemb, size_t size, Cmp cmp, void *arg);
 
     extern (C) void[] _adSort(void[] a, TypeInfo ti)
@@ -35,7 +35,7 @@ version (linux)
 }
 else version (FreeBSD)
 {
-    alias extern (C) int function(void *, const void *, const void *) Cmp;
+    alias Cmp = extern(C) int function(void *, const void *, const void *);
     extern (C) void qsort_r(void *base, size_t nmemb, size_t size, void *thunk, Cmp cmp);
 
     extern (C) void[] _adSort(void[] a, TypeInfo ti)
@@ -50,7 +50,7 @@ else version (FreeBSD)
 }
 else version (OSX)
 {
-    alias extern (C) int function(void *, const void *, const void *) Cmp;
+    alias Cmp = extern(C) int function(void *, const void *, const void *);
     extern (C) void qsort_r(void *base, size_t nmemb, size_t size, void *thunk, Cmp cmp);
 
     extern (C) void[] _adSort(void[] a, TypeInfo ti)

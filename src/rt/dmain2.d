@@ -66,9 +66,9 @@ extern (C)
     void  gc_setProxy(void* p);
     void  gc_clrProxy();
 
-    alias void* function()      gcGetFn;
-    alias void  function(void*) gcSetFn;
-    alias void  function()      gcClrFn;
+    alias gcGetFn = void* function();
+    alias gcSetFn = void  function(void*);
+    alias gcClrFn = void  function();
 }
 
 version (Windows)
@@ -137,7 +137,7 @@ extern(C) __gshared char[][] _d_main_args = null;
 // be fine to leave it as __gshared.
 extern (C) __gshared bool rt_trapExceptions = true;
 
-alias void delegate(Throwable) ExceptionHandler;
+alias ExceptionHandler = void delegate(Throwable);
 
 /**
  * Keep track of how often rt_init/rt_term were called.
@@ -232,7 +232,7 @@ extern (C) CArgs rt_cArgs()
  * Its purpose is to wrap the D main()
  * function and catch any unhandled exceptions.
  */
-private alias extern(C) int function(char[][] args) MainFunc;
+private alias MainFunc = extern(C) int function(char[][] args);
 
 extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 {
@@ -505,7 +505,7 @@ private void printThrowable(Throwable t)
                 auto user32 = LoadLibraryW("user32.dll");
                 if (user32)
                 {
-                    alias typeof(&MessageBoxW) PMessageBoxW;
+                    alias PMessageBoxW = typeof(&MessageBoxW);
                     auto pMessageBoxW = cast(PMessageBoxW)
                         GetProcAddress(user32, "MessageBoxW");
                     if (pMessageBoxW)

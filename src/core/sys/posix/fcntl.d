@@ -236,10 +236,10 @@ version( linux )
     static if( __USE_FILE_OFFSET64 )
     {
         int   creat64(in char*, mode_t);
-        alias creat64 creat;
+        alias creat = creat64;
 
         int   open64(in char*, int, ...);
-        alias open64 open;
+        alias open = open64;
     }
     else
     {
@@ -445,8 +445,8 @@ else version (Solaris)
 
         static if (__USE_LARGEFILE64)
         {
-            alias creat creat64;
-            alias open open64;
+            alias creat64 = creat;
+            alias open64 = open;
         }
     }
     else
@@ -454,10 +454,10 @@ else version (Solaris)
         static if (__USE_LARGEFILE64)
         {
             int creat64(in char*, mode_t);
-            alias creat64 creat;
+            alias creat = creat64;
 
             int open64(in char*, int, ...);
-            alias open64 open;
+            alias open = open64;
         }
         else
         {

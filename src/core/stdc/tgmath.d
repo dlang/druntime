@@ -23,317 +23,317 @@ nothrow:
 
 version( FreeBSD )
 {
-    alias core.stdc.math.acos          acos;
-    alias core.stdc.math.acosf         acos;
-    alias core.stdc.math.acosl         acos;
+    alias acos = core.stdc.math.acos;
+    alias acos = core.stdc.math.acosf;
+    alias acos = core.stdc.math.acosl;
 
-    alias core.stdc.complex.cacos      acos;
-    alias core.stdc.complex.cacosf     acos;
-    alias core.stdc.complex.cacosl     acos;
+    alias acos = core.stdc.complex.cacos;
+    alias acos = core.stdc.complex.cacosf;
+    alias acos = core.stdc.complex.cacosl;
 
-    alias core.stdc.math.asin          asin;
-    alias core.stdc.math.asinf         asin;
-    alias core.stdc.math.asinl         asin;
+    alias asin = core.stdc.math.asin;
+    alias asin = core.stdc.math.asinf;
+    alias asin = core.stdc.math.asinl;
 
-    alias core.stdc.complex.casin      asin;
-    alias core.stdc.complex.casinf     asin;
-    alias core.stdc.complex.casinl     asin;
+    alias asin = core.stdc.complex.casin;
+    alias asin = core.stdc.complex.casinf;
+    alias asin = core.stdc.complex.casinl;
 
-    alias core.stdc.math.atan          atan;
-    alias core.stdc.math.atanf         atan;
-    alias core.stdc.math.atanl         atan;
+    alias atan = core.stdc.math.atan;
+    alias atan = core.stdc.math.atanf;
+    alias atan = core.stdc.math.atanl;
 
-    alias core.stdc.complex.catan      atan;
-    alias core.stdc.complex.catanf     atan;
-    alias core.stdc.complex.catanl     atan;
+    alias atan = core.stdc.complex.catan;
+    alias atan = core.stdc.complex.catanf;
+    alias atan = core.stdc.complex.catanl;
 
-    alias core.stdc.math.atan2         atan2;
-    alias core.stdc.math.atan2f        atan2;
-    alias core.stdc.math.atan2l        atan2;
+    alias atan2 = core.stdc.math.atan2;
+    alias atan2 = core.stdc.math.atan2f;
+    alias atan2 = core.stdc.math.atan2l;
 
-    alias core.stdc.math.cos           cos;
-    alias core.stdc.math.cosf          cos;
-    alias core.stdc.math.cosl          cos;
+    alias cos = core.stdc.math.cos;
+    alias cos = core.stdc.math.cosf;
+    alias cos = core.stdc.math.cosl;
 
-    alias core.stdc.complex.ccos       cos;
-    alias core.stdc.complex.ccosf      cos;
-    alias core.stdc.complex.ccosl      cos;
+    alias cos = core.stdc.complex.ccos;
+    alias cos = core.stdc.complex.ccosf;
+    alias cos = core.stdc.complex.ccosl;
 
-    alias core.stdc.math.sin           sin;
-    alias core.stdc.math.sinf          sin;
-    alias core.stdc.math.sinl          sin;
+    alias sin = core.stdc.math.sin;
+    alias sin = core.stdc.math.sinf;
+    alias sin = core.stdc.math.sinl;
 
-    alias core.stdc.complex.csin       csin;
-    alias core.stdc.complex.csinf      csin;
-    alias core.stdc.complex.csinl      csin;
+    alias csin = core.stdc.complex.csin;
+    alias csin = core.stdc.complex.csinf;
+    alias csin = core.stdc.complex.csinl;
 
-    alias core.stdc.math.tan           tan;
-    alias core.stdc.math.tanf          tan;
-    alias core.stdc.math.tanl          tan;
+    alias tan = core.stdc.math.tan;
+    alias tan = core.stdc.math.tanf;
+    alias tan = core.stdc.math.tanl;
 
-    alias core.stdc.complex.ctan       tan;
-    alias core.stdc.complex.ctanf      tan;
-    alias core.stdc.complex.ctanl      tan;
+    alias tan = core.stdc.complex.ctan;
+    alias tan = core.stdc.complex.ctanf;
+    alias tan = core.stdc.complex.ctanl;
 
-    alias core.stdc.math.acosh         acosh;
-    alias core.stdc.math.acoshf        acosh;
-    alias core.stdc.math.acoshl        acosh;
+    alias acosh = core.stdc.math.acosh;
+    alias acosh = core.stdc.math.acoshf;
+    alias acosh = core.stdc.math.acoshl;
 
-    alias core.stdc.complex.cacosh     acosh;
-    alias core.stdc.complex.cacoshf    acosh;
-    alias core.stdc.complex.cacoshl    acosh;
+    alias acosh = core.stdc.complex.cacosh;
+    alias acosh = core.stdc.complex.cacoshf;
+    alias acosh = core.stdc.complex.cacoshl;
 
-    alias core.stdc.math.asinh         asinh;
-    alias core.stdc.math.asinhf        asinh;
-    alias core.stdc.math.asinhl        asinh;
+    alias asinh = core.stdc.math.asinh;
+    alias asinh = core.stdc.math.asinhf;
+    alias asinh = core.stdc.math.asinhl;
 
-    alias core.stdc.complex.casinh     asinh;
-    alias core.stdc.complex.casinhf    asinh;
-    alias core.stdc.complex.casinhl    asinh;
+    alias asinh = core.stdc.complex.casinh;
+    alias asinh = core.stdc.complex.casinhf;
+    alias asinh = core.stdc.complex.casinhl;
 
-    alias core.stdc.math.atanh         atanh;
-    alias core.stdc.math.atanhf        atanh;
-    alias core.stdc.math.atanhl        atanh;
+    alias atanh = core.stdc.math.atanh;
+    alias atanh = core.stdc.math.atanhf;
+    alias atanh = core.stdc.math.atanhl;
 
-    alias core.stdc.complex.catanh     atanh;
-    alias core.stdc.complex.catanhf    atanh;
-    alias core.stdc.complex.catanhl    atanh;
+    alias atanh = core.stdc.complex.catanh;
+    alias atanh = core.stdc.complex.catanhf;
+    alias atanh = core.stdc.complex.catanhl;
 
-    alias core.stdc.math.cosh          cosh;
-    alias core.stdc.math.coshf         cosh;
-    alias core.stdc.math.coshl         cosh;
+    alias cosh = core.stdc.math.cosh;
+    alias cosh = core.stdc.math.coshf;
+    alias cosh = core.stdc.math.coshl;
 
-    alias core.stdc.complex.ccosh      cosh;
-    alias core.stdc.complex.ccoshf     cosh;
-    alias core.stdc.complex.ccoshl     cosh;
+    alias cosh = core.stdc.complex.ccosh;
+    alias cosh = core.stdc.complex.ccoshf;
+    alias cosh = core.stdc.complex.ccoshl;
 
-    alias core.stdc.math.sinh          sinh;
-    alias core.stdc.math.sinhf         sinh;
-    alias core.stdc.math.sinhl         sinh;
+    alias sinh = core.stdc.math.sinh;
+    alias sinh = core.stdc.math.sinhf;
+    alias sinh = core.stdc.math.sinhl;
 
-    alias core.stdc.complex.csinh      sinh;
-    alias core.stdc.complex.csinhf     sinh;
-    alias core.stdc.complex.csinhl     sinh;
+    alias sinh = core.stdc.complex.csinh;
+    alias sinh = core.stdc.complex.csinhf;
+    alias sinh = core.stdc.complex.csinhl;
 
-    alias core.stdc.math.tanh          tanh;
-    alias core.stdc.math.tanhf         tanh;
-    alias core.stdc.math.tanhl         tanh;
+    alias tanh = core.stdc.math.tanh;
+    alias tanh = core.stdc.math.tanhf;
+    alias tanh = core.stdc.math.tanhl;
 
-    alias core.stdc.complex.ctanh      tanh;
-    alias core.stdc.complex.ctanhf     tanh;
-    alias core.stdc.complex.ctanhl     tanh;
+    alias tanh = core.stdc.complex.ctanh;
+    alias tanh = core.stdc.complex.ctanhf;
+    alias tanh = core.stdc.complex.ctanhl;
 
-    alias core.stdc.math.exp           exp;
-    alias core.stdc.math.expf          exp;
-    alias core.stdc.math.expl          exp;
+    alias exp = core.stdc.math.exp;
+    alias exp = core.stdc.math.expf;
+    alias exp = core.stdc.math.expl;
 
-    alias core.stdc.complex.cexp       exp;
-    alias core.stdc.complex.cexpf      exp;
-    alias core.stdc.complex.cexpl      exp;
+    alias exp = core.stdc.complex.cexp;
+    alias exp = core.stdc.complex.cexpf;
+    alias exp = core.stdc.complex.cexpl;
 
-    alias core.stdc.math.exp2          exp2;
-    alias core.stdc.math.exp2f         exp2;
-    alias core.stdc.math.exp2l         exp2;
+    alias exp2 = core.stdc.math.exp2;
+    alias exp2 = core.stdc.math.exp2f;
+    alias exp2 = core.stdc.math.exp2l;
 
-    alias core.stdc.math.expm1         expm1;
-    alias core.stdc.math.expm1f        expm1;
-    alias core.stdc.math.expm1l        expm1;
+    alias expm1 = core.stdc.math.expm1;
+    alias expm1 = core.stdc.math.expm1f;
+    alias expm1 = core.stdc.math.expm1l;
 
-    alias core.stdc.math.frexp         frexp;
-    alias core.stdc.math.frexpf        frexp;
-    alias core.stdc.math.frexpl        frexp;
+    alias frexp = core.stdc.math.frexp;
+    alias frexp = core.stdc.math.frexpf;
+    alias frexp = core.stdc.math.frexpl;
 
-    alias core.stdc.math.ilogb         ilogb;
-    alias core.stdc.math.ilogbf        ilogb;
-    alias core.stdc.math.ilogbl        ilogb;
+    alias ilogb = core.stdc.math.ilogb;
+    alias ilogb = core.stdc.math.ilogbf;
+    alias ilogb = core.stdc.math.ilogbl;
 
-    alias core.stdc.math.ldexp         ldexp;
-    alias core.stdc.math.ldexpf        ldexp;
-    alias core.stdc.math.ldexpl        ldexp;
+    alias ldexp = core.stdc.math.ldexp;
+    alias ldexp = core.stdc.math.ldexpf;
+    alias ldexp = core.stdc.math.ldexpl;
 
-    alias core.stdc.math.log           log;
-    alias core.stdc.math.logf          log;
-    alias core.stdc.math.logl          log;
+    alias log = core.stdc.math.log;
+    alias log = core.stdc.math.logf;
+    alias log = core.stdc.math.logl;
 
-    alias core.stdc.complex.clog       log;
-    alias core.stdc.complex.clogf      log;
-    alias core.stdc.complex.clogl      log;
+    alias log = core.stdc.complex.clog;
+    alias log = core.stdc.complex.clogf;
+    alias log = core.stdc.complex.clogl;
 
-    alias core.stdc.math.log10         log10;
-    alias core.stdc.math.log10f        log10;
-    alias core.stdc.math.log10l        log10;
+    alias log10 = core.stdc.math.log10;
+    alias log10 = core.stdc.math.log10f;
+    alias log10 = core.stdc.math.log10l;
 
-    alias core.stdc.math.log1p         log1p;
-    alias core.stdc.math.log1pf        log1p;
-    alias core.stdc.math.log1pl        log1p;
+    alias log1p = core.stdc.math.log1p;
+    alias log1p = core.stdc.math.log1pf;
+    alias log1p = core.stdc.math.log1pl;
 
-    alias core.stdc.math.log2          log2;
-    alias core.stdc.math.log2f         log2;
-    alias core.stdc.math.log2l         log2;
+    alias log2 = core.stdc.math.log2;
+    alias log2 = core.stdc.math.log2f;
+    alias log2 = core.stdc.math.log2l;
 
-    alias core.stdc.math.logb          logb;
-    alias core.stdc.math.logbf         logb;
-    alias core.stdc.math.logbl         logb;
+    alias logb = core.stdc.math.logb;
+    alias logb = core.stdc.math.logbf;
+    alias logb = core.stdc.math.logbl;
 
-    alias core.stdc.math.modf          modf;
-    alias core.stdc.math.modff         modf;
+    alias modf = core.stdc.math.modf;
+    alias modf = core.stdc.math.modff;
 //  alias core.stdc.math.modfl         modf;
 
-    alias core.stdc.math.scalbn        scalbn;
-    alias core.stdc.math.scalbnf       scalbn;
-    alias core.stdc.math.scalbnl       scalbn;
+    alias scalbn = core.stdc.math.scalbn;
+    alias scalbn = core.stdc.math.scalbnf;
+    alias scalbn = core.stdc.math.scalbnl;
 
-    alias core.stdc.math.scalbln       scalbln;
-    alias core.stdc.math.scalblnf      scalbln;
-    alias core.stdc.math.scalblnl      scalbln;
+    alias scalbln = core.stdc.math.scalbln;
+    alias scalbln = core.stdc.math.scalblnf;
+    alias scalbln = core.stdc.math.scalblnl;
 
-    alias core.stdc.math.cbrt          cbrt;
-    alias core.stdc.math.cbrtf         cbrt;
-    alias core.stdc.math.cbrtl         cbrt;
+    alias cbrt = core.stdc.math.cbrt;
+    alias cbrt = core.stdc.math.cbrtf;
+    alias cbrt = core.stdc.math.cbrtl;
 
-    alias core.stdc.math.fabs          fabs;
-    alias core.stdc.math.fabsf         fabs;
-    alias core.stdc.math.fabsl         fabs;
+    alias fabs = core.stdc.math.fabs;
+    alias fabs = core.stdc.math.fabsf;
+    alias fabs = core.stdc.math.fabsl;
 
-    alias core.stdc.complex.cabs       fabs;
-    alias core.stdc.complex.cabsf      fabs;
-    alias core.stdc.complex.cabsl      fabs;
+    alias fabs = core.stdc.complex.cabs;
+    alias fabs = core.stdc.complex.cabsf;
+    alias fabs = core.stdc.complex.cabsl;
 
-    alias core.stdc.math.hypot         hypot;
-    alias core.stdc.math.hypotf        hypot;
-    alias core.stdc.math.hypotl        hypot;
+    alias hypot = core.stdc.math.hypot;
+    alias hypot = core.stdc.math.hypotf;
+    alias hypot = core.stdc.math.hypotl;
 
-    alias core.stdc.math.pow           pow;
-    alias core.stdc.math.powf          pow;
-    alias core.stdc.math.powl          pow;
+    alias pow = core.stdc.math.pow;
+    alias pow = core.stdc.math.powf;
+    alias pow = core.stdc.math.powl;
 
-    alias core.stdc.complex.cpow       pow;
-    alias core.stdc.complex.cpowf      pow;
-    alias core.stdc.complex.cpowl      pow;
+    alias pow = core.stdc.complex.cpow;
+    alias pow = core.stdc.complex.cpowf;
+    alias pow = core.stdc.complex.cpowl;
 
-    alias core.stdc.math.sqrt          sqrt;
-    alias core.stdc.math.sqrtf         sqrt;
-    alias core.stdc.math.sqrtl         sqrt;
+    alias sqrt = core.stdc.math.sqrt;
+    alias sqrt = core.stdc.math.sqrtf;
+    alias sqrt = core.stdc.math.sqrtl;
 
-    alias core.stdc.complex.csqrt      sqrt;
-    alias core.stdc.complex.csqrtf     sqrt;
-    alias core.stdc.complex.csqrtl     sqrt;
+    alias sqrt = core.stdc.complex.csqrt;
+    alias sqrt = core.stdc.complex.csqrtf;
+    alias sqrt = core.stdc.complex.csqrtl;
 
-    alias core.stdc.math.erf           erf;
-    alias core.stdc.math.erff          erf;
-    alias core.stdc.math.erfl          erf;
+    alias erf = core.stdc.math.erf;
+    alias erf = core.stdc.math.erff;
+    alias erf = core.stdc.math.erfl;
 
-    alias core.stdc.math.erfc          erfc;
-    alias core.stdc.math.erfcf         erfc;
-    alias core.stdc.math.erfcl         erfc;
+    alias erfc = core.stdc.math.erfc;
+    alias erfc = core.stdc.math.erfcf;
+    alias erfc = core.stdc.math.erfcl;
 
-    alias core.stdc.math.lgamma        lgamma;
-    alias core.stdc.math.lgammaf       lgamma;
-    alias core.stdc.math.lgammal       lgamma;
+    alias lgamma = core.stdc.math.lgamma;
+    alias lgamma = core.stdc.math.lgammaf;
+    alias lgamma = core.stdc.math.lgammal;
 
-    alias core.stdc.math.tgamma        tgamma;
-    alias core.stdc.math.tgammaf       tgamma;
-    alias core.stdc.math.tgammal       tgamma;
+    alias tgamma = core.stdc.math.tgamma;
+    alias tgamma = core.stdc.math.tgammaf;
+    alias tgamma = core.stdc.math.tgammal;
 
-    alias core.stdc.math.ceil          ceil;
-    alias core.stdc.math.ceilf         ceil;
-    alias core.stdc.math.ceill         ceil;
+    alias ceil = core.stdc.math.ceil;
+    alias ceil = core.stdc.math.ceilf;
+    alias ceil = core.stdc.math.ceill;
 
-    alias core.stdc.math.floor         floor;
-    alias core.stdc.math.floorf        floor;
-    alias core.stdc.math.floorl        floor;
+    alias floor = core.stdc.math.floor;
+    alias floor = core.stdc.math.floorf;
+    alias floor = core.stdc.math.floorl;
 
-    alias core.stdc.math.nearbyint     nearbyint;
-    alias core.stdc.math.nearbyintf    nearbyint;
-    alias core.stdc.math.nearbyintl    nearbyint;
+    alias nearbyint = core.stdc.math.nearbyint;
+    alias nearbyint = core.stdc.math.nearbyintf;
+    alias nearbyint = core.stdc.math.nearbyintl;
 
-    alias core.stdc.math.rint          rint;
-    alias core.stdc.math.rintf         rint;
-    alias core.stdc.math.rintl         rint;
+    alias rint = core.stdc.math.rint;
+    alias rint = core.stdc.math.rintf;
+    alias rint = core.stdc.math.rintl;
 
-    alias core.stdc.math.lrint         lrint;
-    alias core.stdc.math.lrintf        lrint;
-    alias core.stdc.math.lrintl        lrint;
+    alias lrint = core.stdc.math.lrint;
+    alias lrint = core.stdc.math.lrintf;
+    alias lrint = core.stdc.math.lrintl;
 
-    alias core.stdc.math.llrint        llrint;
-    alias core.stdc.math.llrintf       llrint;
-    alias core.stdc.math.llrintl       llrint;
+    alias llrint = core.stdc.math.llrint;
+    alias llrint = core.stdc.math.llrintf;
+    alias llrint = core.stdc.math.llrintl;
 
-    alias core.stdc.math.round         round;
-    alias core.stdc.math.roundf        round;
-    alias core.stdc.math.roundl        round;
+    alias round = core.stdc.math.round;
+    alias round = core.stdc.math.roundf;
+    alias round = core.stdc.math.roundl;
 
-    alias core.stdc.math.lround        lround;
-    alias core.stdc.math.lroundf       lround;
-    alias core.stdc.math.lroundl       lround;
+    alias lround = core.stdc.math.lround;
+    alias lround = core.stdc.math.lroundf;
+    alias lround = core.stdc.math.lroundl;
 
-    alias core.stdc.math.llround       llround;
-    alias core.stdc.math.llroundf      llround;
-    alias core.stdc.math.llroundl      llround;
+    alias llround = core.stdc.math.llround;
+    alias llround = core.stdc.math.llroundf;
+    alias llround = core.stdc.math.llroundl;
 
-    alias core.stdc.math.trunc         trunc;
-    alias core.stdc.math.truncf        trunc;
-    alias core.stdc.math.truncl        trunc;
+    alias trunc = core.stdc.math.trunc;
+    alias trunc = core.stdc.math.truncf;
+    alias trunc = core.stdc.math.truncl;
 
-    alias core.stdc.math.fmod          fmod;
-    alias core.stdc.math.fmodf         fmod;
-    alias core.stdc.math.fmodl         fmod;
+    alias fmod = core.stdc.math.fmod;
+    alias fmod = core.stdc.math.fmodf;
+    alias fmod = core.stdc.math.fmodl;
 
-    alias core.stdc.math.remainder     remainder;
-    alias core.stdc.math.remainderf    remainder;
-    alias core.stdc.math.remainderl    remainder;
+    alias remainder = core.stdc.math.remainder;
+    alias remainder = core.stdc.math.remainderf;
+    alias remainder = core.stdc.math.remainderl;
 
-    alias core.stdc.math.remquo        remquo;
-    alias core.stdc.math.remquof       remquo;
-    alias core.stdc.math.remquol       remquo;
+    alias remquo = core.stdc.math.remquo;
+    alias remquo = core.stdc.math.remquof;
+    alias remquo = core.stdc.math.remquol;
 
-    alias core.stdc.math.copysign      copysign;
-    alias core.stdc.math.copysignf     copysign;
-    alias core.stdc.math.copysignl     copysign;
+    alias copysign = core.stdc.math.copysign;
+    alias copysign = core.stdc.math.copysignf;
+    alias copysign = core.stdc.math.copysignl;
 
 //  alias core.stdc.math.nan           nan;
 //  alias core.stdc.math.nanf          nan;
 //  alias core.stdc.math.nanl          nan;
 
-    alias core.stdc.math.nextafter     nextafter;
-    alias core.stdc.math.nextafterf    nextafter;
-    alias core.stdc.math.nextafterl    nextafter;
+    alias nextafter = core.stdc.math.nextafter;
+    alias nextafter = core.stdc.math.nextafterf;
+    alias nextafter = core.stdc.math.nextafterl;
 
-    alias core.stdc.math.nexttoward    nexttoward;
-    alias core.stdc.math.nexttowardf   nexttoward;
-    alias core.stdc.math.nexttowardl   nexttoward;
+    alias nexttoward = core.stdc.math.nexttoward;
+    alias nexttoward = core.stdc.math.nexttowardf;
+    alias nexttoward = core.stdc.math.nexttowardl;
 
-    alias core.stdc.math.fdim          fdim;
-    alias core.stdc.math.fdimf         fdim;
-    alias core.stdc.math.fdiml         fdim;
+    alias fdim = core.stdc.math.fdim;
+    alias fdim = core.stdc.math.fdimf;
+    alias fdim = core.stdc.math.fdiml;
 
-    alias core.stdc.math.fmax          fmax;
-    alias core.stdc.math.fmaxf         fmax;
-    alias core.stdc.math.fmaxl         fmax;
+    alias fmax = core.stdc.math.fmax;
+    alias fmax = core.stdc.math.fmaxf;
+    alias fmax = core.stdc.math.fmaxl;
 
-    alias core.stdc.math.fmin          fmin;
-    alias core.stdc.math.fmin          fmin;
-    alias core.stdc.math.fminl         fmin;
+    alias fmin = core.stdc.math.fmin;
+    alias fmin = core.stdc.math.fmin;
+    alias fmin = core.stdc.math.fminl;
 
-    alias core.stdc.math.fma           fma;
-    alias core.stdc.math.fmaf          fma;
-    alias core.stdc.math.fmal          fma;
+    alias fma = core.stdc.math.fma;
+    alias fma = core.stdc.math.fmaf;
+    alias fma = core.stdc.math.fmal;
 
-    alias core.stdc.complex.carg       carg;
-    alias core.stdc.complex.cargf      carg;
-    alias core.stdc.complex.cargl      carg;
+    alias carg = core.stdc.complex.carg;
+    alias carg = core.stdc.complex.cargf;
+    alias carg = core.stdc.complex.cargl;
 
-    alias core.stdc.complex.cimag      cimag;
-    alias core.stdc.complex.cimagf     cimag;
-    alias core.stdc.complex.cimagl     cimag;
+    alias cimag = core.stdc.complex.cimag;
+    alias cimag = core.stdc.complex.cimagf;
+    alias cimag = core.stdc.complex.cimagl;
 
-    alias core.stdc.complex.conj       conj;
-    alias core.stdc.complex.conjf      conj;
-    alias core.stdc.complex.conjl      conj;
+    alias conj = core.stdc.complex.conj;
+    alias conj = core.stdc.complex.conjf;
+    alias conj = core.stdc.complex.conjl;
 
-    alias core.stdc.complex.cproj      cproj;
-    alias core.stdc.complex.cprojf     cproj;
-    alias core.stdc.complex.cprojl     cproj;
+    alias cproj = core.stdc.complex.cproj;
+    alias cproj = core.stdc.complex.cprojf;
+    alias cproj = core.stdc.complex.cprojl;
 
 //  alias core.stdc.complex.creal      creal;
 //  alias core.stdc.complex.crealf     creal;
@@ -341,317 +341,317 @@ version( FreeBSD )
 }
 else
 {
-    alias core.stdc.math.acos          acos;
-    alias core.stdc.math.acosf         acos;
-    alias core.stdc.math.acosl         acos;
-
-    alias core.stdc.complex.cacos      acos;
-    alias core.stdc.complex.cacosf     acos;
-    alias core.stdc.complex.cacosl     acos;
-
-    alias core.stdc.math.asin          asin;
-    alias core.stdc.math.asinf         asin;
-    alias core.stdc.math.asinl         asin;
-
-    alias core.stdc.complex.casin      asin;
-    alias core.stdc.complex.casinf     asin;
-    alias core.stdc.complex.casinl     asin;
-
-    alias core.stdc.math.atan          atan;
-    alias core.stdc.math.atanf         atan;
-    alias core.stdc.math.atanl         atan;
-
-    alias core.stdc.complex.catan      atan;
-    alias core.stdc.complex.catanf     atan;
-    alias core.stdc.complex.catanl     atan;
-
-    alias core.stdc.math.atan2         atan2;
-    alias core.stdc.math.atan2f        atan2;
-    alias core.stdc.math.atan2l        atan2;
-
-    alias core.stdc.math.cos           cos;
-    alias core.stdc.math.cosf          cos;
-    alias core.stdc.math.cosl          cos;
-
-    alias core.stdc.complex.ccos       cos;
-    alias core.stdc.complex.ccosf      cos;
-    alias core.stdc.complex.ccosl      cos;
-
-    alias core.stdc.math.sin           sin;
-    alias core.stdc.math.sinf          sin;
-    alias core.stdc.math.sinl          sin;
-
-    alias core.stdc.complex.csin       csin;
-    alias core.stdc.complex.csinf      csin;
-    alias core.stdc.complex.csinl      csin;
-
-    alias core.stdc.math.tan           tan;
-    alias core.stdc.math.tanf          tan;
-    alias core.stdc.math.tanl          tan;
-
-    alias core.stdc.complex.ctan       tan;
-    alias core.stdc.complex.ctanf      tan;
-    alias core.stdc.complex.ctanl      tan;
-
-    alias core.stdc.math.acosh         acosh;
-    alias core.stdc.math.acoshf        acosh;
-    alias core.stdc.math.acoshl        acosh;
-
-    alias core.stdc.complex.cacosh     acosh;
-    alias core.stdc.complex.cacoshf    acosh;
-    alias core.stdc.complex.cacoshl    acosh;
-
-    alias core.stdc.math.asinh         asinh;
-    alias core.stdc.math.asinhf        asinh;
-    alias core.stdc.math.asinhl        asinh;
-
-    alias core.stdc.complex.casinh     asinh;
-    alias core.stdc.complex.casinhf    asinh;
-    alias core.stdc.complex.casinhl    asinh;
-
-    alias core.stdc.math.atanh         atanh;
-    alias core.stdc.math.atanhf        atanh;
-    alias core.stdc.math.atanhl        atanh;
-
-    alias core.stdc.complex.catanh     atanh;
-    alias core.stdc.complex.catanhf    atanh;
-    alias core.stdc.complex.catanhl    atanh;
-
-    alias core.stdc.math.cosh          cosh;
-    alias core.stdc.math.coshf         cosh;
-    alias core.stdc.math.coshl         cosh;
-
-    alias core.stdc.complex.ccosh      cosh;
-    alias core.stdc.complex.ccoshf     cosh;
-    alias core.stdc.complex.ccoshl     cosh;
-
-    alias core.stdc.math.sinh          sinh;
-    alias core.stdc.math.sinhf         sinh;
-    alias core.stdc.math.sinhl         sinh;
-
-    alias core.stdc.complex.csinh      sinh;
-    alias core.stdc.complex.csinhf     sinh;
-    alias core.stdc.complex.csinhl     sinh;
-
-    alias core.stdc.math.tanh          tanh;
-    alias core.stdc.math.tanhf         tanh;
-    alias core.stdc.math.tanhl         tanh;
-
-    alias core.stdc.complex.ctanh      tanh;
-    alias core.stdc.complex.ctanhf     tanh;
-    alias core.stdc.complex.ctanhl     tanh;
-
-    alias core.stdc.math.exp           exp;
-    alias core.stdc.math.expf          exp;
-    alias core.stdc.math.expl          exp;
-
-    alias core.stdc.complex.cexp       exp;
-    alias core.stdc.complex.cexpf      exp;
-    alias core.stdc.complex.cexpl      exp;
-
-    alias core.stdc.math.exp2          exp2;
-    alias core.stdc.math.exp2f         exp2;
-    alias core.stdc.math.exp2l         exp2;
-
-    alias core.stdc.math.expm1         expm1;
-    alias core.stdc.math.expm1f        expm1;
-    alias core.stdc.math.expm1l        expm1;
-
-    alias core.stdc.math.frexp         frexp;
-    alias core.stdc.math.frexpf        frexp;
-    alias core.stdc.math.frexpl        frexp;
-
-    alias core.stdc.math.ilogb         ilogb;
-    alias core.stdc.math.ilogbf        ilogb;
-    alias core.stdc.math.ilogbl        ilogb;
-
-    alias core.stdc.math.ldexp         ldexp;
-    alias core.stdc.math.ldexpf        ldexp;
-    alias core.stdc.math.ldexpl        ldexp;
-
-    alias core.stdc.math.log           log;
-    alias core.stdc.math.logf          log;
-    alias core.stdc.math.logl          log;
-
-    alias core.stdc.complex.clog       log;
-    alias core.stdc.complex.clogf      log;
-    alias core.stdc.complex.clogl      log;
-
-    alias core.stdc.math.log10         log10;
-    alias core.stdc.math.log10f        log10;
-    alias core.stdc.math.log10l        log10;
-
-    alias core.stdc.math.log1p         log1p;
-    alias core.stdc.math.log1pf        log1p;
-    alias core.stdc.math.log1pl        log1p;
-
-    alias core.stdc.math.log2          log2;
-    alias core.stdc.math.log2f         log2;
-    alias core.stdc.math.log2l         log2;
-
-    alias core.stdc.math.logb          logb;
-    alias core.stdc.math.logbf         logb;
-    alias core.stdc.math.logbl         logb;
-
-    alias core.stdc.math.modf          modf;
-    alias core.stdc.math.modff         modf;
-    alias core.stdc.math.modfl         modf;
-
-    alias core.stdc.math.scalbn        scalbn;
-    alias core.stdc.math.scalbnf       scalbn;
-    alias core.stdc.math.scalbnl       scalbn;
-
-    alias core.stdc.math.scalbln       scalbln;
-    alias core.stdc.math.scalblnf      scalbln;
-    alias core.stdc.math.scalblnl      scalbln;
-
-    alias core.stdc.math.cbrt          cbrt;
-    alias core.stdc.math.cbrtf         cbrt;
-    alias core.stdc.math.cbrtl         cbrt;
-
-    alias core.stdc.math.fabs          fabs;
-    alias core.stdc.math.fabsf         fabs;
-    alias core.stdc.math.fabsl         fabs;
-
-    alias core.stdc.complex.cabs       fabs;
-    alias core.stdc.complex.cabsf      fabs;
-    alias core.stdc.complex.cabsl      fabs;
-
-    alias core.stdc.math.hypot         hypot;
-    alias core.stdc.math.hypotf        hypot;
-    alias core.stdc.math.hypotl        hypot;
-
-    alias core.stdc.math.pow           pow;
-    alias core.stdc.math.powf          pow;
-    alias core.stdc.math.powl          pow;
-
-    alias core.stdc.complex.cpow       pow;
-    alias core.stdc.complex.cpowf      pow;
-    alias core.stdc.complex.cpowl      pow;
-
-    alias core.stdc.math.sqrt          sqrt;
-    alias core.stdc.math.sqrtf         sqrt;
-    alias core.stdc.math.sqrtl         sqrt;
-
-    alias core.stdc.complex.csqrt      sqrt;
-    alias core.stdc.complex.csqrtf     sqrt;
-    alias core.stdc.complex.csqrtl     sqrt;
-
-    alias core.stdc.math.erf           erf;
-    alias core.stdc.math.erff          erf;
-    alias core.stdc.math.erfl          erf;
-
-    alias core.stdc.math.erfc          erfc;
-    alias core.stdc.math.erfcf         erfc;
-    alias core.stdc.math.erfcl         erfc;
-
-    alias core.stdc.math.lgamma        lgamma;
-    alias core.stdc.math.lgammaf       lgamma;
-    alias core.stdc.math.lgammal       lgamma;
-
-    alias core.stdc.math.tgamma        tgamma;
-    alias core.stdc.math.tgammaf       tgamma;
-    alias core.stdc.math.tgammal       tgamma;
-
-    alias core.stdc.math.ceil          ceil;
-    alias core.stdc.math.ceilf         ceil;
-    alias core.stdc.math.ceill         ceil;
-
-    alias core.stdc.math.floor         floor;
-    alias core.stdc.math.floorf        floor;
-    alias core.stdc.math.floorl        floor;
-
-    alias core.stdc.math.nearbyint     nearbyint;
-    alias core.stdc.math.nearbyintf    nearbyint;
-    alias core.stdc.math.nearbyintl    nearbyint;
-
-    alias core.stdc.math.rint          rint;
-    alias core.stdc.math.rintf         rint;
-    alias core.stdc.math.rintl         rint;
-
-    alias core.stdc.math.lrint         lrint;
-    alias core.stdc.math.lrintf        lrint;
-    alias core.stdc.math.lrintl        lrint;
-
-    alias core.stdc.math.llrint        llrint;
-    alias core.stdc.math.llrintf       llrint;
-    alias core.stdc.math.llrintl       llrint;
-
-    alias core.stdc.math.round         round;
-    alias core.stdc.math.roundf        round;
-    alias core.stdc.math.roundl        round;
-
-    alias core.stdc.math.lround        lround;
-    alias core.stdc.math.lroundf       lround;
-    alias core.stdc.math.lroundl       lround;
-
-    alias core.stdc.math.llround       llround;
-    alias core.stdc.math.llroundf      llround;
-    alias core.stdc.math.llroundl      llround;
-
-    alias core.stdc.math.trunc         trunc;
-    alias core.stdc.math.truncf        trunc;
-    alias core.stdc.math.truncl        trunc;
-
-    alias core.stdc.math.fmod          fmod;
-    alias core.stdc.math.fmodf         fmod;
-    alias core.stdc.math.fmodl         fmod;
-
-    alias core.stdc.math.remainder     remainder;
-    alias core.stdc.math.remainderf    remainder;
-    alias core.stdc.math.remainderl    remainder;
-
-    alias core.stdc.math.remquo        remquo;
-    alias core.stdc.math.remquof       remquo;
-    alias core.stdc.math.remquol       remquo;
-
-    alias core.stdc.math.copysign      copysign;
-    alias core.stdc.math.copysignf     copysign;
-    alias core.stdc.math.copysignl     copysign;
-
-    alias core.stdc.math.nan           nan;
-    alias core.stdc.math.nanf          nan;
-    alias core.stdc.math.nanl          nan;
-
-    alias core.stdc.math.nextafter     nextafter;
-    alias core.stdc.math.nextafterf    nextafter;
-    alias core.stdc.math.nextafterl    nextafter;
-
-    alias core.stdc.math.nexttoward    nexttoward;
-    alias core.stdc.math.nexttowardf   nexttoward;
-    alias core.stdc.math.nexttowardl   nexttoward;
-
-    alias core.stdc.math.fdim          fdim;
-    alias core.stdc.math.fdimf         fdim;
-    alias core.stdc.math.fdiml         fdim;
-
-    alias core.stdc.math.fmax          fmax;
-    alias core.stdc.math.fmaxf         fmax;
-    alias core.stdc.math.fmaxl         fmax;
-
-    alias core.stdc.math.fmin          fmin;
-    alias core.stdc.math.fmin          fmin;
-    alias core.stdc.math.fminl         fmin;
-
-    alias core.stdc.math.fma           fma;
-    alias core.stdc.math.fmaf          fma;
-    alias core.stdc.math.fmal          fma;
-
-    alias core.stdc.complex.carg       carg;
-    alias core.stdc.complex.cargf      carg;
-    alias core.stdc.complex.cargl      carg;
-
-    alias core.stdc.complex.cimag      cimag;
-    alias core.stdc.complex.cimagf     cimag;
-    alias core.stdc.complex.cimagl     cimag;
-
-    alias core.stdc.complex.conj       conj;
-    alias core.stdc.complex.conjf      conj;
-    alias core.stdc.complex.conjl      conj;
-
-    alias core.stdc.complex.cproj      cproj;
-    alias core.stdc.complex.cprojf     cproj;
-    alias core.stdc.complex.cprojl     cproj;
+    alias acos = core.stdc.math.acos;
+    alias acos = core.stdc.math.acosf;
+    alias acos = core.stdc.math.acosl;
+
+    alias acos = core.stdc.complex.cacos;
+    alias acos = core.stdc.complex.cacosf;
+    alias acos = core.stdc.complex.cacosl;
+
+    alias asin = core.stdc.math.asin;
+    alias asin = core.stdc.math.asinf;
+    alias asin = core.stdc.math.asinl;
+
+    alias asin = core.stdc.complex.casin;
+    alias asin = core.stdc.complex.casinf;
+    alias asin = core.stdc.complex.casinl;
+
+    alias atan = core.stdc.math.atan;
+    alias atan = core.stdc.math.atanf;
+    alias atan = core.stdc.math.atanl;
+
+    alias atan = core.stdc.complex.catan;
+    alias atan = core.stdc.complex.catanf;
+    alias atan = core.stdc.complex.catanl;
+
+    alias atan2 = core.stdc.math.atan2;
+    alias atan2 = core.stdc.math.atan2f;
+    alias atan2 = core.stdc.math.atan2l;
+
+    alias cos = core.stdc.math.cos;
+    alias cos = core.stdc.math.cosf;
+    alias cos = core.stdc.math.cosl;
+
+    alias cos = core.stdc.complex.ccos;
+    alias cos = core.stdc.complex.ccosf;
+    alias cos = core.stdc.complex.ccosl;
+
+    alias sin = core.stdc.math.sin;
+    alias sin = core.stdc.math.sinf;
+    alias sin = core.stdc.math.sinl;
+
+    alias csin = core.stdc.complex.csin;
+    alias csin = core.stdc.complex.csinf;
+    alias csin = core.stdc.complex.csinl;
+
+    alias tan = core.stdc.math.tan;
+    alias tan = core.stdc.math.tanf;
+    alias tan = core.stdc.math.tanl;
+
+    alias tan = core.stdc.complex.ctan;
+    alias tan = core.stdc.complex.ctanf;
+    alias tan = core.stdc.complex.ctanl;
+
+    alias acosh = core.stdc.math.acosh;
+    alias acosh = core.stdc.math.acoshf;
+    alias acosh = core.stdc.math.acoshl;
+
+    alias acosh = core.stdc.complex.cacosh;
+    alias acosh = core.stdc.complex.cacoshf;
+    alias acosh = core.stdc.complex.cacoshl;
+
+    alias asinh = core.stdc.math.asinh;
+    alias asinh = core.stdc.math.asinhf;
+    alias asinh = core.stdc.math.asinhl;
+
+    alias asinh = core.stdc.complex.casinh;
+    alias asinh = core.stdc.complex.casinhf;
+    alias asinh = core.stdc.complex.casinhl;
+
+    alias atanh = core.stdc.math.atanh;
+    alias atanh = core.stdc.math.atanhf;
+    alias atanh = core.stdc.math.atanhl;
+
+    alias atanh = core.stdc.complex.catanh;
+    alias atanh = core.stdc.complex.catanhf;
+    alias atanh = core.stdc.complex.catanhl;
+
+    alias cosh = core.stdc.math.cosh;
+    alias cosh = core.stdc.math.coshf;
+    alias cosh = core.stdc.math.coshl;
+
+    alias cosh = core.stdc.complex.ccosh;
+    alias cosh = core.stdc.complex.ccoshf;
+    alias cosh = core.stdc.complex.ccoshl;
+
+    alias sinh = core.stdc.math.sinh;
+    alias sinh = core.stdc.math.sinhf;
+    alias sinh = core.stdc.math.sinhl;
+
+    alias sinh = core.stdc.complex.csinh;
+    alias sinh = core.stdc.complex.csinhf;
+    alias sinh = core.stdc.complex.csinhl;
+
+    alias tanh = core.stdc.math.tanh;
+    alias tanh = core.stdc.math.tanhf;
+    alias tanh = core.stdc.math.tanhl;
+
+    alias tanh = core.stdc.complex.ctanh;
+    alias tanh = core.stdc.complex.ctanhf;
+    alias tanh = core.stdc.complex.ctanhl;
+
+    alias exp = core.stdc.math.exp;
+    alias exp = core.stdc.math.expf;
+    alias exp = core.stdc.math.expl;
+
+    alias exp = core.stdc.complex.cexp;
+    alias exp = core.stdc.complex.cexpf;
+    alias exp = core.stdc.complex.cexpl;
+
+    alias exp2 = core.stdc.math.exp2;
+    alias exp2 = core.stdc.math.exp2f;
+    alias exp2 = core.stdc.math.exp2l;
+
+    alias expm1 = core.stdc.math.expm1;
+    alias expm1 = core.stdc.math.expm1f;
+    alias expm1 = core.stdc.math.expm1l;
+
+    alias frexp = core.stdc.math.frexp;
+    alias frexp = core.stdc.math.frexpf;
+    alias frexp = core.stdc.math.frexpl;
+
+    alias ilogb = core.stdc.math.ilogb;
+    alias ilogb = core.stdc.math.ilogbf;
+    alias ilogb = core.stdc.math.ilogbl;
+
+    alias ldexp = core.stdc.math.ldexp;
+    alias ldexp = core.stdc.math.ldexpf;
+    alias ldexp = core.stdc.math.ldexpl;
+
+    alias log = core.stdc.math.log;
+    alias log = core.stdc.math.logf;
+    alias log = core.stdc.math.logl;
+
+    alias log = core.stdc.complex.clog;
+    alias log = core.stdc.complex.clogf;
+    alias log = core.stdc.complex.clogl;
+
+    alias log10 = core.stdc.math.log10;
+    alias log10 = core.stdc.math.log10f;
+    alias log10 = core.stdc.math.log10l;
+
+    alias log1p = core.stdc.math.log1p;
+    alias log1p = core.stdc.math.log1pf;
+    alias log1p = core.stdc.math.log1pl;
+
+    alias log2 = core.stdc.math.log2;
+    alias log2 = core.stdc.math.log2f;
+    alias log2 = core.stdc.math.log2l;
+
+    alias logb = core.stdc.math.logb;
+    alias logb = core.stdc.math.logbf;
+    alias logb = core.stdc.math.logbl;
+
+    alias modf = core.stdc.math.modf;
+    alias modf = core.stdc.math.modff;
+    alias modf = core.stdc.math.modfl;
+
+    alias scalbn = core.stdc.math.scalbn;
+    alias scalbn = core.stdc.math.scalbnf;
+    alias scalbn = core.stdc.math.scalbnl;
+
+    alias scalbln = core.stdc.math.scalbln;
+    alias scalbln = core.stdc.math.scalblnf;
+    alias scalbln = core.stdc.math.scalblnl;
+
+    alias cbrt = core.stdc.math.cbrt;
+    alias cbrt = core.stdc.math.cbrtf;
+    alias cbrt = core.stdc.math.cbrtl;
+
+    alias fabs = core.stdc.math.fabs;
+    alias fabs = core.stdc.math.fabsf;
+    alias fabs = core.stdc.math.fabsl;
+
+    alias fabs = core.stdc.complex.cabs;
+    alias fabs = core.stdc.complex.cabsf;
+    alias fabs = core.stdc.complex.cabsl;
+
+    alias hypot = core.stdc.math.hypot;
+    alias hypot = core.stdc.math.hypotf;
+    alias hypot = core.stdc.math.hypotl;
+
+    alias pow = core.stdc.math.pow;
+    alias pow = core.stdc.math.powf;
+    alias pow = core.stdc.math.powl;
+
+    alias pow = core.stdc.complex.cpow;
+    alias pow = core.stdc.complex.cpowf;
+    alias pow = core.stdc.complex.cpowl;
+
+    alias sqrt = core.stdc.math.sqrt;
+    alias sqrt = core.stdc.math.sqrtf;
+    alias sqrt = core.stdc.math.sqrtl;
+
+    alias sqrt = core.stdc.complex.csqrt;
+    alias sqrt = core.stdc.complex.csqrtf;
+    alias sqrt = core.stdc.complex.csqrtl;
+
+    alias erf = core.stdc.math.erf;
+    alias erf = core.stdc.math.erff;
+    alias erf = core.stdc.math.erfl;
+
+    alias erfc = core.stdc.math.erfc;
+    alias erfc = core.stdc.math.erfcf;
+    alias erfc = core.stdc.math.erfcl;
+
+    alias lgamma = core.stdc.math.lgamma;
+    alias lgamma = core.stdc.math.lgammaf;
+    alias lgamma = core.stdc.math.lgammal;
+
+    alias tgamma = core.stdc.math.tgamma;
+    alias tgamma = core.stdc.math.tgammaf;
+    alias tgamma = core.stdc.math.tgammal;
+
+    alias ceil = core.stdc.math.ceil;
+    alias ceil = core.stdc.math.ceilf;
+    alias ceil = core.stdc.math.ceill;
+
+    alias floor = core.stdc.math.floor;
+    alias floor = core.stdc.math.floorf;
+    alias floor = core.stdc.math.floorl;
+
+    alias nearbyint = core.stdc.math.nearbyint;
+    alias nearbyint = core.stdc.math.nearbyintf;
+    alias nearbyint = core.stdc.math.nearbyintl;
+
+    alias rint = core.stdc.math.rint;
+    alias rint = core.stdc.math.rintf;
+    alias rint = core.stdc.math.rintl;
+
+    alias lrint = core.stdc.math.lrint;
+    alias lrint = core.stdc.math.lrintf;
+    alias lrint = core.stdc.math.lrintl;
+
+    alias llrint = core.stdc.math.llrint;
+    alias llrint = core.stdc.math.llrintf;
+    alias llrint = core.stdc.math.llrintl;
+
+    alias round = core.stdc.math.round;
+    alias round = core.stdc.math.roundf;
+    alias round = core.stdc.math.roundl;
+
+    alias lround = core.stdc.math.lround;
+    alias lround = core.stdc.math.lroundf;
+    alias lround = core.stdc.math.lroundl;
+
+    alias llround = core.stdc.math.llround;
+    alias llround = core.stdc.math.llroundf;
+    alias llround = core.stdc.math.llroundl;
+
+    alias trunc = core.stdc.math.trunc;
+    alias trunc = core.stdc.math.truncf;
+    alias trunc = core.stdc.math.truncl;
+
+    alias fmod = core.stdc.math.fmod;
+    alias fmod = core.stdc.math.fmodf;
+    alias fmod = core.stdc.math.fmodl;
+
+    alias remainder = core.stdc.math.remainder;
+    alias remainder = core.stdc.math.remainderf;
+    alias remainder = core.stdc.math.remainderl;
+
+    alias remquo = core.stdc.math.remquo;
+    alias remquo = core.stdc.math.remquof;
+    alias remquo = core.stdc.math.remquol;
+
+    alias copysign = core.stdc.math.copysign;
+    alias copysign = core.stdc.math.copysignf;
+    alias copysign = core.stdc.math.copysignl;
+
+    alias nan = core.stdc.math.nan;
+    alias nan = core.stdc.math.nanf;
+    alias nan = core.stdc.math.nanl;
+
+    alias nextafter = core.stdc.math.nextafter;
+    alias nextafter = core.stdc.math.nextafterf;
+    alias nextafter = core.stdc.math.nextafterl;
+
+    alias nexttoward = core.stdc.math.nexttoward;
+    alias nexttoward = core.stdc.math.nexttowardf;
+    alias nexttoward = core.stdc.math.nexttowardl;
+
+    alias fdim = core.stdc.math.fdim;
+    alias fdim = core.stdc.math.fdimf;
+    alias fdim = core.stdc.math.fdiml;
+
+    alias fmax = core.stdc.math.fmax;
+    alias fmax = core.stdc.math.fmaxf;
+    alias fmax = core.stdc.math.fmaxl;
+
+    alias fmin = core.stdc.math.fmin;
+    alias fmin = core.stdc.math.fmin;
+    alias fmin = core.stdc.math.fminl;
+
+    alias fma = core.stdc.math.fma;
+    alias fma = core.stdc.math.fmaf;
+    alias fma = core.stdc.math.fmal;
+
+    alias carg = core.stdc.complex.carg;
+    alias carg = core.stdc.complex.cargf;
+    alias carg = core.stdc.complex.cargl;
+
+    alias cimag = core.stdc.complex.cimag;
+    alias cimag = core.stdc.complex.cimagf;
+    alias cimag = core.stdc.complex.cimagl;
+
+    alias conj = core.stdc.complex.conj;
+    alias conj = core.stdc.complex.conjf;
+    alias conj = core.stdc.complex.conjl;
+
+    alias cproj = core.stdc.complex.cproj;
+    alias cproj = core.stdc.complex.cprojf;
+    alias cproj = core.stdc.complex.cprojl;
 
 //  alias core.stdc.complex.creal      creal;
 //  alias core.stdc.complex.crealf     creal;

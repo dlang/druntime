@@ -36,25 +36,25 @@ version (linux)
         version (D_X32)
         {
             // X32 kernel interface is 64-bit.
-            alias long slong_t;
-            alias ulong ulong_t;
+            alias slong_t = long;
+            alias ulong_t = ulong;
         }
         else
         {
-            alias c_long slong_t;
-            alias c_ulong ulong_t;
+            alias slong_t = c_long;
+            alias ulong_t = c_ulong;
         }
     }
     else
     {
-        alias c_long slong_t;
-        alias c_ulong ulong_t;
+        alias slong_t = c_long;
+        alias ulong_t = c_ulong;
     }
 }
 else
 {
-    alias c_long slong_t;
-    alias c_ulong ulong_t;
+    alias slong_t = c_long;
+    alias ulong_t = c_ulong;
 }
 
 //
@@ -80,122 +80,122 @@ version( linux )
 {
   static if( __USE_FILE_OFFSET64 )
   {
-    alias long      blkcnt_t;
-    alias ulong     ino_t;
-    alias long      off_t;
+    alias blkcnt_t = long;
+    alias ino_t = ulong;
+    alias off_t = long;
   }
   else
   {
-    alias slong_t   blkcnt_t;
-    alias ulong_t   ino_t;
-    alias slong_t   off_t;
+    alias blkcnt_t = slong_t;
+    alias ino_t = ulong_t;
+    alias off_t = slong_t;
   }
-    alias slong_t   blksize_t;
-    alias ulong     dev_t;
-    alias uint      gid_t;
-    alias uint      mode_t;
-    alias ulong_t   nlink_t;
-    alias int       pid_t;
+    alias blksize_t = slong_t;
+    alias dev_t = ulong;
+    alias gid_t = uint;
+    alias mode_t = uint;
+    alias nlink_t = ulong_t;
+    alias pid_t = int;
     //size_t (defined in core.stdc.stddef)
-    alias c_long    ssize_t;
-    alias slong_t   time_t;
-    alias uint      uid_t;
+    alias ssize_t = c_long;
+    alias time_t = slong_t;
+    alias uid_t = uint;
 }
 else version( OSX )
 {
-    alias long      blkcnt_t;
-    alias int       blksize_t;
-    alias int       dev_t;
-    alias uint      gid_t;
+    alias blkcnt_t = long;
+    alias blksize_t = int;
+    alias dev_t = int;
+    alias gid_t = uint;
     version( DARWIN_USE_64_BIT_INODE ) {
-        alias ulong ino_t;
+        alias ino_t = ulong;
     } else {
-        alias uint  ino_t;
+        alias ino_t = uint;
     }
-    alias ushort    mode_t;
-    alias ushort    nlink_t;
-    alias long      off_t;
-    alias int       pid_t;
+    alias mode_t = ushort;
+    alias nlink_t = ushort;
+    alias off_t = long;
+    alias pid_t = int;
     //size_t (defined in core.stdc.stddef)
-    alias c_long    ssize_t;
-    alias c_long    time_t;
-    alias uint      uid_t;
+    alias ssize_t = c_long;
+    alias time_t = c_long;
+    alias uid_t = uint;
 }
 else version( FreeBSD )
 {
-    alias long      blkcnt_t;
-    alias uint      blksize_t;
-    alias uint      dev_t;
-    alias uint      gid_t;
-    alias uint      ino_t;
-    alias ushort    mode_t;
-    alias ushort    nlink_t;
-    alias long      off_t;
-    alias int       pid_t;
+    alias blkcnt_t = long;
+    alias blksize_t = uint;
+    alias dev_t = uint;
+    alias gid_t = uint;
+    alias ino_t = uint;
+    alias mode_t = ushort;
+    alias nlink_t = ushort;
+    alias off_t = long;
+    alias pid_t = int;
     //size_t (defined in core.stdc.stddef)
-    alias c_long    ssize_t;
-    alias c_long    time_t;
-    alias uint      uid_t;
-    alias uint      fflags_t;
+    alias ssize_t = c_long;
+    alias time_t = c_long;
+    alias uid_t = uint;
+    alias fflags_t = uint;
 }
 else version (Solaris)
 {
-    alias char* caddr_t;
-    alias c_long daddr_t;
-    alias short cnt_t;
+    alias caddr_t = char*;
+    alias daddr_t = c_long;
+    alias cnt_t = short;
 
     static if (__USE_FILE_OFFSET64)
     {
-        alias long blkcnt_t;
-        alias ulong ino_t;
-        alias long off_t;
+        alias blkcnt_t = long;
+        alias ino_t = ulong;
+        alias off_t = long;
     }
     else
     {
-        alias c_long blkcnt_t;
-        alias c_ulong ino_t;
-        alias c_long off_t;
+        alias blkcnt_t = c_long;
+        alias ino_t = c_ulong;
+        alias off_t = c_long;
     }
 
     version (D_LP64)
     {
-        alias blkcnt_t blkcnt64_t;
-        alias ino_t ino64_t;
-        alias off_t off64_t;
+        alias blkcnt64_t = blkcnt_t;
+        alias ino64_t = ino_t;
+        alias off64_t = off_t;
     }
     else
     {
-        alias long blkcnt64_t;
-        alias ulong ino64_t;
-        alias long off64_t;
+        alias blkcnt64_t = long;
+        alias ino64_t = ulong;
+        alias off64_t = long;
     }
 
-    alias uint blksize_t;
-    alias c_ulong dev_t;
-    alias uid_t gid_t;
-    alias uint mode_t;
-    alias uint nlink_t;
-    alias int pid_t;
-    alias c_long ssize_t;
-    alias c_long time_t;
-    alias uint uid_t;
+    alias blksize_t = uint;
+    alias dev_t = c_ulong;
+    alias gid_t = uid_t;
+    alias mode_t = uint;
+    alias nlink_t = uint;
+    alias pid_t = int;
+    alias ssize_t = c_long;
+    alias time_t = c_long;
+    alias uid_t = uint;
 }
 else version( Android )
 {
     version(X86)
     {
-        alias c_ulong   blkcnt_t;
-        alias c_ulong   blksize_t;
-        alias uint      dev_t;
-        alias uint      gid_t;
-        alias c_ulong   ino_t;
-        alias ushort    mode_t;
-        alias ushort    nlink_t;
-        alias c_long    off_t;
-        alias int       pid_t;
-        alias c_long    ssize_t;
-        alias c_long    time_t;
-        alias uint      uid_t;
+        alias blkcnt_t = c_ulong;
+        alias blksize_t = c_ulong;
+        alias dev_t = uint;
+        alias gid_t = uint;
+        alias ino_t = c_ulong;
+        alias mode_t = ushort;
+        alias nlink_t = ushort;
+        alias off_t = c_long;
+        alias pid_t = int;
+        alias ssize_t = c_long;
+        alias time_t = c_long;
+        alias uid_t = uint;
     }
     else
     {
@@ -224,76 +224,76 @@ version( linux )
 {
   static if( __USE_FILE_OFFSET64 )
   {
-    alias ulong     fsblkcnt_t;
-    alias ulong     fsfilcnt_t;
+    alias fsblkcnt_t = ulong;
+    alias fsfilcnt_t = ulong;
   }
   else
   {
-    alias ulong_t   fsblkcnt_t;
-    alias ulong_t   fsfilcnt_t;
+    alias fsblkcnt_t = ulong_t;
+    alias fsfilcnt_t = ulong_t;
   }
-    alias slong_t   clock_t;
-    alias uint      id_t;
-    alias int       key_t;
-    alias slong_t   suseconds_t;
-    alias uint      useconds_t;
+    alias clock_t = slong_t;
+    alias id_t = uint;
+    alias key_t = int;
+    alias suseconds_t = slong_t;
+    alias useconds_t = uint;
 }
 else version( OSX )
 {
-    alias uint   fsblkcnt_t;
-    alias uint   fsfilcnt_t;
-    alias c_long clock_t;
-    alias uint   id_t;
+    alias fsblkcnt_t = uint;
+    alias fsfilcnt_t = uint;
+    alias clock_t = c_long;
+    alias id_t = uint;
     // key_t
-    alias int    suseconds_t;
-    alias uint   useconds_t;
+    alias suseconds_t = int;
+    alias useconds_t = uint;
 }
 else version( FreeBSD )
 {
-    alias ulong     fsblkcnt_t;
-    alias ulong     fsfilcnt_t;
-    alias c_long    clock_t;
-    alias long      id_t;
-    alias c_long    key_t;
-    alias c_long    suseconds_t;
-    alias uint      useconds_t;
+    alias fsblkcnt_t = ulong;
+    alias fsfilcnt_t = ulong;
+    alias clock_t = c_long;
+    alias id_t = long;
+    alias key_t = c_long;
+    alias suseconds_t = c_long;
+    alias useconds_t = uint;
 }
 else version (Solaris)
 {
     static if (__USE_FILE_OFFSET64)
     {
-        alias ulong fsblkcnt_t;
-        alias ulong fsfilcnt_t;
+        alias fsblkcnt_t = ulong;
+        alias fsfilcnt_t = ulong;
     }
     else
     {
-        alias c_ulong fsblkcnt_t;
-        alias c_ulong fsfilcnt_t;
+        alias fsblkcnt_t = c_ulong;
+        alias fsfilcnt_t = c_ulong;
     }
 
-    alias c_long clock_t;
-    alias int id_t;
-    alias int key_t;
-    alias c_long suseconds_t;
-    alias uint useconds_t;
+    alias clock_t = c_long;
+    alias id_t = int;
+    alias key_t = int;
+    alias suseconds_t = c_long;
+    alias useconds_t = uint;
 
-    alias id_t taskid_t;
-    alias id_t projid_t;
-    alias id_t poolid_t;
-    alias id_t zoneid_t;
-    alias id_t ctid_t;
+    alias taskid_t = id_t;
+    alias projid_t = id_t;
+    alias poolid_t = id_t;
+    alias zoneid_t = id_t;
+    alias ctid_t = id_t;
 }
 else version( Android )
 {
     version(X86)
     {
-        alias c_ulong  fsblkcnt_t;
-        alias c_ulong  fsfilcnt_t;
-        alias c_long   clock_t;
-        alias uint     id_t;
-        alias int      key_t;
-        alias c_long   suseconds_t;
-        alias c_long   useconds_t;
+        alias fsblkcnt_t = c_ulong;
+        alias fsfilcnt_t = c_ulong;
+        alias clock_t = c_long;
+        alias id_t = uint;
+        alias key_t = int;
+        alias suseconds_t = c_long;
+        alias useconds_t = c_long;
     }
     else
     {
@@ -481,7 +481,7 @@ version (linux)
         c_long __align;
     }
 
-    private alias int __atomic_lock_t;
+    private alias __atomic_lock_t = int;
 
     private struct _pthread_fastlock
     {
@@ -489,7 +489,7 @@ version (linux)
         __atomic_lock_t __spinlock;
     }
 
-    private alias void* _pthread_descr;
+    private alias _pthread_descr = void*;
 
     union pthread_cond_t
     {
@@ -503,7 +503,7 @@ version (linux)
         int __align;
     }
 
-    alias uint pthread_key_t;
+    alias pthread_key_t = uint;
 
     union pthread_mutex_t
     {
@@ -517,7 +517,7 @@ version (linux)
         int __align;
     }
 
-    alias int pthread_once_t;
+    alias pthread_once_t = int;
 
     struct pthread_rwlock_t
     {
@@ -531,7 +531,7 @@ version (linux)
         c_long __align;
     }
 
-    alias c_ulong pthread_t;
+    alias pthread_t = c_ulong;
 }
 else version( OSX )
 {
@@ -585,7 +585,7 @@ else version( OSX )
         byte[__PTHREAD_CONDATTR_SIZE__]     __opaque;
     }
 
-    alias c_ulong pthread_key_t;
+    alias pthread_key_t = c_ulong;
 
     struct pthread_mutex_t
     {
@@ -624,26 +624,26 @@ else version( OSX )
         byte[__PTHREAD_SIZE__]  __opaque;
     }
 
-    alias _opaque_pthread_t* pthread_t;
+    alias pthread_t = _opaque_pthread_t*;
 }
 else version( FreeBSD )
 {
-    alias int lwpid_t;
+    alias lwpid_t = int;
 
-    alias void* pthread_attr_t;
-    alias void* pthread_cond_t;
-    alias void* pthread_condattr_t;
-    alias void* pthread_key_t;
-    alias void* pthread_mutex_t;
-    alias void* pthread_mutexattr_t;
-    alias void* pthread_once_t;
-    alias void* pthread_rwlock_t;
-    alias void* pthread_rwlockattr_t;
-    alias void* pthread_t;
+    alias pthread_attr_t = void*;
+    alias pthread_cond_t = void*;
+    alias pthread_condattr_t = void*;
+    alias pthread_key_t = void*;
+    alias pthread_mutex_t = void*;
+    alias pthread_mutexattr_t = void*;
+    alias pthread_once_t = void*;
+    alias pthread_rwlock_t = void*;
+    alias pthread_rwlockattr_t = void*;
+    alias pthread_t = void*;
 }
 else version (Solaris)
 {
-    alias uint pthread_t;
+    alias pthread_t = uint;
 
     struct pthread_attr_t
     {
@@ -729,7 +729,7 @@ else version (Solaris)
         ulong[4] __pthread_once_pad;
     }
 
-    alias uint pthread_key_t;
+    alias pthread_key_t = uint;
 }
 else version( Android )
 {
@@ -755,16 +755,16 @@ else version( Android )
         int value; //volatile
     }
 
-    alias c_long pthread_condattr_t;
-    alias int    pthread_key_t;
+    alias pthread_condattr_t = c_long;
+    alias pthread_key_t = int;
 
     struct pthread_mutex_t
     {
         int value; //volatile
     }
 
-    alias c_long pthread_mutexattr_t;
-    alias int    pthread_once_t; //volatile
+    alias pthread_mutexattr_t = c_long;
+    alias pthread_once_t = int; //volatile
 
     struct pthread_rwlock_t
     {
@@ -777,8 +777,8 @@ else version( Android )
         void*[4]         reserved;
     }
 
-    alias int    pthread_rwlockattr_t;
-    alias c_long pthread_t;
+    alias pthread_rwlockattr_t = int;
+    alias pthread_t = c_long;
 }
 else
 {
@@ -809,8 +809,8 @@ version( linux )
 }
 else version( FreeBSD )
 {
-    alias void* pthread_barrier_t;
-    alias void* pthread_barrierattr_t;
+    alias pthread_barrier_t = void*;
+    alias pthread_barrierattr_t = void*;
 }
 else version( OSX )
 {
@@ -849,15 +849,15 @@ pthread_spinlock_t
 
 version( linux )
 {
-    alias int pthread_spinlock_t; // volatile
+    alias pthread_spinlock_t = int; // volatile
 }
 else version( FreeBSD )
 {
-    alias void* pthread_spinlock_t;
+    alias pthread_spinlock_t = void*;
 }
 else version (Solaris)
 {
-    alias pthread_mutex_t pthread_spinlock_t;
+    alias pthread_spinlock_t = pthread_mutex_t;
 }
 
 //

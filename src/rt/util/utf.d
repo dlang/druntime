@@ -731,7 +731,7 @@ wstring toUTF16(in char[] s)
     return cast(wstring)r;
 }
 
-alias const(wchar)* wptr;
+alias wptr = const(wchar)*;
 /** ditto */
 wptr toUTF16z(in char[] s)
 {

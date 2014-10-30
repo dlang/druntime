@@ -109,7 +109,7 @@ struct mach_timebase_info_data_t
     uint denom;
 }
 
-alias mach_timebase_info_data_t* mach_timebase_info_t;
+alias mach_timebase_info_t = mach_timebase_info_data_t*;
 
 kern_return_t mach_timebase_info(mach_timebase_info_t);
 
@@ -1108,8 +1108,8 @@ public:
             static assert(!is(typeof(d.split("hnsecs", "seconds", "msecs")())));
             static assert(!is(typeof(d.split("seconds", "hnecs", "msecs")())));
             static assert(!is(typeof(d.split("seconds", "msecs", "msecs")())));
-            alias _TypeTuple!("nsecs", "hnsecs", "usecs", "msecs", "seconds",
-                              "minutes", "hours", "days", "weeks") timeStrs;
+            alias timeStrs = _TypeTuple!("nsecs", "hnsecs", "usecs", "msecs", "seconds",
+                              "minutes", "hours", "days", "weeks");
             foreach(i, str; timeStrs[1 .. $])
                 static assert(!is(typeof(d.split!(timeStrs[i - 1], str)())));
 
@@ -1613,7 +1613,7 @@ private:
 
         if (_hnsecs == 0) return "0 hnsecs";
 
-        template TT(T...) { alias T TT; }
+        template TT(T...) { alias TT = T; }
         alias units = TT!("weeks", "days", "hours", "minutes", "seconds", "msecs", "usecs");
 
         long hnsecs = _hnsecs; string res; uint pos;
@@ -4351,7 +4351,7 @@ version(unittest) const(char)* numToStringz(long value) @safe pure nothrow
 /+ A copy of std.typecons.TypeTuple. +/
 private template _TypeTuple(TList...)
 {
-    alias TList _TypeTuple;
+    alias _TypeTuple = TList;
 }
 
 

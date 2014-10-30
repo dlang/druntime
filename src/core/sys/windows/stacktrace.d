@@ -26,7 +26,7 @@ debug(PRINTF) import core.stdc.stdio;
 extern(Windows) void RtlCaptureContext(CONTEXT* ContextRecord);
 extern(Windows) DWORD GetEnvironmentVariableA(LPCSTR lpName, LPSTR pBuffer, DWORD nSize);
 
-extern(Windows) alias USHORT function(ULONG FramesToSkip, ULONG FramesToCapture, PVOID *BackTrace, PULONG BackTraceHash) RtlCaptureStackBackTraceFunc;
+extern(Windows) alias RtlCaptureStackBackTraceFunc = USHORT function(ULONG FramesToSkip, ULONG FramesToCapture, PVOID *BackTrace, PULONG BackTraceHash);
 
 private __gshared RtlCaptureStackBackTraceFunc RtlCaptureStackBackTrace;
 private __gshared immutable bool initialized;

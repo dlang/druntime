@@ -31,9 +31,9 @@ extern(C) int rt_term();
 
 private
 {
-    alias bool function() ModuleUnitTester;
-    alias bool function(Object) CollectHandler;
-    alias Throwable.TraceInfo function( void* ptr ) TraceHandler;
+    alias ModuleUnitTester = bool function();
+    alias CollectHandler = bool function(Object);
+    alias TraceHandler = Throwable.TraceInfo function( void* ptr );
 
     extern (C) void rt_setCollectHandler( CollectHandler h );
     extern (C) CollectHandler rt_getCollectHandler();
@@ -41,7 +41,7 @@ private
     extern (C) void rt_setTraceHandler( TraceHandler h );
     extern (C) TraceHandler rt_getTraceHandler();
 
-    alias void delegate( Throwable ) ExceptionHandler;
+    alias ExceptionHandler = void delegate( Throwable );
 
     extern (C) void* thread_stackBottom();
 

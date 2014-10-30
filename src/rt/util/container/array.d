@@ -76,7 +76,7 @@ struct Array(T)
         return _ptr[a .. b];
     }
 
-    alias length opDollar;
+    alias opDollar = length;
 
     void insertBack()(auto ref T val)
     {
