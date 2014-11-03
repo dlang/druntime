@@ -26,7 +26,7 @@ private
   {
     import core.sys.posix.sys.types;
   }
-  else version (Android)
+  else version (CRuntime_Bionic)
   {
     import core.sys.posix.sys.types: off_t;
   }
@@ -91,7 +91,7 @@ else version( CRuntime_Microsoft )
     ///
     enum int     L_tmpnam   = _P_tmpdir.length + 12;
 }
-else version( linux )
+else version( CRuntime_Glibc )
 {
     enum
     {
@@ -196,7 +196,7 @@ else version (Solaris)
         ///
         enum int _NFILE = 20;
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     enum
     {
@@ -277,7 +277,7 @@ else version( CRuntime_Microsoft )
     ///
     alias shared(_iobuf) FILE;
 }
-else version( linux )
+else version( CRuntime_Glibc )
 {
     ///
     alias int fpos_t; //this is probably wrong, fix this
@@ -423,7 +423,7 @@ else version (Solaris)
     ///
     alias shared(_iobuf) FILE;
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     ///
     alias off_t fpos_t;
@@ -582,7 +582,7 @@ else version( CRuntime_Microsoft )
     ///
     shared FILE* stderr; // = &__iob_func()[2];
 }
-else version( linux )
+else version( CRuntime_Glibc )
 {
     enum
     {
@@ -680,7 +680,7 @@ else version (Solaris)
     ///
     shared stderr = &__iob[2];
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     enum
     {
@@ -1007,7 +1007,7 @@ else version( CRuntime_Microsoft )
     ///
     int _open_osfhandle(intptr_t osfhandle, int flags);
 }
-else version( linux )
+else version( CRuntime_Glibc )
 {
   // No unsafe pointer manipulation.
   @trusted
@@ -1095,7 +1095,7 @@ else version (Solaris)
     ///
     int  vsnprintf(char* s, size_t n, in char* format, va_list arg);
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
   // No unsafe pointer manipulation.
   @trusted
