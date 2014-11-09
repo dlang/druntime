@@ -38,7 +38,7 @@ abstract class Protocol : __Object
  * replaced by NSObject everywhere but as the root class for Protocol.
  */
 extern (Objective-C)
-pragma(objc_nameoverride, "Object")
+pragma(mangle, "Object")
 abstract class __Object
 {
     void* isa;
