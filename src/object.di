@@ -365,8 +365,8 @@ extern (C)
     // from druntime/src/rt/aaA.d
 
     // size_t _aaLen(in void* p) pure nothrow @nogc;
-    // void* _aaGetX(void** pp, const TypeInfo keyti, in size_t valuesize, in void* pkey);
-    // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
+    void* _aaGetX(void** pp, const TypeInfo keyti, in size_t valuesize, in void* pkey);
+    inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
     inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize) pure nothrow;
     inout(void)[] _aaKeys(inout void* p, in size_t keysize) pure nothrow;
     void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
@@ -423,6 +423,16 @@ auto aaLiteral(Key, Value, T...)(auto ref T args) if (T.length % 2 == 0)
         }();
         return ret;
     }
+}
+
+extern(C) auto aaGetLValueX(Key, Value)(void** aa, Key* key)
+{
+    return _aaGetX(aa, typeid(Key), Value.sizeof, cast(const(void)*)key);
+}
+
+extern(C) auto aaGetRValueX(Key, Value)(void* aa, Key* key)
+{
+    return _aaGetRvalueX(aa, typeid(Key), Value.sizeof, cast(const(void)*)key);
 }
 
 alias AssociativeArray(Key, Value) = Value[Key];
