@@ -29,6 +29,8 @@ alias immutable(char)[]  string;
 alias immutable(wchar)[] wstring;
 alias immutable(dchar)[] dstring;
 
+version (D_ObjC) public import core.attribute : selector;
+
 class Object
 {
     string   toString();

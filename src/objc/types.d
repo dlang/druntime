@@ -44,5 +44,5 @@ abstract class __Object
     void* isa;
 
     @disable this();
-    bool opEquals(__Object) [isEqual:];
+    bool opEquals(__Object) @selector("isEqual:");
 }
