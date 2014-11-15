@@ -22,6 +22,7 @@ SRCS=\
 	src\core\stdc\config.d \
 	src\core\stdc\ctype.d \
 	src\core\stdc\errno.d \
+	src\core\stdc\fenv.d \
 	src\core\stdc\math.d \
 	src\core\stdc\signal.d \
 	src\core\stdc\stdarg.d \
@@ -44,6 +45,8 @@ SRCS=\
 	src\core\sys\freebsd\execinfo.d \
 	src\core\sys\freebsd\sys\event.d \
 	\
+	src\core\sys\linux\tipc.d \
+	\
 	src\core\sys\posix\signal.d \
 	src\core\sys\posix\dirent.d \
 	src\core\sys\posix\sys\resource.d \
@@ -57,15 +60,23 @@ SRCS=\
 	src\core\sys\posix\netinet\in_.d \
 	src\core\sys\posix\arpa\inet.d \
 	\
+	src\core\sys\solaris\sys\priocntl.d \
+	src\core\sys\solaris\sys\types.d \
+	src\core\sys\solaris\sys\procset.d \
+	\
+	src\core\sys\windows\com.d \
 	src\core\sys\windows\dbghelp.d \
 	src\core\sys\windows\dll.d \
 	src\core\sys\windows\stacktrace.d \
+	src\core\sys\windows\stat.d \
 	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\windows.d \
+	src\core\sys\windows\winsock2.d \
 	\
 	src\gc\gc.d \
 	src\gc\os.d \
 	src\gc\bits.d \
+	src\gc\config.d \
 	src\gc\stats.d \
 	src\gc\proxy.d \
 	\

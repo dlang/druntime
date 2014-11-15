@@ -141,6 +141,7 @@ copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\sys\posix\net
 	mkdir $(IMPDIR)\core\sys\posix\netinet
 	mkdir $(IMPDIR)\core\sys\posix\sys
+	mkdir $(IMPDIR)\core\sys\solaris\sys
 	mkdir $(IMPDIR)\core\sys\windows
 	mkdir $(IMPDIR)\etc\linux
 
@@ -266,6 +267,9 @@ $(IMPDIR)\core\sys\freebsd\dlfcn.d : src\core\sys\freebsd\dlfcn.d
 $(IMPDIR)\core\sys\freebsd\execinfo.d : src\core\sys\freebsd\execinfo.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\freebsd\time.d : src\core\sys\freebsd\time.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\freebsd\sys\elf.d : src\core\sys\freebsd\sys\elf.d
 	copy $** $@
 
@@ -308,6 +312,12 @@ $(IMPDIR)\core\sys\linux\link.d : src\core\sys\linux\link.d
 $(IMPDIR)\core\sys\linux\termios.d : src\core\sys\linux\termios.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\linux\time.d : src\core\sys\linux\time.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\tipc.d : src\core\sys\linux\tipc.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\linux\sys\inotify.d : src\core\sys\linux\sys\inotify.d
 	copy $** $@
 
@@ -326,7 +336,16 @@ $(IMPDIR)\core\sys\osx\execinfo.d : src\core\sys\osx\execinfo.d
 $(IMPDIR)\core\sys\osx\pthread.d : src\core\sys\osx\pthread.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\osx\mach\dyld.d : src\core\sys\osx\mach\dyld.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\osx\mach\getsect.d : src\core\sys\osx\mach\getsect.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\osx\mach\kern_return.d : src\core\sys\osx\mach\kern_return.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\osx\mach\loader.d : src\core\sys\osx\mach\loader.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\osx\mach\port.d : src\core\sys\osx\mach\port.d
@@ -461,6 +480,21 @@ $(IMPDIR)\core\sys\posix\unistd.d : src\core\sys\posix\unistd.d
 $(IMPDIR)\core\sys\posix\utime.d : src\core\sys\posix\utime.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\solaris\execinfo.d : src\core\sys\solaris\execinfo.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\procset.d : src\core\sys\solaris\sys\procset.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\types.d : src\core\sys\solaris\sys\types.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\priocntl.d : src\core\sys\solaris\sys\priocntl.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\windows\com.d : src\core\sys\windows\com.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\windows\dbghelp.d : src\core\sys\windows\dbghelp.d
 	copy $** $@
 
@@ -470,10 +504,16 @@ $(IMPDIR)\core\sys\windows\dll.d : src\core\sys\windows\dll.d
 $(IMPDIR)\core\sys\windows\stacktrace.d : src\core\sys\windows\stacktrace.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\windows\stat.d : src\core\sys\windows\stat.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\windows\threadaux.d : src\core\sys\windows\threadaux.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\windows\windows.d : src\core\sys\windows\windows.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\windows\winsock2.d : src\core\sys\windows\winsock2.d
 	copy $** $@
 
 $(IMPDIR)\etc\linux\memoryerror.d : src\etc\linux\memoryerror.d
