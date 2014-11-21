@@ -13,6 +13,7 @@ COPY=\
 	$(IMPDIR)\core\thread.d \
 	$(IMPDIR)\core\time.d \
 	$(IMPDIR)\core\vararg.d \
+	$(IMPDIR)\core\volatile_.d \
 	\
 	$(IMPDIR)\core\internal\convert.d \
 	$(IMPDIR)\core\internal\hash.d \
