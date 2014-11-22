@@ -83,6 +83,9 @@ $(DOCDIR)\core_time.html : src\core\time.d
 $(DOCDIR)\core_vararg.html : src\core\vararg.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
+$(DOCDIR)\core_volatile.html : src\core\volatile_.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
 $(DOCDIR)\core_sync_barrier.html : src\core\sync\barrier.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
@@ -187,6 +190,9 @@ $(IMPDIR)\core\time.d : src\core\time.d
 	copy $** $@
 
 $(IMPDIR)\core\vararg.d : src\core\vararg.d
+	copy $** $@
+
+$(IMPDIR)\core\volatile_.d : src\core\volatile_.d
 	copy $** $@
 
 $(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d

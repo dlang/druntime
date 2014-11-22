@@ -32,6 +32,7 @@ MANIFEST=\
 	src\core\threadasm.S \
 	src\core\time.d \
 	src\core\vararg.d \
+	src\core\volatile_.d \
 	\
 	src\core\internal\convert.d \
 	src\core\internal\hash.d \
