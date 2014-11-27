@@ -1013,7 +1013,7 @@ private:
     }
 
     static immutable AssociativeArrayHandle handle = AssociativeArrayHandle(&_aaLen,
-                                   &_aaGetX,
+                                   &_aaGetZ,
                                    &_aaGetRvalueX,
                                    &_aaDelX,
                                    &_aaApply,
@@ -1037,7 +1037,7 @@ private:
         Those functions are defined for compatibility with old compiler extern(C) interface.
         `Impl` contains a table of functions (unique for each AssociativeArray template instance),
         and global extern(C) _aaXXX functions accesses to AssociativeArray through this table.
-        Some of this functions undeservedly marked with @trusted: for example _aaGetX calculates key hash,
+        Some of this functions undeservedly marked with @trusted: for example _aaGetZ calculates key hash,
         and this code can be unsafe. However extern(C) interface doesn't know static AssociativeArray type,
         thus it can't determine own safety, but this function can be called from @safe code.
         This is fundamental trouble of current AA implementation and it's not relevant with this work.
@@ -1055,7 +1055,7 @@ private:
         return _this.toHash();
     }
 
-    static void* _aaGetX(void** aa, in void* pkey) @trusted
+    static void* _aaGetZ(void** aa, in void* pkey) @trusted
     {
         auto _this = *cast(AssociativeArray*)aa;
         auto ret = cast(void*)&_this.getLValue(*cast(Key*)pkey).value;
@@ -1222,7 +1222,7 @@ extern(C)
         return handle.getHash(aa);
     }
 
-    void* _aaGetX(AssociativeArrayHandle*** aa, const TypeInfo ti, in size_t, in void* pkey, init_t init) @trusted
+    void* _aaGetZ(AssociativeArrayHandle*** aa, const TypeInfo ti, in size_t, in void* pkey, init_t init) @trusted
     in
     {
         assert(aa);
@@ -1234,7 +1234,7 @@ extern(C)
             *aa = init([], []);
         }
         auto handle = **aa;
-        return handle.getX(cast(void**)aa, pkey);
+        return handle.getZ(cast(void**)aa, pkey);
     }
 
     inout(void)* _aaGetRvalueX(inout AssociativeArrayHandle** aa, const TypeInfo, in size_t, in void* pkey) @trusted
@@ -1477,13 +1477,13 @@ version(unittest)
         int newkey = 7;
 
         //create a new elem
-        auto pval = _aaGetX(cast(AssociativeArrayHandle***)&aa1, null, 0, &newkey, cast(init_t)&aaLiteral!(int, int));
+        auto pval = _aaGetZ(cast(AssociativeArrayHandle***)&aa1, null, 0, &newkey, cast(init_t)&aaLiteral!(int, int));
         *cast(int*)pval = 8;
         assert(aa1[7] == 8);
         newkey = 1;
 
         //find the existing elem
-        pval = _aaGetX(cast(AssociativeArrayHandle***)&aa1, null, 0, &newkey, cast(init_t)&aaLiteral!(int, int));
+        pval = _aaGetZ(cast(AssociativeArrayHandle***)&aa1, null, 0, &newkey, cast(init_t)&aaLiteral!(int, int));
         *cast(int*)pval = 1;
         assert(aa1[1] == 1);
 
@@ -1492,7 +1492,7 @@ version(unittest)
         newkey = 1;
 
         //create a new elem in aa with null impl
-        pval = _aaGetX(cast(AssociativeArrayHandle***)&aa2, null, 0, &newkey, cast(init_t)&aaLiteral!(int, int));
+        pval = _aaGetZ(cast(AssociativeArrayHandle***)&aa2, null, 0, &newkey, cast(init_t)&aaLiteral!(int, int));
         *cast(int*)pval = 1;
         auto impl2 = aa2.impl;
         assert(impl2 != impl1);
@@ -1823,7 +1823,7 @@ private enum KeyValue
 private struct AssociativeArrayHandle
 {
     @trusted pure nothrow size_t function(in void* aa) len;
-    @trusted               void* function(void** aa, in void* pkey) getX;
+    @trusted               void* function(void** aa, in void* pkey) getZ;
     @trusted        inout(void)* function(inout void* aa, in void* pkey) getRvalueX;
     @trusted                bool function(void* aa, in void* pkey) delX;
                              int function(void* aa, dg_t dg) apply;
