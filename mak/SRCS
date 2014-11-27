@@ -17,6 +17,7 @@ SRCS=\
 	\
 	src\core\internal\convert.d \
 	src\core\internal\hash.d \
+	src\core\internal\aa.d \
 	src\core\internal\traits.d \
 	\
 	src\core\stdc\config.d \
@@ -82,7 +83,6 @@ SRCS=\
 	\
 	src\rt\aApply.d \
 	src\rt\aApplyR.d \
-	src\rt\aaA.d \
 	src\rt\adi.d \
 	src\rt\alloca.d \
 	src\rt\arrayassign.d \

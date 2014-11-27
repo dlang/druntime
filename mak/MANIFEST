@@ -35,6 +35,7 @@ MANIFEST=\
 	\
 	src\core\internal\convert.d \
 	src\core\internal\hash.d \
+	src\core\internal\aa.d \
 	src\core\internal\traits.d \
 	\
 	src\core\stdc\complex.d \
@@ -178,7 +179,6 @@ MANIFEST=\
 	\
 	src\rt\aApply.d \
 	src\rt\aApplyR.d \
-	src\rt\aaA.d \
 	src\rt\adi.d \
 	src\rt\alloca.d \
 	src\rt\arrayassign.d \
