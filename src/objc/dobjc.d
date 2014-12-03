@@ -20,6 +20,7 @@ version (D_ObjC) {}
 else static assert(0, "Compiler does not support the Objective-C object model");
 
 import objc.runtime;
+import objc.types;
 
 /**
  * Replacement allocators for D/Objective-C objects to allow static

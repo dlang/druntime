@@ -20,6 +20,7 @@ version (D_ObjC) {}
 else static assert(0, "Compiler does not support the Objective-C object model");
 
 import core.stdc.stdint; // uintptr_t
+import objc.types;
 
 version (OSX)
 {
@@ -75,9 +76,9 @@ extern (C)
 
     // Implemented Protocols
 
-    BOOL class_addProtocol(Class cls, Protocol* protocol);
-    BOOL class_conformsToProtocol(Class cls, Protocol* protocol);
-    Protocol** class_copyProtocolList(Class cls, uint* outCount);
+    BOOL class_addProtocol(Class cls, Protocol protocol);
+    BOOL class_conformsToProtocol(Class cls, Protocol protocol);
+    Protocol* class_copyProtocolList(Class cls, uint* outCount);
 
     // Version
 
@@ -265,19 +266,16 @@ extern (C)
 
     // MARK: Working with Protocols
 
-    /** Objective-C object representing a protocol. */
-    alias Protocol = objc_object;
-
-    Protocol* objc_getProtocol(const(char)* name);
-    Protocol** objc_copyProtocolList(uint* outCount);
-    const(char)* protocol_getName(Protocol *p);
-    BOOL protocol_isEqual(Protocol *proto, Protocol *other);
-    objc_method_description*protocol_copyMethodDescriptionList(Protocol *p, BOOL isRequiredMethod, BOOL isInstanceMethod, uint *outCount);
-    objc_method_description protocol_getMethodDescription(Protocol *p, SEL aSel, BOOL isRequiredMethod, BOOL isInstanceMethod);
-    objc_property_t * protocol_copyPropertyList(Protocol *protocol, uint *outCount);
-    objc_property_t protocol_getProperty(Protocol *proto, const(char)* name, BOOL isRequiredProperty, BOOL isInstanceProperty);
-    Protocol **protocol_copyProtocolList(Protocol *proto, uint *outCount);
-    BOOL protocol_conformsToProtocol(Protocol *proto, Protocol *other);
+    Protocol objc_getProtocol(const(char)* name);
+    Protocol* objc_copyProtocolList(uint* outCount);
+    const(char)* protocol_getName(Protocol p);
+    BOOL protocol_isEqual(Protocol proto, Protocol other);
+    objc_method_description*protocol_copyMethodDescriptionList(Protocol p, BOOL isRequiredMethod, BOOL isInstanceMethod, uint *outCount);
+    objc_method_description protocol_getMethodDescription(Protocol p, SEL aSel, BOOL isRequiredMethod, BOOL isInstanceMethod);
+    objc_property_t * protocol_copyPropertyList(Protocol protocol, uint *outCount);
+    objc_property_t protocol_getProperty(Protocol proto, const(char)* name, BOOL isRequiredProperty, BOOL isInstanceProperty);
+    Protocol* protocol_copyProtocolList(Protocol proto, uint *outCount);
+    BOOL protocol_conformsToProtocol(Protocol proto, Protocol other);
 
     // MARK: Working with Properties
 
