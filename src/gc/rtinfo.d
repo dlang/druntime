@@ -22,30 +22,42 @@ enum bool supportTypedef = false; // causes deprecation warning
 // but prevented by @@@BUG1308@@@, see std.traits.Unqual)
 template Unqual(T)
 {
-         static if (is(T U == shared(const U))) alias U Unqual;
-    else static if (is(T U == const U )) alias U Unqual;
-    else static if (is(T U == immutable U )) alias U Unqual;
-    else static if (is(T U == inout U )) alias U Unqual;
-    else static if (is(T U == shared U )) alias U Unqual;
-    else alias T Unqual;
+         static if (is(T U ==          immutable U)) alias Unqual = Unenum!U;
+    else static if (is(T U == shared inout const U)) alias Unqual = Unenum!U;
+    else static if (is(T U == shared inout       U)) alias Unqual = Unenum!U;
+    else static if (is(T U == shared       const U)) alias Unqual = Unenum!U;
+    else static if (is(T U == shared             U)) alias Unqual = Unenum!U;
+    else static if (is(T U ==        inout const U)) alias Unqual = Unenum!U;
+    else static if (is(T U ==        inout       U)) alias Unqual = Unenum!U;
+    else static if (is(T U ==              const U)) alias Unqual = Unenum!U;
+    else                                             alias Unqual = Unenum!T;
 }
 
-template TypeTuple(TList...)
+template Unenum(T)
 {
-    alias TList TypeTuple;
+    static if (is(T U == enum))                 alias Unenum = U;
+    else
+    {
+        static if(supportTypedef)
+        {
+            static if (mixin("is(T U == typedef)"))
+            {
+                alias Unenum = Unenum!U;
+            }
+            else
+                alias Unenum = T;
+        }
+        else
+            alias Unenum = T;
+    }
 }
 
-bool isBasicType(T)()
-{
-    foreach(t; TypeTuple!(byte, ubyte, short, ushort, int, uint, long, ulong,
-                          float, double, real,
-                          ifloat, idouble, ireal,
-                          cfloat, cdouble, creal,
-                          char, wchar, dchar, bool))
-        static if(is(T == t))
-            return true;
-    return false;
-}
+enum isBasicType(T) = is(T == byte) || is(T == ubyte) || is(T == short) || is(T == ushort) ||
+                      is(T == int) || is(T == uint) || is(T == long) || is(T == ulong) ||
+                      is(T == float) || is(T == double) || is(T == real) ||
+                      is(T == ifloat) || is(T == idouble) || is(T == ireal) ||
+                      is(T == cfloat) || is(T == cdouble) || is(T == creal) ||
+                      is(T == char) || is(T == wchar) || is(T == dchar) || is(T == bool);
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -70,7 +82,7 @@ template bitmapSize(T)
 ////////////////////////////////////////////////////////
 template RTInfoImpl(T)
 {
-    enum RTInfoImpl = RTInfoImpl1!(Unqual!T);
+    enum RTInfoImpl = RTInfoImpl1!(T);
 }
 
 template RTInfoImpl1(T)
@@ -88,7 +100,7 @@ template RTInfoImpl2(T)
     static if (is(T D == U[], U))
         immutable(RTInfoData) RTInfoImpl2 = cast(immutable) RTInfoData(null, &gc_markArray);
     else
-        immutable(RTInfoData) RTInfoImpl2 = cast(immutable) RTInfoData(bitmap!T(), null);
+        immutable(RTInfoData) RTInfoImpl2 = cast(immutable) RTInfoData(bitmap!T, null);
 }
 
 alias RTInfoType = const(RTInfoData)*;
@@ -111,35 +123,39 @@ struct RTInfoData
     rtMark mark;
 }
 
-// first element is size of the object that the bitmap corresponds to in bytes.
-size_t[bitmapSize!T + 1] bitmap(T)()
-{
-    size_t[bitmapSize!T + 1] A;
-    bitmapImpl!(Unqual!T)(A.ptr + 1);
-    if (A[0]) // keep the zero to detet no pointers
-        A[0] = allocatedSize!T;
-    return A;
-}
+enum bitmap(T) = bitmapImpl!T();
 
-size_t[1] emptyBitmap(T)()
+enum emptyBitmap = emptyBitmapImpl!()();
+
+size_t[1] emptyBitmapImpl()()
 {
     size_t[1] A;
     A[0] = 0;
     return A;
 }
 
-void bitmapImpl(T)(size_t* p)
+size_t[bitmapSize!T + 1] bitmapImpl(T)()
 {
+    size_t[bitmapSize!T + 1] A;
+
     static if(is(T == class))
     {
         // mark virtual function table ptr? no, it's usually in _DATA
         // mark mutex member __monitor? depends..., usually calloced
         static if(RTInfoMark__Monitor)
             rtinfo_setbit(p, bytesPerPtr);
-        mkBitmapComposite!(T)(p, 0);
+        mkBitmapComposite!(T)(A.ptr + 1, 0);
     }
-    else
-        mkBitmap!(Unqual!T)(p, 0);
+    else static if(is(T == struct) || is(T == union))
+        mkBitmapComposite!(T)(A.ptr + 1, 0);
+    else static if (similarToPointer!T)
+        rtinfo_setbit(A.ptr + 1, 0);
+    else static if (!hasNoPointer!T)
+        mkBitmap!T(A.ptr + 1, 0);
+
+    if (A[0]) // keep the zero to detet no pointers
+        A[0] = allocatedSize!T;
+    return A;
 }
 
 version(RTInfoPRINTF) string totext(size_t x)
@@ -170,8 +186,57 @@ void mkBitmapComposite(T)(size_t* p, size_t offset)
         alias Unqual!(TTypes[i]) U;
 
         version(RTInfoPRINTF) pragma(msg,"  field " ~ T.tupleof[i].stringof ~ " : " ~ U.stringof ~ " @ " ~ totext(cur_offset));
-        mkBitmap!U(p, offset + cur_offset);
+        static if (similarToPointer!U)
+            rtinfo_setbit(p, offset + cur_offset);
+        else static if (!hasNoPointer!U)
+            mkBitmap!U(p, offset + cur_offset);
     }
+}
+
+// use template caching to optimize compilation speed
+template similarToPointer(T)
+{
+    static if (is(T == class) ||
+               is(T == interface))
+    {
+        enum similarToPointer = true;
+    }
+    else static if (is(T == void))
+    {
+        enum similarToPointer = true;
+    }
+    else static if (is(T F == F*))
+    {
+        enum similarToPointer = !is(F == function);
+    }
+    else static if (is(T == delegate)) // context pointer of delegate comes first
+    {
+        enum similarToPointer = true;
+    }
+    else static if (is(T A == U[K], U, K))
+    {
+        enum similarToPointer = true;
+    }
+    else
+        enum similarToPointer = false;
+}
+
+template hasNoPointer(T)
+{
+    static if (isBasicType!(T))
+    {
+        enum hasNoPointer = true;
+    }
+    else static if (is(T F == __vector(F[N]), size_t N))
+    {
+        enum hasNoPointer = true;
+    }
+    else static if (is(T F == F*) && is(F == function))
+    {
+        enum hasNoPointer = true;
+    }
+    else
+        enum hasNoPointer = false;
 }
 
 /// set pointer bits for one field
@@ -182,76 +247,32 @@ void mkBitmap(T)(size_t* p, size_t offset)
     {
         version(RTInfoPRINTF) pragma(msg,"    mkBitmap composite " ~ T.stringof);
 
+        //auto bm = bitmapCache!T;
+        //rtinfo_copybits(p, offset, bm.ptr);
         mkBitmapComposite!T(p, offset);
-    }
-    else static if (is(T == class) ||
-                    is(T == interface))
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " reference");
-        rtinfo_setbit(p, offset);
-    }
-    else static if (is(T == void))
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " untyped");
-        rtinfo_setbit(p, offset);
-    }
-    else static if (isBasicType!(T)())
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " basic type");
-    }
-    else static if (is(T F == __vector(F[N]), size_t N))
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " vector type");
-    }
-    else static if (is(T F == F*) && is(F == function))
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " function");
-    }
-    else static if (is(T P == U*, U))
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " pointer");
-        rtinfo_setbit(p, offset);
-    }
-    else static if (is(T == delegate)) // context pointer of delegate comes first
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " delegate");
-        rtinfo_setbit(p, offset);
     }
     else static if (is(T D == U[], U))
     {
         version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " dynamic array of " ~ U.stringof);
         rtinfo_setbit(p, offset + size_t.sizeof); // dynamic array is {length,ptr}
     }
-    else static if (is(T A == U[K], U, K))
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " associative array of " ~ U.stringof ~ ", key " ~ K.stringof);
-        rtinfo_setbit(p, offset); // associative array is just a pointer
-    }
     else static if(is(T S : U[N], U, size_t N))
     {
         alias Unqual!(U) UU;
         version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " static array of " ~ UU.stringof);
-        for(size_t i = 0; i < N; i++)
-            mkBitmap!UU(p, offset + i * UU.sizeof);
-    }
-    else static if(is(T E == enum))
-    {
-        version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " enum with base " ~ E.stringof);
-        mkBitmap!E(p, offset);
+        static if (similarToPointer!UU)
+        {
+            for(size_t i = 0; i < N; i++)
+                rtinfo_setbit(p, offset + i * UU.sizeof);
+        }
+        else static if (!hasNoPointer!UU)
+        {
+            for(size_t i = 0; i < N; i++)
+                mkBitmap!UU(p, offset + i * UU.sizeof);
+        }
     }
     else
-    {
-        static if(supportTypedef)
-        {
-            static if (mixin("is(T E == typedef"))
-            {
-                version(RTInfoPRINTF) pragma(msg,"      mkBitmap " ~ T.stringof ~ " typedef with base " ~ E.stringof);
-                mkBitmap!E(p, offset);
-                return;
-            }
-        }
-        static assert(false, "    mkBitmap does not support " ~ T.stringof);
-    }
+        static assert(false, "  rtinfo.mkBitmap: unsupported type " ~ T.stringof);
 }
 
 void rtinfo_setbit()(size_t* a, size_t offset)
