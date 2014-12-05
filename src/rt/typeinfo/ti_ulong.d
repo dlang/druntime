@@ -63,4 +63,6 @@ class TypeInfo_m : TypeInfo
     {
         return ulong.alignof;
     }
+
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return rtinfoNoPointers; }
 }

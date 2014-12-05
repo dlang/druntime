@@ -24,8 +24,7 @@ private
     // bucket array.
     Entry*[] newBuckets(in size_t len) @trusted pure nothrow
     {
-        auto ptr = cast(Entry**) GC.calloc(
-            len * (Entry*).sizeof, GC.BlkAttr.NO_INTERIOR);
+        auto ptr = cast(Entry**) GC.calloc(len * (Entry*).sizeof, GC.BlkAttr.NO_INTERIOR, null); // array of pointer: mark conservative
         return ptr[0..len];
     }
 }
@@ -65,16 +64,47 @@ struct Entry
     /* value */
 }
 
+// just skip the hash, scan everything else conservatively
+class TypeInfo_Entry : TypeInfo
+{
+    import gc.rtinfo;
+
+    extern(C) static void mark(void* p, void* end, const(TypeInfo) _ti, gcMark dgmark) nothrow
+    {
+        dgmark(p, p + (Entry*).sizeof, null); // Entry* conservative, skip hash
+        p += Entry.sizeof;
+        dgmark(p, end, null);
+    }
+
+    override @property size_t tsize() nothrow pure const @safe { return Entry.sizeof; }
+    override @property uint flags() nothrow pure const @safe { return 1; }
+
+    override @property RTInfoType rtInfo() nothrow pure const @trusted { return cast(RTInfoType) &m_rtInfo; }
+
+    gc.rtinfo.RTInfoData m_rtInfo = gc.rtinfo.RTInfoData(null, &mark);
+}
+
+__gshared TypeInfo_Entry tiEntry = new TypeInfo_Entry;
+
 struct Impl
 {
+    this(const TypeInfo keyti, const TypeInfo valti, size_t valuesize)
+    {
+        _keyti = cast() keyti;
+        _valti = cast() valti;
+    }
+
     Entry*[] buckets;
     size_t nodes;       // total number of entries
     size_t firstUsedBucket; // starting index for first used bucket.
     TypeInfo _keyti;
+    TypeInfo _valti;
     Entry*[4] binit;    // initial value of buckets[]
 
     @property const(TypeInfo) keyti() const @safe pure nothrow @nogc
     { return _keyti; }
+    @property const(TypeInfo) valti() const @safe pure nothrow @nogc
+    { return _valti; }
 
     // helper function to determine first used bucket, and update implementation's cache for it
     // NOTE: will not work with immutable AA in ROM, but that doesn't exist yet.
@@ -164,6 +194,29 @@ in
 {
     assert(aa);
 }
+body
+{
+    if (aa.impl is null)
+    {
+        aa.impl = new Impl(keyti, typeid(void*), valuesize);
+        aa.impl.buckets = aa.impl.binit[];
+        aa.impl.firstUsedBucket = aa.impl.buckets.length;
+    }
+    return _aaGetImpl(aa, keyti, valuesize, pkey);
+}
+
+void* _aaGetY(AA* aa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey)
+{
+    if (aa.impl is null)
+    {
+        aa.impl = new Impl(ti.key, ti.next, valuesize);
+        aa.impl.buckets = aa.impl.binit[];
+        aa.impl.firstUsedBucket = aa.impl.buckets.length;
+    }
+    return _aaGetImpl(aa, ti.key, valuesize, pkey);
+}
+
+void* _aaGetImpl(AA* aa, const TypeInfo keyti, in size_t valuesize, in void* pkey)
 out (result)
 {
     assert(result);
@@ -176,13 +229,6 @@ body
     //printf("keyti = %p\n", keyti);
     //printf("aa = %p\n", aa);
 
-    if (aa.impl is null)
-    {
-        aa.impl = new Impl();
-        aa.impl.buckets = aa.impl.binit[];
-        aa.impl.firstUsedBucket = aa.impl.buckets.length;
-        aa.impl._keyti = cast() keyti;
-    }
     //printf("aa = %p\n", aa);
     //printf("aa.a = %p\n", aa.a);
 
@@ -208,7 +254,7 @@ body
         // Not found, create new elem
         //printf("create new one\n");
         size_t size = Entry.sizeof + aligntsize(keytitsize) + valuesize;
-        e = cast(Entry *) GC.malloc(size);
+        e = cast(Entry *) GC.malloc(size, 0, tiEntry); // TODO: needs typeof(Entry+)
         e.next = null;
         e.hash = key_hash;
         ubyte* ptail = cast(ubyte*)(e + 1);
@@ -357,9 +403,9 @@ inout(ArrayRet_t) _aaValues(inout AA aa, in size_t keysize, in size_t valuesize)
 
     if (aa.impl !is null)
     {
+        auto attr = (valuesize < (void*).sizeof ? GC.BlkAttr.NO_SCAN : 0);
         a.length = _aaLen(aa);
-        a.ptr = cast(byte*) GC.malloc(a.length * valuesize,
-                                      valuesize < (void*).sizeof ? GC.BlkAttr.NO_SCAN : 0);
+        a.ptr = cast(byte*) GC.malloc(a.length * valuesize, attr, null); // TODO: needs typeid(Val[])
         resi = 0;
         foreach (inout(Entry)* e; aa.impl.buckets[aa.impl.firstUsedBucket..$])
         {
@@ -454,8 +500,8 @@ inout(ArrayRet_t) _aaKeys(inout AA aa, in size_t keysize) pure nothrow
     if (!len)
         return null;
 
-    immutable blkAttr = !(aa.impl.keyti.flags & 1) ? GC.BlkAttr.NO_SCAN : 0;
-    auto res = (cast(byte*) GC.malloc(len * keysize, blkAttr))[0 .. len * keysize];
+    immutable blkAttr = (!(aa.impl.keyti.flags & 1) ? GC.BlkAttr.NO_SCAN : 0);
+    auto res = (cast(byte*) GC.malloc(len * keysize, blkAttr, null))[0 .. len * keysize]; // TODO: needs typeid(Key[])
 
     size_t resi = 0;
     // note, can't use firstUsedBucketCache here, aa is inout
@@ -610,8 +656,7 @@ Impl* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, vo
     }
     else
     {
-        result = new Impl();
-        result._keyti = cast() keyti;
+        result = new Impl(keyti, ti.next, valuesize);
 
         size_t i;
         for (i = 0; i < prime_list.length - 1; i++)
@@ -643,8 +688,9 @@ Impl* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, vo
                 {
                     // Not found, create new elem
                     //printf("create new one\n");
-                    e = cast(Entry *) cast(void*) new void[Entry.sizeof + keytsize + valuesize];
+                    e = cast(Entry *) GC.malloc(Entry.sizeof + keytsize + valuesize, 0, tiEntry); // TODO: needs typeof(Entry+)
                     memcpy(e + 1, pkey, keysize);
+                    e.next = null;
                     e.hash = key_hash;
                     *pe = e;
                     result.nodes++;

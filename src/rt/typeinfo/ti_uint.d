@@ -56,4 +56,6 @@ class TypeInfo_k : TypeInfo
         *cast(uint *)p1 = *cast(uint *)p2;
         *cast(uint *)p2 = t;
     }
+
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return rtinfoNoPointers; }
 }

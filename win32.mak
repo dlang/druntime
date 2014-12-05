@@ -9,6 +9,7 @@ CC=dmc
 DOCDIR=doc
 IMPDIR=import
 
+# -O -release -inline
 DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport
 UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport
 DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
@@ -144,6 +145,7 @@ copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\sys\solaris\sys
 	mkdir $(IMPDIR)\core\sys\windows
 	mkdir $(IMPDIR)\etc\linux
+	mkdir $(IMPDIR)\gc
 
 copy: $(COPY)
 
@@ -520,6 +522,9 @@ $(IMPDIR)\core\sys\windows\winsock2.d : src\core\sys\windows\winsock2.d
 	copy $** $@
 
 $(IMPDIR)\etc\linux\memoryerror.d : src\etc\linux\memoryerror.d
+	copy $** $@
+
+$(IMPDIR)\gc\rtinfo.d : src\gc\rtinfo.d
 	copy $** $@
 
 ################### C\ASM Targets ############################

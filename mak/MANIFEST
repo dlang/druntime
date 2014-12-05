@@ -173,6 +173,7 @@ MANIFEST=\
 	src\gc\config.d \
 	src\gc\stats.d \
 	src\gc\proxy.d \
+	src\gc\rtinfo.d \
 	\
 	src\gcstub\gc.d \
 	\

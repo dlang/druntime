@@ -313,7 +313,8 @@ class TypeInfo
 
     /** Return info used by the garbage collector to do precise collection.
      */
-    @property immutable(void)* rtInfo() nothrow pure const @safe @nogc { return null; }
+    @property RTInfoType rtInfo() nothrow pure const @safe @nogc { return rtinfoHasPointers; } // better safe than sorry
+
 }
 
 class TypeInfo_Typedef : TypeInfo
@@ -346,7 +347,7 @@ class TypeInfo_Typedef : TypeInfo
         return base.argTypes(arg1, arg2);
     }
 
-    override @property immutable(void)* rtInfo() const { return base.rtInfo; }
+    override @property RTInfoType rtInfo() const { return base.rtInfo; }
 
     TypeInfo base;
     string   name;
@@ -491,6 +492,12 @@ class TypeInfo_Array : TypeInfo
         arg2 = typeid(void*);
         return 0;
     }
+
+    override @property RTInfoType rtInfo() nothrow pure const @safe 
+    {
+        static immutable gc.rtinfo.RTInfoData rtiData = gc.rtinfo.RTInfoData(null, &gc.rtinfo.gc_markArray);
+        return &rtiData;
+    }
 }
 
 class TypeInfo_StaticArray : TypeInfo
@@ -606,6 +613,9 @@ class TypeInfo_StaticArray : TypeInfo
         arg1 = typeid(void*);
         return 0;
     }
+
+    // just return the rtInfo of the element, we have no generic type T to run RTInfo!T on
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return value.rtInfo(); }
 }
 
 class TypeInfo_AssociativeArray : TypeInfo
@@ -713,6 +723,8 @@ class TypeInfo_Function : TypeInfo
         return 0;       // no size for functions
     }
 
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return rtinfoNoPointers; }
+
     TypeInfo next;
     string deco;
 }
@@ -757,6 +769,8 @@ class TypeInfo_Delegate : TypeInfo
         arg2 = typeid(void*);
         return 0;
     }
+
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return RTInfo!(int delegate()); }
 }
 
 /**
@@ -853,8 +867,8 @@ class TypeInfo_Class : TypeInfo
     OffsetTypeInfo[] m_offTi;
     void function(Object) defaultConstructor;   // default Constructor
 
-    immutable(void)* m_RTInfo;        // data for precise GC
-    override @property immutable(void)* rtInfo() const { return m_RTInfo; }
+    RTInfoType m_RTInfo;        // data for precise GC
+    override @property RTInfoType rtInfo() const { return m_RTInfo; }
 
     /**
      * Search all modules for TypeInfo_Class corresponding to classname.
@@ -1064,7 +1078,7 @@ class TypeInfo_Struct : TypeInfo
 
     uint m_align;
 
-    override @property immutable(void)* rtInfo() const { return m_RTInfo; }
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return m_RTInfo; }
 
     version (X86_64)
     {
@@ -1077,7 +1091,7 @@ class TypeInfo_Struct : TypeInfo
         TypeInfo m_arg1;
         TypeInfo m_arg2;
     }
-    immutable(void)* m_RTInfo;                // data for precise GC
+    RTInfoType m_RTInfo;                // data for precise GC
 }
 
 unittest
@@ -2776,11 +2790,16 @@ bool _xopCmp(in void*, in void*)
  * Create RTInfo for type T
  */
 
+static import gc.rtinfo;
+
+alias RTInfoType        = gc.rtinfo.RTInfoType;
+alias rtinfoNoPointers  = gc.rtinfo.rtinfoNoPointers;
+alias rtinfoHasPointers = gc.rtinfo.rtinfoHasPointers;
+
 template RTInfo(T)
 {
-    enum RTInfo = null;
+    immutable(RTInfoType) RTInfo = gc.rtinfo.RTInfoImpl!T;
 }
-
 
 // Helper functions
 

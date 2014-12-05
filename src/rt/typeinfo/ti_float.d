@@ -60,6 +60,8 @@ class TypeInfo_f : TypeInfo
         return (&r)[0 .. 1];
     }
 
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return rtinfoNoPointers; }
+
     version (Windows)
     {
     }

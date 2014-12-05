@@ -63,4 +63,6 @@ class TypeInfo_l : TypeInfo
     {
         return long.alignof;
     }
+
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return rtinfoNoPointers; }
 }

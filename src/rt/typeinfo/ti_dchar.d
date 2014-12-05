@@ -59,4 +59,6 @@ class TypeInfo_w : TypeInfo
 
         return (cast(dchar *)&c)[0 .. 1];
     }
+
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return rtinfoNoPointers; }
 }

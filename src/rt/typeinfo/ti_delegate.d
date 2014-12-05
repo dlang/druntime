@@ -54,4 +54,6 @@ class TypeInfo_D : TypeInfo
     {
         return 1;
     }
+
+    override @property RTInfoType rtInfo() nothrow pure const @safe { return RTInfo!(dg); }
 }
