@@ -18,22 +18,7 @@ module rt.qsort;
 
 private import core.stdc.stdlib;
 
-version (linux)
-{
-    alias extern (C) int function(const void *, const void *, void *) Cmp;
-    extern (C) void qsort_r(void *base, size_t nmemb, size_t size, Cmp cmp, void *arg);
-
-    extern (C) void[] _adSort(void[] a, TypeInfo ti)
-    {
-        extern (C) int cmp(in void* p1, in void* p2, void* ti)
-        {
-            return (cast(TypeInfo)ti).compare(p1, p2);
-        }
-        qsort_r(a.ptr, a.length, ti.tsize, &cmp, cast(void*)ti);
-        return a;
-    }
-}
-else version (FreeBSD)
+version (FreeBSD)
 {
     alias extern (C) int function(void *, const void *, const void *) Cmp;
     extern (C) void qsort_r(void *base, size_t nmemb, size_t size, void *thunk, Cmp cmp);
