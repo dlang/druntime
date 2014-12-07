@@ -19,30 +19,21 @@ module objc.types;
 version (D_ObjC) {}
 else static assert(0, "Compiler does not support the Objective-C object model");
 
-import objc.runtime;
+extern (Objective-C):
 
 /**
  * An object representing an Objective-C protocol. You can get the protocol
  * object of an extern(Objective-C) interface using the "protocolof" property.
  */
-extern (Objective-C)
-abstract class Protocol : __Object
+abstract class Protocol : NSObject
 {
     @disable this();
-
-    // could add some other members, but they are probably irrelevant
 }
 
-/**
- * The Objective-C class "Object", a mostly obsolete root class which has been
- * replaced by NSObject everywhere but as the root class for Protocol.
- */
-extern (Objective-C)
-pragma(mangle, "Object")
-abstract class __Object
-{
-    void* isa;
+pragma(mangle, "NSObject")
+interface ObjcObject { }
 
-    @disable this();
-    bool opEquals(__Object) @selector("isEqual:");
+class NSObject : ObjcObject
+{
+	Class isa;
 }
