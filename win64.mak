@@ -486,7 +486,40 @@ $(IMPDIR)\core\sys\posix\unistd.d : src\core\sys\posix\unistd.d
 $(IMPDIR)\core\sys\posix\utime.d : src\core\sys\posix\utime.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\solaris\dlfcn.d : src\core\sys\solaris\dlfcn.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\elf.d : src\core\sys\solaris\elf.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\solaris\execinfo.d : src\core\sys\solaris\execinfo.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\libelf.d : src\core\sys\solaris\libelf.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\link.d : src\core\sys\solaris\link.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf.d : src\core\sys\solaris\sys\elf.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf_386.d : src\core\sys\solaris\sys\elf_386.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf_amd64.d : src\core\sys\solaris\sys\elf_amd64.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf_notes.d : src\core\sys\solaris\sys\elf_notes.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf_SPARC.d : src\core\sys\solaris\sys\elf_SPARC.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elftypes.d : src\core\sys\solaris\sys\elftypes.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\link.d : src\core\sys\solaris\sys\link.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\solaris\sys\procset.d : src\core\sys\solaris\sys\procset.d
@@ -517,6 +550,9 @@ $(IMPDIR)\core\sys\windows\threadaux.d : src\core\sys\windows\threadaux.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\windows\windows.d : src\core\sys\windows\windows.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\windows\winsock2.d : src\core\sys\windows\winsock2.d
 	copy $** $@
 
 $(IMPDIR)\etc\linux\memoryerror.d : src\etc\linux\memoryerror.d
