@@ -75,6 +75,8 @@ SRCS=\
 	src\core\sys\windows\stat.d \
 	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\windows.d \
+	src\core\sys\windows\winbase.d \
+	src\core\sys\windows\ws2tcpip.d \
 	src\core\sys\windows\winsock2.d \
 	\
 	src\gc\bits.d \

@@ -1,4 +1,6 @@
 module core.sys.windows.com;
+nothrow @nogc:
+version(Windows):
 version (Windows):
 
 pragma(lib,"uuid");

@@ -324,6 +324,7 @@ private:
 
 
 // Workaround OPTLINK bug (Bugzilla 8263)
+@nogc nothrow
 extern(Windows) BOOL FixupDebugHeader(HANDLE hProcess, ULONG ActionCode,
                                       ulong CallbackContext, ulong UserContext)
 {

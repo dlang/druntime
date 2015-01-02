@@ -3,6 +3,8 @@
 /// Author: Walter Bright
 
 module core.sys.windows.stat;
+nothrow @nogc:
+version(Windows):
 version (Windows):
 
 extern (C) nothrow @nogc:
