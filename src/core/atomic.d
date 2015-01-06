@@ -294,6 +294,8 @@ else version( AsmX86_32 )
             // 8 Byte CAS on a 32-Bit Processor
             //////////////////////////////////////////////////////////////////
 
+            assert(supportsCMPXCHG8B(), "The CPU does not support the cmpxchg8b instruction");
+
             asm pure nothrow @nogc
             {
                 push EDI;
@@ -459,6 +461,8 @@ else version( AsmX86_32 )
             // 8 Byte Load on a 32-Bit Processor
             //////////////////////////////////////////////////////////////////
 
+            assert(supportsCMPXCHG8B(), "The CPU does not support the cmpxchg8b instruction");
+
             asm pure nothrow @nogc
             {
                 push EDI;
@@ -566,6 +570,8 @@ else version( AsmX86_32 )
             //////////////////////////////////////////////////////////////////
             // 8 Byte Store on a 32-Bit Processor
             //////////////////////////////////////////////////////////////////
+
+            assert(supportsCMPXCHG8B(), "The CPU does not support the cmpxchg8b instruction");
 
             asm pure nothrow @nogc
             {
@@ -702,12 +708,10 @@ else version( AsmX86_64 )
     private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) nothrow
     in
     {
-        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
-        //       4 byte alignment, so use size_t as the align type here.
-        static if( T.sizeof > size_t.sizeof )
-            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) here ) );
-        else
-            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) here ) );
+        assert( atomicValueIsProperlyAligned!(T)( cast(size_t) here ) );
+        
+        static if (T.sizeof == 16) 
+            assert(supportsCMPXCHG16B(), "The CPU does not support 16-byte CAS operations");
     }
     body
     {
@@ -992,6 +996,8 @@ else version( AsmX86_64 )
         }
         else static if( T.sizeof == long.sizeof*2 && has128BitCAS )
         {
+            assert(supportsCMPXCHG16B(), "The CPU does not support the cmpxchg16b instruction");
+            
             //////////////////////////////////////////////////////////////////
             // 16 Byte Load on a 64-Bit Processor
             //////////////////////////////////////////////////////////////////
@@ -1151,6 +1157,9 @@ else version( AsmX86_64 )
             //////////////////////////////////////////////////////////////////
             // 16 Byte Store on a 64-Bit Processor
             //////////////////////////////////////////////////////////////////
+            
+            assert(supportsCMPXCHG16B(), "The CPU does not support the cmpxchg16b instruction");
+            
             version(Win64){
                 asm 
                 {
@@ -1237,6 +1246,38 @@ if(__traits(isFloating, T))
     else
     {
         static assert(0, "Cannot atomically load 80-bit reals.");
+    }
+}
+
+version(assert){
+    private bool supportsCMPXCHG16B() nothrow pure @nogc
+    {
+        enum CMPXCHG16B_BIT = 1<<13;
+        asm nothrow @nogc pure
+        {
+            push RBX;
+            mov EAX, 1; 
+            cpuid;
+            mov EAX, ECX;
+            test EAX, CMPXCHG16B_BIT;
+            setnz AL;
+            pop RBX;
+        }
+    }
+
+    private bool supportsCMPXCHG8B() nothrow pure @nogc
+    {
+        enum CMPXCHG8B_BIT = 1<<8;
+        asm nothrow @nogc pure
+        {
+            push RBX;
+            mov EAX, 1; 
+            cpuid;
+            mov EAX, EDX;
+            test EAX, CMPXCHG8B_BIT;
+            setnz AL;
+            pop RBX;
+        }
     }
 }
 
