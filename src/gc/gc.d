@@ -1154,19 +1154,20 @@ class GC
     }
 
 
+    private auto rootIterImpl(scope int delegate(ref Root) nothrow dg)
+    {
+        gcLock.lock();
+        auto res = gcx.roots.opApply(dg);
+        gcLock.unlock();
+        return res;
+    }
+
     /**
      *
      */
     @property auto rootIter()
     {
-        auto iter(scope int delegate(ref Root) nothrow dg)
-        {
-            gcLock.lock();
-            auto res = gcx.roots.opApply(dg);
-            gcLock.unlock();
-            return res;
-        }
-        return &iter;
+        return &rootIterImpl;
     }
 
 
