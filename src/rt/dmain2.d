@@ -228,6 +228,28 @@ extern (C) CArgs rt_cArgs()
 }
 
 /***********************************
+ * Provide out-of-band access to the Windows HINSTANCE
+ * passed to this program via WinMain/DllMain.
+ */
+
+version (Windows)
+{
+    __gshared HINSTANCE _hInstance = null;
+
+    extern (D) HINSTANCE hInstance() @property
+    {
+        assert(_hInstance !is null, "Instance was not set");
+        return _hInstance;
+    }
+
+    extern(D) void hInstance(HINSTANCE hInstance) @property
+    {
+        assert(_hInstance is null, "Instance was already set");
+        _hInstance = hInstance;
+    }
+}
+
+/***********************************
  * Run the given main function.
  * Its purpose is to wrap the D main()
  * function and catch any unhandled exceptions.
@@ -340,6 +362,11 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         LocalFree(wargs);
         wargs = null;
         wargc = 0;
+
+        // Save the instance as well.
+        // We do not use the WinMain entry point, so just query it using
+        // GetModuleHandle.
+        hInstance = cast(HINSTANCE)GetModuleHandleA(null);
     }
     else version (Posix)
     {
