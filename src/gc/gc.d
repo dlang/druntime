@@ -433,7 +433,7 @@ struct GC
                 auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
                 oldb = pool.getBits(biti);
-                pool.setBits(biti, mask);
+                pool.slSetBits(biti, mask);
             }
             return oldb;
         }
@@ -463,7 +463,7 @@ struct GC
                 auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
                 oldb = pool.getBits(biti);
-                pool.clrBits(biti, mask);
+                pool.slClrBits(biti, mask);
             }
             return oldb;
         }
@@ -670,8 +670,8 @@ struct GC
                     if (bits)
                     {
                         immutable biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
-                        pool.clrBits(biti, ~BlkAttr.NONE);
-                        pool.setBits(biti, bits);
+                        lpool.clrBits(biti, ~BlkAttr.NONE);
+                        lpool.setBits(biti, bits);
                     }
                     alloc_size = newsz * PAGESIZE;
                     return p;
@@ -688,8 +688,8 @@ struct GC
 
                         if (bits)
                         {
-                            pool.clrBits(biti, ~BlkAttr.NONE);
-                            pool.setBits(biti, bits);
+                            pool.slClrBits(biti, ~BlkAttr.NONE);
+                            pool.slSetBits(biti, bits);
                         }
                         else
                         {
@@ -858,12 +858,11 @@ struct GC
         p = sentinel_sub(p);
         biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
-        pool.clrBits(biti, ~BlkAttr.NONE);
-
         if (pool.isLargeObject)              // if large alloc
         {
             assert(bin == B_PAGE);
             auto lpool = cast(LargeObjectPool*) pool;
+            lpool.clrBits(biti, ~BlkAttr.NONE);
 
             // Free pages
             size_t npages = lpool.bPageOffsets[pagenum];
@@ -871,7 +870,10 @@ struct GC
             lpool.freePages(pagenum, npages);
         }
         else
-        {   // Add to free list
+        {
+            (cast(SmallObjectPool*) pool).clrBits(biti, ~BlkAttr.NONE);
+
+            // Add to free list
             List *list = cast(List*)p;
 
             debug (MEMSTOMP) memset(p, 0xF2, binsize[bin]);
@@ -1759,7 +1761,7 @@ struct Gcx
 
         // Return next item from free list
         bucket[bin] = (cast(List*)p).next;
-        auto pool = (cast(List*)p).pool;
+        SmallObjectPool* pool = cast(SmallObjectPool*)(cast(List*)p).pool;
         if (bits)
             pool.setBits((p - pool.baseAddr) >> pool.shiftBy, bits);
         //debug(PRINTF) printf("\tmalloc => %p\n", p);
@@ -2695,110 +2697,6 @@ struct Pool
     }
 
     /**
-     *
-     */
-    void clrBits(size_t biti, uint mask) nothrow
-    {
-        immutable dataIndex =  biti >> GCBits.BITS_SHIFT;
-        immutable bitOffset = biti & GCBits.BITS_MASK;
-        immutable keep = ~(GCBits.BITS_1 << bitOffset);
-
-        if (mask & BlkAttr.FINALIZE && finals.nbits)
-            finals.data[dataIndex] &= keep;
-
-        if (structFinals.nbits && (mask & BlkAttr.STRUCTFINAL))
-            structFinals.data[dataIndex] &= keep;
-
-        if (mask & BlkAttr.NO_SCAN)
-            noscan.data[dataIndex] &= keep;
-        if (mask & BlkAttr.APPENDABLE)
-            appendable.data[dataIndex] &= keep;
-        if (nointerior.nbits && (mask & BlkAttr.NO_INTERIOR))
-            nointerior.data[dataIndex] &= keep;
-    }
-
-    /**
-     *
-     */
-    void setBits(size_t biti, uint mask) nothrow
-    {
-        // Calculate the mask and bit offset once and then use it to
-        // set all of the bits we need to set.
-        immutable dataIndex = biti >> GCBits.BITS_SHIFT;
-        immutable bitOffset = biti & GCBits.BITS_MASK;
-        immutable orWith = GCBits.BITS_1 << bitOffset;
-
-        if (mask & BlkAttr.STRUCTFINAL)
-        {
-            if (!structFinals.nbits)
-                structFinals.alloc(mark.nbits);
-            structFinals.data[dataIndex] |= orWith;
-        }
-
-        if (mask & BlkAttr.FINALIZE)
-        {
-            if (!finals.nbits)
-                finals.alloc(mark.nbits);
-            finals.data[dataIndex] |= orWith;
-        }
-
-        if (mask & BlkAttr.NO_SCAN)
-        {
-            noscan.data[dataIndex] |= orWith;
-        }
-//        if (mask & BlkAttr.NO_MOVE)
-//        {
-//            if (!nomove.nbits)
-//                nomove.alloc(mark.nbits);
-//            nomove.data[dataIndex] |= orWith;
-//        }
-        if (mask & BlkAttr.APPENDABLE)
-        {
-            appendable.data[dataIndex] |= orWith;
-        }
-
-        if (isLargeObject && (mask & BlkAttr.NO_INTERIOR))
-        {
-            if(!nointerior.nbits)
-                nointerior.alloc(mark.nbits);
-            nointerior.data[dataIndex] |= orWith;
-        }
-    }
-
-    void freePageBits(size_t pagenum, in ref PageBits toFree) nothrow
-    {
-        assert(!isLargeObject);
-        assert(!nointerior.nbits); // only for large objects
-
-        import core.internal.traits : staticIota;
-        immutable beg = pagenum * (PAGESIZE / 16 / GCBits.BITS_PER_WORD);
-        foreach (i; staticIota!(0, PageBits.length))
-        {
-            immutable w = toFree[i];
-            if (!w) continue;
-
-            immutable wi = beg + i;
-            freebits.data[wi] |= w;
-            noscan.data[wi] &= ~w;
-            appendable.data[wi] &= ~w;
-        }
-
-        if (finals.nbits)
-        {
-            foreach (i; staticIota!(0, PageBits.length))
-                if (toFree[i])
-                    finals.data[beg + i] &= ~toFree[i];
-        }
-
-        if (structFinals.nbits)
-        {
-            foreach (i; staticIota!(0, PageBits.length))
-                if (toFree[i])
-                    structFinals.data[beg + i] &= ~toFree[i];
-        }
-    }
-
-    /**
      * Given a pointer p in the p, return the pagenum.
      */
     size_t pagenumOf(void *p) const nothrow
@@ -2815,6 +2713,22 @@ struct Pool
     @property bool isFree() const pure nothrow
     {
         return npages == freepages;
+    }
+
+    void slSetBits(size_t biti, uint mask) nothrow
+    {
+        if (isLargeObject)
+            (cast(LargeObjectPool*)&this).setBits(biti, mask);
+        else
+            (cast(SmallObjectPool*)&this).setBits(biti, mask);
+    }
+
+    void slClrBits(size_t biti, uint mask) nothrow
+    {
+        if (isLargeObject)
+            (cast(LargeObjectPool*)&this).clrBits(biti, mask);
+        else
+            (cast(SmallObjectPool*)&this).clrBits(biti, mask);
     }
 
     size_t slGetSize(void* p) nothrow
@@ -2870,6 +2784,71 @@ struct LargeObjectPool
 {
     Pool base;
     alias base this;
+
+    /**
+    *
+    */
+    void clrBits(size_t biti, uint mask) nothrow
+    {
+        immutable dataIndex =  biti >> GCBits.BITS_SHIFT;
+        immutable bitOffset = biti & GCBits.BITS_MASK;
+        immutable keep = ~(GCBits.BITS_1 << bitOffset);
+
+        if (mask & BlkAttr.FINALIZE && finals.nbits)
+            finals.data[dataIndex] &= keep;
+
+        if (structFinals.nbits && (mask & BlkAttr.STRUCTFINAL))
+            structFinals.data[dataIndex] &= keep;
+
+        if (mask & BlkAttr.NO_SCAN)
+            noscan.data[dataIndex] &= keep;
+        if (mask & BlkAttr.APPENDABLE)
+            appendable.data[dataIndex] &= keep;
+        if (nointerior.nbits && (mask & BlkAttr.NO_INTERIOR))
+            nointerior.data[dataIndex] &= keep;
+    }
+
+    /**
+    *
+    */
+    void setBits(size_t biti, uint mask) nothrow
+    {
+        // Calculate the mask and bit offset once and then use it to
+        // set all of the bits we need to set.
+        immutable dataIndex = biti >> GCBits.BITS_SHIFT;
+        immutable bitOffset = biti & GCBits.BITS_MASK;
+        immutable orWith = GCBits.BITS_1 << bitOffset;
+
+        if (mask & BlkAttr.STRUCTFINAL)
+        {
+            if (!structFinals.nbits)
+                structFinals.alloc(mark.nbits);
+            structFinals.data[dataIndex] |= orWith;
+        }
+
+        if (mask & BlkAttr.FINALIZE)
+        {
+            if (!finals.nbits)
+                finals.alloc(mark.nbits);
+            finals.data[dataIndex] |= orWith;
+        }
+
+        if (mask & BlkAttr.NO_SCAN)
+        {
+            noscan.data[dataIndex] |= orWith;
+        }
+        if (mask & BlkAttr.APPENDABLE)
+        {
+            appendable.data[dataIndex] |= orWith;
+        }
+
+        if (mask & BlkAttr.NO_INTERIOR)
+        {
+            if(!nointerior.nbits)
+                nointerior.alloc(mark.nbits);
+            nointerior.data[dataIndex] |= orWith;
+        }
+    }
 
     void updateOffsets(size_t fromWhere) nothrow
     {
@@ -3088,6 +3067,74 @@ struct SmallObjectPool
 {
     Pool base;
     alias base this;
+
+    /**
+    *
+    */
+    void clrBits(size_t biti, uint mask) nothrow
+    {
+        immutable dataIndex =  biti >> GCBits.BITS_SHIFT;
+        immutable bitOffset = biti & GCBits.BITS_MASK;
+        immutable keep = ~(GCBits.BITS_1 << bitOffset);
+
+        if (mask & BlkAttr.FINALIZE && finals.nbits)
+            finals.data[dataIndex] &= keep;
+
+        if (structFinals.nbits && (mask & BlkAttr.STRUCTFINAL))
+            structFinals.data[dataIndex] &= keep;
+
+        if (mask & BlkAttr.NO_SCAN)
+            noscan.data[dataIndex] &= keep;
+        if (mask & BlkAttr.APPENDABLE)
+            appendable.data[dataIndex] &= keep;
+    }
+
+    /**
+    *
+    */
+    void setBits(size_t biti, uint mask) nothrow
+    {
+        // Calculate the mask and bit offset once and then use it to
+        // set all of the bits we need to set.
+        immutable dataIndex = biti >> GCBits.BITS_SHIFT;
+        immutable bitOffset = biti & GCBits.BITS_MASK;
+        immutable orWith = GCBits.BITS_1 << bitOffset;
+
+        if (mask & BlkAttr.STRUCTFINAL)
+        {
+            if (!structFinals.nbits)
+                structFinals.alloc(mark.nbits);
+            structFinals.data[dataIndex] |= orWith;
+        }
+
+        if (mask & BlkAttr.FINALIZE)
+        {
+            if (!finals.nbits)
+                finals.alloc(mark.nbits);
+            finals.data[dataIndex] |= orWith;
+        }
+
+        if (mask & BlkAttr.NO_SCAN)
+        {
+            noscan.data[dataIndex] |= orWith;
+        }
+        if (mask & BlkAttr.APPENDABLE)
+        {
+            appendable.data[dataIndex] |= orWith;
+        }
+    }
+
+    void clrBitsSmallSweep(size_t dataIndex, GCBits.wordtype toClear) nothrow
+    {
+        immutable toKeep = ~toClear;
+        if (finals.nbits)
+            finals.data[dataIndex] &= toKeep;
+        if (structFinals.nbits)
+            structFinals.data[dataIndex] &= toKeep;
+
+        noscan.data[dataIndex] &= toKeep;
+        appendable.data[dataIndex] &= toKeep;
+    }
 
     /**
     * Get size of pointer p in pool.
