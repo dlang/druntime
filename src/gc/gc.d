@@ -2156,8 +2156,10 @@ struct Gcx
         for (n = 0; n < npools; n++)
         {
             pool = pooltable[n];
-            pool.mark.zero();
-            if(!pool.isLargeObject) pool.freebits.zero();
+            if(pool.isLargeObject)
+                pool.mark.zero();
+            else
+                pool.freebits.zero();
         }
 
         debug(COLLECT_PRINTF) printf("Set bits\n");
