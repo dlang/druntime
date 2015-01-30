@@ -2207,49 +2207,8 @@ struct Gcx
             size_t pn;
             Pool* pool = pooltable[n];
 
-            if(pool.isLargeObject)
-                continue;
-
-            for (pn = 0; pn < pool.npages; pn++)
-            {
-                Bins   bin = cast(Bins)pool.pagetable[pn];
-                size_t biti;
-                size_t u;
-
-                if (bin < B_PAGE)
-                {
-                    size_t size = binsize[bin];
-                    size_t bitstride = size / 16;
-                    size_t bitbase = pn * (PAGESIZE / 16);
-                    size_t bittop = bitbase + (PAGESIZE / 16);
-                    byte*  p;
-
-                    biti = bitbase;
-                    for (biti = bitbase; biti < bittop; biti += bitstride)
-                    {
-                        if (!pool.freebits.test(biti))
-                            goto Lnotfree;
-                    }
-                    pool.pagetable[pn] = B_FREE;
-                    if(pn < pool.searchStart) pool.searchStart = pn;
-                    pool.freepages++;
-                    freedSmallPages++;
-                    continue;
-
-                Lnotfree:
-                    p = pool.baseAddr + pn * PAGESIZE;
-                    for (u = 0; u < PAGESIZE; u += size)
-                    {
-                        biti = bitbase + u / 16;
-                        if (!pool.freebits.test(biti))
-                            continue;
-                        auto elem = cast(List *)(p + u);
-                        elem.pool = pool;
-                        *tail[bin] = elem;
-                        tail[bin] = &elem.next;
-                    }
-                }
-            }
+            if(!pool.isLargeObject)
+                recoveredpages += (cast(SmallObjectPool*)pool).recover(tail);
         }
         // terminate tail list
         foreach (ref next; tail)
@@ -3302,6 +3261,54 @@ struct SmallObjectPool
             }
         }
         return freed;
+    }
+
+    size_t recover(ref List**[B_PAGE] tail) nothrow
+    {
+        size_t fpages = freepages;
+        for (size_t pn = 0; pn < npages; pn++)
+        {
+            Bins   bin = cast(Bins)pagetable[pn];
+            size_t biti;
+            size_t u;
+
+            if (bin < B_PAGE)
+            {
+                size_t size = binsize[bin];
+                size_t bitstride = size / 16;
+                size_t bitbase = pn * (PAGESIZE / 16);
+                size_t bittop = bitbase + (PAGESIZE / 16);
+                byte*  p;
+
+                biti = bitbase;
+                for (biti = bitbase; biti < bittop; biti += bitstride)
+                {
+                    if (!freebits.test(biti))
+                        goto Lnotfree;
+                }
+                pagetable[pn] = B_FREE;
+                if (pn < searchStart)
+                    searchStart = pn;
+                freepages++;
+                continue;
+
+            Lnotfree:
+                p = baseAddr + pn * PAGESIZE;
+                List** ptail = tail[bin];
+                for (u = 0; u < PAGESIZE; u += size)
+                {
+                    biti = bitbase + u / 16;
+                    if (!freebits.test(biti))
+                        continue;
+                    auto elem = cast(List *)(p + u);
+                    elem.pool = &base;
+                    *ptail = elem;
+                    ptail = &elem.next;
+                }
+                tail[bin] = ptail;
+            }
+        }
+        return freepages - fpages;
     }
 
     int isMarked(void* addr) nothrow
