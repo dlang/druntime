@@ -2227,102 +2227,11 @@ struct Gcx
 
             if(pool.isLargeObject)
             {
-                for(pn = 0; pn < pool.npages; pn++)
-                {
-                    Bins bin = cast(Bins)pool.pagetable[pn];
-                    if(bin > B_PAGE) continue;
-                    size_t biti = pn;
-
-                    if (!pool.mark.test(biti))
-                    {
-                        byte *p = pool.baseAddr + pn * PAGESIZE;
-                        void* q = sentinel_add(p);
-                        sentinel_Invariant(q);
-
-                        if (pool.finals.nbits && pool.finals.clear(biti))
-                        {
-                            size_t size = pool.bPageOffsets[pn] * PAGESIZE - SENTINEL_EXTRA;
-                            uint attr = pool.getBits(biti);
-                            rt_finalizeFromGC(q, size, attr);
-                        }
-
-                        pool.clrBits(biti, ~BlkAttr.NONE ^ BlkAttr.FINALIZE);
-
-                        debug(COLLECT_PRINTF) printf("\tcollecting big %p\n", p);
-                        log_free(q);
-                        pool.pagetable[pn] = B_FREE;
-                        if(pn < pool.searchStart) pool.searchStart = pn;
-                        freedLargePages++;
-                        pool.freepages++;
-
-                        debug (MEMSTOMP) memset(p, 0xF3, PAGESIZE);
-                        while (pn + 1 < pool.npages && pool.pagetable[pn + 1] == B_PAGEPLUS)
-                        {
-                            pn++;
-                            pool.pagetable[pn] = B_FREE;
-
-                            // Don't need to update searchStart here because
-                            // pn is guaranteed to be greater than last time
-                            // we updated it.
-
-                            pool.freepages++;
-                            freedLargePages++;
-
-                            debug (MEMSTOMP)
-                            {   p += PAGESIZE;
-                                memset(p, 0xF3, PAGESIZE);
-                            }
-                        }
-                        pool.largestFree = pool.freepages; // invalidate
-                    }
-                }
+                freedpages += (cast(LargeObjectPool*)pool).sweep();
             }
             else
             {
-
-                for (pn = 0; pn < pool.npages; pn++)
-                {
-                    Bins bin = cast(Bins)pool.pagetable[pn];
-
-                    if (bin < B_PAGE)
-                    {
-                        immutable size = binsize[bin];
-                        byte *p = pool.baseAddr + pn * PAGESIZE;
-                        byte *ptop = p + PAGESIZE;
-                        immutable base = pn * (PAGESIZE/16);
-                        immutable bitstride = size / 16;
-
-                        bool freeBits;
-                        PageBits toFree;
-
-                        for (size_t i; p < ptop; p += size, i += bitstride)
-                        {
-                            immutable biti = base + i;
-
-                            if (!pool.mark.test(biti))
-                            {
-                                void* q = sentinel_add(p);
-                                sentinel_Invariant(q);
-
-                                if (pool.finals.nbits && pool.finals.test(biti))
-                                    rt_finalizeFromGC(q, size - SENTINEL_EXTRA, pool.getBits(biti));
-
-                                freeBits = true;
-                                toFree.set(i);
-
-                                debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
-                                log_free(sentinel_add(p));
-
-                                debug (MEMSTOMP) memset(p, 0xF3, size);
-
-                                freed += size;
-                            }
-                        }
-
-                        if (freeBits)
-                            pool.freePageBits(pn, toFree);
-                    }
-                }
+                freed += (cast(SmallObjectPool*)pool).sweep();
             }
         }
 
@@ -3117,6 +3026,59 @@ struct LargeObjectPool
             freePages(pn, n);
         }
     }
+
+    size_t sweep() nothrow
+    {
+        size_t fpages = freepages;
+
+        for(size_t pn = 0; pn < npages; pn++)
+        {
+            Bins bin = cast(Bins)pagetable[pn];
+            if(bin > B_PAGE) continue;
+            size_t biti = pn;
+
+            if (!mark.test(biti))
+            {
+                byte *p = baseAddr + pn * PAGESIZE;
+                void* q = sentinel_add(p);
+                sentinel_Invariant(q);
+
+                if (finals.nbits && finals.clear(biti))
+                {
+                    size_t size = bPageOffsets[pn] * PAGESIZE - SENTINEL_EXTRA;
+                    uint attr = getBits(biti);
+                    rt_finalizeFromGC(q, size, attr);
+                }
+
+                clrBits(biti, ~BlkAttr.NONE ^ BlkAttr.FINALIZE);
+
+                debug(COLLECT_PRINTF) printf("\tcollecting big %p\n", p);
+                //log_free(q);
+                pagetable[pn] = B_FREE;
+                if(pn < searchStart) searchStart = pn;
+                freepages++;
+
+                debug (MEMSTOMP) memset(p, 0xF3, PAGESIZE);
+                while (pn + 1 < npages && pagetable[pn + 1] == B_PAGEPLUS)
+                {
+                    pn++;
+                    pagetable[pn] = B_FREE;
+
+                    // Don't need to update searchStart here because
+                    // pn is guaranteed to be greater than last time
+                    // we updated it.
+
+                    freepages++;
+
+                    debug (MEMSTOMP)
+                    {   p += PAGESIZE;
+                        memset(p, 0xF3, PAGESIZE);
+                    }
+                }
+            }
+        }
+        return freepages - fpages;
+    }
 }
 
 
@@ -3239,6 +3201,71 @@ struct SmallObjectPool
         (cast(List *)p).next = null;
         (cast(List *)p).pool = &base;
         return first;
+    }
+
+    size_t sweep() nothrow
+    {
+        size_t freed = 0;
+
+        for (size_t pn = 0; pn < npages; pn++)
+        {
+            Bins bin = cast(Bins)pagetable[pn];
+
+            if (bin < B_PAGE)
+            {
+                auto   size = binsize[bin];
+                byte *p = baseAddr + pn * PAGESIZE;
+                byte *ptop = p + PAGESIZE;
+                size_t biti = pn * (PAGESIZE/16);
+                size_t bitstride = size / 16;
+
+                GCBits.wordtype toClear;
+                size_t clearStart = biti >> GCBits.BITS_SHIFT;
+                size_t clearIndex;
+
+                for (; p < ptop; p += size, biti += bitstride, clearIndex += bitstride)
+                {
+                    if(clearIndex > GCBits.BITS_PER_WORD - 1)
+                    {
+                        if(toClear)
+                        {
+                            clrBitsSmallSweep(clearStart, toClear);
+                            toClear = 0;
+                        }
+
+                        clearStart = biti >> GCBits.BITS_SHIFT;
+                        clearIndex = biti & GCBits.BITS_MASK;
+                    }
+
+                    if (!mark.test(biti))
+                    {
+                        void* q = sentinel_add(p);
+                        sentinel_Invariant(q);
+
+                        freebits.set(biti);
+
+                        if (finals.nbits && finals.test(biti))
+                            rt_finalizeFromGC(q, size - SENTINEL_EXTRA, getBits(biti));
+
+                        toClear |= GCBits.BITS_1 << clearIndex;
+
+                        List *list = cast(List *)p;
+                        debug(COLLECT_PRINTF) printf("\tcollecting %p\n", list);
+                        //log_free(sentinel_add(list));
+
+                        debug (MEMSTOMP) memset(p, 0xF3, size);
+
+                        freed += size;
+                    }
+                }
+
+                if(toClear)
+                {
+                    clrBitsSmallSweep(clearStart, toClear);
+                }
+            }
+        }
+        return freed;
     }
 }
 
