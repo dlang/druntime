@@ -747,37 +747,7 @@ struct GC
             if (!pool || !pool.isLargeObject)
                 return 0;
 
-            auto lpool = cast(LargeObjectPool*) pool;
-            auto psize = lpool.getSize(p);   // get allocated size
-            if (psize < PAGESIZE)
-                return 0;                   // cannot extend buckets
-
-            auto psz = psize / PAGESIZE;
-            auto minsz = (minsize + PAGESIZE - 1) / PAGESIZE;
-            auto maxsz = (maxsize + PAGESIZE - 1) / PAGESIZE;
-
-            auto pagenum = lpool.pagenumOf(p);
-
-            size_t sz;
-            for (sz = 0; sz < maxsz; sz++)
-            {
-                auto i = pagenum + psz + sz;
-                if (i == lpool.npages)
-                    break;
-                if (lpool.pagetable[i] != B_FREE)
-                {   if (sz < minsz)
-                        return 0;
-                    break;
-                }
-            }
-            if (sz < minsz)
-                return 0;
-            debug (MEMSTOMP) memset(pool.baseAddr + (pagenum + psz) * PAGESIZE, 0xF0, sz * PAGESIZE);
-            memset(lpool.pagetable + pagenum + psz, B_PAGEPLUS, sz);
-            lpool.updateOffsets(pagenum);
-            lpool.freepages -= sz;
-            gcx.usedLargePages += sz;
-            return (psz + sz) * PAGESIZE;
+            return (cast(LargeObjectPool*) pool).extend(p, minsize, maxsize);
         }
     }
 
@@ -2893,6 +2863,41 @@ struct LargeObjectPool
             pagetable[i] = B_FREE;
         }
         largestFree = freepages; // invalidate
+    }
+
+    size_t extend(void* p, size_t minsize, size_t maxsize) nothrow
+    {
+        auto psize = getSize(p);   // get allocated size
+        if (psize < PAGESIZE)
+            return 0;                   // cannot extend buckets
+
+        auto psz = psize / PAGESIZE;
+        auto minsz = (minsize + PAGESIZE - 1) / PAGESIZE;
+        auto maxsz = (maxsize + PAGESIZE - 1) / PAGESIZE;
+
+        auto pagenum = pagenumOf(p);
+
+        size_t sz;
+        for (sz = 0; sz < maxsz; sz++)
+        {
+            auto i = pagenum + psz + sz;
+            if (i == npages)
+                break;
+            if (pagetable[i] != B_FREE)
+            {
+                if (sz < minsz)
+                    return 0;
+                break;
+            }
+        }
+        if (sz < minsz)
+            return 0;
+
+        debug (MEMSTOMP) memset(pool.baseAddr + (pagenum + psz) * PAGESIZE, 0xF0, sz * PAGESIZE);
+        memset(pagetable + pagenum + psz, B_PAGEPLUS, sz);
+        updateOffsets(pagenum);
+        freepages -= sz;
+        return (psz + sz) * PAGESIZE;
     }
 
     /**
