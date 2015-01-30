@@ -851,8 +851,6 @@ struct GC
         p = sentinel_sub(p);
         biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
 
-        pool.clrBits(biti, ~BlkAttr.NONE);
-
         if (pool.isLargeObject)              // if large alloc
         {
             assert(bin == B_PAGE);
@@ -1739,8 +1737,8 @@ struct Gcx
         // Return next item from free list
         bucket[bin] = (cast(List*)p).next;
         auto pool = (cast(List*)p).pool;
-        if (bits)
-            pool.setBits((p - pool.baseAddr) >> pool.shiftBy, bits);
+        pool.clrBits((p - pool.baseAddr) >> pool.shiftBy, ~bits);
+        pool.setBits((p - pool.baseAddr) >> pool.shiftBy, bits);
         //debug(PRINTF) printf("\tmalloc => %p\n", p);
         debug (MEMSTOMP) memset(p, 0xF0, size);
         return p;
@@ -1824,8 +1822,8 @@ struct Gcx
         alloc_size = npages * PAGESIZE;
         //debug(PRINTF) printf("\tp = %p\n", p);
 
-        if (bits)
-            pool.setBits(pn, bits);
+        pool.clrBits(pn, ~bits);
+        pool.setBits(pn, bits);
         return p;
     }
 
@@ -2190,8 +2188,6 @@ struct Gcx
                             rt_finalizeFromGC(q, size, attr);
                         }
 
-                        pool.clrBits(biti, ~BlkAttr.NONE ^ BlkAttr.FINALIZE);
-
                         debug(COLLECT_PRINTF) printf("\tcollecting big %p\n", p);
                         log_free(q);
                         pool.pagetable[pn] = B_FREE;
@@ -2235,24 +2231,8 @@ struct Gcx
                         size_t biti = pn * (PAGESIZE/16);
                         size_t bitstride = size / 16;
 
-                        GCBits.wordtype toClear;
-                        size_t clearStart = biti >> GCBits.BITS_SHIFT;
-                        size_t clearIndex;
-
-                        for (; p < ptop; p += size, biti += bitstride, clearIndex += bitstride)
+                        for (; p < ptop; p += size, biti += bitstride)
                         {
-                            if(clearIndex > GCBits.BITS_PER_WORD - 1)
-                            {
-                                if(toClear)
-                                {
-                                    pool.clrBitsSmallSweep(clearStart, toClear);
-                                    toClear = 0;
-                                }
-
-                                clearStart = biti >> GCBits.BITS_SHIFT;
-                                clearIndex = biti & GCBits.BITS_MASK;
-                            }
-
                             if (!pool.mark.test(biti))
                             {
                                 void* q = sentinel_add(p);
@@ -2260,10 +2240,8 @@ struct Gcx
 
                                 pool.freebits.set(biti);
 
-                                if (pool.finals.nbits && pool.finals.test(biti))
+                                if (pool.finals.nbits && pool.finals.clear(biti))
                                     rt_finalizeFromGC(q, size - SENTINEL_EXTRA, pool.getBits(biti));
-
-                                toClear |= GCBits.BITS_1 << clearIndex;
 
                                 List *list = cast(List *)p;
                                 debug(COLLECT_PRINTF) printf("\tcollecting %p\n", list);
@@ -2273,11 +2251,6 @@ struct Gcx
 
                                 freed += size;
                             }
-                        }
-
-                        if(toClear)
-                        {
-                            pool.clrBitsSmallSweep(clearStart, toClear);
                         }
                     }
                 }
@@ -3031,7 +3004,7 @@ struct LargeObjectPool
 
             rt_finalizeFromGC(p, size, attr);
 
-            clrBits(biti, ~BlkAttr.NONE);
+            clrBits(biti, BlkAttr.FINALIZE);
 
             if (pn < searchStart)
                 searchStart = pn;
@@ -3103,24 +3076,8 @@ struct SmallObjectPool
             auto biti = pn * (PAGESIZE/16);
             immutable bitstride = size / 16;
 
-            GCBits.wordtype toClear;
-            size_t clearStart = biti >> GCBits.BITS_SHIFT;
-            size_t clearIndex;
-
-            for (; p < ptop; p += size, biti += bitstride, clearIndex += bitstride)
+            for (; p < ptop; p += size, biti += bitstride)
             {
-                if (clearIndex > GCBits.BITS_PER_WORD - 1)
-                {
-                    if (toClear)
-                    {
-                        clrBitsSmallSweep(clearStart, toClear);
-                        toClear = 0;
-                    }
-
-                    clearStart = biti >> GCBits.BITS_SHIFT;
-                    clearIndex = biti & GCBits.BITS_MASK;
-                }
-
                 if (!finals.test(biti))
                     continue;
 
@@ -3131,19 +3088,13 @@ struct SmallObjectPool
                     continue;
 
                 rt_finalizeFromGC(q, size, attr);
-
-                toClear |= GCBits.BITS_1 << clearIndex;
+                clrBits(biti, BlkAttr.FINALIZE);
 
                 debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
                 //log_free(sentinel_add(p));
 
                 debug (MEMSTOMP) memset(p, 0xF3, size);
                 freebits.set(biti);
-            }
-
-            if (toClear)
-            {
-                clrBitsSmallSweep(clearStart, toClear);
             }
         }
     }
