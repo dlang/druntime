@@ -791,9 +791,7 @@ struct GC
         else
         {
             auto spool = (cast(SmallObjectPool*) pool);
-            size_t biti = cast(size_t)(p - pool.baseAddr) >> spool.shiftBy;
-            spool.clrBits(biti, ~BlkAttr.NONE);
-            spool.freebits.set(biti);
+            spool.freeObject(p);
 
             // Add to free list
             List *list = cast(List*)p;
@@ -2040,9 +2038,9 @@ struct Gcx
             Pool* pool = pooltable[n];
 
             if(pool.isLargeObject)
-                (cast(LargeObjectPool*) pool).mark.zero();
+                (cast(LargeObjectPool*) pool).prepare();
             else
-                (cast(SmallObjectPool*) pool).mark.copy(&(cast(SmallObjectPool*) pool).freebits);
+                (cast(SmallObjectPool*) pool).prepare();
         }
     }
 
@@ -2944,6 +2942,11 @@ struct LargeObjectPool
         }
     }
 
+    void prepare() nothrow
+    {
+        mark.zero();
+    }
+
     size_t sweep() nothrow
     {
         size_t fpages = freepages;
@@ -3327,6 +3330,18 @@ struct SmallObjectPool
         freebits.clear(biti);
         if (bits)
             setBits(biti, bits);
+    }
+
+    void freeObject(void* p) nothrow
+    {
+        size_t biti = cast(size_t)(p - baseAddr) >> shiftBy;
+        clrBits(biti, ~BlkAttr.NONE);
+        freebits.set(biti);
+    }
+
+    void prepare() nothrow
+    {
+        mark.copy(&freebits);
     }
 
     size_t sweep() nothrow
