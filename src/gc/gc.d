@@ -2362,7 +2362,7 @@ struct Gcx
     }
 
     /**
-     * Returns true if the addr lies within a marked block.
+     * Returns IsMarked.yes if the addr lies within a marked block.
      *
      * Warning! This should only be called while the world is stopped inside
      * the fullcollect function.
@@ -2373,27 +2373,8 @@ struct Gcx
         // mark bit is clear.
         auto pool = findPool(addr);
         if(pool)
-        {
-            auto offset = cast(size_t)(addr - pool.baseAddr);
-            auto pn = offset / PAGESIZE;
-            auto bins = cast(Bins)pool.pagetable[pn];
-            size_t biti = void;
-            if(bins <= B_PAGE)
-            {
-                biti = (offset & notbinsize[bins]) >> pool.shiftBy;
-            }
-            else if(bins == B_PAGEPLUS)
-            {
-                pn -= pool.bPageOffsets[pn];
-                biti = pn * (PAGESIZE >> pool.shiftBy);
-            }
-            else // bins == B_FREE
-            {
-                assert(bins == B_FREE);
-                return IsMarked.no;
-            }
-            return pool.mark.test(biti) ? IsMarked.yes : IsMarked.no;
-        }
+            return pool.slIsMarked(addr);
+
         return IsMarked.unknown;
     }
 
@@ -2723,6 +2704,14 @@ struct Pool
             return (cast(SmallObjectPool*)&this).getInfo(p);
     }
 
+    int slIsMarked(void* p) nothrow
+    {
+        if (isLargeObject)
+            return (cast(LargeObjectPool*)&this).isMarked(p);
+        else
+            return (cast(SmallObjectPool*)&this).isMarked(p);
+    }
+
 
     void Invariant() const {}
 
@@ -3036,6 +3025,23 @@ struct LargeObjectPool
         }
         return freepages - fpages;
     }
+
+    int isMarked(void* addr) nothrow
+    {
+        auto offset = cast(size_t)(addr - baseAddr);
+        auto pn = offset / PAGESIZE;
+        auto bins = cast(Bins)pagetable[pn];
+        if(bins == B_PAGEPLUS)
+        {
+            pn -= bPageOffsets[pn];
+        }
+        else if(bins != B_PAGE)
+        {
+            assert(bins == B_FREE);
+            return IsMarked.no;
+        }
+        return mark.test(pn) ? IsMarked.yes : IsMarked.no;
+    }
 }
 
 
@@ -3291,6 +3297,20 @@ struct SmallObjectPool
             }
         }
         return freed;
+    }
+
+    int isMarked(void* addr) nothrow
+    {
+        auto offset = cast(size_t)(addr - baseAddr);
+        auto pn = offset / PAGESIZE;
+        auto bins = cast(Bins)pagetable[pn];
+        if(bins < B_PAGE)
+        {
+            size_t biti = (offset & notbinsize[bins]) >> shiftBy;
+            return mark.test(biti) ? IsMarked.yes : IsMarked.no;
+        }
+        assert(bins == B_FREE);
+        return IsMarked.no;
     }
 }
 
