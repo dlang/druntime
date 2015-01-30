@@ -632,11 +632,8 @@ struct GC
 
                     lpool.updateOffsets(pagenum);
                     if (bits)
-                    {
-                        immutable biti = cast(size_t)(p - pool.baseAddr) >> lpool.shiftBy;
-                        lpool.clrBits(biti, ~BlkAttr.NONE);
-                        lpool.setBits(biti, bits);
-                    }
+                        lpool.updateAttr(p, bits);
+
                     alloc_size = newsz * PAGESIZE;
                     return p;
                 }
@@ -756,7 +753,6 @@ struct GC
         Pool*  pool;
         size_t pagenum;
         Bins   bin;
-        size_t biti;
 
         // Find which page it is in
         pool = gcx.findPool(p);
@@ -784,6 +780,7 @@ struct GC
         {
             assert(bin == B_PAGE);
             auto lpool = cast(LargeObjectPool*) pool;
+            size_t biti = cast(size_t)(p - pool.baseAddr) >> lpool.shiftBy;
             lpool.clrBits(biti, ~BlkAttr.NONE);
 
             // Free pages
@@ -794,7 +791,7 @@ struct GC
         else
         {
             auto spool = (cast(SmallObjectPool*) pool);
-            biti = cast(size_t)(p - pool.baseAddr) >> spool.shiftBy;
+            size_t biti = cast(size_t)(p - pool.baseAddr) >> spool.shiftBy;
             spool.clrBits(biti, ~BlkAttr.NONE);
             spool.freebits.set(biti);
 
@@ -1661,10 +1658,7 @@ struct Gcx
         // Return next item from free list
         bucket[bin] = (cast(List*)p).next;
         SmallObjectPool* pool = cast(SmallObjectPool*)(cast(List*)p).pool;
-        size_t biti = (p - pool.baseAddr) >> pool.shiftBy;
-        pool.freebits.clear(biti);
-        if (bits)
-            pool.setBits(biti, bits);
+        pool.allocObject(p, bits);
         //debug(PRINTF) printf("\tmalloc => %p\n", p);
         debug (MEMSTOMP) memset(p, 0xF0, alloc_size);
         return p;
@@ -1689,7 +1683,7 @@ struct Gcx
                 if (!p.isLargeObject || p.freepages < npages)
                     continue;
                 auto lpool = cast(LargeObjectPool*) p;
-                if ((pn = lpool.allocPages(npages)) == OPFAIL)
+                if ((pn = lpool.allocPages(npages, bits)) == OPFAIL)
                     continue;
                 pool = lpool;
                 return true;
@@ -1701,7 +1695,7 @@ struct Gcx
         {
             pool = cast(LargeObjectPool*) newPool(npages, true);
             if (!pool) return false;
-            pn = pool.allocPages(npages);
+            pn = pool.allocPages(npages, bits);
             assert(pn != OPFAIL);
             return true;
         }
@@ -1730,24 +1724,12 @@ struct Gcx
         }
         assert(pool);
 
-        debug(PRINTF) printFreeInfo(&pool.base);
-        pool.pagetable[pn] = B_PAGE;
-        if (npages > 1)
-            memset(&pool.pagetable[pn + 1], B_PAGEPLUS, npages - 1);
-        pool.updateOffsets(pn);
-        usedLargePages += npages;
-        pool.freepages -= npages;
-
-        debug(PRINTF) printFreeInfo(&pool.base);
-
         auto p = pool.baseAddr + pn * PAGESIZE;
         debug(PRINTF) printf("Got large alloc:  %p, pt = %d, np = %d\n", p, pool.pagetable[pn], npages);
         debug (MEMSTOMP) memset(p, 0xF1, size);
         alloc_size = npages * PAGESIZE;
         //debug(PRINTF) printf("\tp = %p\n", p);
 
-        if (bits)
-            pool.setBits(pn, bits);
         return p;
     }
 
@@ -2470,30 +2452,6 @@ struct Pool
             (cast(SmallObjectPool*)&this).Dtor();
     }
 
-    uint slGetBits(size_t biti) nothrow
-    {
-        if (isLargeObject)
-            return (cast(LargeObjectPool*)&this).getBits(biti);
-        else
-            return (cast(SmallObjectPool*)&this).getBits(biti);
-    }
-
-    void slSetBits(size_t biti, uint mask) nothrow
-    {
-        if (isLargeObject)
-            (cast(LargeObjectPool*)&this).setBits(biti, mask);
-        else
-            (cast(SmallObjectPool*)&this).setBits(biti, mask);
-    }
-
-    void slClrBits(size_t biti, uint mask) nothrow
-    {
-        if (isLargeObject)
-            (cast(LargeObjectPool*)&this).clrBits(biti, mask);
-        else
-            (cast(SmallObjectPool*)&this).clrBits(biti, mask);
-    }
-
     size_t slGetSize(void* p) nothrow
     {
         if (isLargeObject)
@@ -2788,7 +2746,7 @@ struct LargeObjectPool
      * Allocate n pages from Pool.
      * Returns OPFAIL on failure.
      */
-    size_t allocPages(size_t n) nothrow
+    size_t allocPages(size_t n, uint bits) nothrow
     {
         if(largestFree < n || searchStart + n > npages)
             return OPFAIL;
@@ -3361,6 +3319,14 @@ struct SmallObjectPool
         (cast(List *)p).next = null;
         (cast(List *)p).pool = &base;
         return first;
+    }
+
+    void allocObject(void* p, uint bits) nothrow
+    {
+        size_t biti = (p - baseAddr) >> shiftBy;
+        freebits.clear(biti);
+        if (bits)
+            setBits(biti, bits);
     }
 
     size_t sweep() nothrow
