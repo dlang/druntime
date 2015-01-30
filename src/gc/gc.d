@@ -872,6 +872,7 @@ struct GC
         else
         {
             (cast(SmallObjectPool*) pool).clrBits(biti, ~BlkAttr.NONE);
+            pool.freebits.set(biti);
 
             // Add to free list
             List *list = cast(List*)p;
@@ -1762,8 +1763,10 @@ struct Gcx
         // Return next item from free list
         bucket[bin] = (cast(List*)p).next;
         SmallObjectPool* pool = cast(SmallObjectPool*)(cast(List*)p).pool;
+        size_t biti = (p - pool.baseAddr) >> pool.shiftBy;
+        pool.freebits.clear(biti);
         if (bits)
-            pool.setBits((p - pool.baseAddr) >> pool.shiftBy, bits);
+            pool.setBits(biti, bits);
         //debug(PRINTF) printf("\tmalloc => %p\n", p);
         debug (MEMSTOMP) memset(p, 0xF0, alloc_size);
         return p;
@@ -2152,40 +2155,13 @@ struct Gcx
     // collection step 1: prepare freebits and mark bits
     void prepare() nothrow
     {
-        size_t n;
-        Pool*  pool;
-
-        for (n = 0; n < npools; n++)
+        for (size_t n = 0; n < npools; n++)
         {
-            pool = pooltable[n];
+            Pool* pool = pooltable[n];
             if(pool.isLargeObject)
                 pool.mark.zero();
             else
-                pool.freebits.zero();
-        }
-
-        debug(COLLECT_PRINTF) printf("Set bits\n");
-
-        // Mark each free entry, so it doesn't get scanned
-        for (n = 0; n < B_PAGE; n++)
-        {
-            for (List *list = bucket[n]; list; list = list.next)
-            {
-                pool = list.pool;
-                assert(pool);
-                pool.freebits.set(cast(size_t)(cast(byte*)list - pool.baseAddr) / 16);
-            }
-        }
-
-        debug(COLLECT_PRINTF) printf("Marked free entries.\n");
-
-        for (n = 0; n < npools; n++)
-        {
-            pool = pooltable[n];
-            if(!pool.isLargeObject)
-            {
                 pool.mark.copy(&pool.freebits);
-            }
         }
     }
 
