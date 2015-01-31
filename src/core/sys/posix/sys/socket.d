@@ -1078,9 +1078,9 @@ else version( CRuntime_Bionic )
 
         struct cmsghdr
         {
-            uint cmsg_len;
-            int  cmsg_level;
-            int  cmsg_type;
+            size_t cmsg_len;
+            int    cmsg_level;
+            int    cmsg_type;
         }
 
         enum
