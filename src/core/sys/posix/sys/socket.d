@@ -132,8 +132,10 @@ int     sockatmark(int);
 int     socketpair(int, int, int, ref int[2]);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
+    // Some of the constants below and from the Bionic section are really from
+    // the linux kernel headers.
     alias uint   socklen_t;
     alias ushort sa_family_t;
 
@@ -1005,7 +1007,7 @@ else version (Solaris)
     int sockatmark(int);
     int socketpair(int, int, int, ref int[2]);
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     alias int    socklen_t;
     alias ushort sa_family_t;
@@ -1182,7 +1184,7 @@ else
 AF_INET6
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum
     {
@@ -1210,7 +1212,7 @@ else version (Solaris)
         AF_INET6 = 26,
     }
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     enum
     {
@@ -1229,7 +1231,7 @@ else
 SOCK_RAW
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum
     {
@@ -1257,7 +1259,7 @@ else version (Solaris)
         SOCK_RAW = 4,
     }
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     enum
     {
