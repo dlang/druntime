@@ -1271,65 +1271,72 @@ struct Root
 
 struct BinData
 {
-    ushort size;      // size of allocation
+    uint   size;      // size of allocation
     ushort objects;   // number of objects
     ushort bitoff;    // page offset of GCBits
-    ushort[256] base; // map (page offset >> 4) to base address of allocation
-}
+};
 
-BinData ctfeCalcBinData(ushort size, ushort objects, ushort bitoff)
-{
-    assert(size >= 16 && size <= 2048 && (size & 15) == 0); // must be aligned to multiple of 16
-    assert(size * objects <= bitoff);
-    version(newBins) assert(bitoff + objects <= PAGESIZE);
-
-    BinData data;
-    data.size = size;
-    data.objects = objects;
-    data.bitoff = bitoff;
-
-    ushort size16 = size >> 4;
-    for (int n = 0; n < 256; n++)
-        data.base[n] = cast(ushort) ((n / size16) * size);
-
-    return data;
-}
 
 version(newBins)
 immutable BinData[B_NUMBUCKETS] bindata =
 [
-    ctfeCalcBinData (16, 240, PAGESIZE - 256),
-    ctfeCalcBinData (32, 124, PAGESIZE - 128),
-    ctfeCalcBinData (64,  63, PAGESIZE - 64),
-    ctfeCalcBinData (112, 36, PAGESIZE - 64),
-    ctfeCalcBinData (224, 18, PAGESIZE - 64),
-    ctfeCalcBinData (448,  9, PAGESIZE - 64),
-    ctfeCalcBinData (1008, 4, PAGESIZE - 64),
-    ctfeCalcBinData (2032, 2, PAGESIZE - 32),
+    BinData (16, 240, PAGESIZE - 256),
+    BinData (32, 124, PAGESIZE - 128),
+    BinData (64,  63, PAGESIZE - 64),
+    BinData (112, 36, PAGESIZE - 64),
+    BinData (224, 18, PAGESIZE - 64),
+    BinData (448,  9, PAGESIZE - 64),
+    BinData (1008, 4, PAGESIZE - 64),
+    BinData (2032, 2, PAGESIZE - 32),
 ];
 else
 immutable BinData[B_NUMBUCKETS] bindata =
 [
-    ctfeCalcBinData (16, 256, PAGESIZE),
-    ctfeCalcBinData (32, 128, PAGESIZE),
-    ctfeCalcBinData (64,  64, PAGESIZE),
-    ctfeCalcBinData (128, 32, PAGESIZE),
-    ctfeCalcBinData (256, 16, PAGESIZE),
-    ctfeCalcBinData (512,  8, PAGESIZE),
-    ctfeCalcBinData (1024, 4, PAGESIZE),
-    ctfeCalcBinData (2048, 2, PAGESIZE),
+    BinData (16, 256, PAGESIZE),
+    BinData (32, 128, PAGESIZE),
+    BinData (64,  64, PAGESIZE),
+    BinData (128, 32, PAGESIZE),
+    BinData (256, 16, PAGESIZE),
+    BinData (512,  8, PAGESIZE),
+    BinData (1024, 4, PAGESIZE),
+    BinData (2048, 2, PAGESIZE),
 ];
+
+ushort[256][B_NUMBUCKETS] ctfeCalcBinBase()
+{
+    ushort[256][B_NUMBUCKETS] base;
+
+    foreach(ref i, data; bindata)
+    {
+        assert(data.size >= 16 && data.size <= 2048 && (data.size & 15) == 0); // must be aligned to multiple of 16
+        assert(data.size * data.objects <= data.bitoff);
+        version(newBins) assert(data.bitoff + data.objects <= PAGESIZE);
+
+        uint size16 = data.size >> 4;
+        for (int n = 0; n < 256; n++)
+            base[i][n] = cast(ushort) ((n / size16) * data.size);
+    }
+    return base;
+}
+
+ushort[256][B_NUMBUCKETS] binbase = ctfeCalcBinBase();
+
+size_t getOffsetPage(size_t offset, uint bin) nothrow
+{
+//    return (offset & notbinsize[bin]);
+    return binbase[bin][(offset & (PAGESIZE - 1)) >> 4];
+}
 
 size_t getOffsetBase(size_t offset, uint bin) nothrow
 {
-    return (offset & notbinsize[bin]);
-//    return (offset & ~(PAGESIZE - 1)) + bindata[bin].base[(offset & (PAGESIZE - 1)) >> 4];
+    //    return (offset & notbinsize[bin]);
+    return (offset & ~(PAGESIZE - 1)) + getOffsetPage(offset, bin);
 }
 
 uint getBinSize(uint bin) nothrow
 {
-    //return bindata[bin].size;
-    return binsize[bin];
+    return bindata[bin].size;
+    // return binsize[bin];
 }
 
 enum MAX_BINSIZE = bindata[$-1].size;
@@ -1965,7 +1972,8 @@ struct Gcx
             //if (log) debug(PRINTF) printf("\tmark %p\n", p);
             if (p >= minAddr && p < maxAddr)
             {
-                if ((cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) == pcache)
+                size_t pagebase = cast(size_t)p & ~cast(size_t)(PAGESIZE-1);
+                if (pagebase == pcache)
                     continue;
 
                 Pool* pool = void;
@@ -1985,6 +1993,7 @@ struct Gcx
 
                         if (low > high)
                             continue Lnext;
+                        }
                     }
                 }
                 else
@@ -2014,6 +2023,7 @@ struct Gcx
                         stack[stackPos++] = Range(base, base + binsize[bin]);
                         if (stackPos == stack.length)
                             break;
+                        }
                     }
                 }
                 else if (bin == B_PAGE)
@@ -2036,6 +2046,7 @@ struct Gcx
                         stack[stackPos++] = Range(base, base + pool.bPageOffsets[pn] * PAGESIZE);
                         if (stackPos == stack.length)
                             break;
+                        }
                     }
                 }
                 else if (bin == B_PAGEPLUS)
