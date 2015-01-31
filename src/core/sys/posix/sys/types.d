@@ -728,7 +728,20 @@ else version (Solaris)
 }
 else version( CRuntime_Bionic )
 {
-    version(X86)
+    version(D_LP64)
+    {
+        struct pthread_attr_t
+        {
+            uint    flags;
+            void*   stack_base;
+            size_t  stack_size;
+            size_t  guard_size;
+            int     sched_policy;
+            int     sched_priority;
+            char[16] __reserved;
+        }
+    }
+    else
     {
         struct pthread_attr_t
         {
