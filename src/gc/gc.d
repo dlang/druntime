@@ -495,7 +495,7 @@ struct GC
             sentinel_init(p, size);
             alloc_size = size;
         }
-        gcx.log_malloc(p, size);
+        gcx.log_malloc(p, size, bits);
 
         return p;
     }
@@ -769,15 +769,12 @@ struct GC
         pagenum = pool.pagenumOf(p);
 
         debug(PRINTF) printf("pool base = %p, PAGENUM = %d of %d, bin = %d\n", pool.baseAddr, pagenum, pool.npages, pool.pagetable[pagenum]);
-        debug(PRINTF) if(pool.isLargeObject) printf("Block size = %d\n", pool.bPageOffsets[pagenum]);
 
         bin = cast(Bins)pool.pagetable[pagenum];
 
         // Verify that the pointer is at the beginning of a block,
         //  no action should be taken if p is an interior pointer
         if (bin > B_PAGE) // B_PAGEPLUS or B_FREE
-            return;
-        if ((sentinel_sub(p) - pool.baseAddr) & (getBinSize(bin) - 1))
             return;
 
         sentinel_Invariant(p);
@@ -786,7 +783,10 @@ struct GC
         if (pool.isLargeObject)              // if large alloc
         {
             assert(bin == B_PAGE);
+            if (p != pool.baseAddr + pagenum * PAGESIZE)
+                return;
             auto lpool = cast(LargeObjectPool*) pool;
+            debug(PRINTF) printf("Block pages = %d\n", lpool.bPageOffsets[pagenum]);
             size_t biti = cast(size_t)(p - pool.baseAddr) >> lpool.shiftBy;
             lpool.clrBits(biti, ~BlkAttr.NONE);
 
@@ -797,7 +797,11 @@ struct GC
         }
         else
         {
+            void* base = pool.baseAddr + getOffsetBase(p - pool.baseAddr, bin);
+            if (p != base)
+                return;
             auto spool = (cast(SmallObjectPool*) pool);
+            debug(PRINTF) printf("Block size = %d\n", getBinSize(bin));
             spool.freeObject(p);
 
             // Add to free list
@@ -1316,7 +1320,7 @@ BinBase[256][B_NUMBUCKETS] ctfeCalcBinBase()
         for (int n = 0; n < bitoff16; n++)
         {
             base[i][n].base = cast(ushort) ((n / size16) * data.size);
-            base[i][n].bitoff = cast(ushort) (bitoff16 + n / size16);
+            base[i][n].bitoff = cast(ushort) (data.bitoff + n / size16);
         }
         for (int n = bitoff16; n < 256; n++)
             base[i][n] = base[i][bitoff16 - 1];
@@ -2320,9 +2324,9 @@ struct Gcx
         }
 
 
-        void log_malloc(void *p, size_t size) nothrow
+        void log_malloc(void *p, size_t size, uint bits) nothrow
         {
-            //debug(PRINTF) printf("+log_malloc(p = %p, size = %zd)\n", p, size);
+            debug(PRINTF) printf("+log_malloc(p = %p, size = %lld, bits = %x)\n", p, cast(long)size, bits);
             Log log;
 
             log.p = p;
@@ -2335,13 +2339,13 @@ struct Gcx
             GC.file = null;
 
             current.push(log);
-            //debug(PRINTF) printf("-log_malloc()\n");
+            debug(PRINTF) printf("-log_malloc()\n");
         }
 
 
         void log_free(void *p) nothrow
         {
-            //debug(PRINTF) printf("+log_free(%p)\n", p);
+            debug(PRINTF) printf("+log_free(%p)\n", p);
             auto i = current.find(p);
             if (i == OPFAIL)
             {
@@ -2349,13 +2353,13 @@ struct Gcx
             }
             else
                 current.remove(i);
-            //debug(PRINTF) printf("-log_free()\n");
+            debug(PRINTF) printf("-log_free()\n");
         }
 
 
         void log_collect() nothrow
         {
-            //debug(PRINTF) printf("+log_collect()\n");
+            debug(PRINTF) printf("+log_collect()\n");
             // Print everything in current that is not in prev
 
             debug(PRINTF) printf("New pointers this cycle: --------------------------------\n");
@@ -2415,7 +2419,7 @@ struct Gcx
     else
     {
         void log_init() nothrow { }
-        void log_malloc(void *p, size_t size) nothrow { }
+        void log_malloc(void *p, size_t size, uint bits) nothrow { }
         void log_free(void *p) nothrow { }
         void log_collect() nothrow { }
         void log_parent(void *p, void *parent) nothrow { }
@@ -3138,7 +3142,7 @@ struct SmallObjectPool
     */
     ubyte* getBits(size_t pn, Bins bin, uint pageOff) nothrow
     {
-        return cast(ubyte*)baseAddr + pn * PAGESIZE + binbase[bin][pageOff].bitoff;
+        return cast(ubyte*)baseAddr + pn * PAGESIZE + binbase[bin][pageOff >> 4].bitoff;
     }
 
     mixin template PageBinVars()
@@ -3313,14 +3317,17 @@ struct SmallObjectPool
         void* p = baseAddr + pn * PAGESIZE;
         void* ptop = p + bindata[bin].objects * size - size;
         auto first = cast(List*) p;
+        ubyte* pbits = cast(ubyte*)(p + bindata[bin].bitoff);
 
-        for (; p < ptop; p += size)
+        for (; p < ptop; p += size, pbits++)
         {
             (cast(List *)p).next = cast(List *)(p + size);
             (cast(List *)p).pool = &base;
+            *pbits = Bits.FREEBITS;
         }
         (cast(List *)p).next = null;
         (cast(List *)p).pool = &base;
+        *pbits = Bits.FREEBITS;
         return first;
     }
 
