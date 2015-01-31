@@ -770,7 +770,7 @@ struct GC
         //  no action should be taken if p is an interior pointer
         if (bin > B_PAGE) // B_PAGEPLUS or B_FREE
             return;
-        if ((sentinel_sub(p) - pool.baseAddr) & (binsize[bin] - 1))
+        if ((sentinel_sub(p) - pool.baseAddr) & (getBinSize(bin) - 1))
             return;
 
         sentinel_Invariant(p);
@@ -796,7 +796,7 @@ struct GC
             // Add to free list
             List *list = cast(List*)p;
 
-            debug (MEMSTOMP) memset(p, 0xF2, binsize[bin]);
+            debug (MEMSTOMP) memset(p, 0xF2, getBinSize(bin));
 
             list.next = gcx.bucket[bin];
             list.pool = pool;
@@ -963,7 +963,7 @@ struct GC
             pagenum = pool.pagenumOf(p);
             bin = cast(Bins)pool.pagetable[pagenum];
             assert(bin <= B_PAGE);
-            size = binsize[bin];
+            size = getBinSize(bin);
             assert((cast(size_t)p & (size - 1)) == 0);
 
             debug (PTRCHECK2)
@@ -1201,13 +1201,14 @@ struct GC
             }
         }
 
-        for (n = 0; n < B_PAGE; n++)
+        for (Bins b = 0; b < B_PAGE; b++)
         {
+            size_t binsz = getBinSize(b);
             //debug(PRINTF) printf("bin %d\n", n);
-            for (List *list = gcx.bucket[n]; list; list = list.next)
+            for (List *list = gcx.bucket[b]; list; list = list.next)
             {
                 //debug(PRINTF) printf("\tlist %p\n", list);
-                flsize += binsize[n];
+                flsize += binsz;
             }
         }
 
@@ -1243,7 +1244,7 @@ enum
     B_FREE,             // free page
     B_MAX
 }
-
+enum B_NUMBUCKETS = B_PAGE;
 
 alias ubyte Bins;
 
@@ -1268,6 +1269,70 @@ struct Root
     alias proot this;
 }
 
+struct BinData
+{
+    ushort size;      // size of allocation
+    ushort objects;   // number of objects
+    ushort bitoff;    // page offset of GCBits
+    ushort[256] base; // map (page offset >> 4) to base address of allocation
+}
+
+BinData ctfeCalcBinData(ushort size, ushort objects, ushort bitoff)
+{
+    assert(size >= 16 && size <= 2048 && (size & 15) == 0); // must be aligned to multiple of 16
+    assert(size * objects <= bitoff);
+    version(newBins) assert(bitoff + objects <= PAGESIZE);
+
+    BinData data;
+    data.size = size;
+    data.objects = objects;
+    data.bitoff = bitoff;
+
+    ushort size16 = size >> 4;
+    for (int n = 0; n < 256; n++)
+        data.base[n] = cast(ushort) ((n / size16) * size);
+
+    return data;
+}
+
+version(newBins)
+immutable BinData[B_NUMBUCKETS] bindata =
+[
+    ctfeCalcBinData (16, 240, PAGESIZE - 256),
+    ctfeCalcBinData (32, 124, PAGESIZE - 128),
+    ctfeCalcBinData (64,  63, PAGESIZE - 64),
+    ctfeCalcBinData (112, 36, PAGESIZE - 64),
+    ctfeCalcBinData (224, 18, PAGESIZE - 64),
+    ctfeCalcBinData (448,  9, PAGESIZE - 64),
+    ctfeCalcBinData (1008, 4, PAGESIZE - 64),
+    ctfeCalcBinData (2032, 2, PAGESIZE - 32),
+];
+else
+immutable BinData[B_NUMBUCKETS] bindata =
+[
+    ctfeCalcBinData (16, 256, PAGESIZE),
+    ctfeCalcBinData (32, 128, PAGESIZE),
+    ctfeCalcBinData (64,  64, PAGESIZE),
+    ctfeCalcBinData (128, 32, PAGESIZE),
+    ctfeCalcBinData (256, 16, PAGESIZE),
+    ctfeCalcBinData (512,  8, PAGESIZE),
+    ctfeCalcBinData (1024, 4, PAGESIZE),
+    ctfeCalcBinData (2048, 2, PAGESIZE),
+];
+
+size_t getOffsetBase(size_t offset, uint bin) nothrow
+{
+    return (offset & notbinsize[bin]);
+//    return (offset & ~(PAGESIZE - 1)) + bindata[bin].base[(offset & (PAGESIZE - 1)) >> 4];
+}
+
+uint getBinSize(uint bin) nothrow
+{
+    //return bindata[bin].size;
+    return binsize[bin];
+}
+
+enum MAX_BINSIZE = bindata[$-1].size;
 
 immutable uint[B_MAX] binsize = [ 16,32,64,128,256,512,1024,2048,4096 ];
 immutable size_t[B_MAX] notbinsize = [ ~(16-1),~(32-1),~(64-1),~(128-1),~(256-1),
@@ -1614,7 +1679,7 @@ struct Gcx
 
     void* smallAlloc(Bins bin, ref size_t alloc_size, uint bits) nothrow
     {
-        alloc_size = binsize[bin];
+        alloc_size = getBinSize(bin);
 
         void* p;
         bool tryAlloc() nothrow
@@ -1763,6 +1828,7 @@ struct Gcx
             if (npages < n)
                 npages = n;
         }
+        npages = (npages + 15) & ~15;                      // align to 64kB page granularity
 
         //printf("npages = %d\n", npages);
 
@@ -2317,8 +2383,7 @@ struct Gcx
                 size_t biti;
                 size_t pn = offset / PAGESIZE;
                 Bins bin = cast(Bins)pool.pagetable[pn];
-                biti = (offset & notbinsize[bin]);
-                debug(PRINTF) printf("\tbin = %d, offset = x%x, biti = x%x\n", bin, offset, biti);
+                debug(PRINTF) printf("\tbin = %d, offset = x%x, bin = x%x\n", bin, offset, bin);
             }
             else
             {
@@ -3202,7 +3267,7 @@ struct SmallObjectPool
         if(bin >= B_PAGE)
             return null;
 
-        return cast(void*) (cast(size_t)p & notbinsize[bin]);
+        return cast(void*) getOffsetBase(cast(size_t)p, bin);
     }
 
     /**
@@ -3219,7 +3284,7 @@ struct SmallObjectPool
         size_t pagenum = pagenumOf(p);
         Bins bin = cast(Bins)pagetable[pagenum];
         assert(bin < B_PAGE);
-        return binsize[bin];
+        return getBinSize(bin);
     }
 
     BlkInfo getInfo(void* p) nothrow
@@ -3232,8 +3297,8 @@ struct SmallObjectPool
         if (bin >= B_PAGE)
             return info;
 
-        info.base = cast(void*)((cast(size_t)p) & notbinsize[bin]);
-        info.size = binsize[bin];
+        info.base = cast(void*) getOffsetBase(cast(size_t)p, bin);
+        info.size = getBinSize(bin);
         offset = info.base - baseAddr;
         info.attr = getBits(cast(size_t)(offset >> shiftBy));
 
@@ -3251,7 +3316,7 @@ struct SmallObjectPool
             if (bin >= B_PAGE)
                 continue;
 
-            immutable size = binsize[bin];
+            immutable size = getBinSize(bin);
             auto p = baseAddr + pn * PAGESIZE;
             const ptop = p + PAGESIZE;
             immutable base = pn * (PAGESIZE/16);
@@ -3309,7 +3374,7 @@ struct SmallObjectPool
         freepages--;
 
         // Convert page to free list
-        size_t size = binsize[bin];
+        size_t size = getBinSize(bin);
         void* p = baseAddr + pn * PAGESIZE;
         void* ptop = p + PAGESIZE - size;
         auto first = cast(List*) p;
@@ -3354,7 +3419,7 @@ struct SmallObjectPool
 
             if (bin < B_PAGE)
             {
-                auto   size = binsize[bin];
+                auto   size = getBinSize(bin);
                 byte *p = baseAddr + pn * PAGESIZE;
                 byte *ptop = p + PAGESIZE;
                 size_t biti = pn * (PAGESIZE/16);
@@ -3420,7 +3485,7 @@ struct SmallObjectPool
 
             if (bin < B_PAGE)
             {
-                size_t size = binsize[bin];
+                size_t size = getBinSize(bin);
                 size_t bitstride = size / 16;
                 size_t bitbase = pn * (PAGESIZE / 16);
                 size_t bittop = bitbase + (PAGESIZE / 16);
@@ -3464,7 +3529,7 @@ struct SmallObjectPool
         auto bins = cast(Bins)pagetable[pn];
         if(bins < B_PAGE)
         {
-            size_t biti = (offset & notbinsize[bins]) >> shiftBy;
+            size_t biti = getOffsetBase(offset, bins) >> shiftBy;
             return mark.test(biti) ? IsMarked.yes : IsMarked.no;
         }
         assert(bins == B_FREE);
