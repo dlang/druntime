@@ -118,22 +118,59 @@ else version( FreeBSD )
 else version( CRuntime_Bionic )
 {
     // All except ftok are from the linux kernel headers.
-    version (X86)
+    else version (X86)
     {
-        struct ipc_perm
+        version (X86_64)
         {
-            key_t   key;
-            ushort  uid;
-            ushort  gid;
-            ushort  cuid;
-            ushort  cgid;
-            mode_t  mode;
-            ushort  seq;
+            alias uint __kernel_uid_t;
+            alias uint __kernel_gid_t;
+            alias uint __kernel_mode;
         }
+        else version (D_X32)
+        {
+            alias uint __kernel_uid_t;
+            alias uint __kernel_gid_t;
+            alias uint __kernel_mode;
+        }
+        else
+        {
+            alias ushort __kernel_uid_t;
+            alias ushort __kernel_gid_t;
+            alias ushort __kernel_mode;
+        }
+    }
+    else version (AArch64)
+    {
+        alias uint __kernel_uid_t;
+        alias uint __kernel_gid_t;
+        alias uint __kernel_mode;
+    }
+    else version (ARM)
+    {
+        alias ushort __kernel_uid_t;
+        alias ushort __kernel_gid_t;
+        alias ushort __kernel_mode;
+    }
+    else version (MIPS)
+    {
+        alias uint __kernel_uid_t;
+        alias uint __kernel_gid_t;
+        alias uint __kernel_mode;
     }
     else
     {
         static assert(false, "Architecture not supported.");
+    }
+
+    struct ipc_perm
+    {
+        key_t           key;
+        __kernel_uid_t  uid;
+        __kernel_gid_t  gid;
+        __kernel_uid_t  cuid;
+        __kernel_gid_t  cgid;
+        __kernel_mode_t mode;
+        ushort          seq;
     }
 
     enum IPC_CREAT      = 0x0200; // 01000
