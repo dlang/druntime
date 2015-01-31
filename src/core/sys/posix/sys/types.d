@@ -182,25 +182,18 @@ else version (Solaris)
 }
 else version( CRuntime_Bionic )
 {
-    version(X86)
-    {
-        alias c_ulong   blkcnt_t;
-        alias c_ulong   blksize_t;
-        alias uint      dev_t;
-        alias uint      gid_t;
-        alias c_ulong   ino_t;
-        alias ushort    mode_t;
-        alias ushort    nlink_t;
-        alias c_long    off_t;
-        alias int       pid_t;
-        alias c_long    ssize_t;
-        alias c_long    time_t;
-        alias uint      uid_t;
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
+    alias c_ulong   blkcnt_t;
+    alias c_ulong   blksize_t;
+    alias uint      dev_t;
+    alias uint      gid_t;
+    alias c_ulong   ino_t;
+    alias ushort    mode_t;
+    alias ushort    nlink_t;
+    alias c_long    off_t;
+    alias int       pid_t;
+    alias c_long    ssize_t;
+    alias c_long    time_t;
+    alias uint      uid_t;
 }
 else
 {
@@ -285,20 +278,22 @@ else version (Solaris)
 }
 else version( CRuntime_Bionic )
 {
-    version(X86)
+    version( D_X32 )
     {
-        alias c_ulong  fsblkcnt_t;
-        alias c_ulong  fsfilcnt_t;
-        alias c_long   clock_t;
-        alias uint     id_t;
-        alias int      key_t;
-        alias c_long   suseconds_t;
-        alias c_long   useconds_t;
+        alias c_longlong clock_t;
+        alias c_longlong suseconds_t;
     }
     else
     {
-        static assert(false, "Architecture not supported.");
+        alias c_long clock_t;
+        alias c_long suseconds_t;
     }
+
+    alias c_ulong  fsblkcnt_t;
+    alias c_ulong  fsfilcnt_t;
+    alias uint     id_t;
+    alias int      key_t;
+    alias uint     useconds_t;
 }
 else
 {

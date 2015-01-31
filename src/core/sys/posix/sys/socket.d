@@ -1063,26 +1063,26 @@ else version( CRuntime_Bionic )
         int l_linger;
     }
 
+    struct msghdr
+    {
+        void*     msg_name;
+        socklen_t msg_namelen;
+        iovec*    msg_iov;
+        uint      msg_iovlen;
+        void*     msg_control;
+        uint      msg_controllen;
+        uint      msg_flags;
+    }
+
+    struct cmsghdr
+    {
+        size_t cmsg_len;
+        int    cmsg_level;
+        int    cmsg_type;
+    }
+
     version (X86)
     {
-        struct msghdr
-        {
-            void*  msg_name;
-            int    msg_namelen;
-            iovec* msg_iov;
-            uint   msg_iovlen;
-            void*  msg_control;
-            uint   msg_controllen;
-            uint   msg_flags;
-        }
-
-        struct cmsghdr
-        {
-            size_t cmsg_len;
-            int    cmsg_level;
-            int    cmsg_type;
-        }
-
         enum
         {
             SOCK_DGRAM      = 2,
