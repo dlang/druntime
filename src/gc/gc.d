@@ -591,12 +591,14 @@ struct GC
             else
             {
                 auto pool = gcx.findPool(p);
+                if (!pool)
+                    return p;
                 if (pool.isLargeObject)
                 {
                     auto lpool = cast(LargeObjectPool*) pool;
                     psize = lpool.getSize(p);     // get allocated size
 
-                    if (size <= PAGESIZE / 2)
+                    if (size <= MAX_BINSIZE)
                         goto Lmalloc; // switching from large object pool to small object pool
 
                     auto psz = psize / PAGESIZE;
@@ -637,24 +639,29 @@ struct GC
                     alloc_size = newsz * PAGESIZE;
                     return p;
                 }
-
-                psize = (cast(SmallObjectPool*) pool).getSize(p);   // get allocated size
-                if (psize < size ||             // if new size is bigger
-                    psize > size * 2)           // or less than half
-                {
-                Lmalloc:
-                    if (psize && pool)
-                        bits = pool.slUpdateAttr(p, bits);
-
-                    p2 = mallocNoSync(size, bits, alloc_size, ti);
-                    if (psize < size)
-                        size = psize;
-                    //debug(PRINTF) printf("\tcopying %d bytes\n",size);
-                    memcpy(p2, p, size);
-                    p = p2;
-                }
                 else
-                    alloc_size = psize;
+                {
+                    auto spool = cast(SmallObjectPool*) pool;
+                    auto pagenum = pool.pagenumOf(p);
+                    Bins bin = pool.pagetable[pagenum];   // get allocated bin and size
+                    psize = getBinSize(bin);
+                    if (size <= psize &&                  // if new size fits into the same bin, reuse it
+                        (bin == B_16 || size > getBinSize(bin - 1)))
+                    {
+                        alloc_size = psize;
+                        return p;
+                    }
+                }
+            Lmalloc:
+                if (psize)
+                    bits = pool.slUpdateAttr(p, bits);
+
+                p2 = mallocNoSync(size, bits, alloc_size, ti);
+                if (psize < size)
+                    size = psize;
+                //debug(PRINTF) printf("\tcopying %d bytes\n",size);
+                memcpy(p2, p, size);
+                p = p2;
             }
         }
         return p;
@@ -1276,8 +1283,6 @@ struct BinData
     ushort bitoff;    // page offset of GCBits
 };
 
-
-version(newBins)
 immutable BinData[B_NUMBUCKETS] bindata =
 [
     BinData (16, 240, PAGESIZE - 256),
@@ -1289,61 +1294,54 @@ immutable BinData[B_NUMBUCKETS] bindata =
     BinData (1008, 4, PAGESIZE - 64),
     BinData (2032, 2, PAGESIZE - 32),
 ];
-else
-immutable BinData[B_NUMBUCKETS] bindata =
-[
-    BinData (16, 256, PAGESIZE),
-    BinData (32, 128, PAGESIZE),
-    BinData (64,  64, PAGESIZE),
-    BinData (128, 32, PAGESIZE),
-    BinData (256, 16, PAGESIZE),
-    BinData (512,  8, PAGESIZE),
-    BinData (1024, 4, PAGESIZE),
-    BinData (2048, 2, PAGESIZE),
-];
 
-ushort[256][B_NUMBUCKETS] ctfeCalcBinBase()
+struct BinBase
 {
-    ushort[256][B_NUMBUCKETS] base;
+    ushort base;    // page offset of root pointer of object
+    ushort bitoff;  // page offset of GCBits of object
+}
+
+BinBase[256][B_NUMBUCKETS] ctfeCalcBinBase()
+{
+    BinBase[256][B_NUMBUCKETS] base;
 
     foreach(ref i, data; bindata)
     {
         assert(data.size >= 16 && data.size <= 2048 && (data.size & 15) == 0); // must be aligned to multiple of 16
         assert(data.size * data.objects <= data.bitoff);
-        version(newBins) assert(data.bitoff + data.objects <= PAGESIZE);
+        assert(data.bitoff + data.objects <= PAGESIZE);
 
         uint size16 = data.size >> 4;
-        for (int n = 0; n < 256; n++)
-            base[i][n] = cast(ushort) ((n / size16) * data.size);
+        uint bitoff16 = data.bitoff >> 4;
+        for (int n = 0; n < bitoff16; n++)
+        {
+            base[i][n].base = cast(ushort) ((n / size16) * data.size);
+            base[i][n].bitoff = cast(ushort) (bitoff16 + n / size16);
+        }
+        for (int n = bitoff16; n < 256; n++)
+            base[i][n] = base[i][bitoff16 - 1];
     }
     return base;
 }
 
-ushort[256][B_NUMBUCKETS] binbase = ctfeCalcBinBase();
+BinBase[256][B_NUMBUCKETS] binbase = ctfeCalcBinBase();
 
-size_t getOffsetPage(size_t offset, uint bin) nothrow
+ushort getOffsetPage(size_t offset, uint bin) nothrow
 {
-//    return (offset & notbinsize[bin]);
-    return binbase[bin][(offset & (PAGESIZE - 1)) >> 4];
+    return binbase[bin][(offset & (PAGESIZE - 1)) >> 4].base;
 }
 
 size_t getOffsetBase(size_t offset, uint bin) nothrow
 {
-    //    return (offset & notbinsize[bin]);
     return (offset & ~(PAGESIZE - 1)) + getOffsetPage(offset, bin);
 }
 
 uint getBinSize(uint bin) nothrow
 {
     return bindata[bin].size;
-    // return binsize[bin];
 }
 
 enum MAX_BINSIZE = bindata[$-1].size;
-
-immutable uint[B_MAX] binsize = [ 16,32,64,128,256,512,1024,2048,4096 ];
-immutable size_t[B_MAX] notbinsize = [ ~(16-1),~(32-1),~(64-1),~(128-1),~(256-1),
-                                ~(512-1),~(1024-1),~(2048-1),~(4096-1) ];
 
 alias PageBits = GCBits.wordtype[PAGESIZE / 16 / GCBits.BITS_PER_WORD];
 static assert(PAGESIZE % (GCBits.BITS_PER_WORD * 16) == 0);
@@ -1596,15 +1594,25 @@ struct Gcx
     }
 
     /**
+     * Compute bin for size.
+     */
+    static Bins findBin(size_t size) nothrow
+    {
+        static const Bins[MAX_BINSIZE + 1] binTable = ctfeBins();
+
+        return (size <= MAX_BINSIZE) ? binTable[size] : B_PAGE;
+    }
+
+    /**
      * Computes the bin table using CTFE.
      */
-    static byte[2049] ctfeBins() nothrow
+    static Bins[MAX_BINSIZE + 1] ctfeBins() nothrow
     {
-        byte[2049] ret;
-        size_t p = 0;
-        for (Bins b = B_16; b <= B_2048; b++)
-            for ( ; p <= binsize[b]; p++)
-                ret[p] = b;
+        Bins[MAX_BINSIZE + 1] ret;
+        size_t sz = 0;
+        for (Bins b = 0; b < B_NUMBUCKETS; b++)
+            for (; sz <= bindata[b].size; ++sz)
+                ret[sz] = b;
 
         return ret;
     }
@@ -3100,166 +3108,90 @@ struct SmallObjectPool
     Pool base;
     alias base this;
 
-    GCBits mark;        // entries already scanned, or should not be scanned
-    GCBits freebits;    // entries that are on the free list
-    GCBits finals;      // entries that need finalizer run on them
-    GCBits structFinals;// struct entries that need a finalzier run on them
-    GCBits noscan;      // entries that should not be scanned
-    GCBits appendable;  // entries that are appendable
-    GCBits nointerior;  // interior pointers should be ignored. Only implemented for large object pools.
-
-    enum uint shiftBy = 4;    // shift count for the divisor used for determining bit indices.
-
     void initialize(size_t npages) nothrow
     {
         base._initialize(npages, false);
         if (!baseAddr)
             return;
-
-        auto nbits = (npages * PAGESIZE) >> shiftBy;
-
-        mark.alloc(nbits);
-        freebits.alloc(nbits);
-        noscan.alloc(nbits);
-        appendable.alloc(nbits);
     }
 
     void Dtor() nothrow
     {
-        mark.Dtor();
-        freebits.Dtor();
-        finals.Dtor();
-        structFinals.Dtor();
-        noscan.Dtor();
-        appendable.Dtor();
-
         base._Dtor();
+    }
+
+    enum Bits : ubyte
+    {
+        FINALIZE    = BlkAttr.FINALIZE,
+        NO_SCAN     = BlkAttr.NO_SCAN,
+        APPENDABLE  = BlkAttr.APPENDABLE,
+        STRUCTFINAL = BlkAttr.STRUCTFINAL,
+
+        EXTERNAL    = FINALIZE | NO_SCAN | APPENDABLE | STRUCTFINAL,
+
+        MARK        = BlkAttr.NO_MOVE, // reuse attr so they are different from external flags
+        FREEBITS    = BlkAttr.NO_INTERIOR,
     }
 
     /**
     *
     */
-    uint getBits(size_t biti) nothrow
+    ubyte* getBits(size_t pn, Bins bin, uint pageOff) nothrow
     {
-        uint bits;
+        return cast(ubyte*)baseAddr + pn * PAGESIZE + binbase[bin][pageOff].bitoff;
+    }
 
-        if (finals.nbits && finals.test(biti))
-            bits |= BlkAttr.FINALIZE;
-        if (structFinals.nbits && structFinals.test(biti))
-            bits |= BlkAttr.STRUCTFINAL;
-        if (noscan.test(biti))
-            bits |= BlkAttr.NO_SCAN;
-        if (appendable.test(biti))
-            bits |= BlkAttr.APPENDABLE;
-        return bits;
+    mixin template PageBinVars()
+    {
+        size_t pn = cast(size_t)(p - baseAddr) / PAGESIZE;
+        ushort pageOff = cast(uint)p & (PAGESIZE - 1);
+        Bins bin = cast(Bins)pagetable[pn];
     }
 
     uint getAttr(void* p) nothrow
     {
-        auto biti = cast(size_t)(p - baseAddr) >> shiftBy;
-        return getBits(biti);
+        mixin PageBinVars!();
+        if (bin >= B_NUMBUCKETS)
+            return 0;
+        return *getBits(pn, pagetable[pn], pageOff) & Bits.EXTERNAL;
     }
 
     uint setAttr(void* p, uint mask) nothrow
     {
-        auto biti = cast(size_t)(p - baseAddr) >> shiftBy;
+        mixin PageBinVars!();
+        if (bin >= B_NUMBUCKETS)
+            return 0;
 
-        auto oldb = getBits(biti);
-        setBits(biti, mask);
-        return oldb;
+        ubyte* pbits = getBits(pn, pagetable[pn], pageOff);
+        auto oldb = *pbits;
+        *pbits = oldb | (mask & Bits.EXTERNAL);
+        return oldb & Bits.EXTERNAL;
     }
 
     uint clrAttr(void* p, uint mask) nothrow
     {
-        auto biti = cast(size_t)(p - baseAddr) >> shiftBy;
+        mixin PageBinVars!();
+        if (bin >= B_NUMBUCKETS)
+            return 0;
 
-        auto oldb = getBits(biti);
-        clrBits(biti, mask);
-        return oldb;
+        ubyte* pbits = getBits(pn, pagetable[pn], pageOff);
+        auto oldb = *pbits;
+        *pbits = oldb & ~(mask & Bits.EXTERNAL);
+        return oldb & Bits.EXTERNAL;
     }
 
     uint updateAttr(void* p, uint bits) nothrow
     {
-        auto biti = cast(size_t)(p - baseAddr) >> shiftBy;
+        mixin PageBinVars!();
+        if (bin >= B_NUMBUCKETS)
+            return bits;
 
+        ubyte* pbits = getBits(pn, pagetable[pn], pageOff);
         if (bits)
-        {
-            clrBits(biti, ~BlkAttr.NONE);
-            setBits(biti, bits);
-        }
+            *pbits = (*pbits & ~Bits.EXTERNAL) | (bits & Bits.EXTERNAL);
         else
-        {
-            bits = getBits(biti);
-        }
+            bits = *pbits & Bits.EXTERNAL;
         return bits;
-    }
-
-    /**
-    *
-    */
-    void clrBits(size_t biti, uint mask) nothrow
-    {
-        immutable dataIndex =  biti >> GCBits.BITS_SHIFT;
-        immutable bitOffset = biti & GCBits.BITS_MASK;
-        immutable keep = ~(GCBits.BITS_1 << bitOffset);
-
-        if (mask & BlkAttr.FINALIZE && finals.nbits)
-            finals.data[dataIndex] &= keep;
-
-        if (structFinals.nbits && (mask & BlkAttr.STRUCTFINAL))
-            structFinals.data[dataIndex] &= keep;
-
-        if (mask & BlkAttr.NO_SCAN)
-            noscan.data[dataIndex] &= keep;
-        if (mask & BlkAttr.APPENDABLE)
-            appendable.data[dataIndex] &= keep;
-    }
-
-    /**
-    *
-    */
-    void setBits(size_t biti, uint mask) nothrow
-    {
-        // Calculate the mask and bit offset once and then use it to
-        // set all of the bits we need to set.
-        immutable dataIndex = biti >> GCBits.BITS_SHIFT;
-        immutable bitOffset = biti & GCBits.BITS_MASK;
-        immutable orWith = GCBits.BITS_1 << bitOffset;
-
-        if (mask & BlkAttr.STRUCTFINAL)
-        {
-            if (!structFinals.nbits)
-                structFinals.alloc(mark.nbits);
-            structFinals.data[dataIndex] |= orWith;
-        }
-
-        if (mask & BlkAttr.FINALIZE)
-        {
-            if (!finals.nbits)
-                finals.alloc(mark.nbits);
-            finals.data[dataIndex] |= orWith;
-        }
-
-        if (mask & BlkAttr.NO_SCAN)
-        {
-            noscan.data[dataIndex] |= orWith;
-        }
-        if (mask & BlkAttr.APPENDABLE)
-        {
-            appendable.data[dataIndex] |= orWith;
-        }
-    }
-
-    void clrBitsSmallSweep(size_t dataIndex, GCBits.wordtype toClear) nothrow
-    {
-        immutable toKeep = ~toClear;
-        if (finals.nbits)
-            finals.data[dataIndex] &= toKeep;
-        if (structFinals.nbits)
-            structFinals.data[dataIndex] &= toKeep;
-
-        noscan.data[dataIndex] &= toKeep;
-        appendable.data[dataIndex] &= toKeep;
     }
 
     /**
@@ -3301,30 +3233,23 @@ struct SmallObjectPool
     BlkInfo getInfo(void* p) nothrow
     {
         BlkInfo info;
-        size_t offset = cast(size_t)(p - baseAddr);
-        size_t pn = offset / PAGESIZE;
-        Bins   bin = cast(Bins)pagetable[pn];
-
-        if (bin >= B_PAGE)
+        mixin PageBinVars!();
+        if (bin >= B_NUMBUCKETS)
             return info;
 
         info.base = cast(void*) getOffsetBase(cast(size_t)p, bin);
         info.size = getBinSize(bin);
-        offset = info.base - baseAddr;
-        info.attr = getBits(cast(size_t)(offset >> shiftBy));
+        info.attr = *getBits(pn, bin, pageOff);
 
         return info;
     }
 
     void runFinalizers(in void[] segment) nothrow
     {
-        if (!finals.nbits)
-            return;
-
         foreach (pn; 0 .. npages)
         {
             Bins bin = cast(Bins)pagetable[pn];
-            if (bin >= B_PAGE)
+            if (bin >= B_NUMBUCKETS)
                 continue;
 
             immutable size = getBinSize(bin);
@@ -3344,7 +3269,6 @@ struct SmallObjectPool
                     continue;
 
                 auto q = sentinel_add(p);
-                uint attr = getBits(biti);
 
                 if(!rt_hasFinalizerInSegment(q, size, attr, segment))
                     continue;
@@ -3387,7 +3311,7 @@ struct SmallObjectPool
         // Convert page to free list
         size_t size = getBinSize(bin);
         void* p = baseAddr + pn * PAGESIZE;
-        void* ptop = p + PAGESIZE - size;
+        void* ptop = p + bindata[bin].objects * size - size;
         auto first = cast(List*) p;
 
         for (; p < ptop; p += size)
@@ -3402,22 +3326,32 @@ struct SmallObjectPool
 
     void allocObject(void* p, uint bits) nothrow
     {
-        size_t biti = (p - baseAddr) >> shiftBy;
-        freebits.clear(biti);
-        if (bits)
-            setBits(biti, bits);
+        mixin PageBinVars!();
+        ubyte* pbits = getBits(pn, bin, pageOff);
+        *pbits = bits & Bits.EXTERNAL;
     }
 
     void freeObject(void* p) nothrow
     {
-        size_t biti = cast(size_t)(p - baseAddr) >> shiftBy;
-        clrBits(biti, ~BlkAttr.NONE);
-        freebits.set(biti);
+        mixin PageBinVars!();
+        ubyte* pbits = getBits(pn, bin, pageOff);
+        *pbits = Bits.FREEBITS;
     }
 
     void prepare() nothrow
     {
-        mark.copy(&freebits);
+        // copy free bits to mark bits
+        for (size_t pn = 0; pn < npages; pn++)
+        {
+            Bins bin = cast(Bins)pagetable[pn];
+            if (bin < B_NUMBUCKETS)
+            {
+                ubyte* pbits = getBits(pn, bin, 0);
+                ubyte* pbitstop = pbits + bindata[bin].objects;
+                for (; pbits < pbitstop; pbits++)
+                    *pbits = (*pbits & Bits.FREEBITS ? *pbits | Bits.MARK : *pbits & ~Bits.MARK);
+            }
+        }
     }
 
     size_t sweep() nothrow
@@ -3427,59 +3361,34 @@ struct SmallObjectPool
         for (size_t pn = 0; pn < npages; pn++)
         {
             Bins bin = cast(Bins)pagetable[pn];
+            if (bin >= B_NUMBUCKETS)
+                continue;
 
-            if (bin < B_PAGE)
+            auto size = getBinSize(bin);
+            byte *p = baseAddr + pn * PAGESIZE;
+            ubyte* pbits = getBits(pn, bin, 0);
+            ubyte* pbitstop = pbits + bindata[bin].objects;
+            for (; pbits < pbitstop; p += size, pbits++)
             {
-                auto   size = getBinSize(bin);
-                byte *p = baseAddr + pn * PAGESIZE;
-                byte *ptop = p + PAGESIZE;
-                size_t biti = pn * (PAGESIZE/16);
-                size_t bitstride = size / 16;
+                uint attr = *pbits;
+                if (attr & Bits.MARK)
+                    continue;
 
-                GCBits.wordtype toClear;
-                size_t clearStart = biti >> GCBits.BITS_SHIFT;
-                size_t clearIndex;
+                void* q = sentinel_add(p);
+                sentinel_Invariant(q);
 
-                for (; p < ptop; p += size, biti += bitstride, clearIndex += bitstride)
-                {
-                    if(clearIndex > GCBits.BITS_PER_WORD - 1)
-                    {
-                        if(toClear)
-                        {
-                            clrBitsSmallSweep(clearStart, toClear);
-                            toClear = 0;
-                        }
+                if (attr & Bits.FINALIZE)
+                    rt_finalizeFromGC(q, size - SENTINEL_EXTRA, attr & Bits.EXTERNAL);
 
-                        clearStart = biti >> GCBits.BITS_SHIFT;
-                        clearIndex = biti & GCBits.BITS_MASK;
-                    }
+                *pbits = Bits.FREEBITS;
 
-                    if (!mark.test(biti))
-                    {
-                        void* q = sentinel_add(p);
-                        sentinel_Invariant(q);
+                List *list = cast(List *)p;
+                debug(COLLECT_PRINTF) printf("\tcollecting %p\n", list);
+                //log_free(sentinel_add(list));
 
-                        freebits.set(biti);
+                debug (MEMSTOMP) memset(p, 0xF3, size);
 
-                        if (finals.nbits && finals.test(biti))
-                            rt_finalizeFromGC(q, size - SENTINEL_EXTRA, getBits(biti));
-
-                        toClear |= GCBits.BITS_1 << clearIndex;
-
-                        List *list = cast(List *)p;
-                        debug(COLLECT_PRINTF) printf("\tcollecting %p\n", list);
-                        //log_free(sentinel_add(list));
-
-                        debug (MEMSTOMP) memset(p, 0xF3, size);
-
-                        freed += size;
-                    }
-                }
-
-                if(toClear)
-                {
-                    clrBitsSmallSweep(clearStart, toClear);
-                }
+                freed += size;
             }
         }
         return freed;
@@ -3490,60 +3399,50 @@ struct SmallObjectPool
         size_t fpages = freepages;
         for (size_t pn = 0; pn < npages; pn++)
         {
-            Bins   bin = cast(Bins)pagetable[pn];
-            size_t biti;
-            size_t u;
-
-            if (bin < B_PAGE)
-            {
-                size_t size = getBinSize(bin);
-                size_t bitstride = size / 16;
-                size_t bitbase = pn * (PAGESIZE / 16);
-                size_t bittop = bitbase + (PAGESIZE / 16);
-                byte*  p;
-
-                biti = bitbase;
-                for (biti = bitbase; biti < bittop; biti += bitstride)
-                {
-                    if (!freebits.test(biti))
-                        goto Lnotfree;
-                }
-                pagetable[pn] = B_FREE;
-                if (pn < searchStart)
-                    searchStart = pn;
-                freepages++;
+            Bins bin = cast(Bins)pagetable[pn];
+            if (bin >= B_NUMBUCKETS)
                 continue;
 
-            Lnotfree:
-                p = baseAddr + pn * PAGESIZE;
-                List** ptail = tail[bin];
-                for (u = 0; u < PAGESIZE; u += size)
-                {
-                    biti = bitbase + u / 16;
-                    if (!freebits.test(biti))
-                        continue;
-                    auto elem = cast(List *)(p + u);
-                    elem.pool = &base;
-                    *ptail = elem;
-                    ptail = &elem.next;
-                }
-                tail[bin] = ptail;
+            ubyte* pbits = getBits(pn, bin, 0);
+            ubyte* pbitstop = pbits + bindata[bin].objects;
+
+            for (ubyte* pb = pbits; pb < pbitstop; pb++)
+                if(!(*pb & Bits.FREEBITS))
+                   goto Lnotfree;
+
+            pagetable[pn] = B_FREE;
+            if (pn < searchStart)
+                searchStart = pn;
+            freepages++;
+            continue;
+
+        Lnotfree:
+            size_t size = getBinSize(bin);
+            void* p = baseAddr + pn * PAGESIZE;
+            List** ptail = tail[bin];
+            for (; pbits < pbitstop; pbits++, p += size)
+            {
+                if(!(*pbits & Bits.FREEBITS))
+                    continue;
+                auto elem = cast(List *)p;
+                elem.pool = &base;
+                *ptail = elem;
+                ptail = &elem.next;
             }
+            tail[bin] = ptail;
         }
         return freepages - fpages;
     }
 
-    int isMarked(void* addr) nothrow
+    int isMarked(void* p) nothrow
     {
-        auto offset = cast(size_t)(addr - baseAddr);
-        auto pn = offset / PAGESIZE;
-        auto bins = cast(Bins)pagetable[pn];
-        if(bins < B_PAGE)
+        mixin PageBinVars!();
+        if(bin < B_NUMBUCKETS)
         {
-            size_t biti = getOffsetBase(offset, bins) >> shiftBy;
-            return mark.test(biti) ? IsMarked.yes : IsMarked.no;
+            ubyte* pbits = getBits(pn, bin, pageOff);
+            return *pbits & Bits.MARK ? IsMarked.yes : IsMarked.no;
         }
-        assert(bins == B_FREE);
+        assert(bin == B_FREE);
         return IsMarked.no;
     }
 }
