@@ -35,6 +35,7 @@ module gc.gc;
 version = STACKGROWSDOWN;       // growing the stack means subtracting from the stack pointer
                                 // (use for Intel X86 CPUs)
                                 // else growing the stack means adding to the stack pointer
+version = rebuildFreebits;
 
 /***************************************************/
 
@@ -2122,14 +2123,39 @@ struct Gcx
     // collection step 1: prepare freebits and mark bits
     void prepare() nothrow
     {
-        for (size_t n = 0; n < npools; n++)
+        version(rebuildFreebits)
         {
-            Pool* pool = pooltable[n];
+            for (size_t n = 0; n < npools; n++)
+            {
+                Pool* pool = pooltable[n];
+                if (pool.isLargeObject)
+                    (cast(LargeObjectPool*) pool).prepare();
+                else
+                    (cast(SmallObjectPool*) pool).clearFreeAndMarkBits();
+            }
 
-            if(pool.isLargeObject)
-                (cast(LargeObjectPool*) pool).prepare();
-            else
-                (cast(SmallObjectPool*) pool).prepare();
+            // Mark each free entry, so it doesn't get scanned
+            for (Bins b = 0; b < B_NUMBUCKETS; b++)
+            {
+                for (List *list = bucket[b]; list; list = list.next)
+                {
+                    auto pool = cast(SmallObjectPool*) list.pool;
+                    assert(pool);
+                    pool.setFreeAndMark(list, b);
+                }
+            }
+        }
+        else
+        {
+            for (size_t n = 0; n < npools; n++)
+            {
+                Pool* pool = pooltable[n];
+
+                if(pool.isLargeObject)
+                    (cast(LargeObjectPool*) pool).prepare();
+                else
+                    (cast(SmallObjectPool*) pool).prepare();
+            }
         }
     }
 
@@ -3317,17 +3343,17 @@ struct SmallObjectPool
         void* p = baseAddr + pn * PAGESIZE;
         void* ptop = p + bindata[bin].objects * size - size;
         auto first = cast(List*) p;
-        ubyte* pbits = cast(ubyte*)(p + bindata[bin].bitoff);
+        version(rebuildFreebits) {} else ubyte* pbits = cast(ubyte*)(p + bindata[bin].bitoff);
 
-        for (; p < ptop; p += size, pbits++)
+        for (; p < ptop; p += size)
         {
             (cast(List *)p).next = cast(List *)(p + size);
             (cast(List *)p).pool = &base;
-            *pbits = Bits.FREEBITS;
+            version(rebuildFreebits) {} else { *pbits = Bits.FREEBITS; pbits++; }
         }
         (cast(List *)p).next = null;
         (cast(List *)p).pool = &base;
-        *pbits = Bits.FREEBITS;
+        version(rebuildFreebits) {} else *pbits = Bits.FREEBITS;
         return first;
     }
 
@@ -3342,7 +3368,31 @@ struct SmallObjectPool
     {
         mixin PageBinVars!();
         ubyte* pbits = getBits(pn, bin, pageOff);
-        *pbits = Bits.FREEBITS;
+        version(rebuildFreebits) {} else *pbits = Bits.FREEBITS;
+    }
+
+    void clearFreeAndMarkBits() nothrow
+    {
+        for (size_t pn = 0; pn < npages; pn++)
+        {
+            Bins bin = cast(Bins)pagetable[pn];
+            if (bin < B_NUMBUCKETS)
+            {
+                ubyte* pbits = getBits(pn, bin, 0);
+                ubyte* pbitstop = pbits + bindata[bin].objects;
+                for (; pbits < pbitstop; pbits++)
+                    *pbits &= ~(Bits.FREEBITS | Bits.MARK);
+            }
+        }
+    }
+
+    void setFreeAndMark(void* p, Bins bin) nothrow
+    {
+        size_t pn = cast(size_t)(p - baseAddr) / PAGESIZE;
+        ushort pageOff = cast(uint)p & (PAGESIZE - 1);
+
+        ubyte* pbits = getBits(pn, bin, pageOff);
+        *pbits |= Bits.FREEBITS | Bits.MARK;
     }
 
     void prepare() nothrow
