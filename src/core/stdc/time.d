@@ -83,11 +83,11 @@ else version( FreeBSD )
 {
     enum clock_t CLOCKS_PER_SEC = 128;
 }
-else version (linux)
+else version (CRuntime_Glibc)
 {
     enum clock_t CLOCKS_PER_SEC = 1_000_000;
 }
-else version (Android)
+else version (CRuntime_Bionic)
 {
     enum clock_t CLOCKS_PER_SEC = 1_000_000;
 }
@@ -132,7 +132,7 @@ else version( OSX )
     ///
     extern __gshared const(char)*[2] tzname; // non-standard
 }
-else version( linux )
+else version( CRuntime_Glibc )
 {
     ///
     void tzset();                            // non-standard
@@ -153,7 +153,7 @@ else version (Solaris)
     ///
     extern __gshared const(char)*[2] tzname;
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     ///
     void tzset();

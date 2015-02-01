@@ -22,7 +22,7 @@ private
     debug(PRINTF) import core.stdc.stdio;
     import core.stdc.stdlib;
 
-    version( linux )
+    version( CRuntime_Glibc )
     {
         version = USE_PTHREADS;
     }
@@ -38,7 +38,7 @@ private
     {
         version = USE_PTHREADS;
     }
-    else version( Android )
+    else version( CRuntime_Bionic )
     {
         version = USE_PTHREADS;
     }

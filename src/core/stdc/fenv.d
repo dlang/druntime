@@ -21,7 +21,7 @@ nothrow:
 
 version( MinGW )
     version = GNUFP;
-version( linux )
+version( CRuntime_Glibc )
     version = GNUFP;
 
 version( DigitalMars )
@@ -170,7 +170,7 @@ else version ( FreeBSD )
 
     alias ushort fexcept_t;
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     version(X86)
     {
@@ -249,7 +249,7 @@ else version( Windows )
         enum FE_DFL_ENV = &_Fenv0;
     }
 }
-else version( linux )
+else version( CRuntime_Glibc )
 {
     ///
     enum FE_DFL_ENV = cast(fenv_t*)(-1);
@@ -266,7 +266,7 @@ else version( FreeBSD )
     ///
     enum FE_DFL_ENV = &__fe_dfl_env;
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     private extern const fenv_t __fe_dfl_env;
     ///

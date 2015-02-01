@@ -76,7 +76,7 @@ int creat(in char*, mode_t);
 int fcntl(int, int, ...);
 int open(in char*, int, ...);
 */
-version( linux )
+version( CRuntime_Glibc )
 {
     enum F_DUPFD        = 0;
     enum F_GETFD        = 1;
@@ -466,8 +466,10 @@ else version (Solaris)
         }
     }
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
+    // All these except for the two functions open and creat really come from
+    // the linux kernel and can probably be merged.
     enum F_DUPFD        = 0;
     enum F_GETFD        = 1;
     enum F_SETFD        = 2;

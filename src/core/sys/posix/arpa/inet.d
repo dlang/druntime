@@ -49,7 +49,7 @@ char*     inet_ntop(int, in void*, char*, socklen_t);
 int       inet_pton(int, in char*, void*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     alias uint16_t in_port_t;
     alias uint32_t in_addr_t;
@@ -148,7 +148,7 @@ else version( Solaris )
     const(char)*    inet_ntop(int, in void*, char*, socklen_t);
     int             inet_pton(int, in char*, void*);
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     alias uint32_t in_addr_t;
 
@@ -163,24 +163,24 @@ else version( Android )
     {
         private
         {
-            uint32_t __swap32( uint32_t x )
+            uint32_t __swap32()( uint32_t x )
             {
                 uint32_t byte32_swap = (x & 0xff) << 24 | (x &0xff00) << 8 |
                                      (x & 0xff0000) >> 8 | (x & 0xff000000) >> 24;
                 return byte32_swap;
             }
 
-            uint16_t __swap16( uint16_t x )
+            uint16_t __swap16()( uint16_t x )
             {
                 uint16_t byte16_swap = (x & 0xff) << 8 | (x & 0xff00) >> 8;
                 return byte16_swap;
             }
         }
 
-        uint32_t htonl(uint32_t x) { return __swap32(x); }
-        uint16_t htons(uint16_t x) { return __swap16(x); }
-        uint32_t ntohl(uint32_t x) { return __swap32(x); }
-        uint16_t ntohs(uint16_t x) { return __swap16(x); }
+        uint32_t htonl()(uint32_t x) { return __swap32(x); }
+        uint16_t htons()(uint16_t x) { return __swap16(x); }
+        uint32_t ntohl()(uint32_t x) { return __swap32(x); }
+        uint16_t ntohs()(uint16_t x) { return __swap16(x); }
     }
 
     in_addr_t       inet_addr(in char*);
