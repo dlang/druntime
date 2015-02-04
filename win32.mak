@@ -549,6 +549,9 @@ $(IMPDIR)\core\sys\windows\dbghelp.d : src\core\sys\windows\dbghelp.d
 $(IMPDIR)\core\sys\windows\dll.d : src\core\sys\windows\dll.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\windows\io.d : src\core\sys\windows\io.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\windows\stacktrace.d : src\core\sys\windows\stacktrace.d
 	copy $** $@
 
