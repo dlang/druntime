@@ -178,6 +178,7 @@ MANIFEST=\
 	src\core\sys\windows\com.d \
 	src\core\sys\windows\dbghelp.d \
 	src\core\sys\windows\dll.d \
+	src\core\sys\windows\io.d \
 	src\core\sys\windows\stacktrace.d \
 	src\core\sys\windows\stat.d \
 	src\core\sys\windows\threadaux.d \

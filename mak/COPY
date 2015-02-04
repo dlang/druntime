@@ -148,6 +148,7 @@ COPY=\
 	$(IMPDIR)\core\sys\windows\com.d \
 	$(IMPDIR)\core\sys\windows\dbghelp.d \
 	$(IMPDIR)\core\sys\windows\dll.d \
+	$(IMPDIR)\core\sys\windows\io.d \
 	$(IMPDIR)\core\sys\windows\stacktrace.d \
 	$(IMPDIR)\core\sys\windows\stat.d \
 	$(IMPDIR)\core\sys\windows\threadaux.d \
