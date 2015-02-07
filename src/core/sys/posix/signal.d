@@ -134,195 +134,245 @@ version( linux )
 {
     version (X86)
     {
-        //SIGABRT (defined in core.stdc.signal)
-        enum SIGALRM    = 14;
+        enum SIGHUP     = 1;
+        //SIGINT (defined in core.stdc.signal) = 2
+        enum SIGQUIT    = 3;
+        //SIGILL (defined in core.stdc.signal) = 4
+        // SIGTRAP = 5 is defined much further below.
+        //SIGABRT (defined in core.stdc.signal) = 6
         enum SIGBUS     = 7;
+        //SIGFPE (defined in core.stdc.signal) = 8
+        enum SIGKILL    = 9;
+        enum SIGUSR1    = 10;
+        //SIGSEGV (defined in core.stdc.signal) = 11
+        enum SIGUSR2    = 12;
+        enum SIGPIPE    = 13;
+        enum SIGALRM    = 14;
+        //SIGTERM (defined in core.stdc.signal) = 15
+        enum SIGSTKFLT  = 16;
         enum SIGCHLD    = 17;
         enum SIGCONT    = 18;
-        //SIGFPE (defined in core.stdc.signal)
-        enum SIGHUP     = 1;
-        //SIGILL (defined in core.stdc.signal)
-        //SIGINT (defined in core.stdc.signal)
-        enum SIGKILL    = 9;
-        enum SIGPIPE    = 13;
-        enum SIGQUIT    = 3;
-        //SIGSEGV (defined in core.stdc.signal)
         enum SIGSTOP    = 19;
-        //SIGTERM (defined in core.stdc.signal)
         enum SIGTSTP    = 20;
         enum SIGTTIN    = 21;
         enum SIGTTOU    = 22;
-        enum SIGUSR1    = 10;
-        enum SIGUSR2    = 12;
         enum SIGURG     = 23;
+        // 24,25,26,27: see much further below.
+        enum SIGWINCH   = 28;
+        // 29: see much further below.
+        enum SIGPWR     = 30;
     }
     else version (X86_64)
     {
-        //SIGABRT (defined in core.stdc.signal)
-        enum SIGALRM    = 14;
+        enum SIGHUP     = 1;
+        //SIGINT (defined in core.stdc.signal) = 2
+        enum SIGQUIT    = 3;
+        //SIGILL (defined in core.stdc.signal) = 4
+        // SIGTRAP = 5 is defined much further below.
+        //SIGABRT (defined in core.stdc.signal) = 6
         enum SIGBUS     = 7;
+        //SIGFPE (defined in core.stdc.signal) = 8
+        enum SIGKILL    = 9;
+        enum SIGUSR1    = 10;
+        //SIGSEGV (defined in core.stdc.signal) = 11
+        enum SIGUSR2    = 12;
+        enum SIGPIPE    = 13;
+        enum SIGALRM    = 14;
+        //SIGTERM (defined in core.stdc.signal) = 15
+        enum SIGSTKFLT  = 16;
         enum SIGCHLD    = 17;
         enum SIGCONT    = 18;
-        //SIGFPE (defined in core.stdc.signal)
-        enum SIGHUP     = 1;
-        //SIGILL (defined in core.stdc.signal)
-        //SIGINT (defined in core.stdc.signal)
-        enum SIGKILL    = 9;
-        enum SIGPIPE    = 13;
-        enum SIGQUIT    = 3;
-        //SIGSEGV (defined in core.stdc.signal)
         enum SIGSTOP    = 19;
-        //SIGTERM (defined in core.stdc.signal)
         enum SIGTSTP    = 20;
         enum SIGTTIN    = 21;
         enum SIGTTOU    = 22;
-        enum SIGUSR1    = 10;
-        enum SIGUSR2    = 12;
         enum SIGURG     = 23;
+        // 24,25,26,27: see much further below.
+        enum SIGWINCH   = 28;
+        // 29: see much further below.
+        enum SIGPWR     = 30;
     }
     else version (MIPS32)
     {
-        //SIGABRT (defined in core.stdc.signal)
-        enum SIGALRM    = 14;
-        enum SIGBUS     = 10;
-        enum SIGCHLD    = 18;
-        enum SIGCONT    = 25;
-        //SIGFPE (defined in core.stdc.signal)
         enum SIGHUP     = 1;
-        //SIGILL (defined in core.stdc.signal)
-        //SIGINT (defined in core.stdc.signal)
-        enum SIGKILL    = 9;
-        enum SIGPIPE    = 13;
+        //SIGINT (defined in core.stdc.signal) = 2
         enum SIGQUIT    = 3;
-        //SIGSEGV (defined in core.stdc.signal)
-        enum SIGSTOP    = 23;
-        //SIGTERM (defined in core.stdc.signal)
-        enum SIGTSTP    = 24;
-        enum SIGTTIN    = 26;
-        enum SIGTTOU    = 27;
+        //SIGILL (defined in core.stdc.signal) = 4
+        // SIGTRAP = 5 is defined much further below.
+        //SIGABRT (defined in core.stdc.signal) = 6
+        enum SIGEMT     = 7;
+        //SIGFPE (defined in core.stdc.signal) = 8
+        enum SIGKILL    = 9;
+        enum SIGBUS     = 10;
+        //SIGSEGV (defined in core.stdc.signal) = 11
+        // 12: see much further below.
+        enum SIGPIPE    = 13;
+        enum SIGALRM    = 14;
+        //SIGTERM (defined in core.stdc.signal) = 15
         enum SIGUSR1    = 16;
         enum SIGUSR2    = 17;
+        enum SIGCHLD    = 18;
+        enum SIGPWR     = 19;
+        enum SIGWINCH   = 20;
         enum SIGURG     = 21;
+        // 22: see much further below.
+        enum SIGSTOP    = 23;
+        enum SIGTSTP    = 24;
+        enum SIGCONT    = 25;
+        enum SIGTTIN    = 26;
+        enum SIGTTOU    = 27;
+        // 28,29,30,31: see much further below.
     }
     else version (MIPS64)
     {
-        //SIGABRT (defined in core.stdc.signal)
-        enum SIGALRM    = 14;
-        enum SIGBUS     = 10;
-        enum SIGCHLD    = 18;
-        enum SIGCONT    = 25;
-        //SIGFPE (defined in core.stdc.signal)
         enum SIGHUP     = 1;
-        //SIGILL (defined in core.stdc.signal)
-        //SIGINT (defined in core.stdc.signal)
-        enum SIGKILL    = 9;
-        enum SIGPIPE    = 13;
+        //SIGINT (defined in core.stdc.signal) = 2
         enum SIGQUIT    = 3;
-        //SIGSEGV (defined in core.stdc.signal)
-        enum SIGSTOP    = 23;
-        //SIGTERM (defined in core.stdc.signal)
-        enum SIGTSTP    = 24;
-        enum SIGTTIN    = 26;
-        enum SIGTTOU    = 27;
+        //SIGILL (defined in core.stdc.signal) = 4
+        // SIGTRAP = 5 is defined much further below.
+        //SIGABRT (defined in core.stdc.signal) = 6
+        enum SIGEMT     = 7;
+        //SIGFPE (defined in core.stdc.signal) = 8
+        enum SIGKILL    = 9;
+        enum SIGBUS     = 10;
+        //SIGSEGV (defined in core.stdc.signal) = 11
+        // 12: see much further below.
+        enum SIGPIPE    = 13;
+        enum SIGALRM    = 14;
+        //SIGTERM (defined in core.stdc.signal) = 15
         enum SIGUSR1    = 16;
         enum SIGUSR2    = 17;
+        enum SIGCHLD    = 18;
+        enum SIGPWR     = 19;
+        enum SIGWINCH   = 20;
         enum SIGURG     = 21;
+        // 22: see much further below.
+        enum SIGSTOP    = 23;
+        enum SIGTSTP    = 24;
+        enum SIGCONT    = 25;
+        enum SIGTTIN    = 26;
+        enum SIGTTOU    = 27;
+        // 28,29,30,31: see much further below.
     }
     else version (PPC)
     {
-        //SIGABRT (defined in core.stdc.signal)
-        enum SIGALRM    = 14;
+        enum SIGHUP     = 1;
+        //SIGINT (defined in core.stdc.signal) = 2
+        enum SIGQUIT    = 3;
+        //SIGILL (defined in core.stdc.signal) = 4
+        // SIGTRAP = 5 is defined much further below.
+        //SIGABRT (defined in core.stdc.signal) = 6
         enum SIGBUS     = 7;
+        //SIGFPE (defined in core.stdc.signal) = 8
+        enum SIGKILL    = 9;
+        enum SIGUSR1    = 10;
+        //SIGSEGV (defined in core.stdc.signal) = 11
+        enum SIGUSR2    = 12;
+        enum SIGPIPE    = 13;
+        enum SIGALRM    = 14;
+        //SIGTERM (defined in core.stdc.signal) = 15
+        enum SIGSTKFLT  = 16;
         enum SIGCHLD    = 17;
         enum SIGCONT    = 18;
-        //SIGFPE (defined in core.stdc.signal)
-        enum SIGHUP     = 1;
-        //SIGILL (defined in core.stdc.signal)
-        //SIGINT (defined in core.stdc.signal)
-        enum SIGKILL    = 9;
-        enum SIGPIPE    = 13;
-        enum SIGQUIT    = 3;
-        //SIGSEGV (defined in core.stdc.signal)
         enum SIGSTOP    = 19;
-        //SIGTERM (defined in core.stdc.signal)
         enum SIGTSTP    = 20;
         enum SIGTTIN    = 21;
         enum SIGTTOU    = 22;
-        enum SIGUSR1    = 10;
-        enum SIGUSR2    = 12;
         enum SIGURG     = 23;
+        // 24,25,26,27: see much further below.
+        enum SIGWINCH   = 28;
+        // 29: see much further below.
+        enum SIGPWR     = 30;
     }
     else version (PPC64)
     {
-        //SIGABRT (defined in core.stdc.signal)
-        enum SIGALRM    = 14;
+        enum SIGHUP     = 1;
+        //SIGINT (defined in core.stdc.signal) = 2
+        enum SIGQUIT    = 3;
+        //SIGILL (defined in core.stdc.signal) = 4
+        // SIGTRAP = 5 is defined much further below.
+        //SIGABRT (defined in core.stdc.signal) = 6
         enum SIGBUS     = 7;
+        //SIGFPE (defined in core.stdc.signal) = 8
+        enum SIGKILL    = 9;
+        enum SIGUSR1    = 10;
+        //SIGSEGV (defined in core.stdc.signal) = 11
+        enum SIGUSR2    = 12;
+        enum SIGPIPE    = 13;
+        enum SIGALRM    = 14;
+        //SIGTERM (defined in core.stdc.signal) = 15
+        enum SIGSTKFLT  = 16;
         enum SIGCHLD    = 17;
         enum SIGCONT    = 18;
-        //SIGFPE (defined in core.stdc.signal)
-        enum SIGHUP     = 1;
-        //SIGILL (defined in core.stdc.signal)
-        //SIGINT (defined in core.stdc.signal)
-        enum SIGKILL    = 9;
-        enum SIGPIPE    = 13;
-        enum SIGQUIT    = 3;
-        //SIGSEGV (defined in core.stdc.signal)
         enum SIGSTOP    = 19;
-        //SIGTERM (defined in core.stdc.signal)
         enum SIGTSTP    = 20;
         enum SIGTTIN    = 21;
         enum SIGTTOU    = 22;
-        enum SIGUSR1    = 10;
-        enum SIGUSR2    = 12;
         enum SIGURG     = 23;
+        // 24,25,26,27: see much further below.
+        enum SIGWINCH   = 28;
+        // 29: see much further below.
+        enum SIGPWR     = 30;
     }
     else version (ARM)
     {
-        //SIGABRT (defined in core.stdc.signal)
-        enum SIGALRM    = 14;
+        enum SIGHUP     = 1;
+        //SIGINT (defined in core.stdc.signal) = 2
+        enum SIGQUIT    = 3;
+        //SIGILL (defined in core.stdc.signal) = 4
+        // SIGTRAP = 5 is defined much further below.
+        //SIGABRT (defined in core.stdc.signal) = 6
         enum SIGBUS     = 7;
+        //SIGFPE (defined in core.stdc.signal) = 8
+        enum SIGKILL    = 9;
+        enum SIGUSR1    = 10;
+        //SIGSEGV (defined in core.stdc.signal) = 11
+        enum SIGUSR2    = 12;
+        enum SIGPIPE    = 13;
+        enum SIGALRM    = 14;
+        //SIGTERM (defined in core.stdc.signal) = 15
+        enum SIGSTKFLT  = 16;
         enum SIGCHLD    = 17;
         enum SIGCONT    = 18;
-        //SIGFPE (defined in core.stdc.signal)
-        enum SIGHUP     = 1;
-        //SIGILL (defined in core.stdc.signal)
-        //SIGINT (defined in core.stdc.signal)
-        enum SIGKILL    = 9;
-        enum SIGPIPE    = 13;
-        enum SIGQUIT    = 3;
-        //SIGSEGV (defined in core.stdc.signal)
         enum SIGSTOP    = 19;
-        //SIGTERM (defined in core.stdc.signal)
         enum SIGTSTP    = 20;
         enum SIGTTIN    = 21;
         enum SIGTTOU    = 22;
-        enum SIGUSR1    = 10;
-        enum SIGUSR2    = 12;
         enum SIGURG     = 23;
+        // 24,25,26,27: see much further below.
+        enum SIGWINCH   = 28;
+        // 29: see much further below.
+        enum SIGPWR     = 30;
     }
     else version (AArch64)
     {
-        //SIGABRT (defined in core.stdc.signal)
-        enum SIGALRM    = 14;
+        enum SIGHUP     = 1;
+        //SIGINT (defined in core.stdc.signal) = 2
+        enum SIGQUIT    = 3;
+        //SIGILL (defined in core.stdc.signal) = 4
+        // SIGTRAP = 5 is defined much further below.
+        //SIGABRT (defined in core.stdc.signal) = 6
         enum SIGBUS     = 7;
+        //SIGFPE (defined in core.stdc.signal) = 8
+        enum SIGKILL    = 9;
+        enum SIGUSR1    = 10;
+        //SIGSEGV (defined in core.stdc.signal) = 11
+        enum SIGUSR2    = 12;
+        enum SIGPIPE    = 13;
+        enum SIGALRM    = 14;
+        //SIGTERM (defined in core.stdc.signal) = 15
+        enum SIGSTKFLT  = 16;
         enum SIGCHLD    = 17;
         enum SIGCONT    = 18;
-        //SIGFPE (defined in core.stdc.signal)
-        enum SIGHUP     = 1;
-        //SIGILL (defined in core.stdc.signal)
-        //SIGINT (defined in core.stdc.signal)
-        enum SIGKILL    = 9;
-        enum SIGPIPE    = 13;
-        enum SIGQUIT    = 3;
-        //SIGSEGV (defined in core.stdc.signal)
         enum SIGSTOP    = 19;
-        //SIGTERM (defined in core.stdc.signal)
         enum SIGTSTP    = 20;
         enum SIGTTIN    = 21;
         enum SIGTTOU    = 22;
-        enum SIGUSR1    = 10;
-        enum SIGUSR2    = 12;
         enum SIGURG     = 23;
+        // 24,25,26,27: see much further below.
+        enum SIGWINCH   = 28;
+        // 29: see much further below.
+        enum SIGPWR     = 30;
     }
     else
         static assert(0, "unimplemented");
