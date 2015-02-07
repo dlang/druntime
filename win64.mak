@@ -15,8 +15,8 @@ CP=cp
 DOCDIR=doc
 IMPDIR=import
 
-DFLAGS=-m$(MODEL) -O -release -inline -w -Isrc -Iimport
-UDFLAGS=-m$(MODEL) -O -release -w -Isrc -Iimport
+DFLAGS=-m$(MODEL) -O -release -dip25 -inline -w -Isrc -Iimport
+UDFLAGS=-m$(MODEL) -O -release -dip25 -w -Isrc -Iimport
 DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
 
 #CFLAGS=/O2 /I"$(VCDIR)"\INCLUDE /I"$(SDKDIR)"\Include
@@ -277,6 +277,9 @@ $(IMPDIR)\core\sys\freebsd\execinfo.d : src\core\sys\freebsd\execinfo.d
 $(IMPDIR)\core\sys\freebsd\time.d : src\core\sys\freebsd\time.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\freebsd\sys\cdefs.d : src\core\sys\freebsd\sys\cdefs.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\freebsd\sys\elf.d : src\core\sys\freebsd\sys\elf.d
 	copy $** $@
 
@@ -293,6 +296,9 @@ $(IMPDIR)\core\sys\freebsd\sys\event.d : src\core\sys\freebsd\sys\event.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\freebsd\sys\link_elf.d : src\core\sys\freebsd\sys\link_elf.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\freebsd\sys\mman.d : src\core\sys\freebsd\sys\mman.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\config.d : src\core\sys\linux\config.d
@@ -334,6 +340,9 @@ $(IMPDIR)\core\sys\linux\sys\mman.d : src\core\sys\linux\sys\mman.d
 $(IMPDIR)\core\sys\linux\sys\signalfd.d : src\core\sys\linux\sys\signalfd.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\linux\sys\sysinfo.d : src\core\sys\linux\sys\sysinfo.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\linux\sys\xattr.d : src\core\sys\linux\sys\xattr.d
 	copy $** $@
 
@@ -354,6 +363,7 @@ $(IMPDIR)\core\sys\osx\mach\kern_return.d : src\core\sys\osx\mach\kern_return.d
 
 $(IMPDIR)\core\sys\osx\mach\loader.d : src\core\sys\osx\mach\loader.d
 	copy $** $@
+
 $(IMPDIR)\core\sys\osx\mach\port.d : src\core\sys\osx\mach\port.d
 	copy $** $@
 
@@ -361,6 +371,12 @@ $(IMPDIR)\core\sys\osx\mach\semaphore.d : src\core\sys\osx\mach\semaphore.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\osx\mach\thread_act.d : src\core\sys\osx\mach\thread_act.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\osx\sys\cdefs.d : src\core\sys\osx\sys\cdefs.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\osx\sys\mman.d : src\core\sys\osx\sys\mman.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\posix\arpa\inet.d : src\core\sys\posix\arpa\inet.d
@@ -489,7 +505,37 @@ $(IMPDIR)\core\sys\posix\utime.d : src\core\sys\posix\utime.d
 $(IMPDIR)\core\sys\solaris\dlfcn.d : src\core\sys\solaris\dlfcn.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\solaris\elf.d : src\core\sys\solaris\elf.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\solaris\execinfo.d : src\core\sys\solaris\execinfo.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\libelf.d : src\core\sys\solaris\libelf.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\link.d : src\core\sys\solaris\link.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf.d : src\core\sys\solaris\sys\elf.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf_386.d : src\core\sys\solaris\sys\elf_386.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf_amd64.d : src\core\sys\solaris\sys\elf_amd64.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf_notes.d : src\core\sys\solaris\sys\elf_notes.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elf_SPARC.d : src\core\sys\solaris\sys\elf_SPARC.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\elftypes.d : src\core\sys\solaris\sys\elftypes.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\solaris\sys\link.d : src\core\sys\solaris\sys\link.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\solaris\sys\procset.d : src\core\sys\solaris\sys\procset.d
@@ -546,8 +592,8 @@ $(GCSTUB) : src\gcstub\gc.d win64.mak
 $(DRUNTIME): $(OBJS) $(SRCS) win64.mak
 	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
-unittest : $(SRCS) $(DRUNTIME) src\unittest.d
-	$(DMD) $(UDFLAGS) -version=druntime_unittest -unittest src\unittest.d $(SRCS) $(DRUNTIME) -debuglib=$(DRUNTIME) -defaultlib=$(DRUNTIME) user32.lib
+unittest : $(SRCS) $(DRUNTIME)
+	$(DMD) $(UDFLAGS) -version=druntime_unittest -unittest -ofunittest.exe -main $(SRCS) $(DRUNTIME) -debuglib=$(DRUNTIME) -defaultlib=$(DRUNTIME) user32.lib
 	unittest
 
 zip: druntime.zip

@@ -45,6 +45,7 @@ SRCS=\
 	src\core\sys\freebsd\execinfo.d \
 	src\core\sys\freebsd\sys\event.d \
 	\
+	src\core\sys\linux\stdio.d \
 	src\core\sys\linux\tipc.d \
 	\
 	src\core\sys\posix\signal.d \
@@ -73,12 +74,13 @@ SRCS=\
 	src\core\sys\windows\windows.d \
 	src\core\sys\windows\winsock2.d \
 	\
-	src\gc\gc.d \
-	src\gc\os.d \
 	src\gc\bits.d \
 	src\gc\config.d \
-	src\gc\stats.d \
+	src\gc\gc.d \
+	src\gc\os.d \
+	src\gc\pooltable.d \
 	src\gc\proxy.d \
+	src\gc\stats.d \
 	\
 	src\rt\aApply.d \
 	src\rt\aApplyR.d \
@@ -114,8 +116,7 @@ SRCS=\
 	src\rt\qsort.d \
 	src\rt\sections.d \
 	src\rt\sections_android.d \
-	src\rt\sections_freebsd.d \
-	src\rt\sections_linux.d \
+	src\rt\sections_elf_shared.d \
 	src\rt\sections_osx.d \
 	src\rt\sections_solaris.d \
 	src\rt\sections_win32.d \
