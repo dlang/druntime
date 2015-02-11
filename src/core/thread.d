@@ -145,7 +145,8 @@ version( Windows )
 
             Thread.setThis(obj);
             // Thread may only be suspended after setThis
-            atomicStore(obj.m_isInCriticalRegion, false);
+            synchronized (Thread.criticalRegionLock)
+                obj.m_isInCriticalRegion = false;
 
             scope( exit )
             {
@@ -263,7 +264,8 @@ else version( Posix )
             atomicStore!(MemoryOrder.raw)(obj.m_isRunning, true);
             Thread.setThis(obj);
             // Thread may only be suspended after setThis
-            atomicStore(obj.m_isInCriticalRegion, false);
+            synchronized (Thread.criticalRegionLock)
+                obj.m_isInCriticalRegion = false;
 
             scope( exit )
             {
@@ -631,7 +633,8 @@ class Thread
         }
 
         // Start thread as non-suspendable, undone in thread_entryPoint
-        atomicStore(m_isInCriticalRegion, true);
+        synchronized (Thread.criticalRegionLock)
+            m_isInCriticalRegion = true;
 
         // NOTE: The starting thread must be added to the global thread list
         //       here rather than within thread_entryPoint to prevent a race
