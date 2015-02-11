@@ -1375,7 +1375,7 @@ private:
         shared bool     m_isRunning;
     }
     bool                m_isDaemon;
-    shared bool         m_isInCriticalRegion;
+    bool                m_isInCriticalRegion;
     Throwable           m_unhandled;
 
     version( Solaris )
@@ -1533,7 +1533,12 @@ private:
         return cast(Mutex)_locks[0].ptr;
     }
 
-    __gshared byte[__traits(classInstanceSize, Mutex)][1] _locks;
+    @property static Mutex criticalRegionLock() nothrow
+    {
+        return cast(Mutex)_locks[1].ptr;
+    }
+
+    __gshared byte[__traits(classInstanceSize, Mutex)][2] _locks;
 
     static void initLocks()
     {
@@ -2512,6 +2517,7 @@ extern (C) void thread_suspendAll() nothrow
         //       cause the second suspend to fail, the garbage collection to
         //       abort, and Bad Things to occur.
 
+        Thread.criticalRegionLock.lock();
         for (Thread t = Thread.sm_tbeg; t !is null; t = t.next)
         {
             Duration waittime = dur!"usecs"(10);
@@ -2520,10 +2526,12 @@ extern (C) void thread_suspendAll() nothrow
             {
                 Thread.remove(t);
             }
-            else if (atomicLoad(t.m_isInCriticalRegion))
+            else if (t.m_isInCriticalRegion)
             {
+                Thread.criticalRegionLock.unlock();
                 Thread.sleep(waittime);
                 if (waittime < dur!"msecs"(10)) waittime *= 2;
+                Thread.criticalRegionLock.lock();
                 goto Lagain;
             }
             else
@@ -2531,6 +2539,7 @@ extern (C) void thread_suspendAll() nothrow
                 suspend(t);
             }
         }
+        Thread.criticalRegionLock.unlock();
     }
 }
 
@@ -2779,7 +2788,8 @@ in
 }
 body
 {
-    atomicStore(Thread.getThis().m_isInCriticalRegion, true);
+    synchronized (Thread.criticalRegionLock)
+        Thread.getThis().m_isInCriticalRegion = true;
 }
 
 
@@ -2797,7 +2807,8 @@ in
 }
 body
 {
-    atomicStore(Thread.getThis().m_isInCriticalRegion, false);
+    synchronized (Thread.criticalRegionLock)
+        Thread.getThis().m_isInCriticalRegion = false;
 }
 
 
@@ -2814,7 +2825,8 @@ in
 }
 body
 {
-    return atomicLoad(Thread.getThis().m_isInCriticalRegion);
+    synchronized (Thread.criticalRegionLock)
+        return Thread.getThis().m_isInCriticalRegion;
 }
 
 
@@ -2884,11 +2896,13 @@ unittest
     thr.start();
 
     sema.wait();
-    assert(atomicLoad(thr.m_isInCriticalRegion));
+    synchronized (Thread.criticalRegionLock)
+        assert(thr.m_isInCriticalRegion);
     semb.notify();
 
     sema.wait();
-    assert(!atomicLoad(thr.m_isInCriticalRegion));
+    synchronized (Thread.criticalRegionLock)
+        assert(!thr.m_isInCriticalRegion);
     semb.notify();
 
     thr.join();
