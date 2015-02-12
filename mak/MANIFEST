@@ -16,7 +16,6 @@ MANIFEST=\
 	src\object_.d \
 	src\object.di \
 	src\test_runner.d \
-	src\unittest.d \
 	\
 	src\core\atomic.d \
 	src\core\bitop.d \
@@ -70,13 +69,16 @@ MANIFEST=\
 	\
 	src\core\sys\freebsd\dlfcn.d \
 	src\core\sys\freebsd\execinfo.d \
+	src\core\sys\freebsd\time.d \
 	\
+	src\core\sys\freebsd\sys\cdefs.d \
 	src\core\sys\freebsd\sys\elf.d \
 	src\core\sys\freebsd\sys\elf_common.d \
 	src\core\sys\freebsd\sys\elf32.d \
 	src\core\sys\freebsd\sys\elf64.d \
 	src\core\sys\freebsd\sys\event.d \
 	src\core\sys\freebsd\sys\link_elf.d \
+	src\core\sys\freebsd\sys\mman.d \
 	\
 	src\core\sys\linux\config.d \
 	src\core\sys\linux\dlfcn.d \
@@ -85,11 +87,15 @@ MANIFEST=\
 	src\core\sys\linux\errno.d \
 	src\core\sys\linux\execinfo.d \
 	src\core\sys\linux\link.d \
+	src\core\sys\linux\stdio.d \
 	src\core\sys\linux\termios.d \
+	src\core\sys\linux\time.d \
+	src\core\sys\linux\tipc.d \
 	\
 	src\core\sys\linux\sys\inotify.d \
 	src\core\sys\linux\sys\mman.d \
 	src\core\sys\linux\sys\signalfd.d \
+	src\core\sys\linux\sys\sysinfo.d \
 	src\core\sys\linux\sys\xattr.d \
 	\
 	src\core\sys\osx\execinfo.d \
@@ -102,6 +108,9 @@ MANIFEST=\
 	src\core\sys\osx\mach\port.d \
 	src\core\sys\osx\mach\semaphore.d \
 	src\core\sys\osx\mach\thread_act.d \
+	\
+	src\core\sys\osx\sys\cdefs.d \
+	src\core\sys\osx\sys\mman.d \
 	\
 	src\core\sys\posix\config.d \
 	src\core\sys\posix\dirent.d \
@@ -119,6 +128,7 @@ MANIFEST=\
 	src\core\sys\posix\signal.d \
 	src\core\sys\posix\stdio.d \
 	src\core\sys\posix\stdlib.d \
+	src\core\sys\posix\syslog.d \
 	src\core\sys\posix\termios.d \
 	src\core\sys\posix\time.d \
 	src\core\sys\posix\ucontext.d \
@@ -148,22 +158,39 @@ MANIFEST=\
 	src\core\sys\posix\sys\utsname.d \
 	src\core\sys\posix\sys\wait.d \
 	\
+	src\core\sys\solaris\dlfcn.d \
+	src\core\sys\solaris\elf.d \
+	src\core\sys\solaris\execinfo.d \
+	src\core\sys\solaris\libelf.d \
+	src\core\sys\solaris\link.d \
+	\
+	src\core\sys\solaris\sys\elf.d \
+	src\core\sys\solaris\sys\elf_386.d \
+	src\core\sys\solaris\sys\elf_amd64.d \
+	src\core\sys\solaris\sys\elf_notes.d \
+	src\core\sys\solaris\sys\elf_SPARC.d \
+	src\core\sys\solaris\sys\elftypes.d \
+	src\core\sys\solaris\sys\link.d \
 	src\core\sys\solaris\sys\priocntl.d \
 	src\core\sys\solaris\sys\procset.d \
 	src\core\sys\solaris\sys\types.d \
-	src\core\sys\solaris\execinfo.d \
 	\
+	src\core\sys\windows\com.d \
 	src\core\sys\windows\dbghelp.d \
 	src\core\sys\windows\dll.d \
 	src\core\sys\windows\stacktrace.d \
+	src\core\sys\windows\stat.d \
 	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\windows.d \
+	src\core\sys\windows\winsock2.d \
 	\
+	src\gc\bits.d \
+	src\gc\config.d \
 	src\gc\gc.d \
 	src\gc\os.d \
-	src\gc\bits.d \
-	src\gc\stats.d \
+	src\gc\pooltable.d \
 	src\gc\proxy.d \
+	src\gc\stats.d \
 	\
 	src\gcstub\gc.d \
 	\
@@ -184,6 +211,7 @@ MANIFEST=\
 	src\rt\bss_section.c \
 	src\rt\cast_.d \
 	src\rt\cmath2.d \
+	src\rt\config.d \
 	src\rt\cover.d \
 	src\rt\critical_.d \
 	src\rt\deh.d \
@@ -203,8 +231,7 @@ MANIFEST=\
 	src\rt\qsort.d \
 	src\rt\sections.d \
 	src\rt\sections_android.d \
-	src\rt\sections_freebsd.d \
-	src\rt\sections_linux.d \
+	src\rt\sections_elf_shared.d \
 	src\rt\sections_osx.d \
 	src\rt\sections_solaris.d \
 	src\rt\sections_win32.d \
@@ -212,6 +239,17 @@ MANIFEST=\
 	src\rt\switch_.d \
 	src\rt\tlsgc.d \
 	src\rt\trace.d \
+	\
+	src\rt\util\array.d \
+	src\rt\util\hash.d \
+	src\rt\util\random.d \
+	src\rt\util\string.d \
+	src\rt\util\typeinfo.d \
+	src\rt\util\utf.d \
+	src\rt\util\container\array.d \
+	src\rt\util\container\common.d \
+	src\rt\util\container\hashtab.d \
+	src\rt\util\container\treap.d \
 	\
 	src\rt\typeinfo\ti_AC.d \
 	src\rt\typeinfo\ti_Acdouble.d \
@@ -224,8 +262,8 @@ MANIFEST=\
 	src\rt\typeinfo\ti_Along.d \
 	src\rt\typeinfo\ti_Areal.d \
 	src\rt\typeinfo\ti_Ashort.d \
-	src\rt\typeinfo\ti_C.d \
 	src\rt\typeinfo\ti_byte.d \
+	src\rt\typeinfo\ti_C.d \
 	src\rt\typeinfo\ti_cdouble.d \
 	src\rt\typeinfo\ti_cfloat.d \
 	src\rt\typeinfo\ti_char.d \
@@ -248,15 +286,5 @@ MANIFEST=\
 	src\rt\typeinfo\ti_ushort.d \
 	src\rt\typeinfo\ti_void.d \
 	src\rt\typeinfo\ti_wchar.d \
-	\
-	src\rt\util\array.d \
-	src\rt\util\hash.d \
-	src\rt\util\random.d \
-	src\rt\util\string.d \
-	src\rt\util\utf.d \
-	src\rt\util\container\array.d \
-	src\rt\util\container\common.d \
-	src\rt\util\container\hashtab.d \
-	src\rt\util\container\treap.d \
 	\
 	src\etc\linux\memoryerror.d

@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -19,10 +19,9 @@ private import rt.typeinfo.ti_real;
 
 class TypeInfo_j : TypeInfo_e
 {
-    @trusted:
-    const:
-    pure:
-    nothrow:
+  pure:
+  nothrow:
+  @safe:
 
-    override string toString() const pure nothrow @safe { return "ireal"; }
+    override string toString() const { return ireal.stringof; }
 }

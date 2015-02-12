@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -202,10 +202,6 @@ version( linux )
     enum MAP_PRIVATE    = 0x02;
     enum MAP_FIXED      = 0x10;
 
-    static import core.sys.linux.sys.mman;
-    deprecated("Please use core.sys.linux.sys.mman for non-POSIX extensions")
-    alias MAP_ANON = core.sys.linux.sys.mman.MAP_ANON;
-
     enum MAP_FAILED     = cast(void*) -1;
 
     version (Alpha) enum
@@ -240,7 +236,9 @@ else version( OSX )
     enum MAP_SHARED     = 0x0001;
     enum MAP_PRIVATE    = 0x0002;
     enum MAP_FIXED      = 0x0010;
-    enum MAP_ANON       = 0x1000; // non-standard
+    static import core.sys.osx.sys.mman;
+    deprecated("Please use core.sys.osx.sys.mman for non-POSIX extensions")
+    alias MAP_ANON = core.sys.osx.sys.mman.MAP_ANON;
 
     enum MAP_FAILED     = cast(void*)-1;
 
@@ -255,7 +253,9 @@ else version( FreeBSD )
     enum MAP_SHARED     = 0x0001;
     enum MAP_PRIVATE    = 0x0002;
     enum MAP_FIXED      = 0x0010;
-    enum MAP_ANON       = 0x1000; // non-standard
+    static import core.sys.freebsd.sys.mman;
+    deprecated("Please use core.sys.freebsd.sys.mman for non-POSIX extensions")
+    alias MAP_ANON = core.sys.freebsd.sys.mman.MAP_ANON;
 
     enum MAP_FAILED     = cast(void*)-1;
 

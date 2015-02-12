@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -195,6 +195,9 @@ int    fileno(FILE*);
 char*  gets(char*);
 int    pclose(FILE*);
 FILE*  popen(in char*, in char*);
+FILE*  fmemopen(in void* buf, in size_t size, in char* mode);
+FILE*  open_memstream(char** ptr, size_t* sizeloc);
+FILE*  open_wmemstream(wchar_t** ptr, size_t* sizeloc);
 
 //
 // Thread-Safe Functions (TSF)
@@ -210,6 +213,16 @@ int    putchar_unlocked(int);
 */
 
 version( linux )
+{
+    void   flockfile(FILE*);
+    int    ftrylockfile(FILE*);
+    void   funlockfile(FILE*);
+    int    getc_unlocked(FILE*);
+    int    getchar_unlocked();
+    int    putc_unlocked(int, FILE*);
+    int    putchar_unlocked(int);
+}
+else version( Solaris )
 {
     void   flockfile(FILE*);
     int    ftrylockfile(FILE*);
@@ -243,4 +256,50 @@ version( OSX )
 version( FreeBSD )
 {
     enum P_tmpdir  = "/var/tmp/";
+}
+version( Solaris )
+{
+    enum P_tmpdir  = "/var/tmp/";
+}
+
+unittest
+{ /* fmemopen */
+    import core.stdc.string : memcmp;
+    byte[10] buf;
+    auto f = fmemopen(buf.ptr, 10, "w");
+    assert(f !is null);
+    assert(fprintf(f, "hello") == "hello".length);
+    assert(fflush(f) == 0);
+    assert(memcmp(buf.ptr, "hello".ptr, "hello".length) == 0);
+    //assert(buf
+    assert(fclose(f) == 0);
+}
+
+unittest
+{ /* Note: open_memstream is only useful for writing */
+    import core.stdc.string : memcmp;
+    char* ptr = null;
+    char[] testdata = ['h', 'e', 'l', 'l', 'o', 0];
+    size_t sz = 0;
+    auto f = open_memstream(&ptr, &sz);
+    assert(f !is null);
+    assert(fprintf(f, "%s", testdata.ptr) == 5);
+    assert(fflush(f) == 0);
+    assert(memcmp(ptr, testdata.ptr, testdata.length) == 0);
+    assert(fclose(f) == 0);
+}
+
+unittest
+{ /* Note: open_wmemstream is only useful for writing */
+    import core.stdc.string : memcmp;
+    import core.stdc.wchar_ : fwprintf;
+    wchar_t* ptr = null;
+    wchar_t[] testdata = ['h', 'e', 'l', 'l', 'o', 0];
+    size_t sz = 0;
+    auto f = open_wmemstream(&ptr, &sz);
+    assert(f !is null);
+    assert(fwprintf(f, testdata.ptr) == 5);
+    assert(fflush(f) == 0);
+    assert(memcmp(ptr, testdata.ptr, testdata.length*wchar_t.sizeof) == 0);
+    assert(fclose(f) == 0);
 }

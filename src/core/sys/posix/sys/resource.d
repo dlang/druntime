@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright (c) 2013 Lars Tandle Kyllingstad.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Lars Tandle Kyllingstad
  * Standards: The Open Group Base Specifications Issue 7, IEEE Std 1003.1-2008
  */
@@ -361,6 +361,25 @@ else
     int setpriority(int, id_t, int);
 }
 
-int getrlimit(int, rlimit*);
-int getrusage(int, rusage*);
-int setrlimit(int, in rlimit*);
+version (linux)
+{
+    static if (__USE_FILE_OFFSET64)
+    {
+        int getrlimit64(int, rlimit*);
+        int setrlimit64(int, in rlimit*);
+        alias getrlimit = getrlimit64;
+        alias setrlimit = setrlimit64;
+    }
+    else
+    {
+        int getrlimit(int, rlimit*);
+        int setrlimit(int, in rlimit*);
+    }
+    int getrusage(int, rusage*);
+}
+else
+{
+    int getrlimit(int, rlimit*);
+    int getrusage(int, rusage*);
+    int setrlimit(int, in rlimit*);
+}

@@ -47,28 +47,6 @@ private
 
     extern (C) string[] rt_args();
     extern (C) CArgs rt_cArgs();
-
-    // backtrace
-    version( linux )
-        import core.sys.linux.execinfo;
-    else version( OSX )
-        import core.sys.osx.execinfo;
-    else version( FreeBSD )
-        import core.sys.freebsd.execinfo;
-    else version( Windows )
-        import core.sys.windows.stacktrace;
-    else version( Solaris )
-        import core.sys.solaris.execinfo;
-
-    // For runModuleUnitTests error reporting.
-    version( Windows )
-    {
-        import core.sys.windows.windows;
-    }
-    else version( Posix )
-    {
-        import core.sys.posix.unistd;
-    }
 }
 
 
@@ -107,7 +85,7 @@ struct Runtime
      * standard program initialization process is not executed.  This is most
      * often in shared libraries or in libraries linked to a C program.
      * If the runtime was already successfully initialized this returns true.
-     * Each call to initialize must be paired by a call to $(LREF, terminate).
+     * Each call to initialize must be paired by a call to $(LREF terminate).
      *
      * Returns:
      *  true if initialization succeeded or false if initialization failed.
@@ -357,6 +335,18 @@ private:
  */
 extern (C) bool runModuleUnitTests()
 {
+    // backtrace
+    version( linux )
+        import core.sys.linux.execinfo;
+    else version( OSX )
+        import core.sys.osx.execinfo;
+    else version( FreeBSD )
+        import core.sys.freebsd.execinfo;
+    else version( Windows )
+        import core.sys.windows.stacktrace;
+    else version( Solaris )
+        import core.sys.solaris.execinfo;
+
     static if( __traits( compiles, backtrace ) )
     {
         import core.sys.posix.signal; // segv handler
@@ -392,7 +382,8 @@ extern (C) bool runModuleUnitTests()
     {
         void printErr(in char[] buf)
         {
-            .fprintf(.stderr, "%.*s", cast(int)buf.length, buf.ptr);
+            import core.stdc.stdio : fprintf, stderr;
+            fprintf(stderr, "%.*s", cast(int)buf.length, buf.ptr);
         }
 
         size_t failed = 0;
@@ -430,9 +421,20 @@ extern (C) bool runModuleUnitTests()
 /**
  *
  */
-import core.stdc.stdio;
 Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
+    // backtrace
+    version( linux )
+        import core.sys.linux.execinfo;
+    else version( OSX )
+        import core.sys.osx.execinfo;
+    else version( FreeBSD )
+        import core.sys.freebsd.execinfo;
+    else version( Windows )
+        import core.sys.windows.stacktrace;
+    else version( Solaris )
+        import core.sys.solaris.execinfo;
+
     //printf("runtime.defaultTraceHandler()\n");
     static if( __traits( compiles, backtrace ) )
     {
@@ -536,7 +538,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
             void*[MAXFRAMES]  callstack = void;
 
         private:
-            const(char)[] fixline( const(char)[] buf, ref char[4096] fixbuf ) const
+            const(char)[] fixline( const(char)[] buf, return ref char[4096] fixbuf ) const
             {
                 size_t symBeg, symEnd;
                 version( OSX )
@@ -653,6 +655,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         {
             static enum FIRSTFRAME = 0;
         }
+        import core.sys.windows.windows : CONTEXT;
         auto s = new StackTrace(FIRSTFRAME, cast(CONTEXT*)ptr);
         return s;
     }

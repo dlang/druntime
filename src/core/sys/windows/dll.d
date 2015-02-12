@@ -327,7 +327,7 @@ public:
             return true;
 
         void** peb;
-        asm
+        asm pure nothrow @nogc
         {
             mov EAX,FS:[0x30];
             mov peb, EAX;
@@ -341,6 +341,8 @@ public:
         dll_aux.LdrpTlsListEntry* entry = dll_aux.addTlsListEntry( peb, tlsstart, tlsend, tls_callbacks_a, tlsindex );
         if( !entry )
             return false;
+
+        scope (failure) assert(0); // enforce nothrow, Bugzilla 13561
 
         if( !enumProcessThreads(
             function (uint id, void* context) nothrow {
@@ -459,5 +461,40 @@ public:
                 thread_detachThis();
         }
         return true;
+    }
+
+    /// A simple mixin to provide a $(D DllMain) which calls the necessary
+    /// runtime initialization and termination functions automatically.
+    ///
+    /// Instead of writing a custom $(D DllMain), simply write:
+    ///
+    /// ---
+    /// mixin SimpleDllMain;
+    /// ---
+    mixin template SimpleDllMain()
+    {
+        import core.sys.windows.windows : HINSTANCE;
+
+        extern(Windows)
+        bool DllMain(HINSTANCE hInstance, uint ulReason, void* reserved)
+        {
+            import core.sys.windows.windows;
+            switch(ulReason)
+            {
+                default: assert(0);
+                case DLL_PROCESS_ATTACH:
+                    return dll_process_attach( hInstance, true );
+
+                case DLL_PROCESS_DETACH:
+                    dll_process_detach( hInstance, true );
+                    return true;
+
+                case DLL_THREAD_ATTACH:
+                    return dll_thread_attach( true, true );
+
+                case DLL_THREAD_DETACH:
+                    return dll_thread_detach( true, true );
+            }
+        }
     }
 }

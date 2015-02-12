@@ -1,10 +1,10 @@
 /**
  * D header file for C99.
  *
+ * $(C_HEADER_DESCRIPTION pubs.opengroup.org/onlinepubs/009695399/basedefs/stdarg.h.html, stdarg.h)
+ *
  * Copyright: Copyright Digital Mars 2000 - 2009.
- * License:   Distributed under the
- *    <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License 1.0</a>.
- *    (See accompanying file LICENSE or copy at http://www.boost.org/LICENSE_1_0.txt)
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Hauke Duden
  * Standards: ISO/IEC 9899:1999 (E)
  * Source: $(DRUNTIMESRC core/stdc/_stdarg.d)
@@ -13,7 +13,6 @@
 module core.stdc.stdarg;
 
 @system:
-nothrow:
 //@nogc:    // Not yet, need to make TypeInfo's member functions @nogc first
 
 version( X86 )
@@ -65,7 +64,7 @@ version( X86 )
         //auto p = cast(void*)(cast(size_t)ap + talign - 1) & ~(talign - 1);
         auto p = ap;
         auto tsize = ti.tsize;
-        ap = cast(void*)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
+        ap = cast(va_list)(cast(size_t)p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
         parmn[0..tsize] = p[0..tsize];
     }
 
@@ -76,6 +75,7 @@ version( X86 )
     {
     }
 
+    ///
     void va_copy(out va_list dest, va_list src)
     {
         dest = src;
@@ -96,10 +96,7 @@ else version (Windows) // Win64
      * Initialize ap.
      * parmn should be the last named parameter.
      */
-    void va_start(T)(out va_list ap, ref T parmn)
-    {
-        ap = cast(va_list)(cast(void*)&parmn + ((size_t.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1)));
-    }
+    void va_start(T)(out va_list ap, ref T parmn); // Compiler intrinsic
 
     /************
      * Retrieve and return the next value that is type T.
@@ -150,6 +147,7 @@ else version (Windows) // Win64
     {
     }
 
+    ///
     void va_copy(out va_list dest, va_list src)
     {
         dest = src;
@@ -191,17 +189,17 @@ else version (X86_64)
      */
     alias va_list = __va_list*;
 
-    void va_start(T)(out va_list ap, ref T parmn)
-    {
-        ap = &parmn.va;
-    }
+    ///
+    void va_start(T)(out va_list ap, ref T parmn); // Compiler intrinsic
 
+    ///
     T va_arg(T)(va_list ap)
     {   T a;
         va_arg(ap, a);
         return a;
     }
 
+    ///
     void va_arg(T)(va_list apx, ref T parmn)
     {
         __va_list* ap = cast(__va_list*)apx;
@@ -343,6 +341,7 @@ else version (X86_64)
         }
     }
 
+    ///
     void va_arg()(va_list apx, TypeInfo ti, void* parmn)
     {
         __va_list* ap = cast(__va_list*)apx;
@@ -455,13 +454,24 @@ else version (X86_64)
         }
     }
 
+    ///
     void va_end(va_list ap)
     {
     }
 
-    void va_copy(out va_list dest, va_list src)
+    import core.stdc.stdlib : alloca;
+
+    ///
+    void va_copy(out va_list dest, va_list src, void* storage = alloca(__va_list_tag.sizeof))
     {
-        dest = src;
+        // Instead of copying the pointers, and aliasing the source va_list,
+        // the default argument alloca will allocate storage in the caller's
+        // stack frame.  This is still not correct (it should be allocated in
+        // the place where the va_list variable is declared) but most of the
+        // time the caller's stack frame _is_ the place where the va_list is
+        // allocated, so in most cases this will now work.
+        dest = cast(va_list)storage;
+        *dest = *src;
     }
 }
 else

@@ -16,7 +16,7 @@
  *      WIKI = Phobos/StdUtf
  *
  * Copyright: Copyright Digital Mars 2003 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Sean Kelly
  */
 
@@ -577,7 +577,7 @@ void validate(S)(in S s)
 
 /* =================== Conversion to UTF8 ======================= */
 
-char[] toUTF8(out char[4] buf, dchar c)
+char[] toUTF8(return out char[4] buf, dchar c)
     in
     {
         assert(isValidDchar(c));
@@ -682,7 +682,7 @@ string toUTF8(in dchar[] s)
 
 /* =================== Conversion to UTF16 ======================= */
 
-wchar[] toUTF16(wchar[2] buf, dchar c)
+wchar[] toUTF16(return out wchar[2] buf, dchar c)
     in
     {
         assert(isValidDchar(c));
@@ -896,4 +896,8 @@ unittest
     assert(c == "he\U000BAAAAllo");
     w = toUTF16(d);
     assert(w == "he\U000BAAAAllo");
+
+    wchar[2] buf;
+    auto ret = toUTF16(buf, '\U000BAAAA');
+    assert(ret == "\U000BAAAA");
 }

@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -16,6 +16,8 @@ module rt.typeinfo.ti_Aint;
 private import core.stdc.string;
 private import rt.util.hash;
 
+extern (C) void[] _adSort(void[] a, TypeInfo ti);
+
 // int[]
 
 class TypeInfo_Ai : TypeInfo_Array
@@ -27,7 +29,7 @@ class TypeInfo_Ai : TypeInfo_Array
     override size_t getHash(in void* p) @trusted const
     {
         int[] s = *cast(int[]*)p;
-        return hashOf(s.ptr, s.length * int.sizeof);
+        return rt.util.hash.hashOf(s.ptr, s.length * int.sizeof);
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -70,11 +72,11 @@ class TypeInfo_Ai : TypeInfo_Array
 unittest
 {
     int[][] a = [[5,3,8,7], [2,5,3,8,7]];
-    a.sort;
+    _adSort(*cast(void[]*)&a, typeid(a[0]));
     assert(a == [[2,5,3,8,7], [5,3,8,7]]);
 
     a = [[5,3,8,7], [5,3,8]];
-    a.sort;
+    _adSort(*cast(void[]*)&a, typeid(a[0]));
     assert(a == [[5,3,8], [5,3,8,7]]);
 }
 

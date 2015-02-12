@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -200,7 +200,7 @@ char*  ptsname(int);
 int    putenv(char*);
 c_long random();
 char*  realpath(in char*, char*);
-ushort seed48(ref ushort[3]);
+ushort *seed48(ref ushort[3]);
 void   setkey(in char*);
 char*  setstate(in char*);
 void   srand48(c_long);
@@ -241,7 +241,7 @@ version( linux )
     int    putenv(char*);
     c_long random();
     char*  realpath(in char*, char*);
-    ushort seed48(ref ushort[3]);
+    ushort *seed48(ref ushort[3]);
     void   setkey(in char*);
     char*  setstate(in char*);
     void   srand48(c_long);
@@ -291,7 +291,7 @@ else version( OSX )
     int    putenv(char*);
     c_long random();
     char*  realpath(in char*, char*);
-    ushort seed48(ref ushort[3]);
+    ushort *seed48(ref ushort[3]);
     void   setkey(in char*);
     char*  setstate(in char*);
     void   srand48(c_long);
@@ -331,7 +331,7 @@ else version( FreeBSD )
     int    putenv(char*);
     c_long random();
     char*  realpath(in char*, char*);
-    ushort seed48(ref ushort[3]);
+    ushort *seed48(ref ushort[3]);
     void   setkey(in char*);
     char*  setstate(in char*);
     void   srand48(c_long);
@@ -391,7 +391,7 @@ else version( Solaris )
     int    putenv(char*);
     c_long random();
     char*  realpath(in char*, char*);
-    ushort seed48(ref ushort[3]);
+    ushort *seed48(ref ushort[3]);
     void   setkey(in char*);
     char*  setstate(in char*);
     void   srand48(c_long);

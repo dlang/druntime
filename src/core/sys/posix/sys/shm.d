@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -60,16 +60,17 @@ version( linux )
 
     alias c_ulong   shmatt_t;
 
+    /* For any changes, please check /usr/include/bits/shm.h */
     struct shmid_ds
     {
         ipc_perm    shm_perm;
         size_t      shm_segsz;
         time_t      shm_atime;
-        c_ulong     __unused1;
+        version( X86_64 ) {} else c_ulong     __unused1;
         time_t      shm_dtime;
-        c_ulong     __unused2;
+        version( X86_64 ) {} else c_ulong     __unused2;
         time_t      shm_ctime;
-        c_ulong     __unused3;
+        version( X86_64 ) {} else c_ulong     __unused3;
         pid_t       shm_cpid;
         pid_t       shm_lpid;
         shmatt_t    shm_nattch;

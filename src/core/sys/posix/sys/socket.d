@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -185,21 +185,42 @@ version( linux )
 
     static if( false /* (!is( __STRICT_ANSI__ ) && __GNUC__ >= 2) || __STDC_VERSION__ >= 199901L */ )
     {
-        extern (D) ubyte[1] CMSG_DATA( cmsghdr* cmsg ) { return cmsg.__cmsg_data; }
+        extern (D) ubyte[1] CMSG_DATA( cmsghdr* cmsg ) pure nothrow @nogc { return cmsg.__cmsg_data; }
     }
     else
     {
-        extern (D) ubyte*   CMSG_DATA( cmsghdr* cmsg ) { return cast(ubyte*)( cmsg + 1 ); }
+        extern (D) inout(ubyte)*   CMSG_DATA( inout(cmsghdr)* cmsg ) pure nothrow @nogc { return cast(ubyte*)( cmsg + 1 ); }
     }
 
-    private cmsghdr* __cmsg_nxthdr(msghdr*, cmsghdr*);
-    alias            __cmsg_nxthdr CMSG_NXTHDR;
-
-    extern (D) size_t CMSG_FIRSTHDR( msghdr* mhdr )
+    private inout(cmsghdr)* __cmsg_nxthdr(inout(msghdr)*, inout(cmsghdr)*) pure nothrow @nogc;
+    extern (D)  inout(cmsghdr)* CMSG_NXTHDR(inout(msghdr)* msg, inout(cmsghdr)* cmsg) pure nothrow @nogc
     {
-        return cast(size_t)( mhdr.msg_controllen >= cmsghdr.sizeof
-                             ? cast(cmsghdr*) mhdr.msg_control
-                             : cast(cmsghdr*) null );
+        return __cmsg_nxthdr(msg, cmsg);
+    }
+
+    extern (D) inout(cmsghdr)* CMSG_FIRSTHDR( inout(msghdr)* mhdr ) pure nothrow @nogc
+    {
+        return ( cast(size_t)mhdr.msg_controllen >= cmsghdr.sizeof
+                             ? cast(inout(cmsghdr)*) mhdr.msg_control
+                             : cast(inout(cmsghdr)*) null );
+    }
+
+    extern (D)
+    {
+        size_t CMSG_ALIGN( size_t len ) pure nothrow @nogc
+        {
+            return (len + size_t.sizeof - 1) & cast(size_t) (~(size_t.sizeof - 1));
+        }
+
+        size_t CMSG_LEN( size_t len ) pure nothrow @nogc
+        {
+            return CMSG_ALIGN(cmsghdr.sizeof) + len;
+        }
+    }
+
+    extern (D) size_t CMSG_SPACE(size_t len) pure nothrow @nogc
+    {
+        return CMSG_ALIGN(len) + CMSG_ALIGN(cmsghdr.sizeof);
     }
 
     struct linger
@@ -462,15 +483,22 @@ version( linux )
         MSG_OOB         = 0x01,
         MSG_PEEK        = 0x02,
         MSG_TRUNC       = 0x20,
-        MSG_WAITALL     = 0x100
+        MSG_WAITALL     = 0x100,
+        MSG_NOSIGNAL    = 0x4000
     }
 
     enum
     {
+        AF_APPLETALK    = 5,
         AF_INET         = 2,
+        AF_IPX          = 4,
         AF_UNIX         = 1,
-        AF_UNSPEC       = 0
+        AF_UNSPEC       = 0,
+        PF_APPLETALK    = AF_APPLETALK,
+        PF_IPX          = AF_IPX
     }
+
+    enum int SOCK_RDM   = 4;
 
     enum
     {
@@ -569,6 +597,7 @@ else version( OSX )
     enum
     {
         SOCK_DGRAM      = 2,
+        SOCK_RDM        = 4,
         SOCK_SEQPACKET  = 5,
         SOCK_STREAM     = 1
     }
@@ -617,9 +646,13 @@ else version( OSX )
 
     enum
     {
+        AF_APPLETALK    = 16,
         AF_INET         = 2,
+        AF_IPX          = 23,
         AF_UNIX         = 1,
-        AF_UNSPEC       = 0
+        AF_UNSPEC       = 0,
+        PF_APPLETALK    = AF_APPLETALK,
+        PF_IPX          = AF_IPX
     }
 
     enum
@@ -741,6 +774,7 @@ else version( FreeBSD )
     enum
     {
         SOCK_DGRAM      = 2,
+        SOCK_RDM        = 4,
         SOCK_SEQPACKET  = 5,
         SOCK_STREAM     = 1
     }
@@ -784,12 +818,15 @@ else version( FreeBSD )
         MSG_OOB         = 0x1,
         MSG_PEEK        = 0x2,
         MSG_TRUNC       = 0x10,
-        MSG_WAITALL     = 0x40
+        MSG_WAITALL     = 0x40,
+        MSG_NOSIGNAL    = 0x20000
     }
 
     enum
     {
+        AF_APPLETALK    = 16,
         AF_INET         = 2,
+        AF_IPX          = 23,
         AF_UNIX         = 1,
         AF_UNSPEC       = 0
     }
@@ -833,8 +870,13 @@ else version (Solaris)
 
     alias double sockaddr_maxalign_t;
 
-    private enum _SS_PAD1SIZE = sockaddr_maxalign_t.sizeof - sa_family_t.sizeof;
-    private enum _SS_PAD2SIZE = 256 - sa_family_t.sizeof + _SS_PAD1SIZE + sockaddr_maxalign_t.sizeof;
+    private
+    {
+        enum _SS_ALIGNSIZE  = sockaddr_maxalign_t.sizeof;
+        enum _SS_MAXSIZE    = 256;
+        enum _SS_PAD1SIZE   = _SS_ALIGNSIZE - sa_family_t.sizeof;
+        enum _SS_PAD2SIZE   = _SS_MAXSIZE - sa_family_t.sizeof + _SS_PAD1SIZE + _SS_ALIGNSIZE;
+    }
 
     struct sockaddr_storage
     {
@@ -864,8 +906,10 @@ else version (Solaris)
 
     enum : uint
     {
-        SCM_RIGHTS = 0x1011
+        SCM_RIGHTS = 0x1010
     }
+
+    // FIXME: CMSG_DATA, CMSG_NXTHDR, CMSG_FIRSTHDR missing
 
     struct linger
     {
@@ -888,22 +932,26 @@ else version (Solaris)
 
     enum : uint
     {
-        SO_ACCEPTCONN = 0x0002,
-        SO_BROADCAST = 0x0020,
-        SO_DEBUG = 0x0001,
-        SO_DONTROUTE = 0x0010,
-        SO_ERROR = 0x1007,
-        SO_KEEPALIVE = 0x0008,
-        SO_LINGER = 0x0080,
-        SO_OOBINLINE = 0x0100,
-        SO_RCVBUF = 0x1002,
-        SO_RCVLOWAT = 0x1004,
-        SO_RCVTIMEO = 0x1006,
-        SO_REUSEADDR = 0x0004,
-        SO_SNDBUF = 0x1001,
-        SO_SNDLOWAT = 0x1003,
-        SO_SNDTIMEO = 0x1005,
-        SO_TYPE = 0x1008
+        SO_ACCEPTCONN   = 0x0002,
+        SO_BROADCAST    = 0x0020,
+        SO_DEBUG        = 0x0001,
+        SO_DONTROUTE    = 0x0010,
+        SO_ERROR        = 0x1007,
+        SO_KEEPALIVE    = 0x0008,
+        SO_LINGER       = 0x0080,
+        SO_OOBINLINE    = 0x0100,
+        SO_RCVBUF       = 0x1002,
+        SO_RCVLOWAT     = 0x1004,
+        SO_RCVTIMEO     = 0x1006,
+        SO_REUSEADDR    = 0x0004,
+        SO_SNDBUF       = 0x1001,
+        SO_SNDLOWAT     = 0x1003,
+        SO_SNDTIMEO     = 0x1005,
+        SO_TYPE         = 0x1008,
+
+        SO_USELOOPBACK  = 0x0040, // non-standard
+        SO_DGRAM_ERRIND = 0x0200, // non-standard
+        SO_RECVUCRED    = 0x0400, // non-standard
     }
 
     enum
@@ -913,20 +961,22 @@ else version (Solaris)
 
     enum : uint
     {
-        MSG_CTRUNC = 0x10,
-        MSG_DONTROUTE = 0x4,
-        MSG_EOR = 0x8,
-        MSG_OOB = 0x1,
-        MSG_PEEK = 0x2,
-        MSG_TRUNC = 0x20,
-        MSG_WAITALL = 0x40
+        MSG_CTRUNC      = 0x10,
+        MSG_DONTROUTE   = 0x4,
+        MSG_EOR         = 0x8,
+        MSG_OOB         = 0x1,
+        MSG_PEEK        = 0x2,
+        MSG_TRUNC       = 0x20,
+        MSG_WAITALL     = 0x40
     }
 
     enum
     {
-        AF_INET = 2,
-        AF_UNIX = 1,
-        AF_UNSPEC = 0
+        AF_IPX          = 23,
+        AF_APPLETALK    = 16,
+        AF_INET         = 2,
+        AF_UNIX         = 1,
+        AF_UNSPEC       = 0
     }
 
     enum
@@ -1086,7 +1136,9 @@ else version( Android )
 
     enum
     {
+        AF_APPLETALK    = 5,
         AF_INET         = 2,
+        AF_IPX          = 4,
         AF_UNIX         = 1,
         AF_UNSPEC       = 0
     }
@@ -1098,14 +1150,7 @@ else version( Android )
         SHUT_RDWR
     }
 
-    // constants needed for std.socket
-    enum AF_IPX       = 4;
-    enum AF_APPLETALK = 5;
-    enum SOCK_RDM     = 4;
-    enum IPPROTO_IGMP = 2;
-    enum IPPROTO_PUP  = 12;
-    enum IPPROTO_IDP  = 22;
-    enum INADDR_NONE  = 0xFFFFFFFF;
+    enum SOCK_RDM = 4;
 
     int     accept(int, sockaddr*, socklen_t*);
     int     bind(int, in sockaddr*, int);

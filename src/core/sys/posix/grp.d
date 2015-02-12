@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009, Sönke Ludwig 2013.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen, Sönke Ludwig
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -68,6 +68,16 @@ else version( FreeBSD )
         char**  gr_mem;
     }
 }
+else version( Solaris )
+{
+    struct group
+    {
+        char*   gr_name;
+        char*   gr_passwd;
+        gid_t   gr_gid;
+        char**  gr_mem;
+    }
+}
 else version( Android )
 {
     struct group
@@ -91,23 +101,28 @@ group* getgrgid(gid_t);
 //
 /*
 int getgrnam_r(in char*, group*, char*, size_t, group**);
-int getgruid_r(gid_t, group*, char*, size_t, group**);
+int getgrgid_r(gid_t, group*, char*, size_t, group**);
 */
 
 version( linux )
 {
     int getgrnam_r(in char*, group*, char*, size_t, group**);
-    int getgruid_r(gid_t, group*, char*, size_t, group**);
+    int getgrgid_r(gid_t, group*, char*, size_t, group**);
 }
 else version( OSX )
 {
     int getgrnam_r(in char*, group*, char*, size_t, group**);
-    int getgruid_r(gid_t, group*, char*, size_t, group**);
+    int getgrgid_r(gid_t, group*, char*, size_t, group**);
 }
 else version( FreeBSD )
 {
     int getgrnam_r(in char*, group*, char*, size_t, group**);
-    int getgruid_r(gid_t, group*, char*, size_t, group**);
+    int getgrgid_r(gid_t, group*, char*, size_t, group**);
+}
+else version( Solaris )
+{
+    int getgrnam_r(in char*, group*, char*, int, group**);
+    int getgrgid_r(gid_t, group*, char*, int, group**);
 }
 else version( Android )
 {
@@ -139,6 +154,12 @@ else version( OSX )
     @trusted void setgrent();
 }
 else version( FreeBSD )
+{
+    group* getgrent();
+    @trusted void endgrent();
+    @trusted void setgrent();
+}
+else version( Solaris )
 {
     group* getgrent();
     @trusted void endgrent();

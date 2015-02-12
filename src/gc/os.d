@@ -2,7 +2,7 @@
  * Contains OS-level routines needed by the garbage collector.
  *
  * Copyright: Copyright Digital Mars 2005 - 2013.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, David Friedman, Sean Kelly, Leandro Lucarella
  */
 
@@ -30,7 +30,9 @@ version (Windows)
 else version (Posix)
 {
     import core.sys.posix.sys.mman;
+    version (FreeBSD) import core.sys.freebsd.sys.mman : MAP_ANON;
     version (linux) import core.sys.linux.sys.mman : MAP_ANON;
+    version (OSX) import core.sys.osx.sys.mman : MAP_ANON;
     import core.stdc.stdlib;
 
     //version = GC_Use_Alloc_MMap;

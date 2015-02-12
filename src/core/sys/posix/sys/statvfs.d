@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Robert Klotzner 2012
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Robert Klotzner
  * Standards: The Open Group Base Specifications Issue 6 IEEE Std 1003.1, 2004 Edition
  */
@@ -37,7 +37,7 @@ version(linux) {
         }
         c_ulong f_flag;
         c_ulong f_namemax;
-        int __f_spare[6];
+        int[6] __f_spare;
     }
     /* Definitions for the flag in `f_flag'.  These definitions should be
       kept in sync with the definitions in <sys/mount.h>.  */
@@ -74,7 +74,7 @@ version(linux) {
         int statvfs64 (const char * file, statvfs_t* buf);
         alias statvfs64 statvfs;
 
-        int fstatvfs64 (int fildes, statvfs_t *buf);
+        int fstatvfs64 (int fildes, statvfs_t *buf) @trusted;
         alias fstatvfs64 fstatvfs;
     }
     else
@@ -108,5 +108,5 @@ else
     }
 
     int statvfs (const char * file, statvfs_t* buf);
-    int fstatvfs (int fildes, statvfs_t *buf);
+    int fstatvfs (int fildes, statvfs_t *buf) @trusted;
 }
