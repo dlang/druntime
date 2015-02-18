@@ -241,9 +241,97 @@ debug (LOGGING)
 const uint GCVERSION = 1;       // increment every time we change interface
                                 // to GC.
 
-// This just makes Mutex final to de-virtualize member function calls.
-final class GCMutex : Mutex
+// copy of Mutex lock/unlock to make them inlinable
+//  to be replaced by some more efficient version
+struct GCMutex
 {
+    public import core.sync.exception;
+
+    version( Windows )
+    {
+        private import core.sys.windows.windows;
+    }
+    else version( Posix )
+    {
+        private import core.sys.posix.pthread;
+    }
+    else
+    {
+        static assert(false, "Platform not supported");
+    }
+
+nothrow:
+    void initialize()
+    {
+        version( Windows )
+        {
+            InitializeCriticalSection( &m_hndl );
+        }
+        else version( Posix )
+        {
+            pthread_mutexattr_t attr = void;
+
+            if( pthread_mutexattr_init( &attr ) )
+                throw new SyncError( "Unable to initialize mutex" );
+            scope(exit) pthread_mutexattr_destroy( &attr );
+
+            if( pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE ) )
+                throw new SyncError( "Unable to initialize mutex" );
+
+            if( pthread_mutex_init( &m_hndl, &attr ) )
+                throw new SyncError( "Unable to initialize mutex" );
+        }
+    }
+    void Dtor()
+    {
+        version( Windows )
+        {
+            DeleteCriticalSection( &m_hndl );
+        }
+        else version( Posix )
+        {
+            int rc = pthread_mutex_destroy( &m_hndl );
+            assert( !rc, "Unable to destroy mutex" );
+        }
+    }
+
+    void lock()
+    {
+        version( Windows )
+        {
+            EnterCriticalSection( &m_hndl );
+        }
+        else version( Posix )
+        {
+            int rc = pthread_mutex_lock( &m_hndl );
+            if( rc )
+                throw new SyncError( "Unable to lock mutex" );
+        }
+    }
+
+    void unlock()
+    {
+        version( Windows )
+        {
+            LeaveCriticalSection( &m_hndl );
+        }
+        else version( Posix )
+        {
+            int rc = pthread_mutex_unlock( &m_hndl );
+            if( rc )
+                throw new SyncError( "Unable to unlock mutex" );
+        }
+    }
+
+private:
+    version( Windows )
+    {
+        CRITICAL_SECTION    m_hndl;
+    }
+    else version( Posix )
+    {
+        pthread_mutex_t     m_hndl;
+    }
 }
 
 struct GC
@@ -256,20 +344,14 @@ struct GC
 
     Gcx *gcx;                   // implementation
 
-    // We can't allocate a Mutex on the GC heap because we are the GC.
-    // Store it in the static data segment instead.
-    __gshared GCMutex gcLock;    // global lock
-    __gshared byte[__traits(classInstanceSize, GCMutex)] mutexStorage;
-
+    __gshared GCMutex gcLock;
     __gshared Config config;
 
     void initialize()
     {
         config.initialize();
 
-        mutexStorage[] = typeid(GCMutex).init[];
-        gcLock = cast(GCMutex) mutexStorage.ptr;
-        gcLock.__ctor();
+        gcLock.initialize();
         gcx = cast(Gcx*)cstdlib.calloc(1, Gcx.sizeof);
         if (!gcx)
             onOutOfMemoryError();
@@ -296,6 +378,7 @@ struct GC
             cstdlib.free(gcx);
             gcx = null;
         }
+        gcLock.Dtor();
     }
 
 
