@@ -20,6 +20,7 @@ private static import core.stdc.complex;
 
 extern (C):
 @trusted: // Everything here operates on floating point and integer values.
+pure:
 nothrow:
 @nogc:
 
