@@ -633,7 +633,7 @@ extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) /+nothrow+/
     // note, we do not care about shared.  We are setting the length no matter
     // what, so no lock is required.
     debug(PRINTF) printf("_d_arrayshrinkfit, elemsize = %d, arr.ptr = x%x arr.length = %d\n", ti.next.tsize, arr.ptr, arr.length);
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto size = tinext.tsize;                  // array element size
     auto cursize = arr.length * size;
     auto isshared = typeid(ti) is typeid(TypeInfo_Shared);
@@ -721,7 +721,7 @@ body
     auto isshared = typeid(ti) is typeid(TypeInfo_Shared);
     auto bic = isshared ? null : __getBlkInfo((*p).ptr);
     auto info = bic ? *bic : GC.query((*p).ptr);
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto size = tinext.tsize;
     version (D_InlineAsm_X86)
     {
@@ -879,7 +879,7 @@ Lcontinue:
  */
 extern (C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow
 {
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto size = tinext.tsize;
 
     debug(PRINTF) printf("_d_newarrayU(length = x%x, size = %d)\n", length, size);
@@ -939,7 +939,7 @@ Lcontinue:
 extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length) pure nothrow
 {
     void[] result = _d_newarrayU(ti, length);
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto size = tinext.tsize;
 
     memset(result.ptr, 0, size * length);
@@ -954,7 +954,7 @@ extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
     import core.internal.traits : TypeTuple;
 
     void[] result = _d_newarrayU(ti, length);
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto size = tinext.tsize;
 
     auto init = tinext.init();
@@ -990,7 +990,7 @@ void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t[] dims)
 
     void[] foo(const TypeInfo ti, size_t[] dims)
     {
-        auto tinext = unqualify(ti.next);
+        auto tinext = unqualify(unqualify(ti).next);
         auto dim = dims[0];
 
         debug(PRINTF) printf("foo(ti = %p, ti.next = %p, dim = %d, ndims = %d\n", ti, ti.next, dim, dims.length);
@@ -1432,7 +1432,7 @@ body
             newdata = (*p).ptr;
             return newdata[0 .. newlength];
         }
-        auto tinext = unqualify(ti.next);
+        auto tinext = unqualify(unqualify(ti).next);
         size_t sizeelem = tinext.tsize;
         version (D_InlineAsm_X86)
         {
@@ -1598,7 +1598,7 @@ in
 body
 {
     void* newdata;
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto sizeelem = tinext.tsize;
     auto initializer = tinext.init();
     auto initsize = initializer.length;
@@ -1788,7 +1788,7 @@ Loverflow:
 extern (C) void[] _d_arrayappendT(const TypeInfo ti, ref byte[] x, byte[] y)
 {
     auto length = x.length;
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto sizeelem = tinext.tsize;              // array element size
     _d_arrayappendcTX(ti, x, y.length);
     memcpy(x.ptr + length * sizeelem, y.ptr, y.length * sizeelem);
@@ -1890,7 +1890,7 @@ byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
     // This is a cut&paste job from _d_arrayappendT(). Should be refactored.
 
     // only optimize array append where ti is not a shared type
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto sizeelem = tinext.tsize;              // array element size
     auto isshared = typeid(ti) is typeid(TypeInfo_Shared);
     auto bic = isshared ? null : __getBlkInfo(px.ptr);
@@ -2070,7 +2070,7 @@ extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c)
 extern (C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y)
 out (result)
 {
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto sizeelem = tinext.tsize;              // array element size
     debug(PRINTF) printf("_d_arraycatT(%d,%p ~ %d,%p sizeelem = %d => %d,%p)\n", x.length, x.ptr, y.length, y.ptr, sizeelem, result.length, result.ptr);
     assert(result.length == x.length + y.length);
@@ -2105,7 +2105,7 @@ body
             return y;
     }
 
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto sizeelem = tinext.tsize;              // array element size
     debug(PRINTF) printf("_d_arraycatT(%d,%p ~ %d,%p sizeelem = %d)\n", x.length, x.ptr, y.length, y.ptr, sizeelem);
     size_t xlen = x.length * sizeelem;
@@ -2135,7 +2135,7 @@ body
 extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs)
 {
     size_t length;
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto size = tinext.tsize;   // array element size
 
     foreach(b; arrs)
@@ -2173,7 +2173,7 @@ extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs)
 extern (C)
 void* _d_arrayliteralTX(const TypeInfo ti, size_t length)
 {
-    auto tinext = unqualify(ti.next);
+    auto tinext = unqualify(unqualify(ti).next);
     auto sizeelem = tinext.tsize;              // array element size
     void* result;
 
