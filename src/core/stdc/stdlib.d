@@ -135,25 +135,26 @@ else
     }
     else
     {
-        ///
+       ///
        int     rand();
        ///
        void    srand(uint seed);
     }
 }
 
-// We don't mark these @trusted. Given that they return a void*, one has
-// to do a pointer cast to do anything sensible with the result. Thus,
-// functions using these already have to be @trusted, allowing them to
-// call @system stuff anyway.
-///
-void*   malloc(size_t size);
-///
-void*   calloc(size_t nmemb, size_t size);
+// These are safe as they always return null or a valid void* pointer.
+@safe
+{
+    ///
+    void*   malloc(size_t size);
+    ///
+    void*   calloc(size_t nmemb, size_t size);
+}
+
 ///
 void*   realloc(void* ptr, size_t size);
 ///
-void    free(void* ptr);
+void    free(void* ptr) pure;
 
 ///
 void    abort() @safe;
