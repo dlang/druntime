@@ -1073,7 +1073,7 @@ class TypeInfo_Struct : TypeInfo
                 if (!p2)
                     return true;
                 else if (xopCmp)
-                    return (*xopCmp)(p2, p1);
+                    return (*xopCmp)(p1, p2);
                 else
                     // BUG: relies on the GC not moving objects
                     return memcmp(p1, p2, init().length);
@@ -1117,10 +1117,21 @@ class TypeInfo_Struct : TypeInfo
 
   @safe pure nothrow
   {
-    size_t   function(in void*)           xtoHash;
-    bool     function(in void*, in void*) xopEquals;
-    int      function(in void*, in void*) xopCmp;
-    string   function(in void*)           xtoString;
+    size_t          function(in void*)           xtoHash;
+    /* The xopEquals and xopCmp function pointers usually point to the struct's
+     * opEquals and opCmp methods. If the method doesn't take its single
+     * argument by reference, the front-end injects a static __xopEquals/
+     * __xopCmp function (taking 2 arguments, lhs `p` and rhs `q`).
+     *
+     * In the method case, lhs `p` is the `this` argument and must be passed
+     * as first argument before rhs `q`.
+     * Enforce this arguments order by marking the pointed-to functions as
+     * using the C calling convention, for which the arguments are never
+     * reversed (contrary to `extern (D)`).
+     */
+    extern (C) bool function(in void*, in void*) xopEquals;
+    extern (C) int  function(in void*, in void*) xopCmp;
+    string          function(in void*)           xtoString;
 
     enum StructFlags : uint
     {
