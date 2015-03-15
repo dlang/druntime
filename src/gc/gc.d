@@ -36,6 +36,7 @@ version = STACKGROWSDOWN;       // growing the stack means subtracting from the 
                                 // (use for Intel X86 CPUs)
                                 // else growing the stack means adding to the stack pointer
 version = rebuildFreebits;
+//version = bitsinpage;
 
 /***************************************************/
 
@@ -1284,13 +1285,17 @@ struct Root
     alias proot this;
 }
 
+/////////////////////////////////////////////////////////
 struct BinData
 {
     uint   size;      // size of allocation
     ushort objects;   // number of objects
-    ushort bitoff;    // page offset of GCBits
+    version(bitsinpage)
+        ushort bitoff;    // page offset of GCBits
 };
 
+version(bitsinpage)
+{
 immutable BinData[B_NUMBUCKETS] bindata =
 [
     BinData (16, 240, PAGESIZE - 256),
@@ -1350,6 +1355,45 @@ uint getBinSize(uint bin) nothrow
 }
 
 enum MAX_BINSIZE = bindata[$-1].size;
+}
+else // !version(bitsinpage)
+{
+    immutable BinData[B_NUMBUCKETS] bindata =
+    [
+        BinData (16, 256),
+        BinData (32, 128),
+        BinData (64,  64),
+        BinData (128, 32),
+        BinData (256, 16),
+        BinData (512,  8),
+        BinData (1024, 4),
+        BinData (2048, 2),
+    ];
+
+    // power of 2, bits stored elsewhere
+    immutable short[B_NUMBUCKETS] notbinsize =
+    [ ~(16-1), ~(32-1), ~(64-1), ~(128-1), ~(256-1), ~(512-1), ~(1024-1), ~(2048-1) ];
+    immutable ushort[B_NUMBUCKETS] notbinpagesize =
+    [ (PAGESIZE-1) & ~(16-1),  (PAGESIZE-1) & ~(32-1),  (PAGESIZE-1) & ~(64-1),   (PAGESIZE-1) & ~(128-1),
+      (PAGESIZE-1) & ~(256-1), (PAGESIZE-1) & ~(512-1), (PAGESIZE-1) & ~(1024-1), (PAGESIZE-1) & ~(2048-1) ];
+
+    ushort getOffsetPage(size_t offset, uint bin) nothrow
+    {
+        return offset & notbinpagesize[bin];
+    }
+
+    size_t getOffsetBase(size_t offset, uint bin) nothrow
+    {
+        return (offset & ~(PAGESIZE - 1)) + getOffsetPage(offset, bin);
+    }
+
+    uint getBinSize(uint bin) nothrow
+    {
+        return bindata[bin].size;
+    }
+
+    enum MAX_BINSIZE = bindata[$-1].size;
+}
 
 alias PageBits = GCBits.wordtype[PAGESIZE / 16 / GCBits.BITS_PER_WORD];
 static assert(PAGESIZE % (GCBits.BITS_PER_WORD * 16) == 0);
@@ -3155,15 +3199,23 @@ struct SmallObjectPool
     Pool base;
     alias base this;
 
+    version(bitsinpage) {} else
+        ubyte* bitdata;
+
     void initialize(size_t npages) nothrow
     {
         base._initialize(npages, false);
         if (!baseAddr)
             return;
+
+        version(bitsinpage) {} else
+            bitdata = cast(ubyte*)cstdlib.malloc(npages * 256);
     }
 
     void Dtor() nothrow
     {
+        version(bitsinpage) {} else
+            cstdlib.free(bitdata);
         base._Dtor();
     }
 
@@ -3185,7 +3237,10 @@ struct SmallObjectPool
     */
     ubyte* getBits(size_t pn, Bins bin, uint pageOff) nothrow
     {
-        return cast(ubyte*)baseAddr + pn * PAGESIZE + binbase[bin][pageOff >> 4].bitoff;
+        version(bitsinpage)
+            return cast(ubyte*)baseAddr + pn * PAGESIZE + binbase[bin][pageOff >> 4].bitoff;
+        else
+            return bitdata + pn * 256 + (pageOff >> (4 + bin));
     }
 
     mixin template PageBinVars()
@@ -3352,7 +3407,7 @@ struct SmallObjectPool
         void* p = baseAddr + pn * PAGESIZE;
         void* ptop = p + bindata[bin].objects * size - size;
         auto first = cast(List*) p;
-        version(rebuildFreebits) {} else ubyte* pbits = cast(ubyte*)(p + bindata[bin].bitoff);
+        version(rebuildFreebits) {} else ubyte* pbits = getBits(pn, bin, 0);
 
         for (; p < ptop; p += size)
         {
@@ -3448,9 +3503,8 @@ struct SmallObjectPool
 
                 *pbits = Bits.FREEBITS;
 
-                List *list = cast(List *)p;
-                debug(COLLECT_PRINTF) printf("\tcollecting %p\n", list);
-                //log_free(sentinel_add(list));
+                debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
+                //log_free(sentinel_add(p));
 
                 debug (MEMSTOMP) memset(p, 0xF3, size);
 
