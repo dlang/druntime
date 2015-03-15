@@ -705,7 +705,10 @@ struct GC
             if (!pool || !pool.isLargeObject)
                 return 0;
 
-            return (cast(LargeObjectPool*) pool).extend(p, minsize, maxsize);
+            size_t addedPages = 0;
+            size_t nsize = (cast(LargeObjectPool*) pool).extend(p, minsize, maxsize, addedPages);
+            gcx.usedLargePages += addedPages;
+            return nsize;
         }
     }
 
@@ -1807,6 +1810,7 @@ struct Gcx
         }
         assert(pool);
 
+        usedLargePages += npages;
         auto p = pool.baseAddr + pn * PAGESIZE;
         debug(PRINTF) printf("Got large alloc:  %p, pt = %d, np = %d\n", p, pool.pagetable[pn], npages);
         debug (MEMSTOMP) memset(p, 0xF1, size);
@@ -2201,7 +2205,7 @@ struct Gcx
 
             if(pool.isLargeObject)
             {
-                freedpages += (cast(LargeObjectPool*)pool).sweep();
+                freedLargePages += (cast(LargeObjectPool*)pool).sweep();
             }
             else
             {
@@ -2232,7 +2236,7 @@ struct Gcx
             Pool* pool = pooltable[n];
 
             if(!pool.isLargeObject)
-                recoveredpages += (cast(SmallObjectPool*)pool).recover(tail);
+                freedSmallPages += (cast(SmallObjectPool*)pool).recover(tail);
         }
         // terminate tail list
         foreach (ref next; tail)
@@ -2469,7 +2473,6 @@ struct Pool
     // page in this pool is, so that if a lot of pages towards the beginning
     // are occupied, we can bypass them in O(1).
     size_t searchStart;
-    size_t largestFree; // upper limit for largest free chunk in large object pool
 
     void _initialize(size_t npages, bool isLarge) nothrow
     {
@@ -2503,7 +2506,6 @@ struct Pool
         this.npages = npages;
         this.freepages = npages;
         this.searchStart = 0;
-        this.largestFree = npages;
     }
 
     void _Dtor() nothrow
@@ -2679,6 +2681,8 @@ struct LargeObjectPool
     // pagesize.
     uint* bPageOffsets;
 
+    size_t largestFree; // upper limit for largest free chunk in large object pool
+
     enum uint shiftBy = 12;    // shift count for the divisor used for determining bit indices.
 
     void initialize(size_t npages) nothrow
@@ -2695,6 +2699,7 @@ struct LargeObjectPool
         bPageOffsets = cast(uint*)cstdlib.malloc(npages * uint.sizeof);
         if (!bPageOffsets)
             onOutOfMemoryError();
+        largestFree = npages;
     }
 
     void Dtor() nothrow
@@ -2881,7 +2886,16 @@ struct LargeObjectPool
                 p++;
 
             if (p == n)
+            {
+                pagetable[i] = B_PAGE;
+                if (n > 1)
+                    memset(&pagetable[i + 1], B_PAGEPLUS, n - 1);
+                updateOffsets(i);
+                freepages -= n;
+                if (bits)
+                    setBits(i, bits);
                 return i;
+            }
 
             if (p > largest)
                 largest = p;
@@ -2920,7 +2934,7 @@ struct LargeObjectPool
         largestFree = freepages; // invalidate
     }
 
-    size_t extend(void* p, size_t minsize, size_t maxsize) nothrow
+    size_t extend(void* p, size_t minsize, size_t maxsize, ref size_t addedpages) nothrow
     {
         auto psize = getSize(p);   // get allocated size
         if (psize < PAGESIZE)
@@ -2952,6 +2966,7 @@ struct LargeObjectPool
         memset(pagetable + pagenum + psz, B_PAGEPLUS, sz);
         updateOffsets(pagenum);
         freepages -= sz;
+        addedpages = sz;
         return (psz + sz) * PAGESIZE;
     }
 
@@ -3111,6 +3126,8 @@ struct LargeObjectPool
                 }
             }
         }
+        largestFree = freepages;
+
         return freepages - fpages;
     }
 
@@ -3286,16 +3303,12 @@ struct SmallObjectPool
             auto p = baseAddr + pn * PAGESIZE;
             const ptop = p + PAGESIZE;
             immutable base = pn * (PAGESIZE/16);
-            immutable bitstride = size / 16;
+            ubyte* bits = getBits(pn, bin, 0);
 
-            bool freeBits;
-            PageBits toFree;
-
-            for (size_t i; p < ptop; p += size, i += bitstride)
+            for (size_t i; p < ptop; p += size, i++)
             {
-                immutable biti = base + i;
-
-                if (!finals.test(biti))
+                uint attr = bits[i];
+                if (!(attr & BlkAttr.FINALIZE))
                     continue;
 
                 auto q = sentinel_add(p);
@@ -3305,17 +3318,13 @@ struct SmallObjectPool
 
                 rt_finalizeFromGC(q, size, attr);
 
-                freeBits = true;
-                toFree.set(i);
+                bits[i] &= ~BlkAttr.FINALIZE;
 
                 debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
                 //log_free(sentinel_add(p));
 
                 debug (MEMSTOMP) memset(p, 0xF3, size);
             }
-
-            if (freeBits)
-                freePageBits(pn, toFree);
         }
     }
 
