@@ -259,7 +259,7 @@ version( CRuntime_DigitalMars )
 else version( CRuntime_Microsoft )
 {
     ///
-    alias int fpos_t; //check this
+    alias long fpos_t;
 
     ///
     struct _iobuf
@@ -949,7 +949,17 @@ else version( CRuntime_Microsoft )
     ///
     pure int  fileno(FILE* stream)   { return stream._file;                              }
   }
-  ///
+
+  version( None ) // requires MSVCRT >= 14 (VS 2015)
+  {
+    ///
+    int snprintf(char* s, size_t n, in char* fmt, ...);
+    ///
+    int vsnprintf(char* s, size_t n, in char* format, va_list arg);
+  }
+  else
+  {
+    ///
     int   _snprintf(char* s, size_t n, in char* fmt, ...);
     ///
     alias _snprintf snprintf;
@@ -965,12 +975,12 @@ else version( CRuntime_Microsoft )
     enum _TWO_DIGIT_EXPONENT = 1;
 
     ///
-    int _filbuf(FILE *fp);
+    int _filbuf(_iobuf* fp);
     ///
-    int _flsbuf(int c, FILE *fp);
+    int _flsbuf(int c, _iobuf* fp);
 
     ///
-    int _fputc_nolock(int c, FILE *fp)
+    int _fputc_nolock(int c, _iobuf* fp)
     {
         fp._cnt = fp._cnt - 1;
         if (fp._cnt >= 0)
@@ -984,7 +994,7 @@ else version( CRuntime_Microsoft )
     }
 
     ///
-    int _fgetc_nolock(FILE *fp)
+    int _fgetc_nolock(_iobuf* fp)
     {
         fp._cnt = fp._cnt - 1;
         if (fp._cnt >= 0)
@@ -996,6 +1006,7 @@ else version( CRuntime_Microsoft )
         else
             return _filbuf(fp);
     }
+  }
 
     ///
     int _lock_file(FILE *fp);
