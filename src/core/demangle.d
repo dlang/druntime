@@ -139,6 +139,16 @@ private struct Demangle
     }
 
 
+    static char val2HexDigit( ubyte val )
+    {
+        if (0x0 <= val && val <= 0x9)
+            return cast(char)(val + '0');
+        if (0xa <= val && val <= 0xf)
+            return cast(ubyte)(val + 'a' - 0xa);
+        assert(0);
+    }
+
+
     //////////////////////////////////////////////////////////////////////////
     // Data Output
     //////////////////////////////////////////////////////////////////////////
@@ -1134,7 +1144,15 @@ private struct Demangle
                 auto a = ascii2hex( tok() ); next();
                 auto b = ascii2hex( tok() ); next();
                 auto v = cast(char)((a << 4) | b);
-                put( __ctfe ? [v] : (cast(char*) &v)[0 .. 1] );
+                if (' ' <= v && v <= '~')   // ASCII printable
+                {
+                    put( __ctfe ? [v] : (cast(char*) &v)[0 .. 1] );
+                }
+                else
+                {
+                    char[4] buf = ['\\', 'x', val2HexDigit(v / 0x10), val2HexDigit(v % 0x10)];
+                    put( buf[] );
+                }
             }
             put( "\"" );
             if( 'a' != t )
@@ -1304,6 +1322,10 @@ private struct Demangle
         TemplateArg TemplateArgs
 
     TemplateArg:
+        TemplateArgX
+        H TemplateArgX
+
+    TemplateArgX:
         T Type
         V Type Value
         S LName
@@ -1315,6 +1337,9 @@ private struct Demangle
 
         for( size_t n = 0; true; n++ )
         {
+            if( tok() == 'H' )
+                next();
+
             switch( tok() )
             {
             case 'T':
@@ -1824,6 +1849,35 @@ unittest
     static assert(!__traits(compiles, mangleFunc!(typeof(&fooCPP))("")));
 }
 
+/**
+* Mangles a C function or variable.
+*
+* Params:
+*  dst = An optional destination buffer.
+*
+* Returns:
+*  The mangled name for a C function or variable, i.e.
+*  an underscore is prepended or not, depending on the
+*  compiler/linker tool chain
+*/
+char[] mangleC(const(char)[] sym, char[] dst = null)
+{
+    version(Win32)
+        enum string prefix = "_";
+    else version(OSX)
+        enum string prefix = "_";
+    else
+        enum string prefix = "";
+
+    auto len = sym.length + prefix.length;
+    if( dst.length < len )
+        dst.length = len;
+
+    dst[0 .. prefix.length] = prefix[];
+    dst[prefix.length .. len] = sym[];
+    return dst[0 .. len];
+}
+
 
 version(unittest)
 {
@@ -1880,6 +1934,9 @@ version(unittest)
         ["_D3foo3Bar6__vtblZ", "foo.Bar.__vtbl"],
         ["_D3foo3Bar11__interfaceZ", "foo.Bar.__interface"],
         ["_D3foo7__arrayZ", "foo.__array"],
+        ["_D8link657428__T3fooVE8link65746Methodi0Z3fooFZi", "int link6574.foo!(0).foo()"],
+        ["_D8link657429__T3fooHVE8link65746Methodi0Z3fooFZi", "int link6574.foo!(0).foo()"],
+        ["_D4test22__T4funcVAyaa3_610a62Z4funcFNaNbNiNfZAya", `pure nothrow @nogc @safe immutable(char)[] test.func!("a\x0ab").func()`],
     ];
 
     template staticIota(int x)

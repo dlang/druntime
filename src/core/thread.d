@@ -98,49 +98,15 @@ class ThreadError : Error
     }
 }
 
-
-/**
- * Base class for fiber exceptions.
- */
-class FiberException : Exception
-{
-    @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
-    {
-        super(msg, file, line, next);
-    }
-
-    @safe pure nothrow this(string msg, Throwable next, string file = __FILE__, size_t line = __LINE__)
-    {
-        super(msg, file, line, next);
-    }
-}
-
-
 private
 {
-    import core.sync.mutex;
-    import core.atomic;
-
-    //
-    // from core.memory
-    //
-    extern (C) void  gc_enable();
-    extern (C) void  gc_disable();
-    extern (C) void* gc_malloc(size_t sz, uint ba = 0);
-
-    //
-    // from core.stdc.string
-    //
-    extern (C) void* memcpy(void*, const void*, size_t);
+    import core.atomic, core.memory, core.sync.mutex;
 
     //
     // exposed by compiler runtime
     //
     extern (C) void  rt_moduleTlsCtor();
     extern (C) void  rt_moduleTlsDtor();
-
-    alias void delegate() gc_atom;
-    extern (C) void function(scope gc_atom) gc_atomic;
 }
 
 
@@ -162,7 +128,7 @@ version( Windows )
         const CREATE_SUSPENDED = 0x00000004;
 
         extern (Windows) alias uint function(void*) btex_fptr;
-        extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*);
+        extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow;
 
         //
         // Entry point for Windows threads
@@ -261,7 +227,7 @@ else version( Posix )
         version( OSX )
         {
             import core.sys.osx.mach.thread_act;
-            extern (C) mach_port_t pthread_mach_thread_np(pthread_t);
+            import core.sys.osx.pthread : pthread_mach_thread_np;
         }
 
         version( GNU )
@@ -436,6 +402,7 @@ else version( Posix )
                 status = sigdelset( &sigres, resumeSignalNumber );
                 assert( status == 0 );
 
+                version (FreeBSD) Thread.sm_suspendagain = false;
                 status = sem_post( &suspendCount );
                 assert( status == 0 );
 
@@ -444,6 +411,17 @@ else version( Posix )
                 if( obj && !obj.m_lock )
                 {
                     obj.m_curr.tstack = obj.m_curr.bstack;
+                }
+            }
+
+            // avoid deadlocks on FreeBSD, see Issue 13416
+            version (FreeBSD)
+            {
+                if (THR_IN_CRITICAL(pthread_self()))
+                {
+                    Thread.sm_suspendagain = true;
+                    if (sem_post(&suspendCount)) assert(0);
+                    return;
                 }
             }
 
@@ -459,6 +437,29 @@ else version( Posix )
         body
         {
 
+        }
+
+        // HACK libthr internal (thr_private.h) macro, used to
+        // avoid deadlocks in signal handler, see Issue 13416
+        version (FreeBSD) bool THR_IN_CRITICAL(pthread_t p) nothrow @nogc
+        {
+            import core.sys.posix.config : c_long;
+            import core.sys.posix.sys.types : lwpid_t;
+
+            // If the begin of pthread would be changed in libthr (unlikely)
+            // we'll run into undefined behavior, compare with thr_private.h.
+            static struct pthread
+            {
+                c_long tid;
+                static struct umutex { lwpid_t owner; uint flags; uint[2] ceilings; uint[4] spare; }
+                umutex lock;
+                uint cycle;
+                int locklevel;
+                int critical_count;
+                // ...
+            }
+            auto priv = cast(pthread*)p;
+            return priv.locklevel > 0 || priv.critical_count > 0;
         }
     }
 }
@@ -510,9 +511,8 @@ class Thread
     }
     body
     {
-        this();
+        this(sz);
         m_fn   = fn;
-        m_sz   = sz;
         m_call = Call.FN;
         m_curr = &m_main;
     }
@@ -536,9 +536,8 @@ class Thread
     }
     body
     {
-        this();
+        this(sz);
         m_dg   = dg;
-        m_sz   = sz;
         m_call = Call.DG;
         m_curr = &m_main;
     }
@@ -589,7 +588,7 @@ class Thread
      * Throws:
      *  ThreadException if the thread fails to start.
      */
-    final Thread start()
+    final Thread start() nothrow
     in
     {
         assert( !next && !prev );
@@ -610,11 +609,9 @@ class Thread
             pthread_attr_t  attr;
 
             if( pthread_attr_init( &attr ) )
-                throw new ThreadException( "Error initializing thread attributes" );
+                onThreadError( "Error initializing thread attributes" );
             if( m_sz && pthread_attr_setstacksize( &attr, m_sz ) )
-                throw new ThreadException( "Error initializing thread stack size" );
-            if( pthread_attr_setdetachstate( &attr, PTHREAD_CREATE_JOINABLE ) )
-                throw new ThreadException( "Error setting thread joinable" );
+                onThreadError( "Error initializing thread stack size" );
         }
 
         version( Windows )
@@ -631,7 +628,7 @@ class Thread
             assert(m_sz <= uint.max, "m_sz must be less than or equal to uint.max");
             m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint) m_sz, &thread_entryPoint, cast(void*) this, CREATE_SUSPENDED, &m_addr );
             if( cast(size_t) m_hndl == 0 )
-                throw new ThreadException( "Error creating thread" );
+                onThreadError( "Error creating thread" );
         }
 
         // NOTE: The starting thread must be added to the global thread list
@@ -640,12 +637,13 @@ class Thread
         //       app without ever knowing that it should have waited for this
         //       starting thread.  In effect, not doing the add here risks
         //       having thread being treated like a daemon thread.
-        synchronized( slock )
+        slock.lock_nothrow();
+        scope(exit) slock.unlock_nothrow();
         {
             version( Windows )
             {
                 if( ResumeThread( m_hndl ) == -1 )
-                    throw new ThreadException( "Error resuming thread" );
+                    onThreadError( "Error resuming thread" );
             }
             else version( Posix )
             {
@@ -667,20 +665,20 @@ class Thread
                     {
                         unpinLoadedLibraries(libs);
                         .free(ps);
-                        throw new ThreadException( "Error creating thread" );
+                        onThreadError( "Error creating thread" );
                     }
                 }
                 else
                 {
                     if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
-                        throw new ThreadException( "Error creating thread" );
+                        onThreadError( "Error creating thread" );
                 }
             }
             version( OSX )
             {
                 m_tmach = pthread_mach_thread_np( m_addr );
                 if( m_tmach == m_tmach.init )
-                    throw new ThreadException( "Error creating thread" );
+                    onThreadError( "Error creating thread" );
             }
 
             // NOTE: when creating threads from inside a DLL, DllMain(THREAD_ATTACH)
@@ -1043,7 +1041,7 @@ class Thread
      *
      * ------------------------------------------------------------------------
      */
-    static void sleep( Duration val )
+    static void sleep( Duration val ) nothrow
     in
     {
         assert( !val.isNegative );
@@ -1086,7 +1084,7 @@ class Thread
                 if( !nanosleep( &tin, &tout ) )
                     return;
                 if( errno != EINTR )
-                    throw new ThreadException( "Unable to sleep for the specified duration" );
+                    throw new ThreadError( "Unable to sleep for the specified duration" );
                 tin = tout;
             }
         }
@@ -1096,7 +1094,7 @@ class Thread
     /**
      * Forces a context switch to occur away from the calling thread.
      */
-    static void yield()
+    static void yield() nothrow
     {
         version( Windows )
             SwitchToThread();
@@ -1288,8 +1286,21 @@ private:
     // Initializes a thread object which has no associated executable function.
     // This is used for the main thread initialized in thread_init().
     //
-    this()
+    this(size_t sz = 0)
     {
+        if (sz)
+        {
+            version (Posix)
+            {
+                // stack size must be a multiple of PAGESIZE
+                sz += PAGESIZE - 1;
+                sz -= sz % PAGESIZE;
+                // and at least PTHREAD_STACK_MIN
+                if (PTHREAD_STACK_MIN > sz)
+                    sz = PTHREAD_STACK_MIN;
+            }
+            m_sz = sz;
+        }
         m_call = Call.NO;
         m_curr = &m_main;
     }
@@ -1367,6 +1378,12 @@ private:
     // Main process thread
     //
     __gshared Thread    sm_main;
+
+    version (FreeBSD)
+    {
+        // set when suspend failed and should be retried, see Issue 13416
+        static shared bool sm_suspendagain;
+    }
 
 
     //
@@ -1568,7 +1585,7 @@ private:
         return cast(Mutex)_locks[1].ptr;
     }
 
-    __gshared byte[__traits(classInstanceSize, Mutex)][2] _locks;
+    __gshared void[__traits(classInstanceSize, Mutex)][2] _locks;
 
     static void initLocks()
     {
@@ -1605,7 +1622,7 @@ private:
     //
     // Add a context to the global context list.
     //
-    static void add( Context* c )
+    static void add( Context* c ) nothrow
     in
     {
         assert( c );
@@ -1622,7 +1639,8 @@ private:
 
         while( true )
         {
-            synchronized( slock )
+            slock.lock_nothrow();
+            scope(exit) slock.unlock_nothrow();
             {
                 if( !suspendDepth )
                 {
@@ -1676,7 +1694,7 @@ private:
     //
     // Add a thread to the global thread list.
     //
-    static void add( Thread t )
+    static void add( Thread t ) nothrow
     in
     {
         assert( t );
@@ -1712,7 +1730,8 @@ private:
 
         while( true )
         {
-            synchronized( slock )
+            slock.lock_nothrow();
+            scope(exit) slock.unlock_nothrow();
             {
                 if( !suspendDepth )
                 {
@@ -1742,7 +1761,7 @@ private:
     }
     body
     {
-        slock.lock_nothrow(); // this is called from within the GC, so it cannot allocate an exception
+        slock.lock_nothrow();
         {
             // NOTE: When a thread is removed from the global thread list its
             //       main context is invalid and should be removed as well.
@@ -1993,7 +2012,7 @@ extern (C) bool thread_isMainThread()
  */
 extern (C) Thread thread_attachThis()
 {
-    gc_disable(); scope(exit) gc_enable();
+    GC.disable(); scope(exit) GC.enable();
 
     if (auto t = Thread.getThis())
         return t;
@@ -2057,7 +2076,7 @@ version( Windows )
     /// ditto
     extern (C) Thread thread_attachByAddrB( Thread.ThreadAddr addr, void* bstack )
     {
-        gc_disable(); scope(exit) gc_enable();
+        GC.disable(); scope(exit) GC.enable();
 
         if (auto t = thread_findByAddr(addr))
             return t;
@@ -2106,9 +2125,9 @@ version( Windows )
  *       must be called after thread_detachThis, particularly if the thread is
  *       being detached at some indeterminate time before program termination:
  *
- *       $(D extern(C) void rt_moduleTlsCtor();)
+ *       $(D extern(C) void rt_moduleTlsDtor();)
  */
-extern (C) void thread_detachThis()
+extern (C) void thread_detachThis() nothrow
 {
     if (auto t = Thread.getThis())
         Thread.remove(t);
@@ -2124,7 +2143,7 @@ extern (C) void thread_detachThis()
  *       must be called by the detached thread, particularly if the thread is
  *       being detached at some indeterminate time before program termination:
  *
- *       $(D extern(C) void rt_moduleTlsCtor();)
+ *       $(D extern(C) void rt_moduleTlsDtor();)
  */
 extern (C) void thread_detachByAddr( Thread.ThreadAddr addr )
 {
@@ -2169,7 +2188,8 @@ unittest
  */
 static Thread thread_findByAddr( Thread.ThreadAddr addr )
 {
-    synchronized( Thread.slock )
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
     {
         foreach( t; Thread )
         {
@@ -2484,6 +2504,7 @@ private void suspend( Thread t ) nothrow
     {
         if( t.m_addr != pthread_self() )
         {
+        Lagain:
             if( pthread_kill( t.m_addr, suspendSignalNumber ) != 0 )
             {
                 if( !t.isRunning )
@@ -2498,6 +2519,11 @@ private void suspend( Thread t ) nothrow
                 if (errno != EINTR)
                     onThreadError( "Unable to wait for semaphore" );
                 errno = 0;
+            }
+            version (FreeBSD)
+            {
+                // avoid deadlocks, see Issue 13416
+                if (Thread.sm_suspendagain) goto Lagain;
             }
         }
         else if( !t.m_lock )
@@ -2564,16 +2590,7 @@ extern (C) void thread_suspendAll() nothrow
             else if (t.m_isInCriticalRegion)
             {
                 Thread.criticalRegionLock.unlock_nothrow();
-                try
-                {
-                    Thread.sleep(waittime);
-                }
-                catch(Exception)
-                {
-                    // if sleep actually fails, it tries to allocate the new exception
-                    //  which fails the GC recursion check, so we don't expect to ever
-                    //  reach this point, but we have to convince the compiler, too
-                }
+                Thread.sleep(waittime);
                 if (waittime < dur!"msecs"(10)) waittime *= 2;
                 Thread.criticalRegionLock.lock_nothrow();
                 goto Lagain;
@@ -3384,32 +3401,29 @@ private
         }
     }
 
-    __gshared const size_t PAGESIZE;
+    static immutable size_t PAGESIZE;
+    version (Posix) static immutable size_t PTHREAD_STACK_MIN;
 }
 
 
 shared static this()
 {
-    static if( __traits( compiles, GetSystemInfo ) )
+    version (Windows)
     {
         SYSTEM_INFO info;
-        GetSystemInfo( &info );
+        GetSystemInfo(&info);
 
         PAGESIZE = info.dwPageSize;
-        assert( PAGESIZE < int.max );
+        assert(PAGESIZE < int.max);
     }
-    else static if( __traits( compiles, sysconf ) &&
-                    __traits( compiles, _SC_PAGESIZE ) )
+    else version (Posix)
     {
-        PAGESIZE = cast(size_t) sysconf( _SC_PAGESIZE );
-        assert( PAGESIZE < int.max );
+        PAGESIZE = cast(size_t)sysconf(_SC_PAGESIZE);
+        PTHREAD_STACK_MIN = cast(size_t)sysconf(_SC_THREAD_STACK_MIN);
     }
     else
     {
-        version( PPC )
-            PAGESIZE = 8192;
-        else
-            PAGESIZE = 4096;
+        static assert(0, "unimplemented");
     }
 }
 
@@ -3449,9 +3463,9 @@ private
 
   // Look above the definition of 'class Fiber' for some information about the implementation of this routine
   version( AsmExternal )
-    extern (C) void fiber_switchContext( void** oldp, void* newp );
+    extern (C) void fiber_switchContext( void** oldp, void* newp ) nothrow;
   else
-    extern (C) void fiber_switchContext( void** oldp, void* newp )
+    extern (C) void fiber_switchContext( void** oldp, void* newp ) nothrow
     {
         // NOTE: The data pushed and popped in this routine must match the
         //       default stack created by Fiber.initStack or the initial
@@ -3854,7 +3868,7 @@ class Fiber
      * In:
      *  fn must not be null.
      */
-    this( void function() fn, size_t sz = PAGESIZE*4 )
+    this( void function() fn, size_t sz = PAGESIZE*4 ) nothrow
     in
     {
         assert( fn );
@@ -3877,7 +3891,7 @@ class Fiber
      * In:
      *  dg must not be null.
      */
-    this( void delegate() dg, size_t sz = PAGESIZE*4 )
+    this( void delegate() dg, size_t sz = PAGESIZE*4 ) nothrow
     in
     {
         assert( dg );
@@ -3892,7 +3906,7 @@ class Fiber
     /**
      * Cleans up any remaining resources used by this object.
      */
-    ~this()
+    ~this() nothrow
     {
         // NOTE: A live reference to this object will exist on its associated
         //       stack from the first time its call() method has been called
@@ -3934,7 +3948,35 @@ class Fiber
      *  Any exception not handled by this fiber if rethrow = false, null
      *  otherwise.
      */
-    final Throwable call( bool rethrow = true )
+    final Throwable call( Rethrow rethrow = Rethrow.yes )
+    {
+        return rethrow ? call!(Rethrow.yes)() : call!(Rethrow.no);
+    }
+
+    /// ditto
+    final Throwable call( Rethrow rethrow )()
+    {
+        callImpl();
+        if( m_unhandled )
+        {
+            Throwable t = m_unhandled;
+            m_unhandled = null;
+            static if( rethrow )
+                throw t;
+            else
+                return t;
+        }
+        return null;
+    }
+
+    /// ditto
+    deprecated("Please pass Fiber.Rethrow.yes or .no instead of a boolean.")
+    final Throwable call( bool rethrow )
+    {
+        return rethrow ? call!(Rethrow.yes)() : call!(Rethrow.no);
+    }
+
+    private void callImpl() nothrow
     in
     {
         assert( m_state == State.HOLD );
@@ -3964,17 +4006,10 @@ class Fiber
         {
             m_ctxt.tstack = m_ctxt.bstack;
         }
-        if( m_unhandled )
-        {
-            Throwable t = m_unhandled;
-            m_unhandled = null;
-            if( rethrow )
-                throw t;
-            return t;
-        }
-        return null;
     }
 
+    /// Flag to control rethrow behavior of $(D $(LREF call))
+    enum Rethrow : bool { no, yes }
 
     /**
      * Resets this fiber so that it may be re-used, optionally with a
@@ -3987,7 +4022,7 @@ class Fiber
      * In:
      *  This fiber must be in state TERM.
      */
-    final void reset()
+    final void reset() nothrow
     in
     {
         assert( m_state == State.TERM || m_state == State.HOLD );
@@ -4001,7 +4036,7 @@ class Fiber
     }
 
     /// ditto
-    final void reset( void function() fn )
+    final void reset( void function() fn ) nothrow
     {
         reset();
         m_fn    = fn;
@@ -4009,7 +4044,7 @@ class Fiber
     }
 
     /// ditto
-    final void reset( void delegate() dg )
+    final void reset( void delegate() dg ) nothrow
     {
         reset();
         m_dg    = dg;
@@ -4042,7 +4077,7 @@ class Fiber
      * Returns:
      *  The state of this fiber as an enumerated value.
      */
-    final @property State state() const
+    final @property State state() const nothrow
     {
         return m_state;
     }
@@ -4056,7 +4091,7 @@ class Fiber
     /**
      * Forces a context switch to occur away from the calling fiber.
      */
-    static void yield()
+    static void yield() nothrow
     {
         Fiber   cur = getThis();
         assert( cur, "Fiber.yield() called with no active fiber" );
@@ -4081,7 +4116,7 @@ class Fiber
      * In:
      *  t must not be null.
      */
-    static void yieldAndThrow( Throwable t )
+    static void yieldAndThrow( Throwable t ) nothrow
     in
     {
         assert( t );
@@ -4115,7 +4150,7 @@ class Fiber
      *  The fiber object representing the calling fiber or null if no fiber
      *  is currently active within this thread. The result of deleting this object is undefined.
      */
-    static Fiber getThis()
+    static Fiber getThis() nothrow
     {
         return sm_this;
     }
@@ -4142,7 +4177,7 @@ private:
     //
     // Initializes a fiber object which has no associated executable function.
     //
-    this()
+    this() nothrow
     {
         m_call = Call.NO;
     }
@@ -4203,7 +4238,7 @@ private:
     //
     // Allocate a new stack for this fiber.
     //
-    final void allocStack( size_t sz )
+    final void allocStack( size_t sz ) nothrow
     in
     {
         assert( !m_pmem && !m_ctxt );
@@ -4232,9 +4267,7 @@ private:
                                    MEM_RESERVE,
                                    PAGE_NOACCESS );
             if( !m_pmem )
-            {
-                throw new FiberException( "Unable to reserve memory for stack" );
-            }
+                onOutOfMemoryError();
 
             version( StackGrowsDown )
             {
@@ -4255,9 +4288,7 @@ private:
                                   MEM_COMMIT,
                                   PAGE_READWRITE );
             if( !stack )
-            {
-                throw new FiberException( "Unable to allocate memory for stack" );
-            }
+                onOutOfMemoryError();
 
             // allocate reserved guard page
             guard = VirtualAlloc( guard,
@@ -4265,9 +4296,7 @@ private:
                                   MEM_COMMIT,
                                   PAGE_READWRITE | PAGE_GUARD );
             if( !guard )
-            {
-                throw new FiberException( "Unable to create guard page for stack" );
-            }
+                onOutOfMemoryError();
 
             m_ctxt.bstack = pbase;
             m_ctxt.tstack = pbase;
@@ -4276,7 +4305,9 @@ private:
         else
         {
             version (Posix) import core.sys.posix.sys.mman; // mmap
+            version (FreeBSD) import core.sys.freebsd.sys.mman : MAP_ANON;
             version (linux) import core.sys.linux.sys.mman : MAP_ANON;
+            version (OSX) import core.sys.osx.sys.mman : MAP_ANON;
 
             static if( __traits( compiles, mmap ) )
             {
@@ -4303,9 +4334,7 @@ private:
             }
 
             if( !m_pmem )
-            {
-                throw new FiberException( "Unable to allocate memory for stack" );
-            }
+                onOutOfMemoryError();
 
             version( StackGrowsDown )
             {
@@ -4327,7 +4356,7 @@ private:
     //
     // Free this fiber's stack.
     //
-    final void freeStack()
+    final void freeStack() nothrow
     in
     {
         assert( m_pmem && m_ctxt );
@@ -4336,8 +4365,9 @@ private:
     {
         // NOTE: m_ctxt is guaranteed to be alive because it is held in the
         //       global context list.
-        synchronized( Thread.slock )
-            Thread.remove( m_ctxt );
+        Thread.slock.lock_nothrow();
+        scope(exit) Thread.slock.unlock_nothrow();
+        Thread.remove( m_ctxt );
 
         static if( __traits( compiles, VirtualAlloc ) )
         {
@@ -4369,7 +4399,7 @@ private:
     // Initialize the allocated stack.
     // Look above the definition of 'class Fiber' for some information about the implementation of this routine
     //
-    final void initStack()
+    final void initStack() nothrow
     in
     {
         assert( m_ctxt.tstack && m_ctxt.tstack == m_ctxt.bstack );
@@ -4380,7 +4410,7 @@ private:
         void* pstack = m_ctxt.tstack;
         scope( exit )  m_ctxt.tstack = pstack;
 
-        void push( size_t val )
+        void push( size_t val ) nothrow
         {
             version( StackGrowsDown )
             {
@@ -4447,7 +4477,7 @@ private:
             __gshared static fp_t finalHandler = null;
             if ( finalHandler is null )
             {
-                static EXCEPTION_REGISTRATION* fs0()
+                static EXCEPTION_REGISTRATION* fs0() nothrow
                 {
                     asm pure nothrow @nogc
                     {
@@ -4698,7 +4728,7 @@ private:
     //
     // Sets a thread-local reference to the current fiber object.
     //
-    static void setThis( Fiber f )
+    static void setThis( Fiber f ) nothrow
     {
         sm_this = f;
     }
@@ -4715,7 +4745,7 @@ private:
     //
     // Switches into the stack held by this fiber.
     //
-    final void switchIn()
+    final void switchIn() nothrow
     {
         Thread  tobj = Thread.getThis();
         void**  oldp = &tobj.m_curr.tstack;
@@ -4749,7 +4779,7 @@ private:
     //
     // Switches out of the current stack and into the enclosing stack.
     //
-    final void switchOut()
+    final void switchOut() nothrow
     {
         Thread  tobj = Thread.getThis();
         void**  oldp = &m_ctxt.tstack;
@@ -4900,8 +4930,9 @@ unittest
 
 
 // Test exception handling inside fibers.
-unittest
-{
+version (Win32) {
+    // broken on win32 under windows server 2012: bug 13821
+} else unittest {
     enum MSG = "Test message.";
     string caughtMsg;
     (new Fiber({
@@ -4928,9 +4959,26 @@ unittest
     assert( x == 1 );
 }
 
+nothrow unittest
+{
+    new Fiber({}).call!(Fiber.Rethrow.no)();
+}
 
 unittest
 {
+    new Fiber({}).call(Fiber.Rethrow.yes);
+    new Fiber({}).call(Fiber.Rethrow.no);
+}
+
+deprecated unittest
+{
+    new Fiber({}).call(true);
+    new Fiber({}).call(false);
+}
+
+version (Win32) {
+    // broken on win32 under windows server 2012: bug 13821
+} else unittest {
     enum MSG = "Test message.";
 
     try
@@ -5140,4 +5188,32 @@ version( D_InlineAsm_X86_64 )
         auto fib = new Fiber(&testStackAlignment);
         fib.call();
     }
+}
+
+// regression test for Issue 13416
+version (FreeBSD) unittest
+{
+    static void loop()
+    {
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        auto thr = pthread_self();
+        foreach (i; 0 .. 50)
+            pthread_attr_get_np(thr, &attr);
+        pthread_attr_destroy(&attr);
+    }
+
+    auto thr = new Thread(&loop).start();
+    foreach (i; 0 .. 50)
+    {
+        thread_suspendAll();
+        thread_resumeAll();
+    }
+    thr.join();
+}
+
+unittest
+{
+    auto thr = new Thread(function{}, 10).start();
+    thr.join();
 }

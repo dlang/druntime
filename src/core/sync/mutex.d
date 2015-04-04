@@ -56,9 +56,9 @@ class Mutex :
      * Initializes a mutex object.
      *
      * Throws:
-     *  SyncException on error.
+     *  SyncError on error.
      */
-    this() @trusted
+    this() nothrow @trusted
     {
         version( Windows )
         {
@@ -69,14 +69,14 @@ class Mutex :
             pthread_mutexattr_t attr = void;
 
             if( pthread_mutexattr_init( &attr ) )
-                throw new SyncException( "Unable to initialize mutex" );
+                throw new SyncError( "Unable to initialize mutex" );
             scope(exit) pthread_mutexattr_destroy( &attr );
 
             if( pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_RECURSIVE ) )
-                throw new SyncException( "Unable to initialize mutex" );
+                throw new SyncError( "Unable to initialize mutex" );
 
             if( pthread_mutex_init( &m_hndl, &attr ) )
-                throw new SyncException( "Unable to initialize mutex" );
+                throw new SyncError( "Unable to initialize mutex" );
         }
         m_proxy.link = this;
         this.__monitor = &m_proxy;
@@ -89,7 +89,7 @@ class Mutex :
      * In:
      *  o must not already have a monitor.
      */
-    this( Object o )
+    this( Object o ) nothrow @trusted
     in
     {
         assert( o.__monitor is null );
@@ -126,18 +126,15 @@ class Mutex :
      * then the internal counter is incremented by one.
      *
      * Throws:
-     *  SyncException on error.
+     *  SyncError on error.
      */
     @trusted void lock()
     {
-        lock_impl!SyncException();
+        lock_nothrow();
     }
 
-    @trusted void lock_nothrow() nothrow
-    {
-        lock_impl!Error();
-    }
-    private @trusted void lock_impl(Exc)()
+    // undocumented function for internal use
+    final void lock_nothrow() nothrow @trusted
     {
         version( Windows )
         {
@@ -147,7 +144,7 @@ class Mutex :
         {
             int rc = pthread_mutex_lock( &m_hndl );
             if( rc )
-                throw new Exc( "Unable to lock mutex" );
+                throw new SyncError( "Unable to lock mutex" );
         }
     }
 
@@ -156,19 +153,15 @@ class Mutex :
      * zero, the lock is released.
      *
      * Throws:
-     *  SyncException on error.
+     *  SyncError on error.
      */
     @trusted void unlock()
     {
-        unlock_impl!SyncException();
+        unlock_nothrow();
     }
 
-    @trusted void unlock_nothrow() nothrow
-    {
-        unlock_impl!Error();
-    }
-
-    private @trusted void unlock_impl(Exc)()
+    // undocumented function for internal use
+    final void unlock_nothrow() nothrow @trusted
     {
         version( Windows )
         {
@@ -178,7 +171,7 @@ class Mutex :
         {
             int rc = pthread_mutex_unlock( &m_hndl );
             if( rc )
-                throw new Exc( "Unable to unlock mutex" );
+                throw new SyncError( "Unable to unlock mutex" );
         }
     }
 
@@ -188,7 +181,7 @@ class Mutex :
      * counter is incremented by one.
      *
      * Throws:
-     *  SyncException on error.
+     *  SyncError on error.
      *
      * Returns:
      *  true if the lock was acquired and false if not.

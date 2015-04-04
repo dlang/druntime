@@ -3,7 +3,7 @@
  *
  * Copyright: Copyright Digital Mars 2000 - 2010.
  * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
- * Authors:   Walter Bright
+ * Authors:   Walter Bright, Kenji Hara
  */
 
 /*          Copyright Digital Mars 2000 - 2010.
@@ -23,54 +23,141 @@ private
 }
 
 /**
- * Does array assignment (not construction) from another
- * array of the same element type.
- * ti is the element type.
- * Handles overlapping copies.
+ * Keep for backward binary compatibility. This function can be removed in the future.
  */
 extern (C) void[] _d_arrayassign(TypeInfo ti, void[] from, void[] to)
 {
     debug(PRINTF) printf("_d_arrayassign(from = %p,%d, to = %p,%d) size = %d\n", from.ptr, from.length, to.ptr, to.length, ti.tsize);
 
-    auto element_size = ti.tsize;
+    immutable elementSize = ti.tsize;
 
-    enforceRawArraysConformable("copy", element_size, from, to, true);
-
-    /* Need a temporary buffer tmp[] big enough to hold one element
-     */
+    // Need a temporary buffer tmp[] big enough to hold one element
     void[16] buf = void;
-    void[] tmp;
-    if (element_size > buf.sizeof)
-        tmp = alloca(element_size)[0 .. element_size];
-    else
-        tmp = buf[];
+    void* ptmp = (elementSize > buf.sizeof) ? alloca(elementSize) : buf.ptr;
+    return _d_arrayassign_l(ti, from, to, ptmp);
+}
 
+/**
+ * Does array assignment (not construction) from another
+ * lvalue array of the same element type.
+ * Handles overlapping copies.
+ * Input:
+ *      ti      TypeInfo of the element type.
+ *      dst     Points target memory. Its .length is equal to the element count, not byte length.
+ *      src     Points source memory. Its .length is equal to the element count, not byte length.
+ *      ptmp    Temporary memory for element swapping.
+ */
+extern (C) void[] _d_arrayassign_l(TypeInfo ti, void[] src, void[] dst, void* ptmp)
+{
+    debug(PRINTF) printf("_d_arrayassign_l(src = %p,%d, dst = %p,%d) size = %d\n", src.ptr, src.length, dst.ptr, dst.length, ti.tsize);
 
-    if (to.ptr <= from.ptr)
+    immutable elementSize = ti.tsize;
+
+    enforceRawArraysConformable("copy", elementSize, src, dst, true);
+
+    if (src.ptr < dst.ptr && dst.ptr < src.ptr + elementSize * src.length)
     {
-        foreach (i; 0 .. to.length)
+        // If dst is in the middle of src memory, use reverse order.
+        for (auto i = dst.length; i--; )
         {
-            void* pto   = to.ptr   + i * element_size;
-            void* pfrom = from.ptr + i * element_size;
-            memcpy(tmp.ptr, pto, element_size);
-            memcpy(pto, pfrom, element_size);
-            ti.postblit(pto);
-            ti.destroy(tmp.ptr);
+            void* pdst = dst.ptr + i * elementSize;
+            void* psrc = src.ptr + i * elementSize;
+            memcpy(ptmp, pdst, elementSize);
+            memcpy(pdst, psrc, elementSize);
+            ti.postblit(pdst);
+            ti.destroy(ptmp);
         }
     }
     else
     {
-        for (auto i = to.length; i--; )
+        // Otherwise, use normal order.
+        foreach (i; 0 .. dst.length)
         {
-            void* pto   = to.ptr   + i * element_size;
-            void* pfrom = from.ptr + i * element_size;
-            memcpy(tmp.ptr, pto, element_size);
-            memcpy(pto, pfrom, element_size);
-            ti.postblit(pto);
-            ti.destroy(tmp.ptr);
+            void* pdst = dst.ptr + i * elementSize;
+            void* psrc = src.ptr + i * elementSize;
+            memcpy(ptmp, pdst, elementSize);
+            memcpy(pdst, psrc, elementSize);
+            ti.postblit(pdst);
+            ti.destroy(ptmp);
         }
     }
-    return to;
+    return dst;
+}
+
+unittest    // Bugzilla 14024
+{
+    string op;
+
+    struct S
+    {
+        char x = 'x';
+        this(this) { op ~= x-0x20; }    // upper case
+        ~this()    { op ~= x; }         // lower case
+    }
+
+    S[4] mem;
+    ref S[2] slice(int a, int b) { return mem[a .. b][0 .. 2]; }
+
+    op = null;
+    mem[0].x = 'a';
+    mem[1].x = 'b';
+    mem[2].x = 'x';
+    mem[3].x = 'y';
+    slice(0, 2) = slice(2, 4);  // [ab] = [xy]
+    assert(op == "XaYb", op);
+
+    op = null;
+    mem[0].x = 'x';
+    mem[1].x = 'y';
+    mem[2].x = 'a';
+    mem[3].x = 'b';
+    slice(2, 4) = slice(0, 2);  // [ab] = [xy]
+    assert(op == "XaYb", op);
+
+    op = null;
+    mem[0].x = 'a';
+    mem[1].x = 'b';
+    mem[2].x = 'c';
+    slice(0, 2) = slice(1, 3);  // [ab] = [bc]
+    assert(op == "BaCb", op);
+
+    op = null;
+    mem[0].x = 'x';
+    mem[1].x = 'y';
+    mem[2].x = 'z';
+    slice(1, 3) = slice(0, 2);  // [yz] = [xy]
+    assert(op == "YzXy", op);
+}
+
+/**
+ * Does array assignment (not construction) from another
+ * rvalue array of the same element type.
+ * Input:
+ *      ti      TypeInfo of the element type.
+ *      dst     Points target memory. Its .length is equal to the element count, not byte length.
+ *      src     Points source memory. Its .length is equal to the element count, not byte length.
+ *              It is always allocated on stack and never overlapping with dst.
+ *      ptmp    Temporary memory for element swapping.
+ */
+extern (C) void[] _d_arrayassign_r(TypeInfo ti, void[] src, void[] dst, void* ptmp)
+{
+    debug(PRINTF) printf("_d_arrayassign_r(src = %p,%d, dst = %p,%d) size = %d\n", src.ptr, src.length, dst.ptr, dst.length, ti.tsize);
+
+    immutable elementSize = ti.tsize;
+
+    enforceRawArraysConformable("copy", elementSize, src, dst, false);
+
+    // Always use normal order, because we can assume that
+    // the rvalue src has no overlapping with dst.
+    foreach (i; 0 .. dst.length)
+    {
+        void* pdst = dst.ptr + i * elementSize;
+        void* psrc = src.ptr + i * elementSize;
+        memcpy(ptmp, pdst, elementSize);
+        memcpy(pdst, psrc, elementSize);
+        ti.destroy(ptmp);
+    }
+    return dst;
 }
 
 /**

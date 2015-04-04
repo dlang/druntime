@@ -168,8 +168,14 @@ bool opEquals(Object lhs, Object rhs)
     if (lhs is null || rhs is null) return false;
 
     // If same exact type => one call to method opEquals
-    if (typeid(lhs) is typeid(rhs) || typeid(lhs).opEquals(typeid(rhs)))
+    if (typeid(lhs) is typeid(rhs) ||
+        !__ctfe && typeid(lhs).opEquals(typeid(rhs)))
+            /* CTFE doesn't like typeid much. 'is' works, but opEquals doesn't
+            (issue 7147). But CTFE also guarantees that equal TypeInfos are
+            always identical. So, no opEquals needed during CTFE. */
+    {
         return lhs.opEquals(rhs);
+    }
 
     // General case => symmetric calls to method opEquals
     return lhs.opEquals(rhs) && rhs.opEquals(lhs);
@@ -358,6 +364,7 @@ class TypeInfo_Enum : TypeInfo_Typedef
 
 }
 
+// Please make sure to keep this in sync with TypeInfo_P (src/rt/typeinfo/ti_ptr.d)
 class TypeInfo_Pointer : TypeInfo
 {
     override string toString() const { return m_next.toString() ~ "*"; }
@@ -817,6 +824,8 @@ class TypeInfo_Class : TypeInfo
         return Object.sizeof;
     }
 
+    override const(void)[] init() nothrow pure const @safe { return m_init; }
+
     override @property uint flags() nothrow pure const { return 1; }
 
     override @property const(OffsetTypeInfo)[] offTi() nothrow pure const
@@ -827,7 +836,7 @@ class TypeInfo_Class : TypeInfo
     @property auto info() @safe nothrow pure const { return this; }
     @property auto typeinfo() @safe nothrow pure const { return this; }
 
-    byte[]      init;           /** class static initializer
+    byte[]      m_init;         /** class static initializer
                                  * (init.length gives size in bytes of class)
                                  */
     string      name;           /// class name
@@ -895,6 +904,20 @@ class TypeInfo_Class : TypeInfo
 }
 
 alias TypeInfo_Class ClassInfo;
+
+unittest
+{
+    // Bugzilla 14401
+    static class X
+    {
+        int a;
+    }
+
+    assert(typeid(X).init is typeid(X).m_init);
+    assert(typeid(X).init.length == typeid(const(X)).init.length);
+    assert(typeid(X).init.length == typeid(shared(X)).init.length);
+    assert(typeid(X).init.length == typeid(immutable(X)).init.length);
+}
 
 class TypeInfo_Interface : TypeInfo
 {
@@ -1034,7 +1057,9 @@ class TypeInfo_Struct : TypeInfo
     override void destroy(void* p) const
     {
         if (xdtor)
+        {
             (*xdtor)(p);
+        }
     }
 
     override void postblit(void* p) const
@@ -1051,7 +1076,7 @@ class TypeInfo_Struct : TypeInfo
     size_t   function(in void*)           xtoHash;
     bool     function(in void*, in void*) xopEquals;
     int      function(in void*, in void*) xopCmp;
-    char[]   function(in void*)           xtoString;
+    string   function(in void*)           xtoString;
 
     enum StructFlags : uint
     {
@@ -1958,16 +1983,16 @@ extern (C)
     // from druntime/src/rt/aaA.d
 
     // size_t _aaLen(in void* p) pure nothrow @nogc;
-    // void* _aaGetX(void** pp, const TypeInfo keyti, in size_t valuesize, in void* pkey);
+    private void* _aaGetX(void** paa, const TypeInfo keyti, in size_t valuesize, in void* pkey) pure nothrow;
     // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
-    inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize) pure nothrow;
-    inout(void)[] _aaKeys(inout void* p, in size_t keysize) pure nothrow;
+    inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize, const TypeInfo tiValArray) pure nothrow;
+    inout(void)[] _aaKeys(inout void* p, in size_t keysize, const TypeInfo tiKeyArray) pure nothrow;
     void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
 
-    // extern (D) alias scope int delegate(void *) _dg_t;
+    // alias _dg_t = extern(D) int delegate(void*);
     // int _aaApply(void* aa, size_t keysize, _dg_t dg);
 
-    // extern (D) alias scope int delegate(void *, void *) _dg2_t;
+    // alias _dg2_t = extern(D) int delegate(void*, void*);
     // int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
     private struct AARange { void* impl, current; }
@@ -1989,36 +2014,9 @@ extern (C)
     void* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void[] keys, void[] values) pure;
 }
 
-auto aaLiteral(Key, Value, T...)(auto ref T args) if (T.length % 2 == 0)
+void* aaLiteral(Key, Value)(Key[] keys, Value[] values) @trusted pure
 {
-    static if(!T.length)
-    {
-        return cast(void*)null;
-    }
-    else
-    {
-        import core.internal.traits;
-        Key[] keys;
-        Value[] values;
-        keys.reserve(T.length / 2);
-        values.reserve(T.length / 2);
-
-        foreach (i; staticIota!(0, args.length / 2))
-        {
-            keys ~= args[2*i];
-            values ~= args[2*i + 1];
-        }
-
-        void[] key_slice;
-        void[] value_slice;
-        void *ret;
-        () @trusted {
-            key_slice = *cast(void[]*)&keys;
-            value_slice = *cast(void[]*)&values;
-            ret = _d_assocarrayliteralTX(typeid(Value[Key]), key_slice, value_slice);
-        }();
-        return ret;
-    }
+    return _d_assocarrayliteralTX(typeid(Value[Key]), *cast(void[]*)&keys, *cast(void[]*)&values);
 }
 
 alias AssociativeArray(Key, Value) = Value[Key];
@@ -2047,32 +2045,46 @@ T rehash(T : shared Value[Key], Value, Key)(T* aa)
     return *aa;
 }
 
-Value[Key] dup(T : Value[Key], Value, Key)(T aa) if (is(typeof({
-    ref Value get();    // pseudo lvalue of Value
-    Value[Key] r; r[Key.init] = get();
-    // bug 10720 - check whether Value is copyable
-    })))
+V[K] dup(T : V[K], K, V)(T aa)
 {
-    Value[Key] result;
-    foreach (k, v; aa)
+    //pragma(msg, "K = ", K, ", V = ", V);
+
+    // Bug10720 - check whether V is copyable
+    static assert(is(typeof({ V v = aa[K.init]; })),
+        "cannot call " ~ T.stringof ~ ".dup because " ~ V.stringof ~ " is not copyable");
+
+    V[K] result;
+
+    //foreach (k, ref v; aa)
+    //    result[k] = v;  // Bug13701 - won't work if V is not mutable
+
+    ref V duplicateElem(ref K k, ref const V v) @trusted pure nothrow
     {
-        result[k] = v;
+        import core.stdc.string : memcpy;
+
+        void* pv = _aaGetX(cast(void**)&result, typeid(K), V.sizeof, &k);
+        memcpy(pv, &v, V.sizeof);
+        return *cast(V*)pv;
     }
+
+    if (auto postblit = _getPostblit!V())
+    {
+        foreach (k, ref v; aa)
+            postblit(duplicateElem(k, v));
+    }
+    else
+    {
+        foreach (k, ref v; aa)
+            duplicateElem(k, v);
+    }
+
     return result;
 }
 
-Value[Key] dup(T : Value[Key], Value, Key)(T* aa) if (is(typeof((*aa).dup)))
+V[K] dup(T : V[K], K, V)(T* aa)
 {
     return (*aa).dup;
 }
-
-@disable Value[Key] dup(T : Value[Key], Value, Key)(T aa) if (!is(typeof({
-    ref Value get();    // pseudo lvalue of Value
-    Value[Key] r; r[Key.init] = get();
-    // bug 10720 - check whether Value is copyable
-    })));
-
-Value[Key] dup(T : Value[Key], Value, Key)(T* aa) if (!is(typeof((*aa).dup)));
 
 auto byKey(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc
 {
@@ -2118,7 +2130,7 @@ auto byValue(T : Value[Key], Value, Key)(T *aa) pure nothrow @nogc
 
 Key[] keys(T : Value[Key], Value, Key)(T aa) @property
 {
-    auto a = cast(void[])_aaKeys(cast(inout(void)*)aa, Key.sizeof);
+    auto a = cast(void[])_aaKeys(cast(inout(void)*)aa, Key.sizeof, typeid(Key[]));
     return *cast(Key[]*)&a;
 }
 
@@ -2129,13 +2141,43 @@ Key[] keys(T : Value[Key], Value, Key)(T *aa) @property
 
 Value[] values(T : Value[Key], Value, Key)(T aa) @property
 {
-    auto a = cast(void[])_aaValues(cast(inout(void)*)aa, Key.sizeof, Value.sizeof);
+    auto a = cast(void[])_aaValues(cast(inout(void)*)aa, Key.sizeof, Value.sizeof, typeid(Value[]));
     return *cast(Value[]*)&a;
 }
 
 Value[] values(T : Value[Key], Value, Key)(T *aa) @property
 {
     return (*aa).values;
+}
+
+auto byKeyValue(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc @property
+{
+    static struct Result
+    {
+        AARange r;
+
+      pure nothrow @nogc:
+        @property bool empty() { return _aaRangeEmpty(r); }
+        @property auto front() @trusted
+        {
+            static struct Pair
+            {
+                // We save the pointers here so that the Pair we return
+                // won't mutate when Result.popFront is called afterwards.
+                private Key* keyp;
+                private Value* valp;
+
+                @property ref inout(Key) key() inout { return *keyp; }
+                @property ref inout(Value) value() inout { return *valp; }
+            }
+            return Pair(cast(Key*)_aaRangeFrontKey(r),
+                        cast(Value*)_aaRangeFrontValue(r));
+        }
+        void popFront() { _aaRangePopFront(r); }
+        @property Result save() { return this; }
+    }
+
+    return Result(_aaRange(cast(void*)aa));
 }
 
 inout(V) get(K, V)(inout(V[K]) aa, K key, lazy inout(V) defaultValue)
@@ -2367,9 +2409,51 @@ pure nothrow unittest
     //testFwdRange(aa.byPair, tuple("a", 1));
 }
 
-// Explicitly undocumented. It will be removed in March 2015.
-deprecated("Please use destroy instead of clear.")
-alias destroy clear;
+unittest
+{
+    // Issue 9119
+    int[string] aa;
+    assert(aa.byKeyValue.empty);
+
+    aa["a"] = 1;
+    aa["b"] = 2;
+    aa["c"] = 3;
+
+    auto pairs = aa.byKeyValue;
+
+    auto savedPairs = pairs.save;
+    size_t count = 0;
+    while (!pairs.empty)
+    {
+        assert(pairs.front.key in aa);
+        assert(pairs.front.value == aa[pairs.front.key]);
+        count++;
+        pairs.popFront();
+    }
+    assert(count == aa.length);
+
+    // Verify that saved range can iterate over the AA again
+    count = 0;
+    while (!savedPairs.empty)
+    {
+        assert(savedPairs.front.key in aa);
+        assert(savedPairs.front.value == aa[savedPairs.front.key]);
+        count++;
+        savedPairs.popFront();
+    }
+    assert(count == aa.length);
+}
+
+unittest
+{
+    // Verify iteration with const.
+    auto aa = [1:2, 3:4];
+    foreach (const t; aa.byKeyValue)
+    {
+        auto k = t.key;
+        auto v = t.value;
+    }
+}
 
 /++
     Destroys the given object and puts it in an invalid state. It's used to
@@ -2977,29 +3061,40 @@ private inout(T)[] _rawDup(T)(inout(T)[] a)
     return *cast(inout(T)[]*)&arr;
 }
 
-private void _doPostblit(T)(T[] ary)
+private template _PostBlitType(T)
+{
+    // assume that ref T and void* are equivalent in abi level.
+    static if (is(T == struct))
+        alias _PostBlitType = typeof(function (ref T t){ T a = t; });
+    else
+        alias _PostBlitType = typeof(delegate (ref T t){ T a = t; });
+}
+
+// Returns null, or a delegate to call postblit of T
+private auto _getPostblit(T)() @trusted pure nothrow @nogc
 {
     // infer static postblit type, run postblit if any
     static if (is(T == struct))
     {
         import core.internal.traits : Unqual;
-
-        alias PostBlitT = typeof(function(void*){T a = T.init, b = a;});
         // use typeid(Unqual!T) here to skip TypeInfo_Const/Shared/...
-        auto postBlit = cast(PostBlitT)typeid(Unqual!T).xpostblit;
-        if (postBlit !is null)
-        {
-            foreach (ref el; ary)
-                postBlit(cast(void*)&el);
-        }
+        return cast(_PostBlitType!T)typeid(Unqual!T).xpostblit;
     }
     else if ((&typeid(T).postblit).funcptr !is &TypeInfo.postblit)
     {
-        alias PostBlitT = typeof(delegate(void*){T a = T.init, b = a;});
-        auto postBlit = cast(PostBlitT)&typeid(T).postblit;
+        return cast(_PostBlitType!T)&typeid(T).postblit;
+    }
+    else
+        return null;
+}
 
-        foreach (ref el; ary)
-            postBlit(cast(void*)&el);
+private void _doPostblit(T)(T[] arr)
+{
+    // infer static postblit type, run postblit if any
+    if (auto postblit = _getPostblit!T())
+    {
+        foreach (ref elem; arr)
+            postblit(elem);
     }
 }
 
@@ -3118,4 +3213,17 @@ unittest
     i = s.idup;
     i = s.dup;
     static assert(!__traits(compiles, m = s.dup));
+}
+
+unittest
+{
+    // Bugzilla 13809
+    static struct S
+    {
+        this(this) {}
+        ~this() {}
+    }
+
+    S[] arr;
+    auto a = arr.dup;
 }

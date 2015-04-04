@@ -734,9 +734,21 @@ else version (Solaris)
             gid_t st_gid;
             dev_t st_rdev;
             off_t st_size;
-            timestruc_t st_atim;
-            timestruc_t st_mtim;
-            timestruc_t st_ctim;
+            union
+            {
+                timestruc_t st_atim;
+                time_t      st_atime;
+            }
+            union
+            {
+                timestruc_t st_mtim;
+                time_t      st_mtime;
+            }
+            union
+            {
+                timestruc_t st_ctim;
+                time_t      st_ctime;
+            }
             blksize_t st_blksize;
             blkcnt_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -759,9 +771,21 @@ else version (Solaris)
             c_long[2] st_pad2;
             off_t st_size;
             c_long st_pad3;
-            timestruc_t st_atim;
-            timestruc_t st_mtim;
-            timestruc_t st_ctim;
+            union
+            {
+                timestruc_t st_atim;
+                time_t      st_atime;
+            }
+            union
+            {
+                timestruc_t st_mtim;
+                time_t      st_mtime;
+            }
+            union
+            {
+                timestruc_t st_ctim;
+                time_t      st_ctime;
+            }
             blksize_t st_blksize;
             blkcnt_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -781,9 +805,21 @@ else version (Solaris)
             c_long[2] st_pad2;
             off64_t st_size;
             c_long st_pad3;
-            timestruc_t st_atim;
-            timestruc_t st_mtim;
-            timestruc_t st_ctim;
+            union
+            {
+                timestruc_t st_atim;
+                time_t      st_atime;
+            }
+            union
+            {
+                timestruc_t st_mtim;
+                time_t      st_mtime;
+            }
+            union
+            {
+                timestruc_t st_ctim;
+                time_t      st_ctime;
+            }
             blksize_t st_blksize;
             blkcnt64_t st_blocks;
             char[_ST_FSTYPSZ] st_fstype;
@@ -920,7 +956,7 @@ version( linux )
 {
   static if( __USE_LARGEFILE64 )
   {
-    int   fstat64(int, stat_t*);
+    int   fstat64(int, stat_t*) @trusted;
     alias fstat64 fstat;
 
     int   lstat64(in char*, stat_t*);
@@ -931,7 +967,7 @@ version( linux )
   }
   else
   {
-    int   fstat(int, stat_t*);
+    int   fstat(int, stat_t*) @trusted;
     int   lstat(in char*, stat_t*);
     int   stat(in char*, stat_t*);
   }
@@ -940,7 +976,7 @@ else version (Solaris)
 {
     version (D_LP64)
     {
-        int fstat(int, stat_t*);
+        int fstat(int, stat_t*) @trusted;
         int lstat(in char*, stat_t*);
         int stat(in char*, stat_t*);
 
@@ -955,7 +991,7 @@ else version (Solaris)
     {
         static if (__USE_LARGEFILE64)
         {
-            int   fstat64(int, stat_t*);
+            int   fstat64(int, stat_t*) @trusted;
             alias fstat64 fstat;
 
             int   lstat64(in char*, stat_t*);
@@ -966,7 +1002,7 @@ else version (Solaris)
         }
         else
         {
-            int fstat(int, stat_t*);
+            int fstat(int, stat_t*) @trusted;
             int lstat(in char*, stat_t*);
             int stat(in char*, stat_t*);
         }
@@ -974,7 +1010,7 @@ else version (Solaris)
 }
 else version( Posix )
 {
-    int   fstat(int, stat_t*);
+    int   fstat(int, stat_t*) @trusted;
     int   lstat(in char*, stat_t*);
     int   stat(in char*, stat_t*);
 }

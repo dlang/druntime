@@ -11,6 +11,7 @@ static import common = rt.util.container.common;
 
 struct Array(T)
 {
+nothrow:
     @disable this(this);
 
     ~this()
@@ -171,7 +172,9 @@ unittest
     assert(cnt == 0);
     ary.insertBack(RC(&cnt));
     assert(cnt == 1);
-    ary.insertBack(ary.front);
+    ary.insertBack(RC(&cnt));
+    assert(cnt == 2);
+    ary.back = ary.front;
     assert(cnt == 2);
     ary.popBack();
     assert(cnt == 1);

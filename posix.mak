@@ -64,9 +64,9 @@ else
 	DOTLIB:=.a
 endif
 
-DFLAGS=$(MODEL_FLAG) -O -release -inline -w -Isrc -Iimport $(PIC)
-UDFLAGS=$(MODEL_FLAG) -O -release -w -Isrc -Iimport $(PIC)
-DDOCFLAGS=-c -w -o- -Isrc -Iimport -version=CoreDdoc
+DFLAGS=$(MODEL_FLAG) -conf= -O -release -dip25 -inline -w -Isrc -Iimport $(PIC)
+UDFLAGS=$(MODEL_FLAG) -conf= -O -release -dip25 -w -Isrc -Iimport $(PIC)
+DDOCFLAGS=-conf= -c -w -o- -Isrc -Iimport -version=CoreDdoc
 
 CFLAGS=$(MODEL_FLAG) -O $(PIC)
 ifeq (solaris,$(OS))
@@ -104,9 +104,14 @@ SRCS:=$(subst \,/,$(SRCS))
 
 OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/bss_section.o $(OBJDIR)/threadasm.o
 
+# build with shared library support
+SHARED=$(if $(findstring $(OS),linux freebsd),1,)
+
+LINKDL=$(if $(findstring $(OS),linux),-L-ldl,)
+
 ######################## All of'em ##############################
 
-ifeq (linux,$(OS))
+ifneq (,$(SHARED))
 target : import copy dll $(DRUNTIME)
 else
 target : import copy $(DRUNTIME)
@@ -122,6 +127,9 @@ $(DOCDIR)/object.html : src/object_.d
 $(DOCDIR)/core_%.html : src/core/%.d
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
+$(DOCDIR)/core_stdc_%.html : src/core/stdc/%.d
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+
 $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
@@ -131,7 +139,7 @@ import: $(IMPORTS)
 
 $(IMPDIR)/core/sync/%.di : src/core/sync/%.d
 	@mkdir -p `dirname $@`
-	$(DMD) -c -o- -Isrc -Iimport -Hf$@ $<
+	$(DMD) -conf= -c -o- -Isrc -Iimport -Hf$@ $<
 
 ######################## Header .di file copy ##############################
 
@@ -166,11 +174,11 @@ $(DRUNTIMESO) $(DRUNTIMESOLIB) dll: DFLAGS+=-version=Shared
 dll: $(DRUNTIMESOLIB)
 
 $(DRUNTIMESO): $(OBJS) $(SRCS)
-	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) $(DFLAGS) $(SRCS) $(OBJS) -L-ldl
+	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) $(DFLAGS) $(SRCS) $(OBJS) $(LINKDL)
 
 $(DRUNTIMESOLIB): $(OBJS) $(SRCS)
 	$(DMD) -c -fPIC -of$(DRUNTIMESOOBJ) $(DFLAGS) $(SRCS)
-	$(DMD) -lib -of$(DRUNTIMESOLIB) $(DRUNTIMESOOBJ) $(OBJS)
+	$(DMD) -conf= -lib -of$(DRUNTIMESOLIB) $(DRUNTIMESOOBJ) $(OBJS)
 
 ################### Library generation #########################
 
@@ -181,7 +189,7 @@ UT_MODULES:=$(patsubst src/%.d,$(OBJDIR)/%,$(SRCS))
 HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
 ifeq ($(HAS_ADDITIONAL_TESTS),1)
 	ADDITIONAL_TESTS:=test/init_fini test/exceptions
-	ADDITIONAL_TESTS+=$(if $(findstring $(OS),linux),test/shared,)
+	ADDITIONAL_TESTS+=$(if $(SHARED),test/shared,)
 endif
 
 unittest : $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
@@ -196,7 +204,7 @@ endif
 $(addprefix $(OBJDIR)/,$(DISABLED_TESTS)) :
 	@echo $@ - disabled
 
-ifneq (linux,$(OS))
+ifeq (,$(SHARED))
 
 $(OBJDIR)/test_runner: $(OBJS) $(SRCS) src/test_runner.d
 	$(DMD) $(UDFLAGS) -unittest -of$@ src/test_runner.d $(SRCS) $(OBJS) -debuglib= -defaultlib=
@@ -208,7 +216,7 @@ UT_DRUNTIME:=$(OBJDIR)/lib$(DRUNTIME_BASE)-ut$(DOTDLL)
 $(UT_DRUNTIME): override PIC:=-fPIC
 $(UT_DRUNTIME): UDFLAGS+=-version=Shared
 $(UT_DRUNTIME): $(OBJS) $(SRCS)
-	$(DMD) $(UDFLAGS) -shared -unittest -of$@ $(SRCS) $(OBJS) -L-ldl -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -shared -unittest -of$@ $(SRCS) $(OBJS) $(LINKDL) -debuglib= -defaultlib=
 
 $(OBJDIR)/test_runner: $(UT_DRUNTIME) src/test_runner.d
 	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L$(UT_DRUNTIME) -debuglib= -defaultlib=
@@ -232,7 +240,7 @@ test/shared/.run: $(DRUNTIMESO)
 
 test/%/.run: test/%/Makefile
 	$(QUIET)$(MAKE) -C test/$* MODEL=$(MODEL) OS=$(OS) DMD=$(abspath $(DMD)) \
-		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) QUIET=$(QUIET)
+		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) QUIET=$(QUIET) LINKDL=$(LINKDL)
 
 detab:
 	detab $(MANIFEST)
