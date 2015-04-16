@@ -98,45 +98,10 @@ PROT_EXEC
 PROT_NONE
 */
 
-version( linux )
-{
-    enum PROT_NONE      = 0x0;
-    enum PROT_READ      = 0x1;
-    enum PROT_WRITE     = 0x2;
-    enum PROT_EXEC      = 0x4;
-}
-else version( OSX )
-{
-    enum PROT_NONE      = 0x00;
-    enum PROT_READ      = 0x01;
-    enum PROT_WRITE     = 0x02;
-    enum PROT_EXEC      = 0x04;
-}
-else version( FreeBSD )
-{
-    enum PROT_NONE      = 0x00;
-    enum PROT_READ      = 0x01;
-    enum PROT_WRITE     = 0x02;
-    enum PROT_EXEC      = 0x04;
-}
-else version (Solaris)
-{
-    enum PROT_NONE = 0x00;
-    enum PROT_READ = 0x01;
-    enum PROT_WRITE = 0x02;
-    enum PROT_EXEC = 0x04;
-}
-else version (Android)
-{
-    enum PROT_NONE = 0x00;
-    enum PROT_READ = 0x01;
-    enum PROT_WRITE = 0x02;
-    enum PROT_EXEC = 0x04;
-}
-else
-{
-    static assert(false, "Unsupported platform");
-}
+enum PROT_NONE  = 0x0;
+enum PROT_READ  = 0x1;
+enum PROT_WRITE = 0x2;
+enum PROT_EXEC  = 0x4;
 
 //
 // Memory Mapped Files, Shared Memory Objects, or Typed Memory Objects (MC3)
@@ -455,35 +420,8 @@ int mlock(in void*, size_t);
 int munlock(in void*, size_t);
 */
 
-version( linux )
-{
-    int mlock(in void*, size_t);
-    int munlock(in void*, size_t);
-}
-else version( OSX )
-{
-    int mlock(in void*, size_t);
-    int munlock(in void*, size_t);
-}
-else version( FreeBSD )
-{
-    int mlock(in void*, size_t);
-    int munlock(in void*, size_t);
-}
-else version (Solaris)
-{
-    int mlock(in void*, size_t);
-    int munlock(in void*, size_t);
-}
-else version (Android)
-{
-    int mlock(in void*, size_t);
-    int munlock(in void*, size_t);
-}
-else
-{
-    static assert(false, "Unsupported platform");
-}
+int mlock(in void*, size_t);
+int munlock(in void*, size_t);
 
 //
 // Memory Protection (MPR)

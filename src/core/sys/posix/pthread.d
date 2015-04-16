@@ -993,52 +993,9 @@ int pthread_rwlockattr_getpshared(in pthread_rwlockattr_t*, int*);
 int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
 */
 
-version (linux)
-{
-    int pthread_condattr_getpshared(in pthread_condattr_t*, int*);
-    int pthread_condattr_setpshared(pthread_condattr_t*, int);
-    int pthread_mutexattr_getpshared(in pthread_mutexattr_t*, int*);
-    int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
-    int pthread_rwlockattr_getpshared(in pthread_rwlockattr_t*, int*);
-    int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
-}
-else version( FreeBSD )
-{
-    int pthread_condattr_getpshared(in pthread_condattr_t*, int*);
-    int pthread_condattr_setpshared(pthread_condattr_t*, int);
-    int pthread_mutexattr_getpshared(in pthread_mutexattr_t*, int*);
-    int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
-    int pthread_rwlockattr_getpshared(in pthread_rwlockattr_t*, int*);
-    int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
-}
-else version( OSX )
-{
-    int pthread_condattr_getpshared(in pthread_condattr_t*, int*);
-    int pthread_condattr_setpshared(pthread_condattr_t*, int);
-    int pthread_mutexattr_getpshared(in pthread_mutexattr_t*, int*);
-    int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
-    int pthread_rwlockattr_getpshared(in pthread_rwlockattr_t*, int*);
-    int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
-}
-else version (Solaris)
-{
-    int pthread_condattr_getpshared(in pthread_condattr_t*, int*);
-    int pthread_condattr_setpshared(pthread_condattr_t*, int);
-    int pthread_mutexattr_getpshared(in pthread_mutexattr_t*, int*);
-    int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
-    int pthread_rwlockattr_getpshared(in pthread_rwlockattr_t*, int*);
-    int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
-}
-else version (Android)
-{
-    int pthread_condattr_getpshared(pthread_condattr_t*, int*);
-    int pthread_condattr_setpshared(pthread_condattr_t*, int);
-    int pthread_mutexattr_getpshared(pthread_mutexattr_t*, int*);
-    int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
-    int pthread_rwlockattr_getpshared(pthread_rwlockattr_t*, int*);
-    int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);
-}
-else
-{
-    static assert(false, "Unsupported platform");
-}
+int pthread_condattr_getpshared(in pthread_condattr_t*, int*);
+int pthread_condattr_setpshared(pthread_condattr_t*, int);
+int pthread_mutexattr_getpshared(in pthread_mutexattr_t*, int*);
+int pthread_mutexattr_setpshared(pthread_mutexattr_t*, int);
+int pthread_rwlockattr_getpshared(in pthread_rwlockattr_t*, int*);
+int pthread_rwlockattr_setpshared(pthread_rwlockattr_t*, int);

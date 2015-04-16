@@ -972,23 +972,4 @@ else version( Android )
 IPPROTO_RAW
 */
 
-version( linux )
-{
-    enum uint IPPROTO_RAW = 255;
-}
-else version( OSX )
-{
-    enum uint IPPROTO_RAW = 255;
-}
-else version( FreeBSD )
-{
-    enum uint IPPROTO_RAW = 255;
-}
-else version( Solaris )
-{
-    enum uint IPPROTO_RAW = 255;
-}
-else version( Android )
-{
-    enum uint IPPROTO_RAW = 255;
-}
+enum uint IPPROTO_RAW = 255;

@@ -1086,26 +1086,7 @@ else version( Solaris )
 int fsync(int);
 */
 
-version( linux )
-{
-    int fsync(int) @trusted;
-}
-else version( OSX )
-{
-    int fsync(int) @trusted;
-}
-else version( FreeBSD )
-{
-    int fsync(int) @trusted;
-}
-else version( Android )
-{
-    int fsync(int) @trusted;
-}
-else version( Solaris )
-{
-    int fsync(int) @trusted;
-}
+int fsync(int) @trusted;
 
 //
 // Synchronized I/O (SIO)

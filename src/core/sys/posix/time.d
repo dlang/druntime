@@ -326,45 +326,10 @@ tm*   gmtime_r(in time_t*, tm*);
 tm*   localtime_r(in time_t*, tm*);
 */
 
-version( linux )
-{
-    char* asctime_r(in tm*, char*);
-    char* ctime_r(in time_t*, char*);
-    tm*   gmtime_r(in time_t*, tm*);
-    tm*   localtime_r(in time_t*, tm*);
-}
-else version( OSX )
-{
-    char* asctime_r(in tm*, char*);
-    char* ctime_r(in time_t*, char*);
-    tm*   gmtime_r(in time_t*, tm*);
-    tm*   localtime_r(in time_t*, tm*);
-}
-else version( FreeBSD )
-{
-    char* asctime_r(in tm*, char*);
-    char* ctime_r(in time_t*, char*);
-    tm*   gmtime_r(in time_t*, tm*);
-    tm*   localtime_r(in time_t*, tm*);
-}
-else version (Solaris)
-{
-    char* asctime_r(in tm*, char*);
-    char* ctime_r(in time_t*, char*);
-    tm* gmtime_r(in time_t*, tm*);
-    tm* localtime_r(in time_t*, tm*);
-}
-else version (Android)
-{
-    char* asctime_r(in tm*, char*);
-    char* ctime_r(in time_t*, char*);
-    tm* gmtime_r(in time_t*, tm*);
-    tm* localtime_r(in time_t*, tm*);
-}
-else
-{
-    static assert(false, "Unsupported platform");
-}
+char* asctime_r(in tm*, char*);
+char* ctime_r(in time_t*, char*);
+tm*   gmtime_r(in time_t*, tm*);
+tm*   localtime_r(in time_t*, tm*);
 
 //
 // XOpen (XSI)
