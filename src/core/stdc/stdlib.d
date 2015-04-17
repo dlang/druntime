@@ -142,18 +142,23 @@ else
     }
 }
 
-// We don't mark these @trusted. Given that they return a void*, one has
+// Not @trusted. Given that they return a void*, one has
 // to do a pointer cast to do anything sensible with the result. Thus,
 // functions using these already have to be @trusted, allowing them to
 // call @system stuff anyway.
-///
-void*   malloc(size_t size);
-///
-void*   calloc(size_t nmemb, size_t size);
-///
-void*   realloc(void* ptr, size_t size);
-///
-void    free(void* ptr);
+// Marked as pure so pure functions can be made that have encapsulated
+// memory allocation.
+pure
+{
+    ///
+    void*   malloc(size_t size);
+    ///
+    void*   calloc(size_t nmemb, size_t size);
+    ///
+    void*   realloc(void* ptr, size_t size);
+    ///
+    void    free(void* ptr);
+}
 
 ///
 void    abort();
