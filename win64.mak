@@ -655,7 +655,6 @@ $(DRUNTIME): $(OBJS) $(SRCS) win64.mak
 
 unittest : $(SRCS) $(DRUNTIME)
 	$(DMD) $(UDFLAGS) -version=druntime_unittest -unittest -ofunittest.exe -main $(SRCS) $(DRUNTIME) -debuglib=$(DRUNTIME) -defaultlib=$(DRUNTIME) user32.lib
-	dir unittest.exe
 	unittest
 
 zip: druntime.zip
