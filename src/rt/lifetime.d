@@ -415,7 +415,7 @@ BlkInfo __arrayAlloc(size_t arrsize, const TypeInfo ti, const TypeInfo tinext) n
     uint attr = (!(tinext.flags & 1) ? BlkAttr.NO_SCAN : 0) | BlkAttr.APPENDABLE;
     if (typeInfoSize)
         attr |= BlkAttr.STRUCTFINAL | BlkAttr.FINALIZE;
-    return GC.qalloc(arrsize + padsize, attr, ti);
+    return gc_qalloc_emplace(arrsize + padsize, attr, ti);
 }
 
 BlkInfo __arrayAlloc(size_t arrsize, ref BlkInfo info, const TypeInfo ti, const TypeInfo tinext)
@@ -423,7 +423,7 @@ BlkInfo __arrayAlloc(size_t arrsize, ref BlkInfo info, const TypeInfo ti, const 
     if (!info.base)
         return __arrayAlloc(arrsize, ti, tinext);
 
-    return GC.qalloc(arrsize + __arrayPad(arrsize, tinext), info.attr, ti);
+    return gc_qalloc_emplace(arrsize + __arrayPad(arrsize, tinext), info.attr, ti);
 }
 
 /**
@@ -701,6 +701,54 @@ void __doPostblit(void *ptr, size_t len, const TypeInfo ti)
     }
 }
 
+immutable bool gc_precise;
+
+shared static this()
+{
+    import gc.gc;
+    gc_precise = GC.config.precise;
+}
+
+BlkInfo gc_qalloc_emplace(size_t sz, uint ba, const TypeInfo ti) nothrow pure
+{
+    if(gc_precise && !(ba & BlkAttr.NO_SCAN))
+    {
+        // an array of classes is in fact an array of pointers
+        const(TypeInfo) tinext = ti.next.classinfo.name == "TypeInfo_Class" ? typeid(void*) : ti.next;
+
+        if( sz <= PAGESIZE / 2 )
+            return GC.qalloc(sz, ba | BlkAttr.REP_RTINFO, tinext);
+
+        // for large arrays, we have to emplace the type info pointer bitmap at offset LARGEPAD
+        BlkInfo info = GC.qalloc(sz, ba | BlkAttr.NO_RTINFO, tinext);
+        if(info.base)
+        {
+            void* arr = __arrayStart(info);
+            GC.emplace(arr, info.base + info.size - arr, tinext);
+        }
+        return info;
+    }
+    else
+        return GC.qalloc(sz, ba, ti);
+}
+
+BlkInfo gc_qalloc_emplace(size_t sz, const TypeInfo ti) nothrow pure
+{
+    return gc_qalloc_emplace(sz, !(ti.next.flags & 1) ? BlkAttr.NO_SCAN | BlkAttr.APPENDABLE : BlkAttr.APPENDABLE, ti);
+}
+
+size_t gc_extend_emplace(void* p, size_t mx, size_t sz, size_t oldsz, const TypeInfo ti)
+{
+    size_t newsz = GC.extend(p, mx, sz, ti);
+    if(gc_precise && newsz >= PAGESIZE)
+    {
+        // an array of classes is in fact an array of pointers
+        const(TypeInfo) tinext = ti.next.classinfo.name == "TypeInfo_Class" ? typeid(void*) : ti.next;
+        void* arr = p + LARGEPREFIX;
+        GC.emplace(arr, newsz - LARGEPAD, tinext);
+    }
+    return newsz;
+}
 
 /**
  * set the array capacity.  If the array capacity isn't currently large enough
@@ -1497,7 +1545,7 @@ body
                             {
                                 // not enough space, try extending
                                 auto extendsize = newsize + offset + LARGEPAD - info.size;
-                                auto u = GC.extend(info.base, extendsize, extendsize);
+                                auto u = gc_extend_emplace(info.base, extendsize, extendsize, info.size, ti);
                                 if(u)
                                 {
                                     // extend worked, now try setting the length
@@ -1682,7 +1730,7 @@ body
                             {
                                 // not enough space, try extending
                                 auto extendsize = newsize + offset + LARGEPAD - info.size;
-                                auto u = GC.extend(info.base, extendsize, extendsize);
+                                auto u = gc_extend_emplace(info.base, extendsize, extendsize, info.size, ti);
                                 if(u)
                                 {
                                     // extend worked, now try setting the length
@@ -1923,7 +1971,7 @@ byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
                 {
                     // not enough space, try extending
                     auto extendoffset = offset + LARGEPAD - info.size;
-                    auto u = GC.extend(info.base, newsize + extendoffset, newcap + extendoffset);
+                    auto u = gc_extend_emplace(info.base, newsize + extendoffset, newcap + extendoffset, info.size, ti);
                     if(u)
                     {
                         // extend worked, now try setting the length

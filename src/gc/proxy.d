@@ -48,6 +48,7 @@ private
             size_t  function(void*, size_t, size_t, const TypeInfo) gc_extend;
             size_t  function(size_t) gc_reserve;
             void    function(void*) gc_free;
+            bool    function(void*, size_t, const TypeInfo) gc_emplace;
 
             void*   function(void*) gc_addrOf;
             size_t  function(void*) gc_sizeOf;
@@ -86,6 +87,7 @@ private
         pthis.gc_extend = &gc_extend;
         pthis.gc_reserve = &gc_reserve;
         pthis.gc_free = &gc_free;
+        pthis.gc_emplace = &gc_emplace;
 
         pthis.gc_addrOf = &gc_addrOf;
         pthis.gc_sizeOf = &gc_sizeOf;
@@ -237,6 +239,13 @@ extern (C)
         if( proxy is null )
             return _gc.free( p );
         return proxy.gc_free( p );
+    }
+
+    bool gc_emplace( void* p, size_t len, const TypeInfo ti ) nothrow
+    {
+        if( proxy is null )
+            return _gc.emplace( p, len, ti );
+        return proxy.gc_emplace( p, len, ti );
     }
 
     void* gc_addrOf( void* p ) nothrow

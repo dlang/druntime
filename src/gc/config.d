@@ -24,7 +24,7 @@ struct Config
 {
     bool disable;            // start disabled
     ubyte profile;           // enable profiling with summary when terminating program
-    bool precise;            // enable precise scanning
+    bool precise = 1;        // enable precise scanning
     bool concurrent;         // enable concurrent collection
 
     size_t initReserve;      // initial reserve (MB)
