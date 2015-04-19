@@ -675,8 +675,8 @@ struct GC
                     auto newsz = (size + PAGESIZE - 1) / PAGESIZE;
                     if (newsz == psz)
                     {
-                        if(config.precise && !(bits & BlkAttr.NO_RTINFO))
-                            pool.setPointerBitmap(p, size, newsz * PAGESIZE, ti, (bits & BlkAttr.REP_RTINFO) != 0);
+                        if(config.precise)
+                            pool.setPointerBitmap(p, size, newsz * PAGESIZE, bits, ti);
                         alloc_size = psize;
                         return p;
                     }
@@ -712,8 +712,8 @@ struct GC
                         pool.setBits(biti, bits);
                     }
                     alloc_size = newsz * PAGESIZE;
-                    if(config.precise && !(bits & BlkAttr.NO_RTINFO))
-                        pool.setPointerBitmap(p, size, newsz * PAGESIZE, ti, (bits & BlkAttr.REP_RTINFO) != 0);
+                    if(config.precise)
+                        pool.setPointerBitmap(p, size, newsz * PAGESIZE, bits, ti);
                     return p;
                 }
 
@@ -746,8 +746,8 @@ struct GC
                 else
                 {
                     alloc_size = psize;
-                    if(config.precise && !(bits & BlkAttr.NO_RTINFO))
-                        pool.setPointerBitmap(p, size, psize, ti, (bits & BlkAttr.REP_RTINFO) != 0);
+                    if(config.precise)
+                        pool.setPointerBitmap(p, size, psize, bits, ti);
                 }
             }
         }
@@ -1870,10 +1870,9 @@ struct Gcx
         //debug(PRINTF) printf("\tmalloc => %p\n", p);
         debug (MEMSTOMP) memset(p, 0xF0, alloc_size);
 
-        if (GC.config.precise && !(bits & (BlkAttr.NO_SCAN | BlkAttr.NO_RTINFO)))
+        if (GC.config.precise)
         {
-            bool repeat = (bits & BlkAttr.REP_RTINFO) != 0;
-            pool.setPointerBitmap(sentinel_add(p), size, alloc_size, ti, repeat);
+            pool.setPointerBitmap(sentinel_add(p), size, alloc_size, bits, ti);
         }
 
         return p;
@@ -1957,8 +1956,8 @@ struct Gcx
 
         if (bits)
             pool.setBits(pn, bits);
-        if (GC.config.precise && !(bits & (BlkAttr.NO_SCAN | BlkAttr.NO_RTINFO)))
-            pool.setPointerBitmap(sentinel_add(p), size, alloc_size, ti, (bits & BlkAttr.REP_RTINFO) != 0);
+        if (GC.config.precise)
+            pool.setPointerBitmap(sentinel_add(p), size, alloc_size, bits, ti);
 
         return p;
     }
@@ -3115,6 +3114,12 @@ struct Pool
                 assert(bin < B_MAX);
             }
         }
+    }
+
+    void setPointerBitmap(void* p, size_t s, size_t allocSize, uint attr, const TypeInfo ti) nothrow
+    {
+        if (!(attr & (BlkAttr.NO_SCAN | BlkAttr.NO_RTINFO)))
+            setPointerBitmap(p, s, allocSize, ti, (attr & BlkAttr.REP_RTINFO) != 0);
     }
 
     void setPointerBitmap(void* p, size_t s, size_t allocSize, const TypeInfo ti, bool repeat) nothrow
