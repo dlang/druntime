@@ -1142,7 +1142,11 @@ struct GC
         BlkInfo info = gcx.getInfo(p, &pool);
         if(!info.base)
             return false;
-        size_t allocSize = info.size - (p - info.base);
+
+        debug(SENTINEL)
+            size_t allocSize = len;
+        else
+            size_t allocSize = info.size - (p - info.base);
         pool.setPointerBitmap(p, len, allocSize, ti, true);
         return true;
     }
@@ -1872,7 +1876,10 @@ struct Gcx
 
         if (GC.config.precise)
         {
-            pool.setPointerBitmap(sentinel_add(p), size, alloc_size, bits, ti);
+            debug(SENTINEL)
+                pool.setPointerBitmap(sentinel_add(p), size - SENTINEL_EXTRA, size - SENTINEL_EXTRA, bits, ti);
+            else
+                pool.setPointerBitmap(p, size, alloc_size, bits, ti);
         }
 
         return p;
@@ -1957,7 +1964,12 @@ struct Gcx
         if (bits)
             pool.setBits(pn, bits);
         if (GC.config.precise)
-            pool.setPointerBitmap(sentinel_add(p), size, alloc_size, bits, ti);
+        {
+            debug(SENTINEL)
+                pool.setPointerBitmap(sentinel_add(p), size - SENTINEL_EXTRA, size - SENTINEL_EXTRA, bits, ti);
+            else
+                pool.setPointerBitmap(p, size, alloc_size, bits, ti);
+        }
 
         return p;
     }
