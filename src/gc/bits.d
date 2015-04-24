@@ -196,8 +196,8 @@ struct GCBits
                         initbits -= sourcelen;
                     }
                     copyRange(target, initbits, source);
-                    target += sourcelen;
-                    destlen -= sourcelen;
+                    target += initbits;
+                    destlen -= initbits;
                     assert((target & BITS_MASK) == 0);
 
                     size_t tpos = target >> BITS_SHIFT;
@@ -208,8 +208,11 @@ struct GCBits
                         tpos++;
                     }
 
-                    wordtype mask = (BITS_2 << destlen) - 1;
-                    data[tpos] = (data[tpos] & ~mask) | (data[tpos - repwords] & mask);
+                    if (destlen > 0)
+                    {
+                        wordtype mask = (BITS_1 << destlen) - 1;
+                        data[tpos] = (data[tpos] & ~mask) | (data[tpos - repwords] & mask);
+                    }
                     return;
                 }
             }
@@ -364,6 +367,8 @@ struct GCBits
         testCopyRange(20, 5, 10); // repeating small range spanning two words
         testCopyRange(40, 21, 7); // repeating medium range
         testCopyRange(73, 2 * BITS_PER_WORD + 15, 5); // repeating multi-word range
+
+        testCopyRange(2, 3, 166); // failed with assert
     }
 
     void zero() nothrow
