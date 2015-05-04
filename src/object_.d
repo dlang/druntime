@@ -61,6 +61,8 @@ alias immutable(char)[]  string;
 alias immutable(wchar)[] wstring;
 alias immutable(dchar)[] dstring;
 
+version (D_ObjC) public import core.attribute : selector;
+
 /**
  * All D class objects inherit from Object.
  */
@@ -1591,6 +1593,18 @@ unittest
         assert(e.next !is null);
         assert(e.msg == "msg");
         assert(e.bypassedException is null);
+    }
+}
+
+
+version (D_ObjC)
+{
+    abstract class ObjcThrowable : Throwable 
+    {
+        protected this(string msg, Throwable next = null)
+        {
+            super(msg, null, 0, next);
+        }
     }
 }
 

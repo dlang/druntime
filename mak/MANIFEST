@@ -18,6 +18,7 @@ MANIFEST=\
 	src\test_runner.d \
 	\
 	src\core\atomic.d \
+	src\core\attribute.d \
 	src\core\bitop.d \
 	src\core\checkedint.d \
 	src\core\cpuid.d \
@@ -292,3 +293,10 @@ MANIFEST=\
 	src\rt\typeinfo\ti_wchar.d \
 	\
 	src\etc\linux\memoryerror.d
+
+ifeq ($(D_OBJC),1)
+MANIFEST:=$(MANIFEST) \
+	src\objc\dobjc.d \
+	src\objc\runtime.d \
+	src\objc\types.d
+endif

@@ -82,6 +82,10 @@ DRUNTIMESOLIB=lib/lib$(DRUNTIME_BASE)so.a
 
 DOCFMT=
 
+ifeq (osx,$(OS))
+D_OBJC := 1
+endif
+
 include mak/COPY
 COPY:=$(subst \,/,$(COPY))
 
@@ -133,6 +137,9 @@ $(DOCDIR)/core_stdc_%.html : src/core/stdc/%.d
 $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
+$(DOCDIR)/objc_%.html : src/objc/%.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $<
+
 ######################## Header .di file generation ##############################
 
 import: $(IMPORTS)
@@ -140,6 +147,10 @@ import: $(IMPORTS)
 $(IMPDIR)/core/sync/%.di : src/core/sync/%.d
 	@mkdir -p `dirname $@`
 	$(DMD) -conf= -c -o- -Isrc -Iimport -Hf$@ $<
+
+$(IMPDIR)/objc/%.di : src/objc/%.d
+	@mkdir -p `dirname $@`
+	$(DMD) -m$(MODEL) -c -o- -Isrc -Iimport -Hf$@ $<
 
 ######################## Header .di file copy ##############################
 

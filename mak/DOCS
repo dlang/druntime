@@ -1,6 +1,7 @@
 DOCS=\
 	$(DOCDIR)\object.html \
 	$(DOCDIR)\core_atomic.html \
+	$(DOCDIR)\core_attribute.html \
 	$(DOCDIR)\core_bitop.html \
 	$(DOCDIR)\core_checkedint.html \
 	$(DOCDIR)\core_cpuid.html \
@@ -42,3 +43,9 @@ DOCS=\
 	$(DOCDIR)\core_sync_mutex.html \
 	$(DOCDIR)\core_sync_rwmutex.html \
 	$(DOCDIR)\core_sync_semaphore.html
+
+ifeq ($(D_OBJC),1)
+DOCS:=$(DOCS) \
+	$(DOCDIR)\objc_runtime.html \
+	$(DOCDIR)\objc_types.html
+endif

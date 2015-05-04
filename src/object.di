@@ -29,6 +29,8 @@ alias immutable(char)[]  string;
 alias immutable(wchar)[] wstring;
 alias immutable(dchar)[] dstring;
 
+version (D_ObjC) public import core.attribute : selector;
+
 class Object
 {
     string   toString();
@@ -392,6 +394,14 @@ class Error : Throwable
         bypassedException = null;
     }
     Throwable   bypassedException;
+}
+
+version (D_ObjC)
+{
+    private abstract class ObjcThrowable : Throwable
+    {
+        protected this(string msg, Throwable next = null);
+    }
 }
 
 extern (C)
