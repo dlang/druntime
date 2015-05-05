@@ -158,6 +158,14 @@ MANIFEST=\
 	src\core\sys\posix\sys\utsname.d \
 	src\core\sys\posix\sys\wait.d \
 	\
+	src\core\sys\signal\package.d \
+	src\core\sys\signal\aarch.d \
+	src\core\sys\signal\arm.d \
+	src\core\sys\signal\generic.d \
+	src\core\sys\signal\intel.d \
+	src\core\sys\signal\mips.d \
+	src\core\sys\signal\ppc.d \
+	\
 	src\core\sys\solaris\dlfcn.d \
 	src\core\sys\solaris\elf.d \
 	src\core\sys\solaris\execinfo.d \
