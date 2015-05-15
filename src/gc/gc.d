@@ -65,31 +65,7 @@ debug(PROFILE_API)
 {
     long currTicks() nothrow @nogc
     {
-        // MonoTime.ticksPerSecond may not be ready yet. So just avoid it altogether
-        // this is copied from core.time.MonoTime.currTime
-        //return MonoTime.ticksPerSecond ? MonoTime.currTime.ticks : 0;
-        version(Windows)
-        {
-            import core.sys.windows.windows;
-
-            long ticks;
-            if(QueryPerformanceCounter(&ticks) == 0)
-            {
-                // This probably cannot happen on Windows 95 or later
-                assert(0, "Call to QueryPerformanceCounter failed.");
-            }
-            return ticks;
-        }
-        else version(OSX)
-            return mach_absolute_time();
-        else version(Posix)
-        {
-            timespec ts;
-            if(clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
-                assert(0, "Call to clock_gettime failed.");
-
-            return ts.tv_sec * 1_000_000_000L + ts.tv_nsec;
-        }
+        return MonoTime.currTime.ticks;
     }
 }
 

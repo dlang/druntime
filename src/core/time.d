@@ -2163,6 +2163,12 @@ struct MonoTimeImpl(ClockType clockType)
 
 @safe:
 
+    this(long ticks) inout
+    {
+        ticksPerSecond; // init ticks per second
+        _ticks = ticks;
+    }
+
     version(Windows)
     {
         static if(clockType != ClockType.coarse &&
@@ -2242,12 +2248,6 @@ struct MonoTimeImpl(ClockType clockType)
       +/
     static @property MonoTimeImpl currTime() @trusted nothrow @nogc
     {
-        if(ticksPerSecond == 0)
-        {
-            assert(0, "MonoTimeImpl!(ClockType." ~ __traits(allMembers, ClockType)[_clockIdx] ~
-                      ") failed to get the frequency of the system's monotonic clock.");
-        }
-
         version(Windows)
         {
             long ticks;
@@ -2266,14 +2266,15 @@ struct MonoTimeImpl(ClockType clockType)
             if(clock_gettime(clockArg, &ts) != 0)
                 assert(0, "Call to clock_gettime failed.");
 
-            return MonoTimeImpl(convClockFreq(ts.tv_sec * 1_000_000_000L + ts.tv_nsec,
-                                              1_000_000_000L,
-                                              ticksPerSecond));
+            MonoTimeImpl res = void;
+            res._ticks = convClockFreq(ts.tv_sec * 1_000_000_000L + ts.tv_nsec,
+                                       1_000_000_000L, ticksPerSecond);
+            return res;
         }
     }
 
 
-    static @property pure nothrow @nogc
+    static @property nothrow @nogc
     {
     /++
         A $(D MonoTime) of $(D 0) ticks. It's provided to be consistent with
@@ -2406,7 +2407,7 @@ assert(before + timeElapsed == after).
         if(op == "-")
     {
         immutable diff = _ticks - rhs._ticks;
-        return Duration(convClockFreq(diff , ticksPerSecond, hnsecsPer!"seconds"));
+        return Duration(convClockFreq(diff, pureTicksPerSecond, hnsecsPer!"seconds"));
     }
 
     unittest
@@ -2461,8 +2462,10 @@ assert(before + timeElapsed == after).
     MonoTimeImpl opBinary(string op)(Duration rhs) const pure nothrow @nogc
         if(op == "+" || op == "-")
     {
-        immutable rhsConverted = convClockFreq(rhs._hnsecs, hnsecsPer!"seconds", ticksPerSecond);
-        mixin("return MonoTimeImpl(_ticks " ~ op ~ " rhsConverted);");
+        immutable rhsConverted = convClockFreq(rhs._hnsecs, hnsecsPer!"seconds", pureTicksPerSecond);
+        MonoTimeImpl res;
+        res._ticks = mixin("_ticks " ~ op ~ " rhsConverted");
+        return res;
     }
 
     unittest
@@ -2507,7 +2510,7 @@ assert(before + timeElapsed == after).
     ref MonoTimeImpl opOpAssign(string op)(Duration rhs) pure nothrow @nogc
         if(op == "+" || op == "-")
     {
-        immutable rhsConverted = convClockFreq(rhs._hnsecs, hnsecsPer!"seconds", ticksPerSecond);
+        immutable rhsConverted = convClockFreq(rhs._hnsecs, hnsecsPer!"seconds", pureTicksPerSecond);
         mixin("_ticks " ~ op ~ "= rhsConverted;");
         return this;
     }
@@ -2577,27 +2580,30 @@ assert(before + timeElapsed == after).
         e.g. if the system clock had a resolution of microseconds, then
         ticksPerSecond would be $(D 1_000_000).
       +/
-    static @property long ticksPerSecond() pure nothrow @nogc
+    static @property long ticksPerSecond() @trusted nothrow @nogc
     {
-        return _ticksPerSecond[_clockIdx];
-    }
+        import core.atomic;
 
-    unittest
-    {
-        assert(MonoTimeImpl.ticksPerSecond == _ticksPerSecond[_clockIdx]);
-    }
+        auto res = atomicLoad!(MemoryOrder.raw)(_ticksPerSecond);
+        if (res)
+            return res;
 
+        res = getTicksPerSecond();
+        // no synchronization required because multiple identical writes are idempotent
+        atomicStore!(MemoryOrder.raw)(*cast(shared(long)*)&_ticksPerSecond, res);
+        return res;
+    }
 
     ///
     string toString() const pure nothrow
     {
         static if(clockType == ClockType.normal)
-            return "MonoTime(" ~ numToString(_ticks) ~ " ticks, " ~ numToString(ticksPerSecond) ~ " ticks per second)";
+            return "MonoTime(" ~ numToString(_ticks) ~ " ticks, " ~ numToString(pureTicksPerSecond) ~ " ticks per second)";
         else
         {
             enum name = __traits(allMembers, ClockType)[_clockIdx];
             return "MonoTimeImpl!(ClockType." ~ name ~ ")(" ~ numToString(_ticks) ~ " ticks, " ~
-                   numToString(ticksPerSecond) ~ " ticks per second)";
+                   numToString(pureTicksPerSecond) ~ " ticks per second)";
         }
     }
 
@@ -2660,110 +2666,82 @@ assert(before + timeElapsed == after).
 
 private:
 
-    // static immutable long _ticksPerSecond;
-
-    unittest
+    static @property long pureTicksPerSecond() @trusted pure nothrow @nogc
     {
-        assert(_ticksPerSecond[_clockIdx]);
+        assert(_ticksPerSecond, "_ticksPerSecond not yet initialized");
+        return _ticksPerSecond;
     }
 
+    static long getTicksPerSecond() @trusted
+    {
+        version(Windows)
+        {
+            long ticksPerSecond = void;
+            if (QueryPerformanceFrequency(&ticksPerSecond) != 0)
+                return ticksPerSecond;
+            else
+                assert(0, "Failed to get the frequency of the system's monotonic clock.");
+        }
+        else version(OSX)
+        {
+            mach_timebase_info_data_t info = void;
+            if (mach_timebase_info(&info) == 0)
+                return 1_000_000_000L * info.numer / info.denom;
+            else
+                assert(0, "Failed to get the frequency of the system's monotonic clock.");
+        }
+        else version(Posix)
+        {
+            clockid_t clkid = void;
+            version (linux)
+            {
+                switch (clockType)
+                {
+                case ClockType.bootTime:       clkid = CLOCK_BOOTTIME; break;
+                case ClockType.coarse:         clkid = CLOCK_MONOTONIC_COARSE; break;
+                case ClockType.normal:         clkid = CLOCK_MONOTONIC; break;
+                case ClockType.precise:        clkid = CLOCK_MONOTONIC; break;
+                case ClockType.processCPUTime: clkid = CLOCK_PROCESS_CPUTIME_ID; break;
+                case ClockType.raw:            clkid = CLOCK_MONOTONIC_RAW;  break;
+                case ClockType.threadCPUTime:  clkid = CLOCK_THREAD_CPUTIME_ID;  break;
+                default:
+                    assert(0, "ClockType."~clockType.stringof~" is not supported by MonoTimeImpl on this system.");
+                }
+            }
+            else version(FreeBSD)
+            {
+                switch (clockType)
+                {
+                case ClockType.coarse:        clkid = CLOCK_MONOTONIC_FAST; break;
+                case ClockType.normal:        clkid = CLOCK_MONOTONIC; break;
+                case ClockType.precise:       clkid = CLOCK_MONOTONIC_PRECISE; break;
+                case ClockType.uptime:        clkid = CLOCK_UPTIME; break;
+                case ClockType.uptimeCoarse:  clkid = CLOCK_UPTIME_FAST; break;
+                case ClockType.uptimePrecise: clkid = CLOCK_UPTIME_PRECISE; break;
+                default:
+                    assert(0, "ClockType."~clockType.stringof~" is not supported by MonoTimeImpl on this system.");
+                }
+            }
+            else
+                static assert(0, "unimplemented");
+
+            timespec ts;
+            if (clock_getres(clockArg, &ts) == 0)
+                // For some reason, on some systems, clock_getres returns
+                // a resolution which is clearly wrong (it's a millisecond
+                // or worse, but the time is updated much more frequently
+                // than that). In such cases, we'll just use nanosecond
+                // resolution.
+                return ts.tv_nsec >= 1000 ? 1_000_000_000L
+                    : 1_000_000_000L / ts.tv_nsec;
+            else
+                assert(0, "Failed to get the frequency for of the system's monotonic clock: ClockType." ~ clockType.stringof);
+        }
+    }
+
+    shared static const long _ticksPerSecond;
 
     long _ticks;
-}
-
-// This is supposed to be a static variable in MonoTimeImpl with the static
-// constructor being in there, but https://issues.dlang.org/show_bug.cgi?id=14517
-// prevents that from working. This is the workaround that Steven Schveighoffer
-// came up with. Once issue# 14517 has been fixed, this should be changed so
-// that _ticksPerSecond is a static long in MonoTimeImple rather than a static
-// array outside of it.
-private immutable long[__traits(allMembers, ClockType).length] _ticksPerSecond;
-
-@trusted shared static this()
-{
-    // If we try to do anything with ClockType in the documentation build, it'll
-    // trigger the static assertions related to ClockType, since the
-    // documentation build defines all of the possible ClockTypes, which won't
-    // work when they're used in the static ifs, because no system supports them
-    // all.
-    version(CoreDdoc)
-    {}
-    else version(Windows)
-    {
-        long ticksPerSecond;
-        if(QueryPerformanceFrequency(&ticksPerSecond) != 0)
-        {
-            foreach(i, typeStr; __traits(allMembers, ClockType))
-                _ticksPerSecond[i] = ticksPerSecond;
-        }
-        else
-            assert(0, "Failed to get the frequency of the system's monotonic clock.");
-    }
-    else version(OSX)
-    {
-        mach_timebase_info_data_t info;
-        if(mach_timebase_info(&info) == 0)
-        {
-            long ticksPerSecond = 1_000_000_000L * info.numer / info.denom;
-            foreach(i, typeStr; __traits(allMembers, ClockType))
-                _ticksPerSecond[i] = ticksPerSecond;
-        }
-        else
-            assert(0, "Failed to get the frequency of the system's monotonic clock.");
-    }
-    else version(Posix)
-    {
-        timespec ts;
-        foreach(i, typeStr; __traits(allMembers, ClockType))
-        {
-            mixin("enum clockType = ClockType." ~ typeStr ~ ";");
-            static if(clockType != ClockType.second)
-            {
-                // This needs to be kept in sync with the corresponding code at the
-                // top of MonoTimeImpl, since as long as we're forced to put the
-                // static constructor outside of MonoTimeImpl, we don't have access
-                // to clockArg.
-                version(linux)
-                {
-                    import core.sys.linux.time;
-                    static if(clockType == ClockType.bootTime)            alias clockArg = CLOCK_BOOTTIME;
-                    else static if(clockType == ClockType.coarse)         alias clockArg = CLOCK_MONOTONIC_COARSE;
-                    else static if(clockType == ClockType.normal)         alias clockArg = CLOCK_MONOTONIC;
-                    else static if(clockType == ClockType.precise)        alias clockArg = CLOCK_MONOTONIC;
-                    else static if(clockType == ClockType.processCPUTime) alias clockArg = CLOCK_PROCESS_CPUTIME_ID;
-                    else static if(clockType == ClockType.raw)            alias clockArg = CLOCK_MONOTONIC_RAW;
-                    else static if(clockType == ClockType.threadCPUTime)  alias clockArg = CLOCK_THREAD_CPUTIME_ID;
-                    else static assert(0, "ClockType." ~ typeStr ~ " is not supported by MonoTimeImpl on this system.");
-                }
-                else version(FreeBSD)
-                {
-                    import core.sys.freebsd.time;
-                    static if(clockType == ClockType.coarse)             alias clockArg = CLOCK_MONOTONIC_FAST;
-                    else static if(clockType == ClockType.normal)        alias clockArg = CLOCK_MONOTONIC;
-                    else static if(clockType == ClockType.precise)       alias clockArg = CLOCK_MONOTONIC_PRECISE;
-                    else static if(clockType == ClockType.uptime)        alias clockArg = CLOCK_UPTIME;
-                    else static if(clockType == ClockType.uptimeCoarse)  alias clockArg = CLOCK_UPTIME_FAST;
-                    else static if(clockType == ClockType.uptimePrecise) alias clockArg = CLOCK_UPTIME_PRECISE;
-                    else static assert(0, "ClockType." ~ typeStr ~ " is not supported by MonoTimeImpl on this system.");
-                }
-                else
-                    static assert(0, "What are the monotonic clock types supported by this system?");
-
-                if(clock_getres(clockArg, &ts) == 0)
-                {
-                    // For some reason, on some systems, clock_getres returns
-                    // a resolution which is clearly wrong (it's a millisecond
-                    // or worse, but the time is updated much more frequently
-                    // than that). In such cases, we'll just use nanosecond
-                    // resolution.
-                    _ticksPerSecond[i] = ts.tv_nsec >= 1000 ? 1_000_000_000L
-                                                            : 1_000_000_000L / ts.tv_nsec;
-                }
-                else
-                    assert(0, "Failed to get the frequency for of the system's monotonic clock: ClockType." ~ typeStr);
-            }
-        }
-    }
 }
 
 
@@ -2916,7 +2894,7 @@ unittest
     See_Also:
         $(LREF convClockFreq)
   +/
-long ticksToNSecs(long ticks) @safe pure nothrow @nogc
+long ticksToNSecs(long ticks) @safe nothrow @nogc
 {
     return convClockFreq(ticks, MonoTime.ticksPerSecond, 1_000_000_000);
 }
@@ -2936,7 +2914,7 @@ unittest
 /++
     The reverse of $(LREF ticksToNSecs).
   +/
-long nsecsToTicks(long ticks) @safe pure nothrow @nogc
+long nsecsToTicks(long ticks) @safe nothrow @nogc
 {
     return convClockFreq(ticks, 1_000_000_000, MonoTime.ticksPerSecond);
 }
