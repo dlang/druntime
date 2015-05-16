@@ -27,8 +27,16 @@
  */
 module rt.util.utf;
 
-
 extern (C) void onUnicodeError( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__ );
+
+/**
+ * Inserted in place of invalid UTF sequences.
+ *
+ * References:
+ *      $(LINK http://en.wikipedia.org/wiki/Replacement_character#Replacement_character)
+ */
+enum dchar replacementDchar = '\uFFFD';
+
 
 /*******************************
  * Test if c is a valid UTF-32 character.
@@ -40,7 +48,7 @@ extern (C) void onUnicodeError( string msg, size_t idx, string file = __FILE__, 
  * Returns: true if it is, false if not.
  */
 
-bool isValidDchar(dchar c)
+bool isValidDchar(dchar c) pure nothrow @nogc @safe
 {
     /* Note: FFFE and FFFF are specifically permitted by the
      * Unicode standard for application internal use, but are not
@@ -204,13 +212,14 @@ size_t toUTFindex(in dchar[] s, size_t n)
  * decoded character. If the character is not well formed, a UtfException is
  * thrown and idx remains unchanged.
  */
-dchar decode(in char[] s, ref size_t idx)
+dchar decode(in char[] s, ref size_t idx) pure nothrow @nogc @safe
     in
     {
         assert(idx >= 0 && idx < s.length);
     }
     out (result)
     {
+        assert(idx <= s.length);
         assert(isValidDchar(result));
     }
     body
@@ -236,11 +245,20 @@ dchar decode(in char[] s, ref size_t idx)
             for (n = 1; ; n++)
             {
                 if (n > 4)
-                    goto Lerr;          // only do the first 4 of 6 encodings
+                {
+                    // only do the first 4 of 6 encodings
+                    i += 4;
+                    V = replacementDchar;
+                    goto Lret;
+                }
                 if (((u << n) & 0x80) == 0)
                 {
                     if (n == 1)
-                        goto Lerr;
+                    {
+                        ++i;
+                        V = replacementDchar;
+                        goto Lret;
+                    }
                     break;
                 }
             }
@@ -249,8 +267,12 @@ dchar decode(in char[] s, ref size_t idx)
             V = cast(dchar)(u & ((1 << (7 - n)) - 1));
 
             if (i + (n - 1) >= len)
-                goto Lerr;                      // off end of string
-
+            {
+                // off end of string
+                i = len;
+                V = replacementDchar;
+                goto Lret;
+            }
             /* The following combinations are overlong, and illegal:
              *  1100000x (10xxxxxx)
              *  11100000 100xxxxx (10xxxxxx)
@@ -259,23 +281,39 @@ dchar decode(in char[] s, ref size_t idx)
              *  11111100 100000xx (10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx)
              */
             u2 = s[i + 1];
-            if ((u & 0xFE) == 0xC0 ||
-                (u == 0xE0 && (u2 & 0xE0) == 0x80) ||
+            if ((u & 0xFE) == 0xC0)
+            {
+                // overlong combination
+                ++i;
+                V = replacementDchar;
+                goto Lret;
+            }
+            if ((u == 0xE0 && (u2 & 0xE0) == 0x80) ||
                 (u == 0xF0 && (u2 & 0xF0) == 0x80) ||
                 (u == 0xF8 && (u2 & 0xF8) == 0x80) ||
                 (u == 0xFC && (u2 & 0xFC) == 0x80))
-                goto Lerr;                      // overlong combination
+            {
+                // overlong combination
+                i += 2;
+                V = replacementDchar;
+                goto Lret;
+            }
 
             for (uint j = 1; j != n; j++)
             {
                 u = s[i + j];
                 if ((u & 0xC0) != 0x80)
-                    goto Lerr;                  // trailing bytes are 10xxxxxx
+                {
+                    // trailing bytes are 10xxxxxx
+                    i += n;
+                    V = replacementDchar;
+                    goto Lret;
+                }
                 V = (V << 6) | (u & 0x3F);
             }
-            if (!isValidDchar(V))
-                goto Lerr;
             i += n;
+            if (!isValidDchar(V))
+                V = replacementDchar;
         }
         else
         {
@@ -283,16 +321,14 @@ dchar decode(in char[] s, ref size_t idx)
             i++;
         }
 
+     Lret:
         idx = i;
         return V;
-
-      Lerr:
-      onUnicodeError("invalid UTF-8 sequence", i);
-    return V; // dummy return
     }
 
 unittest
-{   size_t i;
+{
+    size_t i;
     dchar c;
 
     debug(utf) printf("utf.decode.unittest\n");
@@ -329,23 +365,15 @@ unittest
 
     for (int j = 0; j < s4.length; j++)
     {
-        try
-        {
-            i = 0;
-            c = decode(s4[j], i);
-            assert(0);
-        }
-        catch (Throwable o)
-        {
-            i = 23;
-        }
-        assert(i == 23);
+        i = 0;
+        c = decode(s4[j], i);
+        assert(c == replacementDchar);
     }
 }
 
 /** ditto */
 
-dchar decode(in wchar[] s, ref size_t idx)
+dchar decode(in wchar[] s, ref size_t idx) pure nothrow @nogc @safe
     in
     {
         assert(idx >= 0 && idx < s.length);
@@ -361,32 +389,40 @@ dchar decode(in wchar[] s, ref size_t idx)
         size_t i = idx;
         uint u = s[i];
 
-        if (u & ~0x7F)
-        {   if (u >= 0xD800 && u <= 0xDBFF)
-            {   uint u2;
-
+        if (u >= 0xD800)
+        {
+            if (u <= 0xDBFF)
+            {
                 if (i + 1 == s.length)
-                {   msg = "surrogate UTF-16 high value past end of string";
+                {
+                    // surrogate UTF-16 high value past end of string
+                    ++i;
                     goto Lerr;
                 }
-                u2 = s[i + 1];
+                uint u2 = s[i + 1];
                 if (u2 < 0xDC00 || u2 > 0xDFFF)
-                {   msg = "surrogate UTF-16 low value out of range";
+                {
+                    // surrogate UTF-16 low value out of range
+                    i += 2;
                     goto Lerr;
                 }
                 u = ((u - 0xD7C0) << 10) + (u2 - 0xDC00);
                 i += 2;
             }
-            else if (u >= 0xDC00 && u <= 0xDFFF)
-            {   msg = "unpaired surrogate UTF-16 value";
+            else if (u <= 0xDFFF)
+            {
+                // unpaired surrogate UTF-16 value
+                ++i;
                 goto Lerr;
             }
             else if (u == 0xFFFE || u == 0xFFFF)
-            {   msg = "illegal UTF-16 value";
+            {
+                // illegal UTF-16 value
+                ++i;
                 goto Lerr;
             }
             else
-                i++;
+                ++i;
         }
         else
         {
@@ -397,30 +433,23 @@ dchar decode(in wchar[] s, ref size_t idx)
         return cast(dchar)u;
 
       Lerr:
-          onUnicodeError(msg, i);
-        return cast(dchar)u; // dummy return
+        idx = i;
+        return replacementDchar;
     }
 
 /** ditto */
 
-dchar decode(in dchar[] s, ref size_t idx)
+dchar decode(in dchar[] s, ref size_t idx) pure nothrow @nogc @safe
     in
     {
         assert(idx >= 0 && idx < s.length);
     }
     body
     {
-        size_t i = idx;
-        dchar c = s[i];
-
+        dchar c = s[idx++];
         if (!isValidDchar(c))
-            goto Lerr;
-        idx = i + 1;
+            c = replacementDchar;
         return c;
-
-      Lerr:
-          onUnicodeError("invalid UTF-32 value", i);
-        return c; // dummy return
     }
 
 
@@ -429,7 +458,7 @@ dchar decode(in dchar[] s, ref size_t idx)
 /*******************************
  * Encodes character c and appends it to array s[].
  */
-void encode(ref char[] s, dchar c)
+void encode(ref char[] s, dchar c) pure nothrow @safe
     in
     {
         assert(isValidDchar(c));
@@ -498,7 +527,7 @@ unittest
 
 /** ditto */
 
-void encode(ref wchar[] s, dchar c)
+void encode(ref wchar[] s, dchar c) pure nothrow @safe
     in
     {
         assert(isValidDchar(c));
@@ -523,7 +552,7 @@ void encode(ref wchar[] s, dchar c)
     }
 
 /** ditto */
-void encode(ref dchar[] s, dchar c)
+void encode(ref dchar[] s, dchar c) pure nothrow @safe
     in
     {
         assert(isValidDchar(c));
@@ -577,7 +606,7 @@ void validate(S)(in S s)
 
 /* =================== Conversion to UTF8 ======================= */
 
-char[] toUTF8(return out char[4] buf, dchar c)
+char[] toUTF8(return out char[4] buf, dchar c) pure nothrow @nogc @safe
     in
     {
         assert(isValidDchar(c));
@@ -616,7 +645,7 @@ char[] toUTF8(return out char[4] buf, dchar c)
 /*******************
  * Encodes string s into UTF-8 and returns the encoded string.
  */
-string toUTF8(string s)
+string toUTF8(string s) pure nothrow @nogc @safe
     in
     {
         validate(s);
@@ -682,7 +711,7 @@ string toUTF8(in dchar[] s)
 
 /* =================== Conversion to UTF16 ======================= */
 
-wchar[] toUTF16(return out wchar[2] buf, dchar c)
+wchar[] toUTF16(return out wchar[2] buf, dchar c) pure nothrow @nogc @safe
     in
     {
         assert(isValidDchar(c));
