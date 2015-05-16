@@ -259,6 +259,9 @@ $(IMPDIR)\core\internal\hash.d : src\core\internal\hash.d
 $(IMPDIR)\core\internal\traits.d : src\core\internal\traits.d
 	copy $** $@
 
+$(IMPDIR)\core\internal\aa.d : src\core\internal\aa.d
+	copy $** $@
+
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d
 	copy $** $@
 
