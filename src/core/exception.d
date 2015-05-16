@@ -315,14 +315,17 @@ unittest
 }
 
 
+deprecated("UnicodeException is now an Error.")
+alias UnicodeException = UnicodeError;
+
 /**
  * Thrown on a unicode conversion error.
  */
-class UnicodeException : Exception
+class UnicodeError : Error
 {
     size_t idx;
 
-    this( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__, Throwable next = null ) @safe pure nothrow
+    this( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__, Throwable next = null ) @safe pure nothrow @nogc
     {
         super( msg, file, line, next );
         this.idx = idx;
@@ -332,7 +335,7 @@ class UnicodeException : Exception
 unittest
 {
     {
-        auto ue = new UnicodeException("msg", 2);
+        auto ue = new UnicodeError("msg", 2);
         assert(ue.file == __FILE__);
         assert(ue.line == __LINE__ - 2);
         assert(ue.next is null);
@@ -341,7 +344,7 @@ unittest
     }
 
     {
-        auto ue = new UnicodeException("msg", 2, "hello", 42, new Exception("It's an Exception!"));
+        auto ue = new UnicodeError("msg", 2, "hello", 42, new Exception("It's an Exception!"));
         assert(ue.file == "hello");
         assert(ue.line == 42);
         assert(ue.next !is null);
@@ -569,10 +572,11 @@ extern (C) void onSwitchError( string file = __FILE__, size_t line = __LINE__ ) 
  * Throws:
  *  $(LREF UnicodeException).
  */
-extern (C) void onUnicodeError( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__ ) @safe pure
+void onUnicodeError( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__ ) @trusted pure nothrow @nogc
 {
-    throw new UnicodeException( msg, idx, file, line );
+    throw staticError!UnicodeError(msg, idx, file, line);
 }
+
 
 /***********************************
  * These functions must be defined for any D program linked
@@ -648,4 +652,22 @@ extern (C)
     {
         onSwitchError(m.name, line);
     }
+}
+
+// TLS storage shared for all errors, chaining might create circular reference
+private void[128] _store;
+
+// only Errors for now as those are rarely chained
+private T staticError(T, Args...)(auto ref Args args)
+    if (is(T : Error))
+{
+    // pure hack, what we actually need is @noreturn and allow to call that in pure functions
+    static T get()
+    {
+        _store[0 .. __traits(classInstanceSize, T)] = typeid(T).init[];
+        return cast(T) _store.ptr;
+    }
+    auto res = (cast(T function() @trusted pure nothrow @nogc) &get)();
+    res.__ctor(args);
+    return res;
 }
