@@ -1,6 +1,7 @@
 SRCS=\
 	src\object.d \
 	\
+	src\core\aa.d \
 	src\core\atomic.d \
 	src\core\attribute.d \
 	src\core\bitop.d \

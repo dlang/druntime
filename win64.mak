@@ -50,6 +50,9 @@ doc: $(DOCS)
 $(DOCDIR)\object.html : src\object.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
+$(DOCDIR)\core_aa.html : src\core\aa.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
 $(DOCDIR)\core_atomic.html : src\core\atomic.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
@@ -225,6 +228,9 @@ copy: $(COPY)
 $(IMPDIR)\object.d : src\object.d
 	copy $** $@
 	if exist $(IMPDIR)\object.di del $(IMPDIR)\object.di
+
+$(IMPDIR)\core\aa.d : src\core\aa.d
+	copy $** $@
 
 $(IMPDIR)\core\atomic.d : src\core\atomic.d
 	copy $** $@

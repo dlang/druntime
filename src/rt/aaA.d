@@ -11,6 +11,7 @@ module rt.aaA;
 extern (C) immutable int _aaVersion = 1;
 
 import core.memory : GC;
+import core.aa : RTInterface;
 
 // grow threshold
 private enum GROW_NUM = 4;
@@ -45,6 +46,27 @@ struct AA
     }
 }
 
+private struct CoreAAImpl
+{
+    this(void* impl, RTInterface* rtInterface) pure nothrow
+    {
+        this.impl = impl;
+        this._rtInterface = cast(RTInterface*)(cast(size_t) rtInterface | 0x1);
+    }
+
+    void* impl;
+    RTInterface* _rtInterface;
+    @property RTInterface* rtInterface() pure nothrow const @nogc
+    {
+        return cast(RTInterface*)(cast(size_t) _rtInterface & ~size_t(0x1));
+    }
+
+    @property bool isCoreAA() const pure nothrow @nogc
+    {
+        return cast(size_t) _rtInterface & 0x1;
+    }
+}
+
 private struct Impl
 {
 private:
@@ -65,7 +87,17 @@ private:
             flags |= Flags.hasPointers;
     }
 
-    Bucket[] buckets;
+    union
+    {
+        Bucket[] buckets;
+        CoreAAImpl coreAA;
+    }
+
+    @property bool isCoreAA() const pure nothrow @nogc
+    {
+        return coreAA.isCoreAA;
+    }
+
     uint used;
     uint deleted;
     TypeInfo_Struct entryTI;
@@ -318,11 +350,9 @@ private size_t nextpow2(in size_t n) pure nothrow @nogc
 {
     import core.bitop : bsr;
 
-    if (!n)
+    if (n < 2)
         return 1;
-
-    const isPowerOf2 = !((n - 1) & n);
-    return 1 << (bsr(n) + !isPowerOf2);
+    return size_t(1) << bsr(n - 1) + 1;
 }
 
 pure nothrow @nogc unittest
@@ -346,10 +376,22 @@ private T max(T)(T a, T b) pure nothrow @nogc
 // API Implementation
 //------------------------------------------------------------------------------
 
+/// Create a runtime AA from a typed core.aa
+extern (C) void* _aaFromCoreAA(void* impl, RTInterface* rtIntf) pure nothrow
+{
+    return new CoreAAImpl(impl, rtIntf);
+}
+
 /// Determine number of entries in associative array.
 extern (C) size_t _aaLen(in AA aa) pure nothrow @nogc
 {
-    return aa ? aa.length : 0;
+    if (aa.impl is null)
+        return 0;
+
+    if (aa.isCoreAA)
+        return aa.coreAA.rtInterface.len(aa.coreAA.impl);
+    else
+        return aa.length;
 }
 
 /******************************
@@ -371,6 +413,8 @@ extern (C) void* _aaGetY(AA* aa, const TypeInfo_AssociativeArray ti, in size_t v
     // lazily alloc implementation
     if (aa.impl is null)
         aa.impl = new Impl(ti);
+    else if (aa.isCoreAA)
+        return aa.coreAA.rtInterface.getY(&aa.coreAA.impl, pkey);
 
     // get hash and bucket for key
     immutable hash = calcHash(pkey, ti.key);
@@ -434,7 +478,11 @@ extern (C) inout(void)* _aaGetRvalueX(inout AA aa, in TypeInfo keyti, in size_t 
  */
 extern (C) inout(void)* _aaInX(inout AA aa, in TypeInfo keyti, in void* pkey)
 {
-    if (aa.empty)
+    if (aa.impl is null)
+        return null;
+    else if (aa.isCoreAA)
+        return aa.coreAA.rtInterface.inX(aa.coreAA.impl, pkey);
+    else if (aa.empty)
         return null;
 
     immutable hash = calcHash(pkey, keyti);
@@ -446,7 +494,11 @@ extern (C) inout(void)* _aaInX(inout AA aa, in TypeInfo keyti, in void* pkey)
 /// Delete entry in AA, return true if it was present
 extern (C) bool _aaDelX(AA aa, in TypeInfo keyti, in void* pkey)
 {
-    if (aa.empty)
+    if (aa.impl is null)
+        return false;
+    else if (aa.isCoreAA)
+        return aa.coreAA.rtInterface.delX(aa.coreAA.impl, pkey);
+    else if (aa.empty)
         return false;
 
     immutable hash = calcHash(pkey, keyti);
