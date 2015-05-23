@@ -96,7 +96,7 @@ int    vsprintf(char*, in char*, va_list);
 int    vsscanf(in char*, in char*, va_list arg);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     /*
      * actually, if __USE_FILE_OFFSET64 && !_LARGEFILE64_SOURCE
@@ -132,7 +132,7 @@ version( linux )
         FILE* tmpfile();
     }
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     int   fgetpos(FILE*, fpos_t *);
     FILE* fopen(in char*, in char*);
@@ -157,7 +157,7 @@ int    pclose(FILE*);
 FILE*  popen(in char*, in char*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum L_ctermid = 9;
 
@@ -181,7 +181,7 @@ version( linux )
     off_t ftello(FILE*);
   }
 }
-else
+else version( Posix )
 {
     int   fseeko(FILE*, off_t, int);
     off_t ftello(FILE*);
@@ -200,7 +200,7 @@ FILE*  popen(in char*, in char*);
 // memstream functions are conforming to POSIX.1-2008.  These functions are
 // not specified in POSIX.1-2001 and are not widely available on other
 // systems.
-version( linux )                             // as of glibc 1.0x
+version( CRuntime_Glibc )                     // as of glibc 1.0x
     version = HaveMemstream;
 else version( FreeBSD )                      // as of FreeBSD 9.2
     version = HaveMemstream;
@@ -227,7 +227,7 @@ int    putc_unlocked(int, FILE*);
 int    putchar_unlocked(int);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     void   flockfile(FILE*);
     int    ftrylockfile(FILE*);
@@ -260,7 +260,7 @@ char*  tempnam(in char*, in char*);
 
 char*  tempnam(in char*, in char*);
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum P_tmpdir  = "/tmp";
 }

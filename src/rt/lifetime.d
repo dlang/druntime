@@ -183,8 +183,7 @@ extern (C) void _d_delstruct(void** p, TypeInfo_Struct inf)
     {
         debug(PRINTF) printf("_d_delstruct(%p, %p)\n", *p, cast(void*)inf);
 
-        inf.xdtor(*p);
-
+        inf.destroy(*p);
         GC.free(*p);
         *p = null;
     }
@@ -668,13 +667,14 @@ extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) /+nothrow+/
     }
 }
 
+package bool hasPostblit(in TypeInfo ti)
+{
+    return (&ti.postblit).funcptr !is &TypeInfo.postblit;
+}
+
 void __doPostblit(void *ptr, size_t len, const TypeInfo ti)
 {
-    // optimize out any type info that does not need postblit.
-    //if((&ti.postblit).funcptr is &TypeInfo.postblit) // compiler doesn't like this
-    auto fptr = &ti.postblit;
-    if(fptr.funcptr is &TypeInfo.postblit)
-        // postblit has not been overridden, no point in looping.
+    if (!hasPostblit(ti))
         return;
 
     if(auto tis = cast(TypeInfo_Struct)ti)
@@ -1052,83 +1052,43 @@ extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims)
 }
 
 /**
- * Allocate a non-array item.
+ * Allocate an uninitialized non-array item.
  * This is an optimization to avoid things needed for arrays like the __arrayPad(size).
  */
-
-extern (C) void* _d_newitemT(TypeInfo _ti)
+extern (C) void* _d_newitemU(in TypeInfo _ti)
 {
     auto ti = unqualify(_ti);
-    auto size = ti.tsize;                  // array element size
-    auto baseFlags = !(ti.flags & 1) ? BlkAttr.NO_SCAN : 0;
-    size_t typeInfoSize = structTypeInfoSize(ti);
-    size += typeInfoSize; // Need space for the type info
-    if (typeInfoSize)
-        baseFlags |= BlkAttr.STRUCTFINAL | BlkAttr.FINALIZE;
+    auto flags = !(ti.flags & 1) ? BlkAttr.NO_SCAN : 0;
+    immutable tiSize = structTypeInfoSize(ti);
+    immutable size = ti.tsize + tiSize;
+    if (tiSize)
+        flags |= BlkAttr.STRUCTFINAL | BlkAttr.FINALIZE;
 
-    debug(PRINTF) printf("_d_newitemT(size = %d)\n", size);
-    /* not sure if we need this...
-     * if (length == 0 || size == 0)
-        result = null;
-    else
-    {*/
-        // allocate a block to hold this item
-        auto blkInf = GC.qalloc(size, baseFlags, ti);
-        auto ptr = blkInf.base;
-        debug(PRINTF) printf(" p = %p\n", ptr);
-        if(size == ubyte.sizeof)
-            *cast(ubyte*)ptr = 0;
-        else if(size == ushort.sizeof)
-            *cast(ushort*)ptr = 0;
-        else if(size == uint.sizeof)
-            *cast(uint*)ptr = 0;
-        else
-            memset(ptr, 0, size);
+    auto blkInf = GC.qalloc(size, flags, ti);
+    auto p = blkInf.base;
 
-        if (typeInfoSize)
-            *cast(TypeInfo*)(ptr + blkInf.size - typeInfoSize) = ti;
+    if (tiSize)
+        *cast(TypeInfo*)(p + blkInf.size - tiSize) = cast() ti;
 
-        return ptr;
-    //}
-
+    return p;
 }
 
-extern (C) void* _d_newitemiT(TypeInfo _ti)
+/// Same as above, zero initializes the item.
+extern (C) void* _d_newitemT(in TypeInfo _ti)
 {
-    auto ti = unqualify(_ti);
-    auto size = ti.tsize;                  // array element size
-    auto baseFlags = !(ti.flags & 1) ? BlkAttr.NO_SCAN : 0;
-    size_t typeInfoSize = structTypeInfoSize(ti);
-    size += typeInfoSize; // Need space for the type info
-    if (typeInfoSize)
-        baseFlags |= BlkAttr.STRUCTFINAL | BlkAttr.FINALIZE;
+    auto p = _d_newitemU(_ti);
+    memset(p, 0, _ti.tsize);
+    return p;
+}
 
-    debug(PRINTF) printf("_d_newitemiT(size = %d)\n", size);
-
-    /*if (length == 0 || size == 0)
-        result = null;
-    else
-    {*/
-        auto initializer = ti.init();
-        auto isize = initializer.length;
-        auto q = initializer.ptr;
-
-        auto blkInf = GC.qalloc(size, baseFlags, ti);
-        auto ptr = blkInf.base;
-        debug(PRINTF) printf(" p = %p\n", ptr);
-        if (isize == 1)
-            *cast(ubyte*)ptr =  *cast(ubyte*)q;
-        else if (isize == ushort.sizeof)
-            *cast(ushort*)ptr =  *cast(ushort*)q;
-        else if (isize == uint.sizeof)
-            *cast(uint*)ptr =  *cast(uint*)q;
-        else
-            memcpy(ptr, q, isize);
-
-        if (typeInfoSize)
-            *cast(TypeInfo*)(ptr + blkInf.size - typeInfoSize) = ti;
-        return ptr;
-    //}
+/// Same as above, for item with non-zero initializer.
+extern (C) void* _d_newitemiT(in TypeInfo _ti)
+{
+    auto p = _d_newitemU(_ti);
+    auto init = _ti.init();
+    assert(init.length <= _ti.tsize);
+    memcpy(p, init.ptr, init.length);
+    return p;
 }
 
 /**
@@ -1363,7 +1323,8 @@ void finalize_array(void* p, size_t size, const TypeInfo_Struct si)
     auto tsize = si.tsize;
     for (auto curP = p + size - tsize; curP >= p; curP -= tsize)
     {
-        si.xdtor(curP); // call destructor
+        // call destructor
+        si.destroy(curP);
     }
 }
 
@@ -1375,8 +1336,7 @@ void finalize_struct(void* p, size_t size) nothrow
     auto ti = *cast(TypeInfo_Struct*)(p + size - size_t.sizeof);
     try
     {
-        if (ti.xdtor)
-            ti.xdtor(p); // call destructor
+        ti.destroy(p); // call destructor
     }
     catch (Exception e)
     {
@@ -2117,8 +2077,7 @@ out (result)
 
     // If a postblit is involved, the contents of result might rightly differ
     // from the bitwise concatenation of x and y.
-    auto pb = &tinext.postblit;
-    if (pb.funcptr is &TypeInfo.postblit)
+    if (!hasPostblit(tinext))
     {
         for (size_t i = 0; i < x.length * sizeelem; i++)
             assert((cast(byte*)result)[i] == (cast(byte*)x)[i]);
@@ -2442,7 +2401,8 @@ unittest
     auto info = GC.query(arr.ptr);
     assert(info.attr & BlkAttr.NO_SCAN); // should be NO_SCAN
     arr ~= 0; // ensure array is inserted into cache
-    assert(arr.ptr is info.base);
+    debug(SENTINEL) {} else
+        assert(arr.ptr is info.base);
     GC.clrAttr(arr.ptr, BlkAttr.NO_SCAN); // remove the attribute
     auto arr2 = arr[0..1];
     assert(arr2.capacity == 0); // cannot append
@@ -2467,7 +2427,8 @@ unittest
     info = GC.query(carr.ptr);
     assert(info.attr & BlkAttr.NO_SCAN); // should be NO_SCAN
     carr ~= 0; // ensure array is inserted into cache
-    assert(carr.ptr is info.base);
+    debug(SENTINEL) {} else
+        assert(carr.ptr is info.base);
     GC.clrAttr(carr.ptr, BlkAttr.NO_SCAN); // remove the attribute
     auto carr2 = carr[0..1];
     assert(carr2.capacity == 0); // cannot append
@@ -2489,11 +2450,14 @@ unittest
 }
 
 // test struct finalizers
+debug(SENTINEL) {} else
 unittest
 {
     __gshared int dtorCount;
     static struct S1
     {
+        int x;
+
         ~this()
         {
             dtorCount++;
@@ -2552,6 +2516,45 @@ unittest
         assert(dtorCount == 6);
         GC.free(blkinf.base);
     }
+
+    // associative arrays
+    import rt.aaA : entryDtor;
+    // throw away all existing AA entries with dtor
+    GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
+
+    S1[int] aa1;
+    aa1[0] = S1(0);
+    aa1[1] = S1(1);
+    if (callStructDtorsDuringGC)
+    {
+        dtorCount = 0;
+        aa1 = null;
+        GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
+        assert(dtorCount == 2);
+    }
+
+    int[S1] aa2;
+    aa2[S1(0)] = 0;
+    aa2[S1(1)] = 1;
+    aa2[S1(2)] = 2;
+    if (callStructDtorsDuringGC)
+    {
+        dtorCount = 0;
+        aa2 = null;
+        GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
+        assert(dtorCount == 3);
+    }
+
+    S1[2][int] aa3;
+    aa3[0] = [S1(0),S1(2)];
+    aa3[1] = [S1(1),S1(3)];
+    if (callStructDtorsDuringGC)
+    {
+        dtorCount = 0;
+        aa3 = null;
+        GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
+        assert(dtorCount == 4);
+    }
 }
 
 // test class finalizers exception handling
@@ -2593,6 +2596,7 @@ unittest
 }
 
 // test struct finalizers exception handling
+debug(SENTINEL) {} else
 unittest
 {
     if (!callStructDtorsDuringGC)

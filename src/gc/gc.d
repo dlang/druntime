@@ -23,6 +23,8 @@ module gc.gc;
 //debug = LOGGING;              // log allocations / frees
 //debug = MEMSTOMP;             // stomp on memory
 //debug = SENTINEL;             // add underrun/overrrun protection
+                                // NOTE: this needs to be enabled globally in the makefiles
+                                // (-debug=SENTINEL) to pass druntime's unittests.
 //debug = PTRCHECK;             // more pointer checking
 //debug = PTRCHECK2;            // thorough but slow pointer checking
 //debug = INVARIANT;            // enable invariants
@@ -59,7 +61,6 @@ else                   import core.stdc.stdio : sprintf, printf; // needed to ou
 
 import core.time;
 alias currTime = MonoTime.currTime;
-long currTicks() { return MonoTime.ticksPerSecond ? MonoTime.currTime.ticks : 0; }
 
 debug(PRINTF_TO_FILE)
 {
@@ -258,12 +259,12 @@ const uint GCVERSION = 1;       // increment every time we change interface
 // This just makes Mutex final to de-virtualize member function calls.
 final class GCMutex : Mutex
 {
-    final override void lock() nothrow @trusted
+    final override void lock() nothrow @trusted @nogc
     {
         super.lock_nothrow();
     }
 
-    final override void unlock() nothrow @trusted
+    final override void unlock() nothrow @trusted @nogc
     {
         super.unlock_nothrow();
     }
@@ -349,14 +350,14 @@ struct GC
     {
         debug(PROFILE_API)
         {
-            long tm = (GC.config.profile > 1 ? currTicks : 0);
+            long tm = (GC.config.profile > 1 ? currTime.ticks : 0);
         }
 
         bool locked = (gcLock.lock(), true);
 
         debug(PROFILE_API)
         {
-            long tm2 = (GC.config.profile > 1 ? currTicks : 0);
+            long tm2 = (GC.config.profile > 1 ? currTime.ticks : 0);
         }
     }
 
@@ -742,8 +743,8 @@ struct GC
 
     /**
      * Attempt to in-place enlarge the memory block pointed to by p by at least
-     * minbytes beyond its current capacity, up to a maximum of maxsize.  This
-     * does not attempt to move the memory block (like realloc() does).
+     * minsize bytes, up to a maximum of maxsize additional bytes.
+     * This does not attempt to move the memory block (like realloc() does).
      *
      * Returns:
      *  0 if could not extend p,
@@ -1174,7 +1175,7 @@ struct GC
     /**
      * add range to scan for roots
      */
-    void addRange(void *p, size_t sz, const TypeInfo ti = null) nothrow
+    void addRange(void *p, size_t sz, const TypeInfo ti = null) nothrow @nogc
     {
         if (!p || !sz)
         {
@@ -1194,7 +1195,7 @@ struct GC
     /**
      * remove range
      */
-    void removeRange(void *p) nothrow
+    void removeRange(void *p) nothrow @nogc
     {
         if (!p)
         {
@@ -1564,7 +1565,7 @@ struct Gcx
     /**
      *
      */
-    void addRange(void *pbot, void *ptop, const TypeInfo ti) nothrow
+    void addRange(void *pbot, void *ptop, const TypeInfo ti) nothrow @nogc
     {
         //debug(PRINTF) printf("Thread %x ", pthread_self());
         debug(PRINTF) printf("%p.Gcx::addRange(%p, %p)\n", &this, pbot, ptop);
@@ -1575,7 +1576,7 @@ struct Gcx
     /**
      *
      */
-    void removeRange(void *pbot) nothrow
+    void removeRange(void *pbot) nothrow @nogc
     {
         //debug(PRINTF) printf("Thread %x ", pthread_self());
         debug(PRINTF) printf("Gcx.removeRange(%p)\n", pbot);
@@ -1814,7 +1815,7 @@ struct Gcx
         if (bits)
             pool.setBits((p - pool.baseAddr) >> pool.shiftBy, bits);
         //debug(PRINTF) printf("\tmalloc => %p\n", p);
-        debug (MEMSTOMP) memset(p, 0xF0, size);
+        debug (MEMSTOMP) memset(p, 0xF0, alloc_size);
         return p;
     }
 
@@ -1878,7 +1879,7 @@ struct Gcx
         }
         assert(pool);
 
-        debug(PRINTF) printFreeInfo(pool);
+        debug(PRINTF) printFreeInfo(&pool.base);
         pool.pagetable[pn] = B_PAGE;
         if (npages > 1)
             memset(&pool.pagetable[pn + 1], B_PAGEPLUS, npages - 1);
@@ -1886,7 +1887,7 @@ struct Gcx
         usedLargePages += npages;
         pool.freepages -= npages;
 
-        debug(PRINTF) printFreeInfo(pool);
+        debug(PRINTF) printFreeInfo(&pool.base);
 
         auto p = pool.baseAddr + pn * PAGESIZE;
         debug(PRINTF) printf("Got large alloc:  %p, pt = %d, np = %d\n", p, pool.pagetable[pn], npages);
@@ -3129,7 +3130,7 @@ struct LargeObjectPool
             for (; pn + n < npages; ++n)
                 if (pagetable[pn + n] != B_PAGEPLUS)
                     break;
-            debug (MEMSTOMP) memset(pool.baseAddr + pn * PAGESIZE, 0xF3, n * PAGESIZE);
+            debug (MEMSTOMP) memset(baseAddr + pn * PAGESIZE, 0xF3, n * PAGESIZE);
             freePages(pn, n);
         }
     }
@@ -3170,6 +3171,7 @@ struct SmallObjectPool
 
         info.base = cast(void*)((cast(size_t)p) & notbinsize[bin]);
         info.size = binsize[bin];
+        offset = info.base - baseAddr;
         info.attr = getBits(cast(size_t)(offset >> shiftBy));
 
         return info;
@@ -3257,6 +3259,14 @@ struct SmallObjectPool
     }
 }
 
+unittest // bugzilla 14467
+{
+    int[] arr = new int[10];
+    assert(arr.capacity);
+    arr = arr[$..$];
+    assert(arr.capacity);
+}
+
 /* ============================ SENTINEL =============================== */
 
 
@@ -3328,4 +3338,34 @@ else
     {
         return p;
     }
+}
+
+debug (MEMSTOMP)
+unittest
+{
+	import core.memory;
+	auto p = cast(uint*)GC.malloc(uint.sizeof*3);
+	assert(*p == 0xF0F0F0F0);
+	p[2] = 0; // First two will be used for free list
+	GC.free(p);
+	assert(p[2] == 0xF2F2F2F2);
+}
+
+debug (SENTINEL)
+unittest
+{
+	import core.memory;
+	auto p = cast(ubyte*)GC.malloc(1);
+	assert(p[-1] == 0xF4);
+	assert(p[ 1] == 0xF5);
+/*
+	p[1] = 0;
+	bool thrown;
+	try
+		GC.free(p);
+	catch (Error e)
+		thrown = true;
+	p[1] = 0xF5;
+	assert(thrown);
+*/
 }

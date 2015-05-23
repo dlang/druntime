@@ -337,7 +337,7 @@ private:
 extern (C) bool runModuleUnitTests()
 {
     // backtrace
-    version( linux )
+    version( CRuntime_Glibc )
         import core.sys.linux.execinfo;
     else version( OSX )
         import core.sys.osx.execinfo;
@@ -419,7 +419,7 @@ extern (C) bool runModuleUnitTests()
 Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
     // backtrace
-    version( linux )
+    version( CRuntime_Glibc )
         import core.sys.linux.execinfo;
     else version( OSX )
         import core.sys.osx.execinfo;
@@ -493,7 +493,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                     //       mangled function names.
                     static enum FIRSTFRAME = 5;
                 }
-                else
+                else version( Windows )
                 {
                     // NOTE: On Windows, the number of frames to exclude is based on
                     //       whether the exception is user or system-generated, so
@@ -557,7 +557,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                         }
                     }
                 }
-                else version( linux )
+                else version( CRuntime_Glibc )
                 {
                     // format is:  module(_D6module4funcAFZv) [0x00000000]
                     // or:         module(_D6module4funcAFZv+0x78) [0x00000000]
@@ -646,7 +646,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         {
             static enum FIRSTFRAME = 4;
         }
-        else
+        else version (Win32)
         {
             static enum FIRSTFRAME = 0;
         }

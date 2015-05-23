@@ -21,7 +21,7 @@ nothrow:
 
 version( MinGW )
     version = GNUFP;
-version( linux )
+version( CRuntime_Glibc )
     version = GNUFP;
 
 version( GNUFP )
@@ -88,6 +88,17 @@ version( GNUFP )
         }
 
         alias fexcept_t = ushort;
+    }
+    // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/aarch64/bits/fenv.h
+    else version (AArch64)
+    {
+        struct fenv_t
+        {
+            uint __fpcr;
+            uint __fpsr;
+        }
+
+        alias fexcept_t = uint;
     }
     // https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/arm/bits/fenv.h
     else version (ARM)
@@ -165,7 +176,7 @@ else version ( FreeBSD )
 
     alias ushort fexcept_t;
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     version(X86)
     {
@@ -180,6 +191,11 @@ else version( Android )
         }
 
         alias ushort fexcept_t;
+    }
+    else version(ARM)
+    {
+        alias uint fenv_t;
+        alias uint fexcept_t;
     }
     else
     {
@@ -274,7 +290,7 @@ else version( FreeBSD )
     ///
     enum FE_DFL_ENV = &__fe_dfl_env;
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     private extern const fenv_t __fe_dfl_env;
     ///

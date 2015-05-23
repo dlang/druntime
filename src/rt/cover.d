@@ -1,7 +1,7 @@
 /**
  * Implementation of code coverage analyzer.
  *
- * Copyright: Copyright Digital Mars 1995 - 2013.
+ * Copyright: Copyright Digital Mars 1995 - 2015.
  * License: Distributed under the
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
@@ -264,7 +264,7 @@ string appendFN( string path, string name )
 
     version( Windows )
         const char sep = '\\';
-    else
+    else version( Posix )
         const char sep = '/';
 
     auto dest = path;
@@ -508,7 +508,11 @@ char[] expandTabs( char[] str, int tabsize = 8 )
                     if (c <= 0x7F)
                         result ~= cast(char)c;
                     else
-                        encode(result, c);
+                    {
+                        dchar[1] ca = c;
+                        foreach (char ch; ca[])
+                            result ~= ch;
+                    }
                 }
                 break;
         }

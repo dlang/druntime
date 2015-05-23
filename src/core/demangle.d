@@ -886,6 +886,9 @@ private struct Demangle
     FuncAttrNogc:
         Ni
 
+    FuncAttrReturn:
+        Nj
+
     Arguments:
         Argument
         Argument Arguments
@@ -969,8 +972,10 @@ private struct Demangle
                 continue;
             case 'g':
             case 'h':
+            case 'k':
                 // NOTE: The inout parameter type is represented as "Ng".
                 //       The vector parameter type is represented as "Nh".
+                //       The return parameter type is represented as "Nk".
                 //       These make it look like a FuncAttr, but infact
                 //       if we see these, then we know we're really in
                 //       the parameter list.  Rewind and break.
@@ -979,6 +984,10 @@ private struct Demangle
             case 'i': // FuncAttrNogc
                 next();
                 put( "@nogc " );
+                continue;
+            case 'j': // FuncAttrReturn
+                next();
+                put( "return " );
                 continue;
             default:
                 error();
@@ -1016,6 +1025,17 @@ private struct Demangle
             {
                 next();
                 put( "scope " );
+            }
+            if( 'N' == tok() )
+            {
+                next();
+                if( 'k' == tok() ) // Return (Nk Parameter2)
+                {
+                    next();
+                    put( "return " );
+                }
+                else
+                    pos--;
             }
             switch( tok() )
             {
@@ -1929,9 +1949,9 @@ version(unittest)
         ["_D6plugin8generateFiiZAya", "immutable(char)[] plugin.generate(int, int)"],
         ["_D6plugin8generateFiiZAxa", "const(char)[] plugin.generate(int, int)"],
         ["_D6plugin8generateFiiZAOa", "shared(char)[] plugin.generate(int, int)"],
-        ["_D8demangle3fnAFZv3fnBMFZv", "void demangle.fnA().fnB()"],
-        ["_D8demangle4mainFZv1S3fnCFZv", "void demangle.main().S.fnC()"],
-        ["_D8demangle4mainFZv1S3fnDMFZv", "void demangle.main().S.fnD()"],
+        ["_D8demangle3fnAFZ3fnBMFZv", "void demangle.fnA().fnB()"],
+        ["_D8demangle4mainFZ1S3fnCMFZv", "void demangle.main().S.fnC()"],
+        ["_D8demangle4mainFZ1S3fnDMFZv", "void demangle.main().S.fnD()"],
         ["_D8demangle20__T2fnVAiA4i1i2i3i4Z2fnFZv", "void demangle.fn!([1, 2, 3, 4]).fn()"],
         ["_D8demangle10__T2fnVi1Z2fnFZv", "void demangle.fn!(1).fn()"],
         ["_D8demangle26__T2fnVS8demangle1SS2i1i2Z2fnFZv", "void demangle.fn!(demangle.S(1, 2)).fn()"],
@@ -1943,9 +1963,9 @@ version(unittest)
         ["_D8demangle29__T2fnVa97Va9Va0Vu257Vw65537Z2fnFZv", "void demangle.fn!('a', '\\t', \\x00, '\\u0101', '\\U00010001').fn()"],
         ["_D2gc11gctemplates56__T8mkBitmapTS3std5range13__T4iotaTiTiZ4iotaFiiZ6ResultZ8mkBitmapFNbNiNfPmmZv",
          "nothrow @nogc @safe void gc.gctemplates.mkBitmap!(std.range.iota!(int, int).iota(int, int).Result).mkBitmap(ulong*, ulong)"],
-        ["_D8serenity9persister6Sqlite70__T15SqlitePersisterTS8serenity9persister6Sqlite11__unittest6FZv4TestZ15SqlitePersister12__T7opIndexZ7opIndexMFmZS8serenity9persister6Sqlite11__unittest6FZv4Test",
+        ["_D8serenity9persister6Sqlite69__T15SqlitePersisterTS8serenity9persister6Sqlite11__unittest6FZ4TestZ15SqlitePersister12__T7opIndexZ7opIndexMFmZS8serenity9persister6Sqlite11__unittest6FZ4Test",
          "serenity.persister.Sqlite.__unittest6().Test serenity.persister.Sqlite.SqlitePersister!(serenity.persister.Sqlite.__unittest6().Test).SqlitePersister.opIndex!().opIndex(ulong)"],
-        ["_D8bug100274mainFZv5localMFZi","int bug10027.main().local()"],
+        ["_D8bug100274mainFZ5localMFZi","int bug10027.main().local()"],
         ["_D8demangle4testFNhG16gZv", "void demangle.test(__vector(byte[16]))"],
         ["_D8demangle4testFNhG8sZv", "void demangle.test(__vector(short[8]))"],
         ["_D8demangle4testFNhG4iZv", "void demangle.test(__vector(int[4]))"],
