@@ -19,7 +19,7 @@ module object;
 
 private
 {
-    extern (C) Object _d_newclass(const TypeInfo_Class ci);
+    extern (C) Object _d_newclass(const ClassInfo ci);
     extern (C) void rt_finalize(void *data, bool det=true);
 }
 
@@ -131,7 +131,7 @@ class Object
      */
     static Object factory(string classname)
     {
-        auto ci = TypeInfo_Class.find(classname);
+        auto ci = ClassInfo.find(classname);
         if (ci)
         {
             return ci.create();
@@ -185,7 +185,7 @@ void setSameMutex(shared Object ownee, shared Object owner)
  */
 struct Interface
 {
-    TypeInfo_Class   classinfo;  /// .classinfo for this interface (not for containing class)
+    ClassInfo   classinfo;  /// .classinfo for this interface (not for containing class)
     void*[]     vtbl;
     size_t      offset;     /// offset to Interface 'this' from Object 'this'
 }
@@ -865,20 +865,123 @@ unittest
 }
 
 /**
- * Runtime type information about a class.
+ * Runtime type information about a class or an interface.
  * Can be retrieved from an object instance by using the
  * $(DDSUBLINK spec/property,classinfo, .classinfo) property.
  */
-class TypeInfo_Class : TypeInfo
+class ClassInfo : TypeInfo
 {
-    override string toString() const { return info.name; }
+    /** class static initializer
+     * (init.length gives size in bytes of class)
+     */
+    byte[] m_init;
+
+    /// class name
+    string name;
+
+    /// virtual function pointer table
+    void*[] vtbl;
+
+    /// interfaces this class implements
+    Interface[] interfaces;
+
+    /// base class
+    ClassInfo base;
+
+    //
+    void* destructor;
+
+    //
+    void function(Object) classInvariant;
+
+    //
+    enum ClassFlags : uint
+    {
+        isCOMclass = 0x1,
+        noPointers = 0x2,
+        hasOffTi = 0x4,
+        hasCtor = 0x8,
+        hasGetMembers = 0x10,
+        hasTypeInfo = 0x20,
+        isAbstract = 0x40,
+        isCPPclass = 0x80,
+        hasDtor = 0x100,
+    }
+    ClassFlags m_flags;
+
+    //
+    void* deallocator;
+
+    //
+    OffsetTypeInfo[] m_offTi;
+
+    // default constructor
+    void function(Object) defaultConstructor;
+
+    // data for precise GC
+    immutable(void)* m_RTInfo;
+
+    override @property immutable(void)* rtInfo() const { return m_RTInfo; }
+
+    // backwards compatibility for the code from D1 - to accesss ClassInfo from TypeInfo_(Class|Inteface)
+    @property const(ClassInfo) info() @safe nothrow pure const { return this; }
+
+    // backwards compatibility for the code from D1 - to accesss TypeInfo from ClassInfo
+    @property const(TypeInfo) typeinfo() @safe nothrow pure const { return this; }
+
+    /**
+     * Search all modules for ClassInfo corresponding to classname.
+     * Returns: null if not found
+     */
+    static const(ClassInfo) find(in char[] classname)
+    {
+        foreach (m; ModuleInfo)
+        {
+            if (!m)
+                continue;
+
+            //writefln("module %s, %d", m.name, m.localClasses.length);
+            foreach (c; m.localClasses)
+            {
+                if (c is null) continue;
+                //writefln("\tclass %s", c.name);
+                if (c.name == classname)
+                    return c;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Create instance of Object represented by 'this'.
+     */
+    Object create() const
+    {
+        if (m_flags & 8 && !defaultConstructor)
+            return null;
+        if (m_flags & 64) // abstract
+            return null;
+        Object o = _d_newclass(this);
+        if (m_flags & 8 && defaultConstructor)
+        {
+            defaultConstructor(o);
+        }
+        return o;
+    }
+}
+
+/* Runtime type information about a class.
+ */
+class TypeInfo_Class : ClassInfo
+{
+    override string toString() const { return name; }
 
     override bool opEquals(Object o)
     {
         if (this is o)
             return true;
         auto c = cast(const TypeInfo_Class)o;
-        return c && this.info.name == c.info.name;
+        return c && name == c.info.name;
     }
 
     override size_t getHash(in void* p) @trusted const
@@ -933,79 +1036,7 @@ class TypeInfo_Class : TypeInfo
     {
         return m_offTi;
     }
-
-    @property auto info() @safe nothrow pure const { return this; }
-    @property auto typeinfo() @safe nothrow pure const { return this; }
-
-    byte[]      m_init;         /** class static initializer
-                                 * (init.length gives size in bytes of class)
-                                 */
-    string      name;           /// class name
-    void*[]     vtbl;           /// virtual function pointer table
-    Interface[] interfaces;     /// interfaces this class implements
-    TypeInfo_Class   base;           /// base class
-    void*       destructor;
-    void function(Object) classInvariant;
-    enum ClassFlags : uint
-    {
-        isCOMclass = 0x1,
-        noPointers = 0x2,
-        hasOffTi = 0x4,
-        hasCtor = 0x8,
-        hasGetMembers = 0x10,
-        hasTypeInfo = 0x20,
-        isAbstract = 0x40,
-        isCPPclass = 0x80,
-        hasDtor = 0x100,
-    }
-    ClassFlags m_flags;
-    void*       deallocator;
-    OffsetTypeInfo[] m_offTi;
-    void function(Object) defaultConstructor;   // default Constructor
-
-    immutable(void)* m_RTInfo;        // data for precise GC
-    override @property immutable(void)* rtInfo() const { return m_RTInfo; }
-
-    /**
-     * Search all modules for TypeInfo_Class corresponding to classname.
-     * Returns: null if not found
-     */
-    static const(TypeInfo_Class) find(in char[] classname)
-    {
-        foreach (m; ModuleInfo)
-        {
-          if (m)
-            //writefln("module %s, %d", m.name, m.localClasses.length);
-            foreach (c; m.localClasses)
-            {
-                if (c is null) continue;
-                //writefln("\tclass %s", c.name);
-                if (c.name == classname)
-                    return c;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Create instance of Object represented by 'this'.
-     */
-    Object create() const
-    {
-        if (m_flags & 8 && !defaultConstructor)
-            return null;
-        if (m_flags & 64) // abstract
-            return null;
-        Object o = _d_newclass(this);
-        if (m_flags & 8 && defaultConstructor)
-        {
-            defaultConstructor(o);
-        }
-        return o;
-    }
 }
-
-alias TypeInfo_Class ClassInfo;
 
 unittest
 {
@@ -1021,16 +1052,16 @@ unittest
     assert(typeid(X).initializer.length == typeid(immutable(X)).initializer.length);
 }
 
-class TypeInfo_Interface : TypeInfo
+class TypeInfo_Interface : ClassInfo
 {
-    override string toString() const { return info.name; }
+    override string toString() const { return name; }
 
     override bool opEquals(Object o)
     {
         if (this is o)
             return true;
         auto c = cast(const TypeInfo_Interface)o;
-        return c && this.info.name == typeid(c).name;
+        return c && this.name == c.name;
     }
 
     override size_t getHash(in void* p) @trusted const
@@ -1086,8 +1117,6 @@ class TypeInfo_Interface : TypeInfo
     }
 
     override @property uint flags() nothrow pure const { return 1; }
-
-    TypeInfo_Class info;
 }
 
 class TypeInfo_Struct : TypeInfo
@@ -1553,12 +1582,12 @@ const:
         return null;
     }
 
-    @property TypeInfo_Class[] localClasses() nothrow pure
+    @property ClassInfo[] localClasses() nothrow pure
     {
         if (flags & MIlocalClasses)
         {
             auto p = cast(size_t*)addrOf(MIlocalClasses);
-            return (cast(TypeInfo_Class*)(p + 1))[0 .. *p];
+            return (cast(ClassInfo*)(p + 1))[0 .. *p];
         }
         return null;
     }
@@ -3234,8 +3263,7 @@ private size_t getArrayHash(in TypeInfo element, in void* ptr, in size_t count) 
 
         return cast(const TypeInfo_Array) element
             || cast(const TypeInfo_AssociativeArray) element
-            || cast(const ClassInfo) element
-            || cast(const TypeInfo_Interface) element;
+            || cast(const ClassInfo) element;   // TypeInfo_(Class|Interface)
     }
 
     import core.internal.traits : externDFunc;

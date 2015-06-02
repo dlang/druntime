@@ -252,7 +252,7 @@ shared(Monitor)* ensureMonitor(Object h)
         // Set the finalize bit so that the monitor gets collected (Bugzilla 14573)
         import core.memory : GC;
 
-        if (!(typeid(h).m_flags & TypeInfo_Class.ClassFlags.hasDtor))
+        if (!(typeid(h).m_flags & ClassInfo.ClassFlags.hasDtor))
             GC.setAttr(cast(void*) h, GC.BlkAttr.FINALIZE);
         return cast(shared(Monitor)*) m;
     }
