@@ -45,7 +45,7 @@ enum
     EPOLL_CTL_MOD = 3, // Change file descriptor epoll_event structure.
 }
 
-struct epoll_event 
+align(1) struct epoll_event 
 {
     align(1):
       uint events;
