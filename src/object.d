@@ -286,7 +286,10 @@ class TypeInfo
     /// Return default initializer.  If the type should be initialized to all zeros,
     /// an array with a null ptr and a length equal to the type size will be returned.
     // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
-    const(void)[] init() nothrow pure const @safe @nogc { return null; }
+    const(void)[] init() nothrow pure const @safe @nogc 
+    { 
+        return (cast(void *)null)[0..tsize];
+    }
 
     /// Get flags for type: 1 means GC should scan for pointers,
     /// 2 means arg of this type is passed in XMM register
