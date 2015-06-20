@@ -286,7 +286,7 @@ class TypeInfo
     /// Return default initializer.  If the type should be initialized to all zeros,
     /// an array with a null ptr and a length equal to the type size will be returned.
     // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
-    const(void)[] init() nothrow pure const @safe @nogc 
+    const(void)[] init() nothrow pure const @nogc 
     { 
         return (cast(void *)null)[0..tsize];
     }
