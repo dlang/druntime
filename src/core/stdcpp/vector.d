@@ -1,5 +1,5 @@
 ﻿/**
- * D header file for C++ std library.
+ * D header file for interaction with C++ std::vector.
  *
  * Copyright: Copyright Guillaume Chatelet 2014 - 2015.
  * License: Distributed under the

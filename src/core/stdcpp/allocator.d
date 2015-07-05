@@ -1,5 +1,5 @@
 ﻿/**
- * D header file for C++ std library.
+ * D header file for interaction with C++ std::allocator.
  *
  * Copyright: Copyright Guillaume Chatelet 2014 - 2015.
  * License: Distributed under the
@@ -15,6 +15,6 @@ extern(C++, std):
 
 /**
  * Allocators are classes that define memory models to be used by some parts of
- * the Standard Library, and most specifically, by STL containers.
+ * the C++ Standard Library, and most specifically, by STL containers.
  */
 struct allocator(T) { }
