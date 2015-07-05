@@ -1,4 +1,4 @@
-MANIFEST=\
+﻿MANIFEST=\
 	HACKING.md \
 	LICENSE \
 	README.md \
@@ -59,6 +59,10 @@ MANIFEST=\
 	src\core\stdc\time.d \
 	src\core\stdc\wchar_.d \
 	src\core\stdc\wctype.d \
+	\
+	src\core\stdcpp\allocator.d \
+	src\core\stdcpp\string.d \
+	src\core\stdcpp\vector.d \
 	\
 	src\core\sync\barrier.d \
 	src\core\sync\condition.d \

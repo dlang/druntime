@@ -1,4 +1,4 @@
-# This makefile is designed to be run by gnu make.
+﻿# This makefile is designed to be run by gnu make.
 # The default make program on FreeBSD 8.1 is not gnu make; to install gnu make:
 #    pkg_add -r gmake
 # and then run as gmake rather than make.
@@ -66,7 +66,7 @@ OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/bss_section.o $(OBJDIR)/threadasm.o
 # build with shared library support
 SHARED=$(if $(findstring $(OS),linux freebsd),1,)
 
-LINKDL=$(if $(findstring $(OS),linux),-L-ldl,)
+LINKDL=$(if $(findstring $(OS),linux),-L-ldl)
 
 ######################## All of'em ##############################
 
@@ -87,6 +87,9 @@ $(DOCDIR)/core_%.html : src/core/%.d
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_stdc_%.html : src/core/stdc/%.d
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+
+$(DOCDIR)/core_stdcpp_%.html : src/core/stdcpp/%.d
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_sync_%.html : src/core/sync/%.d
