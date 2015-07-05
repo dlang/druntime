@@ -1,4 +1,4 @@
-﻿SRCS=\
+SRCS=\
 	src\object.d \
 	\
 	src\core\atomic.d \
