@@ -66,7 +66,7 @@ OBJS= $(OBJDIR)/errno_c.o $(OBJDIR)/bss_section.o $(OBJDIR)/threadasm.o
 # build with shared library support
 SHARED=$(if $(findstring $(OS),linux freebsd),1,)
 
-LINKDL=$(if $(findstring $(OS),linux),-L-ldl)
+LINKDL=$(if $(findstring $(OS),linux),-L-ldl,)
 
 ######################## All of'em ##############################
 
