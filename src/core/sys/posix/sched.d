@@ -132,30 +132,7 @@ int sched_setscheduler(pid_t, int, in sched_param*);
 int sched_yield();
 */
 
-version( linux )
-{
-    int sched_yield();
-}
-else version( OSX )
-{
-    int sched_yield();
-}
-else version( FreeBSD )
-{
-    int sched_yield();
-}
-else version (Solaris)
-{
-    int sched_yield();
-}
-else version (Android)
-{
-    int sched_yield();
-}
-else
-{
-    static assert(false, "Unsupported platform");
-}
+int sched_yield();
 
 //
 // Scheduling (TPS)

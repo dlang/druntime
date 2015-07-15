@@ -38,59 +38,12 @@ group* getgrnam(in char*);
 group* getgrgid(gid_t);
 */
 
-version( linux )
+struct group
 {
-    struct group
-    {
-        char*   gr_name;
-        char*   gr_passwd;
-        gid_t   gr_gid;
-        char**  gr_mem;
-    }
-}
-else version( OSX )
-{
-    struct group
-    {
-        char*   gr_name;
-        char*   gr_passwd;
-        gid_t   gr_gid;
-        char**  gr_mem;
-    }
-}
-else version( FreeBSD )
-{
-    struct group
-    {
-        char*   gr_name;
-        char*   gr_passwd;
-        gid_t   gr_gid;
-        char**  gr_mem;
-    }
-}
-else version( Solaris )
-{
-    struct group
-    {
-        char*   gr_name;
-        char*   gr_passwd;
-        gid_t   gr_gid;
-        char**  gr_mem;
-    }
-}
-else version( Android )
-{
-    struct group
-    {
-        char*   gr_name;
-        char*   gr_passwd;
-        gid_t   gr_gid;
-        char**  gr_mem;
-    }
-}
-else
-{
-    static assert(false, "Unsupported platform");
+    char*   gr_name;
+    char*   gr_passwd;
+    gid_t   gr_gid;
+    char**  gr_mem;
 }
 
 group* getgrnam(in char*);

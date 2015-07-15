@@ -104,41 +104,10 @@ int setenv(in char*, in char*, int);
 int unsetenv(in char*);
 */
 
-version( linux )
-{
-    int setenv(in char*, in char*, int);
-    int unsetenv(in char*);
+int setenv(in char*, in char*, int);
+int unsetenv(in char*);
 
-    void* valloc(size_t); // LEGACY non-standard
-}
-else version( OSX )
-{
-    int setenv(in char*, in char*, int);
-    int unsetenv(in char*);
-
-    void* valloc(size_t); // LEGACY non-standard
-}
-else version( FreeBSD )
-{
-    int setenv(in char*, in char*, int);
-    int unsetenv(in char*);
-
-    void* valloc(size_t); // LEGACY non-standard
-}
-else version( Android )
-{
-    int setenv(in char*, in char*, int);
-    int unsetenv(in char*);
-
-    void* valloc(size_t);
-}
-else version( Solaris )
-{
-    int setenv(in char*, in char*, int);
-    int unsetenv(in char*);
-
-    void* valloc(size_t); // LEGACY non-standard
-}
+void* valloc(size_t); // LEGACY non-standard
 
 //
 // Thread-Safe Functions (TSF)

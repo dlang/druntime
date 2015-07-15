@@ -125,27 +125,4 @@ int sem_wait(sem_t*);
 int sem_timedwait(sem_t*, in timespec*);
 */
 
-version( linux )
-{
-    int sem_timedwait(sem_t*, in timespec*);
-}
-else version( OSX )
-{
-    int sem_timedwait(sem_t*, in timespec*);
-}
-else version( FreeBSD )
-{
-    int sem_timedwait(sem_t*, in timespec*);
-}
-else version (Solaris)
-{
-    int sem_timedwait(sem_t*, in timespec*);
-}
-else version( Android )
-{
-    int sem_timedwait(sem_t*, in timespec*);
-}
-else
-{
-    static assert(false, "Unsupported platform");
-}
+int sem_timedwait(sem_t*, in timespec*);
