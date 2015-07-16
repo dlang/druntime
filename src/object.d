@@ -1871,7 +1871,7 @@ auto byValue(T : Value[Key], Value, Key)(T *aa) pure nothrow @nogc
     return (*aa).byValue();
 }
 
-auto byKeyValue(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc @property
+auto byKeyValue(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc
 {
     static struct Result
     {
@@ -1899,6 +1899,11 @@ auto byKeyValue(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc @property
     }
 
     return Result(_aaRange(cast(void*)aa));
+}
+
+auto byKeyValue(T : Value[Key], Value, Key)(T* aa) pure nothrow @nogc
+{
+    return (*aa).byKeyValue();
 }
 
 Key[] keys(T : Value[Key], Value, Key)(T aa) @property
