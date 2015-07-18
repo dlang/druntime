@@ -55,6 +55,7 @@ struct GCBits
             onOutOfMemoryError();
     }
 
+    pragma(inline,true)
     wordtype test(size_t i) const nothrow
     in
     {
@@ -65,6 +66,7 @@ struct GCBits
         return core.bitop.bt(data, i);
     }
 
+    pragma(inline,true)
     int set(size_t i) nothrow
     in
     {
@@ -75,6 +77,7 @@ struct GCBits
         return core.bitop.bts(data, i);
     }
 
+    pragma(inline,true)
     int clear(size_t i) nothrow
     in
     {
@@ -94,8 +97,36 @@ struct GCBits
         size_t lastOff   = last &  BITS_MASK;
     }
 
+    // extract loops to allow inlining the rest
+    void clearWords(size_t firstWord, size_t lastWord) nothrow
+    {
+        for(size_t w = firstWord; w < lastWord; w++)
+            data[w] = 0;
+    }
+
+    void setWords(size_t firstWord, size_t lastWord) nothrow
+    {
+        for(size_t w = firstWord; w < lastWord; w++)
+            data[w] = ~0;
+    }
+
+    void copyWords(size_t firstWord, size_t lastWord, const(wordtype)* source) nothrow
+    {
+        for(size_t w = firstWord; w < lastWord; w++)
+            data[w] = source[w - firstWord];
+    }
+
+    void copyWordsShifted(size_t firstWord, size_t cntWords, size_t firstOff, const(wordtype)* source) nothrow
+    {
+        wordtype mask = ~BITS_0 << firstOff;
+        data[firstWord] = (data[firstWord] & ~mask) | (source[0] << firstOff);
+        for(size_t w = 1; w < cntWords; w++)
+            data[firstWord + w] = (source[w - 1] >> (BITS_PER_WORD - firstOff)) | (source[w] << firstOff);
+    }
+
     // target = the biti to start the copy to
     // destlen = the number of bits to copy from source
+    pragma(inline,true)
     void copyRange(size_t target, size_t len, const(wordtype)* source) nothrow
     {
         version(bitwise)
@@ -108,36 +139,36 @@ struct GCBits
         }
         else
         {
-            if(len == 0)
-                return;
+            if(len > 0)
+                copyRangeZ(target, len, source);
+        }
+    }
 
-            mixin RangeVars!();
+    pragma(inline,true)
+    void copyRangeZ(size_t target, size_t len, const(wordtype)* source) nothrow
+    {
+        mixin RangeVars!();
 
-            if(firstWord == lastWord)
-            {
-                wordtype mask = ((BITS_2 << (lastOff - firstOff)) - 1) << firstOff;
-                data[firstWord] = (data[firstWord] & ~mask) | ((source[0] << firstOff) & mask);
-            }
-            else if(firstOff == 0)
-            {
-                for(size_t w = firstWord; w < lastWord; w++)
-                    data[w] = source[w - firstWord];
+        if(firstWord == lastWord)
+        {
+            wordtype mask = ((BITS_2 << (lastOff - firstOff)) - 1) << firstOff;
+            data[firstWord] = (data[firstWord] & ~mask) | ((source[0] << firstOff) & mask);
+        }
+        else if(firstOff == 0)
+        {
+            copyWords(firstWord, lastWord, source);
 
-                wordtype mask = (BITS_2 << lastOff) - 1;
-                data[lastWord] = (data[lastWord] & ~mask) | (source[lastWord - firstWord] & mask);
-            }
-            else
-            {
-                size_t cntWords = lastWord - firstWord;
-                wordtype mask = ~BITS_0 << firstOff;
-                data[firstWord] = (data[firstWord] & ~mask) | (source[0] << firstOff);
-                for(size_t w = 1; w < cntWords; w++)
-                    data[firstWord + w] = (source[w - 1] >> (BITS_PER_WORD - firstOff)) | (source[w] << firstOff);
+            wordtype mask = (BITS_2 << lastOff) - 1;
+            data[lastWord] = (data[lastWord] & ~mask) | (source[lastWord - firstWord] & mask);
+        }
+        else
+        {
+            size_t cntWords = lastWord - firstWord;
+            copyWordsShifted(firstWord, cntWords, firstOff, source);
 
-                wordtype src = (source[cntWords - 1] >> (BITS_PER_WORD - firstOff)) | (source[cntWords] << firstOff);
-                mask = (BITS_2 << lastOff) - 1;
-                data[lastWord] = (data[lastWord] & ~mask) | (src & mask);
-            }
+            wordtype src = (source[cntWords - 1] >> (BITS_PER_WORD - firstOff)) | (source[cntWords] << firstOff);
+            wordtype mask = (BITS_2 << lastOff) - 1;
+            data[lastWord] = (data[lastWord] & ~mask) | (src & mask);
         }
     }
 
@@ -227,6 +258,7 @@ struct GCBits
         }
     }
 
+    pragma(inline,true)
     void setRange(size_t target, size_t len) nothrow
     {
         version(bitwise)
@@ -236,27 +268,31 @@ struct GCBits
         }
         else
         {
-            if(len == 0)
-                return;
-
-            mixin RangeVars!();
-
-            if(firstWord == lastWord)
-            {
-                wordtype mask = ((BITS_2 << (lastOff - firstOff)) - 1) << firstOff;
-                data[firstWord] |= mask;
-            }
-            else
-            {
-                data[firstWord] |= ~BITS_0 << firstOff;
-                for(size_t w = firstWord + 1; w < lastWord; w++)
-                    data[w] = ~0;
-                wordtype mask = (BITS_2 << lastOff) - 1;
-                data[lastWord] |= mask;
-            }
+            if(len > 0)
+                setRangeZ(target, len);
         }
     }
 
+    pragma(inline,true)
+    void setRangeZ(size_t target, size_t len) nothrow
+    {
+        mixin RangeVars!();
+
+        if(firstWord == lastWord)
+        {
+            wordtype mask = ((BITS_2 << (lastOff - firstOff)) - 1) << firstOff;
+            data[firstWord] |= mask;
+        }
+        else
+        {
+            data[firstWord] |= ~BITS_0 << firstOff;
+            setWords(firstWord + 1, lastWord);
+            wordtype mask = (BITS_2 << lastOff) - 1;
+            data[lastWord] |= mask;
+        }
+    }
+
+    pragma(inline,true)
     void clrRange(size_t target, size_t len) nothrow
     {
         version(bitwise)
@@ -266,24 +302,26 @@ struct GCBits
         }
         else
         {
-            if(len == 0)
-                return;
+            if(len > 0)
+                clrRangeZ(target, len);
+        }
+    }
 
-            mixin RangeVars!();
-
-            if(firstWord == lastWord)
-            {
-                wordtype mask = ((BITS_2 << (lastOff - firstOff)) - 1) << firstOff;
-                data[firstWord] &= ~mask;
-            }
-            else
-            {
-                data[firstWord] &= ~(~BITS_0 << firstOff);
-                for(size_t w = firstWord + 1; w < lastWord; w++)
-                    data[w] = 0;
-                wordtype mask = (BITS_2 << lastOff) - 1;
-                data[lastWord] &= ~mask;
-            }
+    pragma(inline,true)
+    void clrRangeZ(size_t target, size_t len) nothrow
+    {
+        mixin RangeVars!();
+        if(firstWord == lastWord)
+        {
+            wordtype mask = ((BITS_2 << (lastOff - firstOff)) - 1) << firstOff;
+            data[firstWord] &= ~mask;
+        }
+        else
+        {
+            data[firstWord] &= ~(~BITS_0 << firstOff);
+            clearWords(firstWord + 1, lastWord);
+            wordtype mask = (BITS_2 << lastOff) - 1;
+            data[lastWord] &= ~mask;
         }
     }
 

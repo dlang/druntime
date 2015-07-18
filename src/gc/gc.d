@@ -825,7 +825,7 @@ struct GC
             {
                 auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
                 if(!pool.noscan.test(biti))
-                    pool.setPointerBitmap(p, psize + sz * PAGESIZE, psize + sz * PAGESIZE, ti, true);
+                    pool.setPointerBitmap(p, psize + sz * PAGESIZE, psize + sz * PAGESIZE, ti, BlkAttr.REP_RTINFO);
             }
 
             return (psz + sz) * PAGESIZE;
@@ -1147,7 +1147,7 @@ struct GC
             size_t allocSize = len;
         else
             size_t allocSize = info.size - (p - info.base);
-        pool.setPointerBitmap(p, len, allocSize, ti, true);
+        pool.setPointerBitmap(p, len, allocSize, ti, BlkAttr.REP_RTINFO);
         return true;
     }
 
@@ -3128,13 +3128,15 @@ struct Pool
         }
     }
 
+    pragma(inline,true)
     void setPointerBitmap(void* p, size_t s, size_t allocSize, uint attr, const TypeInfo ti) nothrow
     {
         if (!(attr & (BlkAttr.NO_SCAN | BlkAttr.NO_RTINFO)))
-            setPointerBitmap(p, s, allocSize, ti, (attr & BlkAttr.REP_RTINFO) != 0);
+            setPointerBitmap(p, s, allocSize, ti, attr);
     }
 
-    void setPointerBitmap(void* p, size_t s, size_t allocSize, const TypeInfo ti, bool repeat) nothrow
+    pragma(inline,false)
+    void setPointerBitmap(void* p, size_t s, size_t allocSize, const TypeInfo ti, uint attr) nothrow
     {
         size_t offset = p - baseAddr;
         //debug(PRINTF) printGCBits(&pool.is_pointer);
@@ -3144,7 +3146,7 @@ struct Pool
 
         if (ti)
         {
-            if (repeat)
+            if (attr & BlkAttr.REP_RTINFO)
                 s = allocSize;
 
             auto rtInfo = cast(const(size_t)*)ti.rtInfo();
@@ -3166,7 +3168,7 @@ struct Pool
                 size_t element_size = * bitmap;
                 bitmap++;
                 size_t tocopy;
-                if(repeat)
+                if(attr & BlkAttr.REP_RTINFO)
                 {
                     tocopy = s/(void*).sizeof;
                     is_pointer.copyRangeRepeating(offset/(void*).sizeof, tocopy, bitmap, element_size/(void*).sizeof);
@@ -3199,6 +3201,8 @@ struct Pool
         }
         else
         {
+            // limit pointers to actual size of allocation? might fail for arrays that append
+            // without notifying the GC
             s = allocSize;
 
             debug(PRINTF) printf("Allocating a block without TypeInfo\n");
