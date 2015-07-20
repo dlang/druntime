@@ -3432,7 +3432,7 @@ struct SmallObjectPool
     {
         mixin PageBinVars!();
         ubyte* pbits = getBits(pn, bin, pageOff);
-        version(rebuildFreebits) {} else *pbits = Bits.FREEBITS;
+        *pbits = Bits.FREEBITS; // needs to clear FINALIZE bit anyway
     }
 
     void clearFreeAndMarkBits() nothrow
