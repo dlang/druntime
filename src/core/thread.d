@@ -670,8 +670,18 @@ class Thread
                 }
                 else
                 {
-                    if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
-                        onThreadError( "Error creating thread" );
+                    if( auto code = pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) )
+                    {
+                        // Last chance: attempt to set the stack manually (helps
+                        // at least Ubuntu on VmWare).
+                        if ( code != EAGAIN ||
+                             pthread_attr_setstacksize( &attr, (m_sz = PTHREAD_STACK_MIN) ) ||
+                             pthread_create( &m_addr, &attr, &thread_entryPoint,
+                                             cast(void*) this ) )
+                        {
+                                onThreadError( "Error creating thread" );
+                        }
+                    }
                 }
             }
             version( OSX )
