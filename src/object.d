@@ -2309,17 +2309,6 @@ private void _destructRecurse(S)(ref S s)
         s.__xdtor();
 }
 
-private void _destructRecurse(E, size_t n)(ref E[n] arr)
-{
-    import core.internal.traits : hasElaborateDestructor;
-
-    static if (hasElaborateDestructor!E)
-    {
-        foreach_reverse (ref elem; arr)
-            _destructRecurse(elem);
-    }
-}
-
 // Public and explicitly undocumented
 void _postblitRecurse(S)(ref S s)
     if (is(S == struct))
@@ -2328,27 +2317,6 @@ void _postblitRecurse(S)(ref S s)
                // Bugzilla 14746: Check that it's the exact member of S.
                __traits(isSame, S, __traits(parent, s.__xpostblit)))
         s.__xpostblit();
-}
-
-// Ditto
-void _postblitRecurse(E, size_t n)(ref E[n] arr)
-{
-    import core.internal.traits : hasElaborateCopyConstructor;
-
-    static if (hasElaborateCopyConstructor!E)
-    {
-        size_t i;
-        scope(failure)
-        {
-            for (; i != 0; --i)
-            {
-                _destructRecurse(arr[i - 1]); // What to do if this throws?
-            }
-        }
-
-        for (i = 0; i < arr.length; ++i)
-            _postblitRecurse(arr[i]);
-    }
 }
 
 // Test destruction/postblit order
@@ -2478,128 +2446,6 @@ unittest
     Owner o;
     assert(o.ptr is null);
     _postblitRecurse(o);     // must not reach in HasPostblit.__postblit()
-}
-
-// Test handling of fixed-length arrays
-// Separate from first test because of @@@BUG@@@ 14242
-unittest
-{
-    string[] order;
-
-    struct S
-    {
-        char id;
-
-        this(this)
-        {
-            order ~= "copy #" ~ id;
-        }
-
-        ~this()
-        {
-            order ~= "destroy #" ~ id;
-        }
-    }
-
-    string[] destructRecurseOrder;
-    {
-        S[3] arr = [S('1'), S('2'), S('3')];
-        _destructRecurse(arr);
-        destructRecurseOrder = order;
-        order = null;
-    }
-    assert(order.length);
-    assert(destructRecurseOrder == order);
-    order = null;
-
-    S[3] arr = [S('1'), S('2'), S('3')];
-    _postblitRecurse(arr);
-    assert(order.length);
-    auto postblitRecurseOrder = order;
-    order = null;
-
-    auto arrCopy = arr;
-    assert(order.length);
-    assert(postblitRecurseOrder == order);
-}
-
-// Test handling of failed postblit
-// Not nothrow or @safe because of @@@BUG@@@ 14242
-/+ nothrow @safe +/ unittest
-{
-    static class FailedPostblitException : Exception { this() nothrow @safe { super(null); } }
-    static string[] order;
-    static struct Inner
-    {
-        char id;
-
-        @safe:
-        this(this)
-        {
-            order ~= "copy inner #" ~ id;
-            if(id == '2')
-                throw new FailedPostblitException();
-        }
-
-        ~this() nothrow
-        {
-            order ~= "destroy inner #" ~ id;
-        }
-    }
-
-    static struct Outer
-    {
-        Inner inner1, inner2, inner3;
-
-        nothrow @safe:
-        this(char first, char second, char third)
-        {
-            inner1 = Inner(first);
-            inner2 = Inner(second);
-            inner3 = Inner(third);
-        }
-
-        this(this)
-        {
-            order ~= "copy outer";
-        }
-
-        ~this()
-        {
-            order ~= "destroy outer";
-        }
-    }
-
-    auto outer = Outer('1', '2', '3');
-
-    try _postblitRecurse(outer);
-    catch(FailedPostblitException) {}
-    catch(Exception) assert(false);
-
-    auto postblitRecurseOrder = order;
-    order = null;
-
-    try auto copy = outer;
-    catch(FailedPostblitException) {}
-    catch(Exception) assert(false);
-
-    assert(postblitRecurseOrder == order);
-    order = null;
-
-    Outer[3] arr = [Outer('1', '1', '1'), Outer('1', '2', '3'), Outer('3', '3', '3')];
-
-    try _postblitRecurse(arr);
-    catch(FailedPostblitException) {}
-    catch(Exception) assert(false);
-
-    postblitRecurseOrder = order;
-    order = null;
-
-    try auto arrCopy = arr;
-    catch(FailedPostblitException) {}
-    catch(Exception) assert(false);
-
-    assert(postblitRecurseOrder == order);
 }
 
 /++
