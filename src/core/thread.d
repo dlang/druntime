@@ -639,71 +639,71 @@ class Thread
         //       having thread being treated like a daemon thread.
         slock.lock_nothrow();
         scope(exit) slock.unlock_nothrow();
+        version( Windows )
         {
-            version( Windows )
-            {
-                if( ResumeThread( m_hndl ) == -1 )
-                    onThreadError( "Error resuming thread" );
-            }
-            else version( Posix )
-            {
-                // NOTE: This is also set to true by thread_entryPoint, but set it
-                //       here as well so the calling thread will see the isRunning
-                //       state immediately.
-                atomicStore!(MemoryOrder.raw)(m_isRunning, true);
-                scope( failure ) atomicStore!(MemoryOrder.raw)(m_isRunning, false);
+            if( ResumeThread( m_hndl ) == -1 )
+                onThreadError( "Error resuming thread" );
+        }
+        else version( Posix )
+        {
+            // NOTE: This is also set to true by thread_entryPoint, but set it
+            //       here as well so the calling thread will see the isRunning
+            //       state immediately.
+            atomicStore!(MemoryOrder.raw)(m_isRunning, true);
+            scope( failure ) atomicStore!(MemoryOrder.raw)(m_isRunning, false);
 
-                version (Shared)
+            version (Shared)
+            {
+                import rt.sections;
+                auto libs = pinLoadedLibraries();
+                auto ps = cast(void**).malloc(2 * size_t.sizeof);
+                if (ps is null) onOutOfMemoryError();
+                ps[0] = cast(void*)this;
+                ps[1] = cast(void*)libs;
+                if( pthread_create( &m_addr, &attr, &thread_entryPoint, ps ) != 0 )
                 {
-                    import rt.sections;
-                    auto libs = pinLoadedLibraries();
-                    auto ps = cast(void**).malloc(2 * size_t.sizeof);
-                    if (ps is null) onOutOfMemoryError();
-                    ps[0] = cast(void*)this;
-                    ps[1] = cast(void*)libs;
-                    if( pthread_create( &m_addr, &attr, &thread_entryPoint, ps ) != 0 )
+                    unpinLoadedLibraries(libs);
+                    .free(ps);
+                    onThreadError( "Error creating thread" );
+                }
+            }
+            else
+            {
+                if( auto code = pthread_create( &m_addr, &attr,
+                    &thread_entryPoint, cast(void*) this ) )
+                {
+                    // Last chance: attempt to set the stack manually (helps
+                    // at least Ubuntu on VMWare).
+                    if ( code != EAGAIN ||
+                         pthread_attr_setstacksize( &attr,
+                            (m_sz = PTHREAD_STACK_MIN) ) ||
+                         pthread_create( &m_addr, &attr, &thread_entryPoint,
+                            cast(void*) this ) )
                     {
-                        unpinLoadedLibraries(libs);
-                        .free(ps);
                         onThreadError( "Error creating thread" );
                     }
                 }
-                else
-                {
-                    if( auto code = pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) )
-                    {
-                        // Last chance: attempt to set the stack manually (helps
-                        // at least Ubuntu on VmWare).
-                        if ( code != EAGAIN ||
-                             pthread_attr_setstacksize( &attr, (m_sz = PTHREAD_STACK_MIN) ) ||
-                             pthread_create( &m_addr, &attr, &thread_entryPoint,
-                                             cast(void*) this ) )
-                        {
-                                onThreadError( "Error creating thread" );
-                        }
-                    }
-                }
             }
-            version( OSX )
-            {
-                m_tmach = pthread_mach_thread_np( m_addr );
-                if( m_tmach == m_tmach.init )
-                    onThreadError( "Error creating thread" );
-            }
-
-            // NOTE: when creating threads from inside a DLL, DllMain(THREAD_ATTACH)
-            //       might be called before ResumeThread returns, but the dll
-            //       helper functions need to know whether the thread is created
-            //       from the runtime itself or from another DLL or the application
-            //       to just attach to it
-            //       as a consequence, the new Thread object is added before actual
-            //       creation of the thread. There should be no problem with the GC
-            //       calling thread_suspendAll, because of the slock synchronization
-            //
-            // VERIFY: does this actually also apply to other platforms?
-            add( this );
-            return this;
         }
+        version( OSX )
+        {
+            m_tmach = pthread_mach_thread_np( m_addr );
+            if( m_tmach == m_tmach.init )
+                onThreadError( "Error creating thread" );
+        }
+
+        // NOTE: when creating threads from inside a DLL, DllMain(THREAD_ATTACH)
+        //       might be called before ResumeThread returns, but the dll
+        //       helper functions need to know whether the thread is created
+        //       from the runtime itself or from another DLL or the application
+        //       to just attach to it
+        //       as a consequence, the new Thread object is added before actual
+        //       creation of the thread. There should be no problem with the GC
+        //       calling thread_suspendAll, because of the slock synchronization
+        //
+        // VERIFY: does this actually also apply to other platforms?
+        add( this );
+        return this;
     }
 
     /**
