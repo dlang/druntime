@@ -669,19 +669,29 @@ class Thread
             }
             else
             {
-                if( auto code = pthread_create( &m_addr, &attr,
-                    &thread_entryPoint, cast(void*) this ) )
+                for( ;; )
                 {
-                    // Last chance: attempt to set the stack manually (helps
-                    // at least Ubuntu on VMWare).
-                    if ( code != EAGAIN ||
-                         pthread_attr_setstacksize( &attr,
-                            (m_sz = PTHREAD_STACK_MIN) ) ||
-                         pthread_create( &m_addr, &attr, &thread_entryPoint,
-                            cast(void*) this ) )
-                    {
+                    auto code = pthread_create( &m_addr, &attr,
+                        &thread_entryPoint, cast(void*) this );
+                    if( code == 0 )
+                        break; // all good
+                    if( code != EAGAIN )
                         onThreadError( "Error creating thread" );
+                    // Perhaps the stack was too big?
+                    if( m_sz == 0 )
+                    {
+                        // Didn't fetch the stack size yet
+                        pthread_attr_getstacksize( &attr, &m_sz ) == 0 ||
+                            onThreadError(
+                                "Error getting thread stack size" );
                     }
+                    // Try half the stack size
+                    m_sz /= 2;
+                    if( m_sz < PTHREAD_STACK_MIN )
+                        onThreadError(
+                            "Error creating thread: resource exhaustion" );
+                    pthread_attr_setstacksize( &attr, m_sz ) == 0 ||
+                        onThreadError( "Error setting thread stack size" );
                 }
             }
         }
