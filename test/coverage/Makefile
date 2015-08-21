@@ -12,17 +12,21 @@ all: $(NORMAL_TESTS) $(MERGE_TESTS)
 
 $(NORMAL_TESTS): $(ROOT)/%.done: $(ROOT)/%
 	@echo Testing $*
-	@rm -f src-$*.lst
-	$(QUIET)$(ROOT)/$* $(RUN_ARGS)
-	$(QUIET)$(DIFF) src-$*.lst.exp src-$*.lst
+	@rm -f $(ROOT)/src-$*.lst
+	@rm -f $(ROOT)/src
+	@ln -s ../../../../src $(ROOT)/src
+	$(QUIET)cd $(ROOT) && ./$* $(RUN_ARGS)
+	$(QUIET)$(DIFF) src-$*.lst.exp $(ROOT)/src-$*.lst
 	@touch $@
 
 $(MERGE_TESTS): $(ROOT)/%.done: $(ROOT)/%
 	@echo Testing $*
-	@rm -f src-$*.lst
-	$(QUIET)$(ROOT)/$* $(RUN_ARGS)
-	$(QUIET)$(ROOT)/$* $(RUN_ARGS)
-	$(QUIET)$(DIFF) src-$*.lst.exp src-$*.lst
+	@rm -f $(ROOT)/src-$*.lst
+	@rm -f $(ROOT)/src
+	@ln -s ../../../../src $(ROOT)/src
+	$(QUIET)cd $(ROOT) && ./$* $(RUN_ARGS)
+	$(QUIET)cd $(ROOT) && ./$* $(RUN_ARGS)
+	$(QUIET)$(DIFF) src-$*.lst.exp $(ROOT)/src-$*.lst
 	@touch $@
 
 $(ROOT)/%: $(SRC)/%.d
