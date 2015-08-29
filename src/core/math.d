@@ -40,6 +40,7 @@ public:
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
+pragma(DigitalMars_intrinsic, "cos")
 real cos(real x) @safe pure nothrow;       /* intrinsic */
 
 /***********************************
@@ -55,6 +56,7 @@ real cos(real x) @safe pure nothrow;       /* intrinsic */
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
+pragma(DigitalMars_intrinsic, "sin")
 real sin(real x) @safe pure nothrow;       /* intrinsic */
 
 /*****************************************
@@ -63,6 +65,7 @@ real sin(real x) @safe pure nothrow;       /* intrinsic */
  * greater than long.max, the result is
  * indeterminate.
  */
+pragma(DigitalMars_intrinsic, "rndtol")
 long rndtol(real x) @safe pure nothrow;    /* intrinsic */
 
 
@@ -85,6 +88,7 @@ extern (C) real rndtonl(real x);
  *      )
  */
 
+pragma(DigitalMars_intrinsic, "sqrt")
 @safe pure nothrow
 {
     float sqrt(float x);    /* intrinsic */
@@ -97,6 +101,7 @@ extern (C) real rndtonl(real x);
  * References: frexp
  */
 
+pragma(DigitalMars_intrinsic, "scale")
 real ldexp(real n, int exp) @safe pure nothrow;    /* intrinsic */
 
 unittest {
@@ -124,6 +129,7 @@ unittest {
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD +$(INFIN)) )
  *      )
  */
+pragma(DigitalMars_intrinsic, "abs")
 real fabs(real x) @safe pure nothrow;      /* intrinsic */
 
 /**********************************
@@ -134,6 +140,7 @@ real fabs(real x) @safe pure nothrow;      /* intrinsic */
  * $(B nearbyint) performs
  * the same operation, but does not set the FE_INEXACT exception.
  */
+pragma(DigitalMars_intrinsic, "rint")
 real rint(real x) @safe pure nothrow;      /* intrinsic */
 
 /***********************************
@@ -141,7 +148,9 @@ real rint(real x) @safe pure nothrow;      /* intrinsic */
  * translate to a single x87 instruction.
  */
 
+pragma(DigitalMars_intrinsic, "yl2x")
 real yl2x(real x, real y)   @safe pure nothrow;       // y * log2(x)
+pragma(DigitalMars_intrinsic, "yl2xp1")
 real yl2xp1(real x, real y) @safe pure nothrow;       // y * log2(x + 1)
 
 unittest

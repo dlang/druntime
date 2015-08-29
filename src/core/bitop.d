@@ -30,6 +30,7 @@ else version (X86)
  *      The bit number of the first bit set.
  *      The return value is undefined if v is zero.
  */
+pragma(DigitalMars_intrinsic, "bsf")
 int bsf(size_t v) pure;
 
 ///
@@ -46,6 +47,7 @@ unittest
  *      The bit number of the first bit set.
  *      The return value is undefined if v is zero.
  */
+pragma(DigitalMars_intrinsic, "bsr")
 int bsr(size_t v) pure;
 
 ///
@@ -84,12 +86,14 @@ int bt(in size_t* p, size_t bitnum) pure @system
 /**
  * Tests and complements the bit.
  */
+pragma(DigitalMars_intrinsic, "btc")
 int btc(size_t* p, size_t bitnum) pure @system;
 
 
 /**
  * Tests and resets (sets to 0) the bit.
  */
+pragma(DigitalMars_intrinsic, "btr")
 int btr(size_t* p, size_t bitnum) pure @system;
 
 
@@ -106,6 +110,7 @@ p[index / (size_t.sizeof*8)] & (1 << (index & ((size_t.sizeof*8) - 1)))
  *      A non-zero value if the bit was set, and a zero
  *      if it was clear.
  */
+pragma(DigitalMars_intrinsic, "bts")
 int bts(size_t* p, size_t bitnum) pure @system;
 
 ///
@@ -154,6 +159,7 @@ int bts(size_t* p, size_t bitnum) pure @system;
  * byte 3, byte 1 becomes byte 2, byte 2 becomes byte 1, byte 3
  * becomes byte 0.
  */
+pragma(DigitalMars_intrinsic, "bswap")
 uint bswap(uint v) pure;
 
 version (DigitalMars) version (AnyX86) @system // not pure
@@ -161,36 +167,42 @@ version (DigitalMars) version (AnyX86) @system // not pure
     /**
      * Reads I/O port at port_address.
      */
+    pragma(DigitalMars_intrinsic, "inp")
     ubyte inp(uint port_address);
 
 
     /**
      * ditto
      */
+    pragma(DigitalMars_intrinsic, "inp")
     ushort inpw(uint port_address);
 
 
     /**
      * ditto
      */
+    pragma(DigitalMars_intrinsic, "inp")
     uint inpl(uint port_address);
 
 
     /**
      * Writes and returns value to I/O port at port_address.
      */
+    pragma(DigitalMars_intrinsic, "outp")
     ubyte outp(uint port_address, ubyte value);
 
 
     /**
      * ditto
      */
+    pragma(DigitalMars_intrinsic, "outp")
     ushort outpw(uint port_address, ushort value);
 
 
     /**
      * ditto
      */
+    pragma(DigitalMars_intrinsic, "outp")
     uint outpl(uint port_address, uint value);
 }
 
@@ -201,12 +213,15 @@ version (AnyX86)
      * using the X86 SSE4 POPCNT instruction.
      * POPCNT is not available on all X86 CPUs.
      */
+    pragma(DigitalMars_intrinsic, "popcnt")
     ushort _popcnt( ushort x ) pure;
     /// ditto
+    pragma(DigitalMars_intrinsic, "popcnt")
     int _popcnt( uint x ) pure;
     version (X86_64)
     {
         /// ditto
+        pragma(DigitalMars_intrinsic, "popcnt")
         int _popcnt( ulong x ) pure;
     }
 
@@ -276,15 +291,21 @@ version (AnyX86)
  * They may be used to guarantee a write or read cycle occurs at a specified address.
  */
 
-ubyte  volatileLoad(ubyte * ptr);
-ushort volatileLoad(ushort* ptr);  /// ditto
-uint   volatileLoad(uint  * ptr);  /// ditto
-ulong  volatileLoad(ulong * ptr);  /// ditto
+pragma(DigitalMars_intrinsic, "ind")
+{
+    ubyte  volatileLoad(ubyte * ptr);
+    ushort volatileLoad(ushort* ptr);  /// ditto
+    uint   volatileLoad(uint  * ptr);  /// ditto
+    ulong  volatileLoad(ulong * ptr);  /// ditto
+}
 
-void volatileStore(ubyte * ptr, ubyte  value);   /// ditto
-void volatileStore(ushort* ptr, ushort value);   /// ditto
-void volatileStore(uint  * ptr, uint   value);   /// ditto
-void volatileStore(ulong * ptr, ulong  value);   /// ditto
+pragma(DigitalMars_intrinsic, "eq")
+{
+    void volatileStore(ubyte * ptr, ubyte  value);   /// ditto
+    void volatileStore(ushort* ptr, ushort value);   /// ditto
+    void volatileStore(uint  * ptr, uint   value);   /// ditto
+    void volatileStore(ulong * ptr, ulong  value);   /// ditto
+}
 
 @system unittest
 {
