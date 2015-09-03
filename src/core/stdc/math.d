@@ -44,6 +44,13 @@ version (FreeBSD)
     ///
     enum int FP_ILOGBNAN      = int.max;
 }
+else version (CRuntime_Bionic)
+{
+    ///
+    enum int FP_ILOGB0        = -int.max;
+    ///
+    enum int FP_ILOGBNAN      = int.max;
+}
 else
 {
     ///
@@ -2403,7 +2410,7 @@ else
         ///
         float   fabsf(float x);
         ///
-        real    fabsl(real x);        
+        real    fabsl(real x);
     }
 
     ///

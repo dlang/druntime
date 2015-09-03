@@ -43,8 +43,8 @@ $(mak\SRCS)
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= errno_c.obj
-OBJS_TO_DELETE= errno_c.obj
+OBJS= errno_c_$(MODEL).obj stdio_msvc_$(MODEL).obj
+OBJS_TO_DELETE= errno_c_$(MODEL).obj stdio_msvc_$(MODEL).obj
 
 ######################## Doc .html file generation ##############################
 
@@ -54,6 +54,9 @@ $(DOCDIR)\object.html : src\object.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 $(DOCDIR)\core_atomic.html : src\core\atomic.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
+$(DOCDIR)\core_attribute.html : src\core\attribute.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 $(DOCDIR)\core_bitop.html : src\core\bitop.d
@@ -224,6 +227,9 @@ $(IMPDIR)\object.d : src\object.d
 $(IMPDIR)\core\atomic.d : src\core\atomic.d
 	copy $** $@
 
+$(IMPDIR)\core\attribute.d : src\core\attribute.d
+	copy $** $@
+
 $(IMPDIR)\core\bitop.d : src\core\bitop.d
 	copy $** $@
 
@@ -264,6 +270,9 @@ $(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
 	copy $** $@
 
 $(IMPDIR)\core\internal\hash.d : src\core\internal\hash.d
+	copy $** $@
+
+$(IMPDIR)\core\internal\string.d : src\core\internal\string.d
 	copy $** $@
 
 $(IMPDIR)\core\internal\traits.d : src\core\internal\traits.d
@@ -383,6 +392,9 @@ $(IMPDIR)\core\sys\linux\errno.d : src\core\sys\linux\errno.d
 $(IMPDIR)\core\sys\linux\execinfo.d : src\core\sys\linux\execinfo.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\linux\fcntl.d : src\core\sys\linux\fcntl.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\linux\link.d : src\core\sys\linux\link.d
 	copy $** $@
 
@@ -393,6 +405,9 @@ $(IMPDIR)\core\sys\linux\time.d : src\core\sys\linux\time.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\tipc.d : src\core\sys\linux\tipc.d
+	copy $** $@
+
+$(IMPDIR)\core\sys\linux\unistd.d : src\core\sys\linux\unistd.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\linux\sys\inotify.d : src\core\sys\linux\sys\inotify.d
@@ -640,8 +655,12 @@ $(IMPDIR)\etc\linux\memoryerror.d : src\etc\linux\memoryerror.d
 
 ################### C\ASM Targets ############################
 
-errno_c.obj : src\core\stdc\errno.c
-	$(CC) -c $(CFLAGS) src\core\stdc\errno.c -Foerrno_c.obj
+errno_c_$(MODEL).obj : src\core\stdc\errno.c
+	$(CC) -c -Fo$@ $(CFLAGS) src\core\stdc\errno.c
+
+stdio_msvc_$(MODEL).obj : src\rt\stdio_msvc.c win64.mak
+	$(CC) -c -Fo$@ $(CFLAGS) src\rt\stdio_msvc.c
+
 
 src\rt\minit.obj : src\rt\minit.asm
 	$(CC) -c $(CFLAGS) src\rt\minit.asm
@@ -650,6 +669,7 @@ src\rt\minit.obj : src\rt\minit.asm
 
 $(GCSTUB) : src\gcstub\gc.d win64.mak
 	$(DMD) -c -of$(GCSTUB) src\gcstub\gc.d $(DFLAGS)
+
 
 ################### Library generation #########################
 
@@ -678,7 +698,7 @@ zip: druntime.zip
 
 druntime.zip: import
 	del druntime.zip
-	zip32 -T -ur druntime $(MANIFEST) $(IMPDIR) src\rt\minit.obj
+	zip32 -T -ur druntime $(MANIFEST) src\rt\minit.obj
 
 install: druntime.zip
 	unzip -o druntime.zip -d \dmd2\src\druntime
@@ -686,3 +706,8 @@ install: druntime.zip
 clean:
 	del $(DRUNTIME) $(OBJS_TO_DELETE) $(GCSTUB)
 	rmdir /S /Q $(DOCDIR) $(IMPDIR)
+
+auto-tester-build: target
+
+auto-tester-test: unittest
+

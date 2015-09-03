@@ -157,7 +157,7 @@ version(CoreDdoc) enum ClockType
     /++
         $(BLUE Linux-Only)
 
-        Uses $(D CLOCK_MONOTONIC_BOOTTIME).
+        Uses $(D CLOCK_BOOTTIME).
       +/
     bootTime = 1,
 
@@ -382,7 +382,7 @@ unittest
     (e.g. 22 days or 700 seconds).
 
     It is used when representing a duration of time - such as how long to
-    sleep with $(CXREF Thread, sleep).
+    sleep with $(CXREF thread, Thread.sleep).
 
     In std.datetime, it is also used as the result of various arithmetic
     operations on time points.
@@ -1393,18 +1393,7 @@ public:
     }
 
 
-    /++
-        $(RED Deprecated. Please use $(LREF split) instead. Too frequently,
-              get or one of the individual unit getters is used when the
-              function that gave the desired behavior was $(LREF total). This
-              should make it more explicit and help prevent bugs. This function
-              will be removed in June 2015.)
-
-        Returns the number of the given units in this $(D Duration)
-        (minus the larger units).
-
-        $(D d.get!"minutes"()) is equivalent to $(D d.split().minutes).
-      +/
+    // Explicitly undocumented. It will be removed in August 2016. @@@DEPRECATED_2016-08@@@
     deprecated("Please use split instead. get was too frequently confused for total.")
     long get(string units)() const nothrow @nogc
         if(units == "weeks" ||
@@ -1451,16 +1440,7 @@ public:
     }
 
 
-    /++
-        $(RED Deprecated. Please use $(LREF split) instead. Too frequently,
-              $(LREF get) or one of the individual unit getters is used when the
-              function that gave the desired behavior was $(LREF total). This
-              should make it more explicit and help prevent bugs. This function
-              will be removed in June 2015.)
-
-        Returns the number of weeks in this $(D Duration)
-        (minus the larger units).
-      +/
+    // Explicitly undocumented. It will be removed in August 2016. @@@DEPRECATED_2016-08@@@
     deprecated(`Please use split instead. The functions which wrapped get were too frequently confused with total.`)
     @property long weeks() const nothrow @nogc
     {
@@ -1484,16 +1464,7 @@ public:
     }
 
 
-    /++
-        $(RED Deprecated. Please use $(LREF split) instead. Too frequently,
-              $(LREF get) or one of the individual unit getters is used when the
-              function that gave the desired behavior was $(LREF total). This
-              should make it more explicit and help prevent bugs. This function
-              will be removed in June 2015.)
-
-        Returns the number of days in this $(D Duration)
-        (minus the larger units).
-      +/
+    // Explicitly undocumented. It will be removed in August 2016. @@@DEPRECATED_2016-08@@@
     deprecated(`Please use split instead. days was too frequently confused for total!"days".`)
     @property long days() const nothrow @nogc
     {
@@ -1519,16 +1490,7 @@ public:
     }
 
 
-    /++
-        $(RED Deprecated. Please use $(LREF split) instead. Too frequently,
-              $(LREF get) or one of the individual unit getters is used when the
-              function that gave the desired behavior was $(LREF total). This
-              should make it more explicit and help prevent bugs. This function
-              will be removed in June 2015.)
-
-        Returns the number of hours in this $(D Duration)
-        (minus the larger units).
-      +/
+    // Explicitly undocumented. It will be removed in August 2016. @@@DEPRECATED_2016-08@@@
     deprecated(`Please use split instead. hours was too frequently confused for total!"hours".`)
     @property long hours() const nothrow @nogc
     {
@@ -1554,16 +1516,7 @@ public:
     }
 
 
-    /++
-        $(RED Deprecated. Please use $(LREF split) instead. Too frequently,
-              $(LREF get) or one of the individual unit getters is used when the
-              function that gave the desired behavior was $(LREF total). This
-              should make it more explicit and help prevent bugs. This function
-              will be removed in June 2015.)
-
-        Returns the number of minutes in this $(D Duration)
-        (minus the larger units).
-      +/
+    // Explicitly undocumented. It will be removed in August 2016. @@@DEPRECATED_2016-08@@@
     deprecated(`Please use split instead. minutes was too frequently confused for total!"minutes".`)
     @property long minutes() const nothrow @nogc
     {
@@ -1589,16 +1542,7 @@ public:
     }
 
 
-    /++
-        $(RED Deprecated. Please use $(LREF split) instead. Too frequently,
-              $(LREF get) or one of the individual unit getters is used when the
-              function that gave the desired behavior was $(LREF total). This
-              should make it more explicit and help prevent bugs. This function
-              will be removed in June 2015.)
-
-        Returns the number of seconds in this $(D Duration)
-        (minus the larger units).
-      +/
+    // Explicitly undocumented. It will be removed in August 2016. @@@DEPRECATED_2016-08@@@
     deprecated(`Please use split instead. seconds was too frequently confused for total!"seconds".`)
     @property long seconds() const nothrow @nogc
     {
@@ -1624,15 +1568,7 @@ public:
     }
 
 
-    /++
-        $(RED Deprecated. Please use $(LREF split) instead. Too frequently,
-              $(LREF get) or one of the individual unit getters is used when the
-              function that gave the desired behavior was $(LREF total). This
-              should make it more explicit and help prevent bugs. This function
-              will be removed in June 2015.)
-
-        Returns the fractional seconds past the second in this $(D Duration).
-     +/
+    // Explicitly undocumented. It will be removed in August 2016. @@@DEPRECATED_2016-08@@@
     deprecated(`Please use split instead.`)
     @property FracSec fracSec() const nothrow
     {
@@ -2249,6 +2185,16 @@ struct MonoTimeImpl(ClockType clockType)
     else
         static assert(0, "Unsupported platform");
 
+    // POD value, test mutable/const/immutable conversion
+    unittest
+    {
+        MonoTimeImpl m;
+        const MonoTimeImpl cm = m;
+        immutable MonoTimeImpl im = m;
+        m = cm;
+        m = im;
+    }
+
     /++
         The current time of the system's monotonic clock. This has no relation
         to the wall clock time, as the wall clock time can be adjusted (e.g.
@@ -2348,42 +2294,23 @@ struct MonoTimeImpl(ClockType clockType)
 
     unittest
     {
-        foreach(T; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-        {
-            foreach(U; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-            {
-                T t = MonoTimeImpl.currTime;
-                U u = t;
-                assert(t == u);
-                assert(copy(t) == u);
-                assert(t == copy(u));
-            }
-        }
+        const t = MonoTimeImpl.currTime;
+        assert(t == copy(t));
+    }
 
-        foreach(T; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-        {
-            foreach(U; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-            {
-                T before = MonoTimeImpl.currTime;
-                auto after = U(before._ticks + 42);
-                assert(before < after);
-                assert(before <= before);
-                assert(after > before);
-                assert(after >= after);
+    unittest
+    {
+        const before = MonoTimeImpl.currTime;
+        auto after = MonoTimeImpl(before._ticks + 42);
+        assert(before < after);
+        assert(copy(before) <= before);
+        assert(copy(after) > before);
+        assert(after >= copy(after));
+    }
 
-                assert(copy(before) < after);
-                assert(copy(before) <= before);
-                assert(copy(after) > before);
-                assert(copy(after) >= after);
-
-                assert(before < copy(after));
-                assert(before <= copy(before));
-                assert(after > copy(before));
-                assert(after >= copy(after));
-            }
-        }
-
-        immutable currTime = MonoTimeImpl.currTime;
+    unittest
+    {
+        const currTime = MonoTimeImpl.currTime;
         assert(MonoTimeImpl(long.max) > MonoTimeImpl(0));
         assert(MonoTimeImpl(0) > MonoTimeImpl(long.min));
         assert(MonoTimeImpl(long.max) > currTime);
@@ -2437,46 +2364,28 @@ assert(before + timeElapsed == after).
 
     unittest
     {
-        foreach(T; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
+        const t = MonoTimeImpl.currTime;
+        assert(t - copy(t) == Duration.zero);
+        static assert(!__traits(compiles, t + t));
+    }
+
+    unittest
+    {
+        static void test(in MonoTimeImpl before, in MonoTimeImpl after, in Duration min)
         {
-            foreach(U; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-            {
-                T t = MonoTimeImpl.currTime;
-                U u = t;
-                assert(u - t == Duration.zero);
-                assert(copy(t) - u == Duration.zero);
-                assert(t - copy(u) == Duration.zero);
-            }
+            immutable diff = after - before;
+            assert(diff >= min);
+            auto calcAfter = before + diff;
+            assertApprox(calcAfter, calcAfter - Duration(1), calcAfter + Duration(1));
+            assert(before - after == -diff);
         }
 
-        foreach(T; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-        {
-            foreach(U; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-            {
-                static void test()(T before, U after, Duration min, size_t line = __LINE__) @trusted
-                {
-                    immutable diff = after - before;
-                    scope(failure)
-                    {
-                        printf("%s %s %s\n",
-                               numToStringz(before._ticks),
-                               numToStringz(after._ticks),
-                               (diff.toString() ~ "\0").ptr);
-                    }
-                    if(diff >= min) {} else throw new AssertError("unittest failure 1", __FILE__, line);
-                    auto calcAfter = before + diff;
-                    assertApprox(calcAfter, calcAfter - Duration(1), calcAfter + Duration(1));
-                    if(before - after == -diff) {} else throw new AssertError("unittest failure 2", __FILE__, line);
-                }
+        const before = MonoTimeImpl.currTime;
+        test(before, MonoTimeImpl(before._ticks + 4202), Duration.zero);
+        test(before, MonoTimeImpl.currTime, Duration.zero);
 
-                T before = MonoTimeImpl.currTime;
-                test(before, MonoTimeImpl(before._ticks + 4202), Duration.zero);
-                test(before, MonoTimeImpl.currTime, Duration.zero);
-
-                auto durLargerUnits = dur!"minutes"(7) + dur!"seconds"(22);
-                test(before, before + durLargerUnits + dur!"msecs"(33) + dur!"hnsecs"(571), durLargerUnits);
-            }
-        }
+        const durLargerUnits = dur!"minutes"(7) + dur!"seconds"(22);
+        test(before, before + durLargerUnits + dur!"msecs"(33) + dur!"hnsecs"(571), durLargerUnits);
     }
 
 
@@ -2493,39 +2402,25 @@ assert(before + timeElapsed == after).
 
     unittest
     {
-        foreach(T; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-        {
-            foreach(U; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-            {
-                foreach(V; _TypeTuple!(Duration, const Duration, immutable Duration))
-                {
-                    T t = MonoTimeImpl.currTime;
-                    U u1 = t + V(0);
-                    U u2 = t - V(0);
-                    assert(t == u1);
-                    assert(t == u2);
-                }
-            }
-        }
+        const t = MonoTimeImpl.currTime;
+        assert(t + Duration(0) == t);
+        assert(t - Duration(0) == t);
+    }
 
-        foreach(T; _TypeTuple!(MonoTimeImpl, const MonoTimeImpl, immutable MonoTimeImpl))
-        {
-            foreach(U; _TypeTuple!(Duration, const Duration, immutable Duration))
-            {
-                T t = MonoTimeImpl.currTime;
+    unittest
+    {
+        const t = MonoTimeImpl.currTime;
 
-                // We reassign ticks in order to get the same rounding errors
-                // that we should be getting with Duration (e.g. MonoTimeImpl may be
-                // at a higher precision than hnsecs, meaning that 7333 would be
-                // truncated when converting to hnsecs).
-                long ticks = 7333;
-                auto hnsecs = convClockFreq(ticks, ticksPerSecond, hnsecsPer!"seconds");
-                ticks = convClockFreq(hnsecs, hnsecsPer!"seconds", ticksPerSecond);
+        // We reassign ticks in order to get the same rounding errors
+        // that we should be getting with Duration (e.g. MonoTimeImpl may be
+        // at a higher precision than hnsecs, meaning that 7333 would be
+        // truncated when converting to hnsecs).
+        long ticks = 7333;
+        auto hnsecs = convClockFreq(ticks, ticksPerSecond, hnsecsPer!"seconds");
+        ticks = convClockFreq(hnsecs, hnsecsPer!"seconds", ticksPerSecond);
 
-                assert(t - Duration(hnsecs) == MonoTimeImpl(t._ticks - ticks));
-                assert(t + Duration(hnsecs) == MonoTimeImpl(t._ticks + ticks));
-            }
-        }
+        assert(t - Duration(hnsecs) == MonoTimeImpl(t._ticks - ticks));
+        assert(t + Duration(hnsecs) == MonoTimeImpl(t._ticks + ticks));
     }
 
 
@@ -2540,36 +2435,26 @@ assert(before + timeElapsed == after).
 
     unittest
     {
-        foreach(T; _TypeTuple!(const MonoTimeImpl, immutable MonoTimeImpl))
-        {
-            T t = MonoTimeImpl.currTime;
-            static assert(!is(typeof(t += Duration.zero)));
-            static assert(!is(typeof(t -= Duration.zero)));
-        }
+        auto mt = MonoTimeImpl.currTime;
+        const initial = mt;
+        mt += Duration(0);
+        assert(mt == initial);
+        mt -= Duration(0);
+        assert(mt == initial);
 
-        foreach(T; _TypeTuple!(Duration, const Duration, immutable Duration))
-        {
-            auto mt = MonoTimeImpl.currTime;
-            auto initial = mt;
-            mt += T(0);
-            assert(mt == initial);
-            mt -= T(0);
-            assert(mt == initial);
+        // We reassign ticks in order to get the same rounding errors
+        // that we should be getting with Duration (e.g. MonoTimeImpl may be
+        // at a higher precision than hnsecs, meaning that 7333 would be
+        // truncated when converting to hnsecs).
+        long ticks = 7333;
+        auto hnsecs = convClockFreq(ticks, ticksPerSecond, hnsecsPer!"seconds");
+        ticks = convClockFreq(hnsecs, hnsecsPer!"seconds", ticksPerSecond);
+        auto before = MonoTimeImpl(initial._ticks - ticks);
 
-            // We reassign ticks in order to get the same rounding errors
-            // that we should be getting with Duration (e.g. MonoTimeImpl may be
-            // at a higher precision than hnsecs, meaning that 7333 would be
-            // truncated when converting to hnsecs).
-            long ticks = 7333;
-            auto hnsecs = convClockFreq(ticks, ticksPerSecond, hnsecsPer!"seconds");
-            ticks = convClockFreq(hnsecs, hnsecsPer!"seconds", ticksPerSecond);
-            auto before = MonoTimeImpl(initial._ticks - ticks);
-
-            assert((mt -= Duration(hnsecs)) == before);
-            assert(mt  == before);
-            assert((mt += Duration(hnsecs)) == initial);
-            assert(mt  == initial);
-        }
+        assert((mt -= Duration(hnsecs)) == before);
+        assert(mt  == before);
+        assert((mt += Duration(hnsecs)) == initial);
+        assert(mt  == initial);
     }
 
 
@@ -2591,7 +2476,7 @@ assert(before + timeElapsed == after).
 
     unittest
     {
-        auto mt = MonoTimeImpl.currTime;
+        const mt = MonoTimeImpl.currTime;
         assert(mt.ticks == mt._ticks);
     }
 
@@ -2626,45 +2511,25 @@ assert(before + timeElapsed == after).
 
     unittest
     {
-        static size_t findSpace(string str, size_t line = __LINE__)
+        static min(T)(T a, T b) { return a < b ? a : b; }
+
+        static void eat(ref string s, string exp)
         {
-            for(size_t i = 0; i != str.length; ++i)
-            {
-                if(str[i] == ' ')
-                    return i;
-            }
-            throw new AssertError("unittest failure", __FILE__, line);
+            assert(s[0 .. min($, exp.length)] == exp, s~" != "~exp);
+            s = s[exp.length .. $];
         }
 
         immutable mt = MonoTimeImpl.currTime;
         auto str = mt.toString();
         static if(is(typeof(this) == MonoTime))
-        {
-            assert(str[0 .. "MonoTime(".length] == "MonoTime(");
-            str = str["MonoTime(".length .. $];
-        }
+            eat(str, "MonoTime(");
         else
-        {
-            enum len1 = "MonoTimeImpl!(ClockType.".length;
-            assert(str[0 .. len1] == "MonoTimeImpl!(ClockType.");
+            eat(str, "MonoTimeImpl!(ClockType."~_clockName~")(");
 
-            auto len2 = len1 + _clockName.length;
-            assert(str[len1 .. len2] == _clockName);
-            assert(str[len2 .. len2 + 2] == ")(");
-            str = str[len2 + 2 .. $];
-        }
-
-        immutable space1 = findSpace(str);
-        immutable ticksStr = str[0 .. space1];
-        assert(ticksStr == numToString(mt._ticks));
-        str = str[space1 + 1 .. $];
-        assert(str[0 .. "ticks, ".length] == "ticks, ");
-        str = str["ticks, ".length .. $];
-        immutable space2 = findSpace(str);
-        immutable ticksPerSecondStr = str[0 .. space2];
-        assert(ticksPerSecondStr == numToString(MonoTimeImpl.ticksPerSecond));
-        str = str[space2 + 1 .. $];
-        assert(str == "ticks per second)");
+        eat(str, numToString(mt._ticks));
+        eat(str, " ticks, ");
+        eat(str, numToString(ticksPerSecond));
+        eat(str, " ticks per second)");
     }
 
 private:
@@ -2694,6 +2559,13 @@ private immutable long[__traits(allMembers, ClockType).length] _ticksPerSecond;
 // it's a normal function, we need to do some dangerous casting PLEASE take
 // care when modifying this function, and it should NOT be called except from
 // the runtime init.
+//
+// NOTE: the code below SPECIFICALLY does not assert when it cannot initialize
+// the ticks per second array. This allows cases where a clock is never used on
+// a system that doesn't support it. See bugzilla issue
+// https://issues.dlang.org/show_bug.cgi?id=14863
+// The assert will occur when someone attempts to use _ticksPerSecond for that
+// value.
 extern(C) void _d_initMonoTime()
 {
     // We need a mutable pointer to the ticksPerSecond array. Although this
@@ -2722,8 +2594,6 @@ extern(C) void _d_initMonoTime()
                 tps[i] = ticksPerSecond;
             }
         }
-        else
-            assert(0, "Failed to get the frequency of the system's monotonic clock.");
     }
     else version(OSX)
     {
@@ -2739,8 +2609,6 @@ extern(C) void _d_initMonoTime()
                 tps[i] = ticksPerSecond;
             }
         }
-        else
-            assert(0, "Failed to get the frequency of the system's monotonic clock.");
     }
     else version(Posix)
     {
@@ -2764,8 +2632,6 @@ extern(C) void _d_initMonoTime()
                     tps[i] = ts.tv_nsec >= 1000 ? 1_000_000_000L
                                                             : 1_000_000_000L / ts.tv_nsec;
                 }
-                else
-                    assert(0, "Failed to get the frequency for of the system's monotonic clock: ClockType." ~ typeStr);
             }
         }
     }
@@ -2784,13 +2650,20 @@ unittest
     auto norm2 = MonoTimeImpl!(ClockType.normal).currTime;
     assert(norm1 <= norm2);
 
+    static bool clockSupported(ClockType c)
+    {
+        version (Linux_Pre_2639) // skip CLOCK_BOOTTIME on older linux kernels
+            return c != ClockType.second && c != ClockType.bootTime;
+        else
+            return c != ClockType.second; // second doesn't work with MonoTimeImpl
+
+    }
+
     foreach(typeStr; __traits(allMembers, ClockType))
     {
-        // ClockType.second is currently the only clock type that doesn't work
-        // with MonoTimeImpl.
-        static if(typeStr != "second")
+        mixin("alias type = ClockType." ~ typeStr ~ ";");
+        static if (clockSupported(type))
         {
-            mixin("alias type = ClockType." ~ typeStr ~ ";");
             auto v1 = MonoTimeImpl!type.currTime;
             auto v2 = MonoTimeImpl!type.currTime;
             scope(failure)
@@ -2805,9 +2678,9 @@ unittest
 
             foreach(otherStr; __traits(allMembers, ClockType))
             {
-                static if(otherStr != "second")
+                mixin("alias other = ClockType." ~ otherStr ~ ";");
+                static if (clockSupported(other))
                 {
-                    mixin("alias other = ClockType." ~ otherStr ~ ";");
                     static assert(is(typeof({auto o1 = MonTimeImpl!other.currTime; auto b = v1 <= o1;})) ==
                                   is(type == other));
                 }
@@ -4832,13 +4705,9 @@ string numToString(double value) @safe pure nothrow
     result ~= '.';
     result ~= numToString(cast(long)(_abs((value - cast(long)value) * 1000000)));
 
-    int i = cast(int)result.length - 1;
-    for (; i >= 0; --i)
-    {
-        if(result[i] != '0')
-            break;
-    }
-    return result[0 .. (i > 0 ? i - 1 : 0)];
+    while (result[$-1] == '0')
+        result = result[0 .. $-1];
+    return result;
 }
 
 unittest

@@ -49,6 +49,8 @@ alias immutable(char)[]  string;
 alias immutable(wchar)[] wstring;
 alias immutable(dchar)[] dstring;
 
+version (D_ObjectiveC) public import core.attribute : selector;
+
 /**
  * All D class objects inherit from Object.
  */
@@ -232,8 +234,8 @@ class TypeInfo
     override int opCmp(Object o)
     {
         import core.internal.traits : externDFunc;
-        alias dstrcmp = externDFunc!("rt.util.string.dstrcmp",
-                                     int function(in char[] s1, in char[] s2) @trusted pure nothrow);
+        alias dstrcmp = externDFunc!("core.internal.string.dstrcmp",
+                                     int function(in char[] s1, in char[] s2) @trusted pure nothrow @nogc);
 
         if (this is o)
             return 0;
@@ -285,8 +287,7 @@ class TypeInfo
 
     /// Return default initializer.  If the type should be initialized to all zeros,
     /// an array with a null ptr and a length equal to the type size will be returned.
-    // TODO: make this a property, but may need to be renamed to diambiguate with T.init...
-    const(void)[] init() nothrow pure const @safe @nogc { return null; }
+    abstract const(void)[] init() nothrow pure const @safe @nogc;
 
     /// Get flags for type: 1 means GC should scan for pointers,
     /// 2 means arg of this type is passed in XMM register
@@ -338,7 +339,7 @@ class TypeInfo_Typedef : TypeInfo
 
     override @property inout(TypeInfo) next() nothrow pure inout { return base.next; }
     override @property uint flags() nothrow pure const { return base.flags; }
-    override const(void)[] init() nothrow pure const @safe { return m_init.length ? m_init : base.init(); }
+    override const(void)[] init() const { return m_init.length ? m_init : base.init(); }
 
     override @property size_t talign() nothrow pure const { return base.talign; }
 
@@ -395,6 +396,11 @@ class TypeInfo_Pointer : TypeInfo
     override @property size_t tsize() nothrow pure const
     {
         return (void*).sizeof;
+    }
+
+    override const(void)[] init() const @trusted
+    {
+        return (cast(void *)null)[0 .. (void*).sizeof];
     }
 
     override void swap(void* p1, void* p2) const
@@ -466,6 +472,11 @@ class TypeInfo_Array : TypeInfo
         return (void[]).sizeof;
     }
 
+    override const(void)[] init() const @trusted
+    {
+        return (cast(void *)null)[0 .. (void[]).sizeof];
+    }
+
     override void swap(void* p1, void* p2) const
     {
         void[] tmp = *cast(void[]*)p1;
@@ -500,11 +511,11 @@ class TypeInfo_StaticArray : TypeInfo
     override string toString() const
     {
         import core.internal.traits : externDFunc;
-        alias sizeToTempString = externDFunc!("rt.util.string.sizeToTempString",
-                                              char[] function(in size_t, char[]) @trusted pure nothrow);
+        alias sizeToTempString = externDFunc!("core.internal.string.unsignedToTempString",
+                                              char[] function(ulong, char[], uint) @safe pure nothrow @nogc);
 
         char[20] tmpBuff = void;
-        return value.toString() ~ "[" ~ sizeToTempString(len, tmpBuff) ~ "]";
+        return value.toString() ~ "[" ~ sizeToTempString(len, tmpBuff, 10) ~ "]";
     }
 
     override bool opEquals(Object o)
@@ -650,6 +661,11 @@ class TypeInfo_AssociativeArray : TypeInfo
         return (char[int]).sizeof;
     }
 
+    override const(void)[] init() const @trusted
+    {
+        return (cast(void *)null)[0 .. (char[int]).sizeof];
+    }
+
     override @property inout(TypeInfo) next() nothrow pure inout { return value; }
     override @property uint flags() nothrow pure const { return 1; }
 
@@ -722,6 +738,11 @@ class TypeInfo_Function : TypeInfo
         return 0;       // no size for functions
     }
 
+    override const(void)[] init() const @safe
+    {
+        return null;
+    }
+
     TypeInfo next;
     string deco;
 }
@@ -747,6 +768,11 @@ class TypeInfo_Delegate : TypeInfo
     {
         alias int delegate() dg;
         return dg.sizeof;
+    }
+
+    override const(void)[] init() const @trusted
+    {
+        return (cast(void *)null)[0 .. (int delegate()).sizeof];
     }
 
     override @property uint flags() nothrow pure const { return 1; }
@@ -981,6 +1007,11 @@ class TypeInfo_Interface : TypeInfo
         return Object.sizeof;
     }
 
+    override const(void)[] init() const @trusted
+    {
+        return (cast(void *)null)[0 .. Object.sizeof];
+    }
+
     override @property uint flags() nothrow pure const { return 1; }
 
     TypeInfo_Class info;
@@ -1187,6 +1218,11 @@ class TypeInfo_Tuple : TypeInfo
     }
 
     override @property size_t tsize() nothrow pure const
+    {
+        assert(0);
+    }
+
+    override const(void)[] init() const @trusted
     {
         assert(0);
     }
@@ -1562,14 +1598,14 @@ class Throwable : Object
     void toString(scope void delegate(in char[]) sink) const
     {
         import core.internal.traits : externDFunc;
-        alias sizeToTempString = externDFunc!("rt.util.string.sizeToTempString",
-                                              char[] function(in size_t, char[]) @trusted pure nothrow);
+        alias sizeToTempString = externDFunc!("core.internal.string.unsignedToTempString",
+                                              char[] function(ulong, char[], uint) @safe pure nothrow @nogc);
 
         char[20] tmpBuff = void;
 
         sink(typeid(this).name);
         sink("@"); sink(file);
-        sink("("); sink(sizeToTempString(line, tmpBuff)); sink(")");
+        sink("("); sink(sizeToTempString(line, tmpBuff, 10)); sink(")");
 
         if (msg.length)
         {
@@ -1823,15 +1859,17 @@ V[K] dup(T : V[K], K, V)(T* aa)
     return (*aa).dup;
 }
 
-auto byKey(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc
+auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc
 {
+    import core.internal.traits : substInout;
+
     static struct Result
     {
         AARange r;
 
     pure nothrow @nogc:
         @property bool empty() { return _aaRangeEmpty(r); }
-        @property ref Key front() { return *cast(Key*)_aaRangeFrontKey(r); }
+        @property ref front() { return *cast(substInout!K*)_aaRangeFrontKey(r); }
         void popFront() { _aaRangePopFront(r); }
         @property Result save() { return this; }
     }
@@ -1839,20 +1877,22 @@ auto byKey(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc
     return Result(_aaRange(cast(void*)aa));
 }
 
-auto byKey(T : Value[Key], Value, Key)(T *aa) pure nothrow @nogc
+auto byKey(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byKey();
 }
 
-auto byValue(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc
+auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc
 {
+    import core.internal.traits : substInout;
+
     static struct Result
     {
         AARange r;
 
     pure nothrow @nogc:
         @property bool empty() { return _aaRangeEmpty(r); }
-        @property ref Value front() { return *cast(Value*)_aaRangeFrontValue(r); }
+        @property ref front() { return *cast(substInout!V*)_aaRangeFrontValue(r); }
         void popFront() { _aaRangePopFront(r); }
         @property Result save() { return this; }
     }
@@ -1860,9 +1900,46 @@ auto byValue(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc
     return Result(_aaRange(cast(void*)aa));
 }
 
-auto byValue(T : Value[Key], Value, Key)(T *aa) pure nothrow @nogc
+auto byValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byValue();
+}
+
+auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc
+{
+    import core.internal.traits : substInout;
+
+    static struct Result
+    {
+        AARange r;
+
+    pure nothrow @nogc:
+        @property bool empty() { return _aaRangeEmpty(r); }
+        @property auto front() @trusted
+        {
+            static struct Pair
+            {
+                // We save the pointers here so that the Pair we return
+                // won't mutate when Result.popFront is called afterwards.
+                private void* keyp;
+                private void* valp;
+
+                @property ref key() inout { return *cast(substInout!K*)keyp; }
+                @property ref value() inout { return *cast(substInout!V*)valp; }
+            }
+            return Pair(_aaRangeFrontKey(r),
+                        _aaRangeFrontValue(r));
+        }
+        void popFront() { _aaRangePopFront(r); }
+        @property Result save() { return this; }
+    }
+
+    return Result(_aaRange(cast(void*)aa));
+}
+
+auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
+{
+    return (*aa).byKeyValue();
 }
 
 Key[] keys(T : Value[Key], Value, Key)(T aa) @property
@@ -1916,36 +1993,6 @@ unittest
     auto keys = aa2.keys;
     assert(keys.length == 1);
     assert(T.count == 2);
-}
-
-auto byKeyValue(T : Value[Key], Value, Key)(T aa) pure nothrow @nogc @property
-{
-    static struct Result
-    {
-        AARange r;
-
-      pure nothrow @nogc:
-        @property bool empty() { return _aaRangeEmpty(r); }
-        @property auto front() @trusted
-        {
-            static struct Pair
-            {
-                // We save the pointers here so that the Pair we return
-                // won't mutate when Result.popFront is called afterwards.
-                private Key* keyp;
-                private Value* valp;
-
-                @property ref inout(Key) key() inout { return *keyp; }
-                @property ref inout(Value) value() inout { return *valp; }
-            }
-            return Pair(cast(Key*)_aaRangeFrontKey(r),
-                        cast(Value*)_aaRangeFrontValue(r));
-        }
-        void popFront() { _aaRangePopFront(r); }
-        @property Result save() { return this; }
-    }
-
-    return Result(_aaRange(cast(void*)aa));
 }
 
 inout(V) get(K, V)(inout(V[K]) aa, K key, lazy inout(V) defaultValue)
@@ -2223,19 +2270,43 @@ unittest
     }
 }
 
+unittest
+{
+    // test for bug 14626
+    static struct S
+    {
+        string[string] aa;
+        inout(string) key() inout { return aa.byKey().front; }
+        inout(string) val() inout { return aa.byValue().front; }
+        auto keyval() inout { return aa.byKeyValue().front; }
+    }
+
+    S s = S(["a":"b"]);
+    assert(s.key() == "a");
+    assert(s.val() == "b");
+    assert(s.keyval().key == "a");
+    assert(s.keyval().value == "b");
+
+    void testInoutKeyVal(inout(string) key)
+    {
+        inout(string)[typeof(key)] aa;
+
+        foreach (i; aa.byKey()) {}
+        foreach (i; aa.byValue()) {}
+        foreach (i; aa.byKeyValue()) {}
+    }
+
+    const int[int] caa;
+    static assert(is(typeof(caa.byValue().front) == const int));
+}
+
 private void _destructRecurse(S)(ref S s)
     if (is(S == struct))
 {
-    import core.internal.traits : hasElaborateDestructor;
-
-    static if (__traits(hasMember, S, "__dtor"))
-        s.__dtor();
-
-    foreach_reverse (ref field; s.tupleof)
-    {
-        static if (hasElaborateDestructor!(typeof(field)))
-            _destructRecurse(field);
-    }
+    static if (__traits(hasMember, S, "__xdtor") &&
+               // Bugzilla 14746: Check that it's the exact member of S.
+               __traits(isSame, S, __traits(parent, s.__xdtor)))
+        s.__xdtor();
 }
 
 private void _destructRecurse(E, size_t n)(ref E[n] arr)
@@ -2249,32 +2320,14 @@ private void _destructRecurse(E, size_t n)(ref E[n] arr)
     }
 }
 
-private string _genFieldPostblit(S)()
-{
-    import core.internal.traits : hasElaborateCopyConstructor;
-
-    string code;
-    foreach(i, FieldType; typeof(S.init.tupleof))
-    {
-        static if(hasElaborateCopyConstructor!FieldType)
-        {
-            code ~= `
-                _postblitRecurse(s.tupleof[` ~ i.stringof ~ `]);
-                scope(failure) _destructRecurse(s.tupleof[` ~ i.stringof ~ `]);
-            `;
-        }
-    }
-    return code;
-}
-
 // Public and explicitly undocumented
 void _postblitRecurse(S)(ref S s)
     if (is(S == struct))
 {
-    mixin(_genFieldPostblit!S());
-
-    static if (__traits(hasMember, S, "__postblit"))
-        s.__postblit();
+    static if (__traits(hasMember, S, "__xpostblit") &&
+               // Bugzilla 14746: Check that it's the exact member of S.
+               __traits(isSame, S, __traits(parent, s.__xpostblit)))
+        s.__xpostblit();
 }
 
 // Ditto
@@ -2389,6 +2442,42 @@ nothrow @safe @nogc unittest
     S s;
     _destructRecurse(s);
     assert(i == 42);
+}
+
+unittest
+{
+    // Bugzilla 14746
+    static struct HasDtor
+    {
+        ~this() { assert(0); }
+    }
+    static struct Owner
+    {
+        HasDtor* ptr;
+        alias ptr this;
+    }
+
+    Owner o;
+    assert(o.ptr is null);
+    destroy(o);     // must not reach in HasDtor.__dtor()
+}
+
+unittest
+{
+    // Bugzilla 14746
+    static struct HasPostblit
+    {
+        this(this) { assert(0); }
+    }
+    static struct Owner
+    {
+        HasPostblit* ptr;
+        alias ptr this;
+    }
+
+    Owner o;
+    assert(o.ptr is null);
+    _postblitRecurse(o);     // must not reach in HasPostblit.__postblit()
 }
 
 // Test handling of fixed-length arrays
