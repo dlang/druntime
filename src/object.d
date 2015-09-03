@@ -2727,6 +2727,8 @@ version(unittest) nothrow @safe @nogc unittest
 
 void destroy(T : U[n], U, size_t n)(ref T obj) if (!is(T == struct))
 {
+    // bug 15009 - dtors not called for static array contents
+    typeid(T).destroy(&obj);
     obj[] = U.init;
 }
 
