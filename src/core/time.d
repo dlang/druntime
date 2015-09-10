@@ -2235,14 +2235,14 @@ struct MonoTimeImpl(ClockType clockType)
 
         version(Windows)
         {
-            long ticks;
+            LARGE_INTEGER ticks;
             if(QueryPerformanceCounter(&ticks) == 0)
             {
                 // This probably cannot happen on Windows 95 or later
                 import core.internal.abort : abort;
                 abort("Call to QueryPerformanceCounter failed.");
             }
-            return MonoTimeImpl(ticks);
+            return MonoTimeImpl(ticks.QuadPart);
         }
         else version(OSX)
             return MonoTimeImpl(mach_absolute_time());
@@ -2600,7 +2600,7 @@ extern(C) void _d_initMonoTime()
     {}
     else version(Windows)
     {
-        long ticksPerSecond;
+        LARGE_INTEGER ticksPerSecond;
         if(QueryPerformanceFrequency(&ticksPerSecond) != 0)
         {
             foreach(i, typeStr; __traits(allMembers, ClockType))
@@ -2609,7 +2609,7 @@ extern(C) void _d_initMonoTime()
                 if(tps[i] != 0)
                     // should only be called once
                     assert(0);
-                tps[i] = ticksPerSecond;
+                tps[i] = ticksPerSecond.QuadPart;
             }
         }
     }
@@ -2921,7 +2921,7 @@ struct TickDuration
     {
         version(Windows)
         {
-            if(QueryPerformanceFrequency(cast(long*)&ticksPerSec) == 0)
+            if(QueryPerformanceFrequency(cast(LARGE_INTEGER*)&ticksPerSec) == 0)
                 ticksPerSec = 0;
         }
         else version(OSX)
@@ -3484,7 +3484,7 @@ struct TickDuration
         version(Windows)
         {
             ulong ticks;
-            if(QueryPerformanceCounter(cast(long*)&ticks) == 0)
+            if(QueryPerformanceCounter(cast(LARGE_INTEGER*)&ticks) == 0)
                 abort("Failed in QueryPerformanceCounter().");
 
             return TickDuration(ticks);
