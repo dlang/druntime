@@ -43,8 +43,8 @@ $(mak\SRCS)
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= errno_c.obj stdio_msvc_$(MODEL).obj
-OBJS_TO_DELETE= errno_c.obj stdio_msvc_$(MODEL).obj
+OBJS= errno_c$(MODEL).obj
+OBJS_TO_DELETE= errno_c$(MODEL).obj
 
 ######################## Doc .html file generation ##############################
 
@@ -173,6 +173,9 @@ $(DOCDIR)\core_sync_rwmutex.html : src\core\sync\rwmutex.d
 
 $(DOCDIR)\core_sync_semaphore.html : src\core\sync\semaphore.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
+changelog.html: changelog.dd
+	$(DMD) -Dfchangelog.html changelog.dd
 
 ######################## Header .di file generation ##############################
 
@@ -640,8 +643,8 @@ $(IMPDIR)\etc\linux\memoryerror.d : src\etc\linux\memoryerror.d
 
 ################### C\ASM Targets ############################
 
-errno_c.obj : src\core\stdc\errno.c
-	$(CC) -c $(CFLAGS) src\core\stdc\errno.c -Foerrno_c.obj
+errno_c$(MODEL).obj : src\core\stdc\errno.c
+	$(CC) -c $(CFLAGS) src\core\stdc\errno.c -Fo$@
 
 stdio_msvc_$(MODEL).obj : src\rt\stdio_msvc.c win64.mak
 	$(CC) -c -Fo$@ $(CFLAGS) src\rt\stdio_msvc.c
