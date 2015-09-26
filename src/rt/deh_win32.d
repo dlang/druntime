@@ -614,7 +614,7 @@ private void throwImpl(Object h)
                    1, cast(void *)&h);
 }
 
-extern(C) void _d_throwc(Object h)
+extern(C) void onThrow(Object h)
 {
     // set up a stack frame for trace unwinding
     version (AsmX86)
@@ -637,6 +637,11 @@ extern(C) void _d_throwc(Object h)
     {
         throwImpl(h);
     }
+}
+
+extern(C) void _d_throwc(Object h)
+{
+    return onThrow(h);
 }
 
 /***********************************

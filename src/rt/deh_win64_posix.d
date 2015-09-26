@@ -196,12 +196,11 @@ size_t __eh_find_caller(size_t regbp, size_t *pretaddr)
     return bp;
 }
 
-
 /***********************************
- * Throw a D object.
+ * Throw a D object, actual implementation
  */
 
-extern (C) void _d_throwc(Object h)
+extern (C) void onThrow(Object h)
 {
     size_t regebp;
 
@@ -476,3 +475,12 @@ extern (C) void _d_throwc(Object h)
     terminate();
 }
 
+
+/***********************************
+ * Throw a D object
+ */
+
+extern (C) void _d_throwc(Object h)
+{
+    return onThrow(h);
+}
