@@ -50,8 +50,8 @@ pragma(inline, true)
 int adds(int x, int y, ref bool overflow)
 {
     const r = x + y;
-    if (~x._differentSign(y) &  // x and y has the same sign
-         x._differentSign(r))   // result has different sign
+    if (!x._differentSign(y) &&  // x and y has the same sign
+         x._differentSign(r))    // result has different sign
         overflow = true;
     return r;
 }
@@ -79,8 +79,8 @@ pragma(inline, true)
 long adds(long x, long y, ref bool overflow)
 {
     const r = x + y;
-    if (~x._differentSign(y) &  // x and y has the same sign
-         x._differentSign(r))   // result has different sign
+    if (!x._differentSign(y) &&  // x and y has the same sign
+         x._differentSign(r))    // result has different sign
         overflow = true;
     return r;
 }
@@ -190,8 +190,8 @@ pragma(inline, true)
 int subs(int x, int y, ref bool overflow)
 {
     const r = x - y;
-    if (x._differentSign(y) &  // x and y has different sign
-        x._differentSign(r))   // result and x has different sign
+    if (x._differentSign(y) &&   // x and y has different sign
+        x._differentSign(r))     // result and x has different sign
         overflow = true;
     return r;
 }
@@ -219,8 +219,8 @@ pragma(inline, true)
 long subs(long x, long y, ref bool overflow)
 {
     const r = x - y;
-    if (x._differentSign(y) &  // x and y has different sign
-        x._differentSign(r))   // result and x has different sign
+    if (x._differentSign(y) &&   // x and y has different sign
+        x._differentSign(r))     // result and x has different sign
         overflow = true;
     return r;
 }
@@ -418,9 +418,9 @@ pragma(inline, true)
 long muls(long x, long y, ref bool overflow)
 {
     const r = x * y;
-    if (~x._differentSign(y) &  // x and y has the same sign
-         r._signBits ||         // and result is negative (covers min * -1)
-        x && r / x != y)        // or perform simple check for x != 0
+    if (!x._differentSign(y) &&  // x and y has the same sign
+         r < 0 ||                // and result is negative (covers min * -1)
+        x && r / x != y)         // or perform simple check for x != 0
         overflow = true;
     return r;
 }
@@ -525,15 +525,8 @@ unittest
 private:
 
 pragma(inline, true)
-@property size_t _signBits(T)(in T n)
+bool _differentSign(T)(in T a, in T b)
 if(is(T == int) || is(T == long))
 {
-    return cast(size_t) (n >> T.sizeof * 8 - 1);
-}
-
-pragma(inline, true)
-size_t _differentSign(T)(in T a, in T b)
-if(is(T == int) || is(T == long))
-{
-    return (a ^ b)._signBits;
+    return (a < 0) != (b < 0);
 }
