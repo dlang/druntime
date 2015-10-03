@@ -203,8 +203,17 @@ struct netent {
 struct SERVENT {
         char*  s_name;
         char** s_aliases;
-        short  s_port;
-        char*  s_proto;
+
+        version (Win64)
+        {
+            char*  s_proto;
+            short  s_port;
+        }
+        else version (Win32)
+        {
+            short  s_port;
+            char*  s_proto;
+        }
 }
 alias SERVENT* PSERVENT, LPSERVENT;
 
