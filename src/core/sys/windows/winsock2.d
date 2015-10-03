@@ -42,7 +42,8 @@ import core.sys.windows.basetyps;
 
 alias char u_char;
 alias ushort u_short;
-alias uint u_int, u_long, SOCKET;
+alias uint u_int, u_long;
+alias size_t SOCKET;
 
 const size_t FD_SETSIZE = 64;
 
