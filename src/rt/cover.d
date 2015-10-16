@@ -195,7 +195,7 @@ shared static ~this()
         uint nyes;
 
         // rewind for overwriting
-        fseek(flst, 0, SEEK_SET);
+        fseek(flst, 0, core.stdc.stdio.SEEK_SET);
 
         foreach (i, n; c.data[0 .. min($, lines.length)])
         {
@@ -414,7 +414,7 @@ void lockFile(int fd)
 
 bool readFile(FILE* file, ref char[] buf)
 {
-    if (fseek(file, 0, SEEK_END) != 0)
+    if (fseek(file, 0, core.stdc.stdio.SEEK_END) != 0)
         assert(0, "fseek failed");
     immutable len = ftell(file);
     if (len == -1)
@@ -423,7 +423,7 @@ bool readFile(FILE* file, ref char[] buf)
         return false;
 
     buf.length = len;
-    fseek(file, 0, SEEK_SET);
+    fseek(file, 0, core.stdc.stdio.SEEK_SET);
     if (fread(buf.ptr, 1, buf.length, file) != buf.length)
         assert(0, "fread failed");
     if (fgetc(file) != EOF)

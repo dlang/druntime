@@ -10,6 +10,7 @@
  */
 
 module core.sys.windows.dbghelp;
+nothrow @nogc:
 
 version (Windows):
 
@@ -17,7 +18,6 @@ import core.sys.windows.windows;
 
 alias CHAR TCHAR;
 
-/*
 enum ADDRESS_MODE : DWORD
 {
     AddrMode1616 = 0,
@@ -25,7 +25,7 @@ enum ADDRESS_MODE : DWORD
     AddrModeReal = 2,
     AddrModeFlat = 3,
 }
-*/
+
 enum : DWORD
 {
     SYMOPT_DEFERRED_LOAD        = 0x00000004,
@@ -47,7 +47,7 @@ struct GUID
     ushort   Data3;
     ubyte[8] Data4;
 }
-/+
+
 struct ADDRESS64
 {
     DWORD64      Offset;
@@ -82,13 +82,6 @@ struct STACKFRAME64
     BOOL       Virtual;
     DWORD64[3] Reserved;
     KDHELP64   KdHelp;
-}
-+/
-enum : DWORD
-{
-    IMAGE_FILE_MACHINE_I386  = 0x014c,
-    IMGAE_FILE_MACHINE_IA64  = 0x0200,
-    IMAGE_FILE_MACHINE_AMD64 = 0x8664,
 }
 
 struct IMAGEHLP_LINE64
@@ -224,6 +217,7 @@ struct DbgHelp
     SymRegisterCallback64Func SymRegisterCallback64;
     ImagehlpApiVersionFunc   ImagehlpApiVersion;
 
+    @nogc nothrow
     static DbgHelp* get()
     {
         if( sm_hndl != sm_hndl.init )

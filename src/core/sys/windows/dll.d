@@ -10,6 +10,7 @@
  */
 
 module core.sys.windows.dll;
+version(Windows):
 
 version( Windows )
 {
