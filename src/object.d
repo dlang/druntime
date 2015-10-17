@@ -1538,7 +1538,20 @@ class Throwable : Object
         string toString() const;
     }
 
-    string      msg;    /// A message describing the error.
+    private string _msg;    // msg cache
+
+    /// A message describing the error.
+    /// This property can be overridden in subclasess to generate the message
+    /// lazily.
+    /// By default, it returns a string field, which can be set from the
+    /// constructor or this property's setter.
+    @property string msg() const pure @safe nothrow { return _msg; }
+
+    /// Set the message describing this error.
+    /// Provided for backwards compatibility - new code should override this
+    /// property instead.
+    final @property string msg(string value) @safe pure nothrow @nogc
+    { return _msg = value; }
 
     /**
      * The _file name and line number of the D source code corresponding with
