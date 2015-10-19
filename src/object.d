@@ -1760,15 +1760,17 @@ unittest
  *
  * Example:
  * ---
- * class MeaCulpa: Exception {
+ * class MeaCulpa: Exception
+ * {
  *     mixin StandardExceptionConstructor;
  * }
  * assertThrown!MeaCulpa(enforce!MeaCulpa(false));
  *
  * try throw new MeaCulpa;
- * catch (MeaCulpa e) {
+ * catch (MeaCulpa e)
+ * {
  *     assert(e.file == __FILE__);
- *     assert(e.line == __LINE__ - 3);
+ *     assert(e.line == __LINE__ - 4);
  * }
  * ---
  *
@@ -1787,15 +1789,18 @@ unittest
 {
     import std.exception;
 
-    class MeaCulpa: Exception {
+    class MeaCulpa: Exception
+    {
         mixin StandardExceptionConstructor;
     }
     assertThrown!MeaCulpa(enforce!MeaCulpa(false));
 
     try throw new MeaCulpa;
-    catch (MeaCulpa e) {
+    catch (MeaCulpa e)
+    {
         assert(e.file == __FILE__);
-        assert(e.line == __LINE__ - 3);
+        assert(e.line == __LINE__ - 4);
+    }
 }
 
 
