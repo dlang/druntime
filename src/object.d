@@ -1751,6 +1751,54 @@ unittest
 }
 
 
+/**
+ * Convenience mixin for trivially sub-classing exceptions
+ *
+ * Even trivially sub-classing an exception involves writing boilerplate code
+ * for the constructor to correctly pass in the source file and line number the
+ * exception was thrown from. This mixin makes it easier.
+ *
+ * Example:
+ * ---
+ * class MeaCulpa: Exception {
+ *     mixin StandardExceptionConstructor;
+ * }
+ * assertThrown!MeaCulpa(enforce!MeaCulpa(false));
+ *
+ * try throw new MeaCulpa;
+ * catch (MeaCulpa e) {
+ *     assert(e.file == __FILE__);
+ *     assert(e.line == __LINE__ - 3);
+ * }
+ * ---
+ *
+ * Note that if you want to pass in special arguments to your exception, you
+ * obviously can't use this mixin and have to write the constructor manually.
+ */
+mixin template StandardExceptionConstructor()
+{
+    this(string msg, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(msg, file, line);
+    }
+}
+
+unittest
+{
+    import std.exception;
+
+    class MeaCulpa: Exception {
+        mixin StandardExceptionConstructor;
+    }
+    assertThrown!MeaCulpa(enforce!MeaCulpa(false));
+
+    try throw new MeaCulpa;
+    catch (MeaCulpa e) {
+        assert(e.file == __FILE__);
+        assert(e.line == __LINE__ - 3);
+}
+
+
 extern (C)
 {
     // from druntime/src/rt/aaA.d
