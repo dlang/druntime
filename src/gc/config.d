@@ -61,7 +61,7 @@ struct Config
         string s = "GC options are specified as white space separated assignments:
     disable:0|1    - start disabled (%d)
     profile:0|1|2  - enable profiling with summary when terminating program (%d)
-    precise:0|1    - enable precise scanning (not implemented yet)
+    precise:0|1    - enable precise heap scanning (%d)
     concurrent:0|1 - enable concurrent collection (not implemented yet)
 
     initReserve:N  - initial memory to reserve in MB (%lld)
@@ -70,7 +70,7 @@ struct Config
     incPoolSize:N  - pool size increment MB (%lld)
     heapSizeFactor:N - targeted heap size to used memory ratio (%g)
 ";
-        printf(s.ptr, disable, profile, cast(long)initReserve, cast(long)minPoolSize,
+        printf(s.ptr, disable, profile, precise, cast(long)initReserve, cast(long)minPoolSize,
                cast(long)maxPoolSize, cast(long)incPoolSize, heapSizeFactor);
     }
 
