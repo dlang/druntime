@@ -144,7 +144,7 @@ struct GCBits
         }
     }
 
-    pragma(inline,true)
+    //pragma(inline,true)
     void copyRangeZ(size_t target, size_t len, const(wordtype)* source) nothrow
     {
         mixin RangeVars!();
@@ -258,7 +258,7 @@ struct GCBits
         }
     }
 
-    pragma(inline,true)
+    //pragma(inline,true)
     void setRange(size_t target, size_t len) nothrow
     {
         version(bitwise)
@@ -273,7 +273,7 @@ struct GCBits
         }
     }
 
-    pragma(inline,true)
+    //pragma(inline,true)
     void setRangeZ(size_t target, size_t len) nothrow
     {
         mixin RangeVars!();
@@ -292,7 +292,7 @@ struct GCBits
         }
     }
 
-    pragma(inline,true)
+    //pragma(inline,true)
     void clrRange(size_t target, size_t len) nothrow
     {
         version(bitwise)
@@ -307,7 +307,7 @@ struct GCBits
         }
     }
 
-    pragma(inline,true)
+    //pragma(inline,true)
     void clrRangeZ(size_t target, size_t len) nothrow
     {
         mixin RangeVars!();
