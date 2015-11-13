@@ -2636,7 +2636,7 @@ extern(C) void _d_initMonoTime()
         mach_timebase_info_data_t info;
         if(mach_timebase_info(&info) == 0)
         {
-            long ticksPerSecond = 1_000_000_000L * info.numer / info.denom;
+            long ticksPerSecond = (1_000_000_000L * info.denom) / info.numer;
             foreach(i, typeStr; __traits(allMembers, ClockType))
             {
                 // ensure we are only writing immutable data once
