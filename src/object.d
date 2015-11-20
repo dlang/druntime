@@ -762,6 +762,12 @@ class TypeInfo_Delegate : TypeInfo
         return c && this.deco == c.deco;
     }
 
+    override bool equals(in void* p1, in void* p2) const
+    {
+        alias dg = void delegate (int);
+        return *cast(dg *)p1 == *cast(dg *)p2;
+    }
+
     // BUG: need to add the rest of the functions
 
     override @property size_t tsize() nothrow pure const
@@ -933,6 +939,23 @@ class TypeInfo_Class : TypeInfo
 }
 
 alias TypeInfo_Class ClassInfo;
+
+
+unittest
+{
+    // Bugzilla 15367
+
+    void a () {}
+    void b () {}
+
+    auto array  = [&b, &a];
+    auto array2 = [&b, &a];
+
+    for (auto i = 0; i < 2; i++)
+        assert(array[i] == array2[i]);
+
+    assert(array ==  array2);
+}
 
 unittest
 {
