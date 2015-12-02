@@ -62,6 +62,10 @@ MANIFEST=\
 	src\core\stdc\wchar_.d \
 	src\core\stdc\wctype.d \
 	\
+	src\core\stdcpp\allocator.d \
+	src\core\stdcpp\string.d \
+	src\core\stdcpp\vector.d \
+	\
 	src\core\sync\barrier.d \
 	src\core\sync\condition.d \
 	src\core\sync\config.d \

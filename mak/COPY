@@ -43,6 +43,10 @@ COPY=\
 	$(IMPDIR)\core\stdc\wchar_.d \
 	$(IMPDIR)\core\stdc\wctype.d \
 	\
+	$(IMPDIR)\core\stdcpp\allocator.d \
+	$(IMPDIR)\core\stdcpp\string.d \
+	$(IMPDIR)\core\stdcpp\vector.d \
+	\
 	$(IMPDIR)\core\sys\freebsd\dlfcn.d \
 	$(IMPDIR)\core\sys\freebsd\execinfo.d \
 	\
