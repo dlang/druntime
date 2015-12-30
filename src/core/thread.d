@@ -122,12 +122,12 @@ private
     version (DigitalMars)
     {
         version (Windows)
-            alias _d_eh_swapContext swapContext;
+            alias _d_eh_swapContext _swapContext;
         else
         {
             extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow;
 
-            void* swapContext(void* newContext) nothrow
+            void* _swapContext(void* newContext) nothrow
             {
                 /* Detect at runtime which scheme is being used.
                  * Eventually, determine it statically.
@@ -161,7 +161,7 @@ private
         }
     }
     else
-        alias _d_eh_swapContext swapContext;
+        alias _d_eh_swapContext _swapContext;
 }
 
 
@@ -1505,7 +1505,7 @@ private:
     }
     body
     {
-        m_curr.ehContext = swapContext(c.ehContext);
+        m_curr.ehContext = _swapContext(c.ehContext);
         c.within = m_curr;
         m_curr = c;
     }
@@ -1520,7 +1520,7 @@ private:
     {
         Context* c = m_curr;
         m_curr = c.within;
-        c.ehContext = swapContext(m_curr.ehContext);
+        c.ehContext = _swapContext(m_curr.ehContext);
         c.within = null;
     }
 
