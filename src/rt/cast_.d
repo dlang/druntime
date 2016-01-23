@@ -53,7 +53,11 @@ void* _d_interface_cast(void* p, ClassInfo c)
     if (!p)
         return null;
 
-    Interface* pi = **cast(Interface***) p;
+    Interface* pi;
+    if (auto pi_ = *cast(Interface***)p)
+        pi = *pi_;
+    if (!pi)
+        return null;
 
     debug(cast_) printf("\tpi.offset = %d\n", pi.offset);
     return _d_dynamic_cast(cast(Object)(p - pi.offset), c);
