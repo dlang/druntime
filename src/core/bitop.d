@@ -72,20 +72,18 @@ unittest
  */
 int bsf(size_t v) pure;
 
+version(CoreDdoc)
+{
 /// ditto
+int bsf(ulong v) pure;
+}
+else version(D_LP64) { } else
 int bsf(ulong v) pure
 {
-    static if (size_t.sizeof == ulong.sizeof)
-        return bsf(cast(size_t) v);
-    else static if (size_t.sizeof == uint.sizeof)
-    {
-        const sv = Split64(v);
-        return (sv.lo == 0)?
-            bsf(sv.hi) + 32 :
-            bsf(sv.lo);
-    }
-    else
-        static assert(false);
+    const sv = Split64(v);
+    return (sv.lo == 0)?
+        bsf(sv.hi) + 32 :
+        bsf(sv.lo);
 }
 
 ///
@@ -112,20 +110,18 @@ unittest
  */
 int bsr(size_t v) pure;
 
+version(CoreDdoc)
+{
 /// ditto
+int bsr(ulong v) pure;
+}
+else version(D_LP64) { } else
 int bsr(ulong v) pure
 {
-    static if (size_t.sizeof == ulong.sizeof)
-        return bsr(cast(size_t) v);
-    else static if (size_t.sizeof == uint.sizeof)
-    {
-        const sv = Split64(v);
-        return (sv.hi == 0)?
-            bsr(sv.lo) :
-            bsr(sv.hi) + 32;
-    }
-    else
-        static assert(false);
+    const sv = Split64(v);
+    return (sv.hi == 0)?
+        bsr(sv.lo) :
+        bsr(sv.hi) + 32;
 }
 
 ///
