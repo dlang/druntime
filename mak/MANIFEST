@@ -344,17 +344,12 @@ MANIFEST=\
 	src\core\sys\windows\winperf.d \
 	src\core\sys\windows\winreg.d \
 	src\core\sys\windows\winsock2.d \
-<<<<<<< HEAD
-	src\core\sys\windows\stdio_msvc12.d \
-	src\core\sys\windows\stdio_msvc14.d \
-=======
 	src\core\sys\windows\winspool.d \
 	src\core\sys\windows\winsvc.d \
 	src\core\sys\windows\winuser.d \
 	src\core\sys\windows\winver.d \
 	src\core\sys\windows\wtsapi32.d \
 	src\core\sys\windows\wtypes.d \
->>>>>>> v2.070.0
 	\
 	src\gc\bits.d \
 	src\gc\config.d \
