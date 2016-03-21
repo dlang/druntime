@@ -75,7 +75,8 @@ int bsf(size_t v) pure;
 version(CoreDdoc)
 {
 /// ditto
-int bsf(ulong v) pure;
+int bsf(ulong v) pure
+{ assert(0); } // Workaround dmd @@@BUG15818@@@
 }
 else version(D_LP64) { } else
 int bsf(ulong v) pure
@@ -113,7 +114,8 @@ int bsr(size_t v) pure;
 version(CoreDdoc)
 {
 /// ditto
-int bsr(ulong v) pure;
+int bsr(ulong v) pure
+{ assert(0); } // Workaround dmd @@@BUG15818@@@
 }
 else version(D_LP64) { } else
 int bsr(ulong v) pure
