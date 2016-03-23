@@ -2054,7 +2054,6 @@ struct Gcx
 
                         if (low > high)
                             continue Lnext;
-                        }
                     }
                 }
                 else
@@ -2063,65 +2062,64 @@ struct Gcx
                 }
 
                 size_t offset = cast(size_t)(p - pool.baseAddr);
-                size_t biti = void;
                 size_t pn = offset / PAGESIZE;
                 Bins   bin = cast(Bins)pool.pagetable[pn];
-                void* base = void;
 
-                //debug(PRINTF) printf("\t\tfound pool %p, base=%p, pn = %zd, bin = %d, biti = x%x\n", pool, pool.baseAddr, pn, bin, biti);
+                //debug(PRINTF) printf("\t\tfound pool %p, base=%p, pn = %zd, bin = %d\n", pool, pool.baseAddr, pn, bin);
 
                 // Adjust bit to be at start of allocated memory block
                 if (bin < B_PAGE)
                 {
-                    // We don't care abou setting pointsToBase correctly
-                    // because it's ignored for small object pools anyhow.
-                    auto offsetBase = offset & notbinsize[bin];
-                    biti = offsetBase >> pool.shiftBy;
-                    base = pool.baseAddr + offsetBase;
-                    //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
+                    // no NO_INTERIOR support for small object pages
+                    auto spool = (cast(SmallObjectPool*) pool);
+                    ushort offsetPage = getOffsetPage(offset, bin);
+                    ubyte* pbits = spool.getBits(pn, bin, offsetPage);
 
-                    if (!pool.mark.set(biti) && !pool.noscan.test(biti)) {
-                        stack[stackPos++] = Range(base, base + binsize[bin]);
-                        if (stackPos == stack.length)
-                            break;
+                    if (!(*pbits & spool.Bits.MARK))
+                    {
+                        *pbits |= spool.Bits.MARK;
+                        if (!(*pbits & spool.Bits.NO_SCAN))
+                        {
+                            void* base = cast(void*)(pagebase + offsetPage);
+                            stack[stackPos++] = Range(base, base + getBinSize(bin));
+                            if (stackPos == stack.length)
+                                break;
                         }
                     }
                 }
                 else if (bin == B_PAGE)
                 {
-                    auto offsetBase = offset & notbinsize[bin];
-                    base = pool.baseAddr + offsetBase;
-                    biti = offsetBase >> pool.shiftBy;
-                    //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
-
-                    pcache = cast(size_t)p & ~cast(size_t)(PAGESIZE-1);
+                    auto lpool = (cast(LargeObjectPool*) pool);
+                    void* base = cast(void*)pagebase;
+                    pcache = pagebase;
 
                     // For the NO_INTERIOR attribute.  This tracks whether
                     // the pointer is an interior pointer or points to the
                     // base address of a block.
                     bool pointsToBase = (base == sentinel_sub(p));
-                    if(!pointsToBase && pool.nointerior.nbits && pool.nointerior.test(biti))
+                    if(!pointsToBase && lpool.nointerior.nbits && lpool.nointerior.test(pn))
                         continue;
 
-                    if (!pool.mark.set(biti) && !pool.noscan.test(biti)) {
-                        stack[stackPos++] = Range(base, base + pool.bPageOffsets[pn] * PAGESIZE);
+                    if (!lpool.mark.set(pn) && !lpool.noscan.test(pn))
+                    {
+                        stack[stackPos++] = Range(base, base + lpool.bPageOffsets[pn] * PAGESIZE);
                         if (stackPos == stack.length)
                             break;
-                        }
                     }
                 }
                 else if (bin == B_PAGEPLUS)
                 {
-                    pn -= pool.bPageOffsets[pn];
-                    base = pool.baseAddr + (pn * PAGESIZE);
-                    biti = pn * (PAGESIZE >> pool.shiftBy);
+                    auto lpool = (cast(LargeObjectPool*) pool);
+                    pn -= lpool.bPageOffsets[pn];
 
-                    pcache = cast(size_t)p & ~cast(size_t)(PAGESIZE-1);
-                    if(pool.nointerior.nbits && pool.nointerior.test(biti))
+                    pcache = pagebase;
+                    if(lpool.nointerior.nbits && lpool.nointerior.test(pn))
                         continue;
 
-                    if (!pool.mark.set(biti) && !pool.noscan.test(biti)) {
-                        stack[stackPos++] = Range(base, base + pool.bPageOffsets[pn] * PAGESIZE);
+                    if (!lpool.mark.set(pn) && !lpool.noscan.test(pn))
+                    {
+                        void* base = pool.baseAddr + (pn * PAGESIZE);
+                        stack[stackPos++] = Range(base, base + lpool.bPageOffsets[pn] * PAGESIZE);
                         if (stackPos == stack.length)
                             break;
                     }
@@ -2742,7 +2740,7 @@ struct LargeObjectPool
 
         bPageOffsets = cast(uint*)cstdlib.malloc(npages * uint.sizeof);
         if (!bPageOffsets)
-            onOutOfMemoryError();
+            onOutOfMemoryErrorNoGC();
         largestFree = npages;
     }
 
