@@ -1122,10 +1122,7 @@ struct GC
         if (!p)
             return false;
 
-        mixin doLock!();
-        bool rc = emplaceNoSync(p, len, ti);
-        mixin doUnlock!(emplaceTime, numEmplaces);
-        return rc;
+        return runLocked!(emplaceNoSync, emplaceTime, numEmplaces)(p, len, ti);
     }
 
 
@@ -2132,9 +2129,6 @@ struct Gcx
         size_t stackPos;
         ScanRange[FANOUT_LIMIT] stack = void;
 
-        auto minAddr = pooltable.minAddr;
-        auto maxAddr = pooltable.maxAddr;
-
         static if (precise)
             Pool* p1pool = null; // always starting from a non-heap root
         else
@@ -2195,12 +2189,12 @@ struct Gcx
                     // We don't care abou setting pointsToBase correctly
                     // because it's ignored for small object pools anyhow.
                     auto offsetBase = offset & notbinsize[bin];
-                    biti = offsetBase >> pool.shiftBy;
+                    biti = offsetBase >> pool.shiftBySmall;
                     base = pool.baseAddr + offsetBase;
                     //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
 
                     if (!pool.mark.set(biti) && !pool.noscan.test(biti)) {
-                        stack[stackPos++] = Range(base, base + binsize[bin]);
+                        stack[stackPos++] = ScanRange(base, base + binsize[bin], pool);
                         if (stackPos == stack.length)
                             break;
                     }
@@ -2209,7 +2203,7 @@ struct Gcx
                 {
                     auto offsetBase = offset & notbinsize[bin];
                     base = pool.baseAddr + offsetBase;
-                    biti = offsetBase >> pool.shiftBy;
+                    biti = offsetBase >> pool.shiftByLarge;
                     //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
 
                     pcache = cast(size_t)p & ~cast(size_t)(PAGESIZE-1);
@@ -2222,7 +2216,7 @@ struct Gcx
                         continue;
 
                     if (!pool.mark.set(biti) && !pool.noscan.test(biti)) {
-                        stack[stackPos++] = Range(base, base + pool.bPageOffsets[pn] * PAGESIZE);
+                        stack[stackPos++] = ScanRange(base, base + pool.bPageOffsets[pn] * PAGESIZE, pool);
                         if (stackPos == stack.length)
                             break;
                     }
@@ -2231,14 +2225,14 @@ struct Gcx
                 {
                     pn -= pool.bPageOffsets[pn];
                     base = pool.baseAddr + (pn * PAGESIZE);
-                    biti = pn * (PAGESIZE >> pool.shiftBy);
+                    biti = pn * (PAGESIZE >> pool.shiftByLarge);
 
                     pcache = cast(size_t)p & ~cast(size_t)(PAGESIZE-1);
                     if(pool.nointerior.nbits && pool.nointerior.test(biti))
                         continue;
 
                     if (!pool.mark.set(biti) && !pool.noscan.test(biti)) {
-                        stack[stackPos++] = Range(base, base + pool.bPageOffsets[pn] * PAGESIZE);
+                        stack[stackPos++] = ScanRange(base, base + pool.bPageOffsets[pn] * PAGESIZE, pool);
                         if (stackPos == stack.length)
                             break;
                     }

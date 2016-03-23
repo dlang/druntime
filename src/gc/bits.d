@@ -66,7 +66,7 @@ struct GCBits
         return core.bitop.bt(data, i);
     }
 
-    pragma(inline,true)
+    //pragma(inline,true)
     int set(size_t i) nothrow
     in
     {
