@@ -1618,6 +1618,7 @@ class Throwable : Object
         int opApply(scope int delegate(ref const(char[]))) const;
         int opApply(scope int delegate(ref size_t, ref const(char[]))) const;
         string toString() const;
+        @property const(void*)[] frames() const;
     }
 
     string      msg;    /// A message describing the error.

@@ -701,6 +701,7 @@ package class SuppressTraceInfo : Throwable.TraceInfo
     override int opApply(scope int delegate(ref const(char[]))) const { return 0; }
     override int opApply(scope int delegate(ref size_t, ref const(char[]))) const { return 0; }
     override string toString() const { return null; }
+    override @property const(void*)[] frames() const {return null;};
     static SuppressTraceInfo instance() @trusted @nogc pure nothrow
     {
         static immutable SuppressTraceInfo it = new SuppressTraceInfo;

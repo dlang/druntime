@@ -66,6 +66,10 @@ public:
             m_trace = trace(skip, context);
     }
 
+    @property const(void*)[] frames() const {
+        return cast(const(void*)[])m_trace[];
+    }
+
     int opApply( scope int delegate(ref const(char[])) dg ) const
     {
         return opApply( (ref size_t, ref const(char[]) buf)
