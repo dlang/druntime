@@ -1858,7 +1858,7 @@ extern (C)
     // alias _dg2_t = extern(D) int delegate(void*, void*);
     // int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    private struct AARange { void* impl; size_t idx; }
+    private struct AARange { void* impl; size_t idx; size_t length; }
     AARange _aaRange(void* aa) pure nothrow @nogc;
     bool _aaRangeEmpty(AARange r) pure nothrow @nogc;
     void* _aaRangeFrontKey(AARange r) pure nothrow @nogc;
@@ -1972,6 +1972,7 @@ auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc
         @property ref front() { return *cast(substInout!K*)_aaRangeFrontKey(r); }
         void popFront() { _aaRangePopFront(r); }
         @property Result save() { return this; }
+        @property size_t length() { return r.length; }
     }
 
     return Result(_aaRange(cast(void*)aa));
@@ -1995,6 +1996,7 @@ auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc
         @property ref front() { return *cast(substInout!V*)_aaRangeFrontValue(r); }
         void popFront() { _aaRangePopFront(r); }
         @property Result save() { return this; }
+        @property size_t length() { return r.length; }
     }
 
     return Result(_aaRange(cast(void*)aa));
@@ -2032,6 +2034,7 @@ auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc
         }
         void popFront() { _aaRangePopFront(r); }
         @property Result save() { return this; }
+        @property size_t length() { return r.length; }
     }
 
     return Result(_aaRange(cast(void*)aa));
