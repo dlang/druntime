@@ -35,7 +35,6 @@ target : import copydir copy $(DRUNTIME) $(GCSTUB)
 $(mak\COPY)
 $(mak\DOCS)
 $(mak\IMPORTS)
-$(mak\MANIFEST)
 $(mak\SRCS)
 
 # NOTE: trace.d and cover.d are not necessary for a successful build
@@ -207,6 +206,7 @@ $(IMPDIR)\core\sync\semaphore.di : src\core\sync\semaphore.d
 
 copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\stdc
+	mkdir $(IMPDIR)\core\stdcpp
 	mkdir $(IMPDIR)\core\internal
 	mkdir $(IMPDIR)\core\sys\freebsd\sys
 	mkdir $(IMPDIR)\core\sys\linux\sys
@@ -276,6 +276,9 @@ $(IMPDIR)\core\internal\convert.d : src\core\internal\convert.d
 $(IMPDIR)\core\internal\hash.d : src\core\internal\hash.d
 	copy $** $@
 
+$(IMPDIR)\core\internal\spinlock.d : src\core\internal\spinlock.d
+	copy $** $@
+
 $(IMPDIR)\core\internal\string.d : src\core\internal\string.d
 	copy $** $@
 
@@ -343,6 +346,12 @@ $(IMPDIR)\core\stdc\wchar_.d : src\core\stdc\wchar_.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\wctype.d : src\core\stdc\wctype.d
+	copy $** $@
+
+$(IMPDIR)\core\stdcpp\exception.d : src\core\stdcpp\exception.d
+	copy $** $@
+
+$(IMPDIR)\core\stdcpp\typeinfo.d : src\core\stdcpp\typeinfo.d
 	copy $** $@
 
 $(IMPDIR)\core\sys\freebsd\dlfcn.d : src\core\sys\freebsd\dlfcn.d
@@ -1181,7 +1190,9 @@ zip: druntime.zip
 
 druntime.zip: import
 	del druntime.zip
-	zip32 -T -ur druntime $(MANIFEST) src\rt\minit.obj
+	git ls-tree --name-only -r HEAD >MANIFEST.tmp
+	zip32 -T -ur druntime @MANIFEST.tmp
+	del MANIFEST.tmp
 
 install: druntime.zip
 	unzip -o druntime.zip -d \dmd2\src\druntime
