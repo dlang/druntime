@@ -36,6 +36,7 @@ extern (C)
     Throwable.TraceInfo _d_traceContext(void* ptr = null);
     int _d_isbaseof(ClassInfo oc, ClassInfo c);
     void _d_createTrace(Object o, void* context);
+    extern __gshared void function(Object o) _d_uncaughtException;
 }
 
 alias int function() fp_t;   // function pointer in ambient memory model
@@ -491,6 +492,7 @@ extern (C) void _d_throwc(Object h)
             }
         }
     }
+    _d_uncaughtException(h);
     terminate();
 }
 

@@ -22,6 +22,7 @@ extern (C)
 {
     int _d_isbaseof(ClassInfo b, ClassInfo c);
     void _d_createTrace(Object o, void* context);
+    extern __gshared void function(Object o) _d_uncaughtException;
 }
 
 /* High 4 bytes = vendor, low 4 bytes = language
@@ -222,6 +223,7 @@ extern(C) void _d_throwdwarf(Throwable o)
              * since otherwise everything is enclosed by a top-level
              * try/catch.
              */
+            _d_uncaughtException(o);
             fprintf(stderr, "uncaught exception\n");
             _d_print_throwable(o);
             abort();
