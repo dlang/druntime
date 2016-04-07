@@ -3514,6 +3514,8 @@ shared static this()
 
 private
 {
+    extern extern (C) __gshared bool rt_trapExceptions;
+
     extern (C) void fiber_entryPoint()
     {
         Fiber   obj = Fiber.getThis();
@@ -3524,13 +3526,21 @@ private
         obj.m_ctxt.tstack = obj.m_ctxt.bstack;
         obj.m_state = Fiber.State.EXEC;
 
-        try
+
+        if (rt_trapExceptions)
+        {
+            try
+            {
+                obj.run();
+            }
+            catch( Throwable t )
+            {
+                obj.m_unhandled = t;
+            }
+        }
+        else
         {
             obj.run();
-        }
-        catch( Throwable t )
-        {
-            obj.m_unhandled = t;
         }
 
         static if( __traits( compiles, ucontext_t ) )
