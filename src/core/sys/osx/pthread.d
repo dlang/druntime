@@ -16,6 +16,7 @@ module core.sys.osx.pthread;
 version (OSX):
 extern (C):
 nothrow:
+@nogc:
 
 public import core.sys.posix.pthread;
 public import core.sys.osx.mach.port;

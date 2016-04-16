@@ -24,6 +24,7 @@ import core.stdc.stdint;
 version (Posix):
 extern (C)
 nothrow:
+@nogc:
 
 //
 // Required
