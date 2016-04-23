@@ -1254,7 +1254,7 @@ clean:
 	del $(DRUNTIME) $(OBJS_TO_DELETE) $(GCSTUB)
 	rmdir /S /Q $(DOCDIR) $(IMPDIR)
 
-auto-tester-build: target
+auto-tester-build: target doc
 
 auto-tester-test: unittest
 
