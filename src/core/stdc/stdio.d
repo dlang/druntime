@@ -416,15 +416,15 @@ else version( Solaris )
         ///
         struct _iobuf 
         {
-            char*		_ptr;  		/* next character from/to here in buffer */
-            char*		_base; 		/* the buffer */
-            char*		_end;  		/* the end of the buffer */
-            size_t  	_cnt;   	/* number of available characters in buffer */
-            int     	_file;  	/* UNIX System file descriptor */
-            int     	_flag;  	/* the state of the stream */
-            ubyte[24]	_lock;		//rmutex_t    _lock;  	/* lock for this structure */
-            mbstate_t   _state; 	/* mbstate_t */
-            ubyte[32]    __fill; 	/* filler to bring size to 128 bytes */
+            char*      _ptr;   /* next character from/to here in buffer */
+            char*      _base;  /* the buffer */
+            char*      _end;   /* the end of the buffer */
+            size_t     _cnt;   /* number of available characters in buffer */
+            int        _file;  /* UNIX System file descriptor */
+            int        _flag;  /* the state of the stream */
+            ubyte[24]  _lock;  //rmutex_t   _lock; /* lock for this structure */
+            mbstate_t  _state; /* mbstate_t */
+            ubyte[32]  __fill; /* filler to bring size to 128 bytes */
         }
     }
     else

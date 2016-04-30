@@ -47,11 +47,11 @@ else version( Solaris )
     {
         version (D_LP64)
         {
-            long[4]	__filler;
+            long[4] __filler;
         }
         else
         {
-            int[6] 	__filler;
+            int[6] __filler;
         }
     }
 }
