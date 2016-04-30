@@ -175,7 +175,7 @@ else version ( FreeBSD )
         long        _mbstateL;
     }
 }
-else version (Solaris)
+else version( Solaris )
 {
     enum
     {
