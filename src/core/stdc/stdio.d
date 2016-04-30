@@ -414,7 +414,7 @@ else version( Solaris )
     version (D_LP64)
     {
         ///
-        struct _iobuf 
+        struct _iobuf
         {
             char*      _ptr;   /* next character from/to here in buffer */
             char*      _base;  /* the buffer */
