@@ -42,6 +42,7 @@ version( CRuntime_Glibc )
 }
 else version (Solaris)
 {
+	///
 	struct __mbstate_t
 	{
 		version (D_LP64)

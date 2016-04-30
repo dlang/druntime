@@ -405,17 +405,15 @@ else version (Solaris)
 {
 	import core.stdc.wchar_ : __mbstate_t;
 
+	///
 	alias mbstate_t = __mbstate_t;
 
     ///
     alias c_long fpos_t;
 
-    ///
-
 	version (D_LP64)
 	{
-
-
+		///
 		struct _iobuf 
 		{
 		    char*		_ptr;  		/* next character from/to here in buffer */
@@ -425,7 +423,7 @@ else version (Solaris)
 		    int     	_file;  	/* UNIX System file descriptor */
 		    int     	_flag;  	/* the state of the stream */
 
-			
+		
 		    ubyte[24]	_lock;		//rmutex_t    _lock;  	/* lock for this structure */
 		    mbstate_t   _state; 	/* mbstate_t */
 		    ubyte[32]    __fill; 	/* filler to bring size to 128 bytes */
@@ -433,6 +431,7 @@ else version (Solaris)
 	}
 	else
 	{
+		///
 		struct _iobuf
 		{
 		    char* _ptr;
@@ -441,11 +440,11 @@ else version (Solaris)
 		    char _flag;
 		    char _magic;
 		    ushort __flags; // __orientation:2
-		                    // __ionolock:1
-		                    // __seekable:1
-		                    // __extendedfd:1
-		                    // __xf_nocheck:1
-		                    // __filler:10
+					        // __ionolock:1
+					        // __seekable:1
+					        // __extendedfd:1
+					        // __xf_nocheck:1
+					        // __filler:10
 		}
 	}
 
