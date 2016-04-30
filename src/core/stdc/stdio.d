@@ -401,19 +401,19 @@ else version( FreeBSD )
     ///
     alias shared(__sFILE) FILE;
 }
-else version (Solaris)
+else version( Solaris )
 {
-	import core.stdc.wchar_ : __mbstate_t;
+    import core.stdc.wchar_ : __mbstate_t;
 
-	///
-	alias mbstate_t = __mbstate_t;
+    ///
+    alias mbstate_t = __mbstate_t;
 
     ///
     alias c_long fpos_t;
 
-	version (D_LP64)
-	{
-		///
+    version (D_LP64)
+    {
+        ///
 		struct _iobuf 
 		{
 		    char*		_ptr;  		/* next character from/to here in buffer */
@@ -672,7 +672,7 @@ else version( FreeBSD )
     ///
     alias __stderrp stderr;
 }
-else version (Solaris)
+else version( Solaris )
 {
     enum
     {
