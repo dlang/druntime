@@ -139,8 +139,7 @@ extern (C) string[] rt_args()
 // make arguments passed to main available for being filtered by runtime initializers
 extern(C) __gshared char[][] _d_main_args = null;
 
-// This variable is only ever set by a debugger on initialization so it should
-// be fine to leave it as __gshared.
+// This variable can be set by a debugger or using the rt config option noTrapExceptions
 extern (C) __gshared bool rt_trapExceptions = true;
 
 alias void delegate(Throwable) ExceptionHandler;
@@ -430,17 +429,15 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         args = argsCopy[0..j];
     }
 
-    bool trapExceptions = rt_trapExceptions;
-
     version (Windows)
     {
         if (IsDebuggerPresent())
-            trapExceptions = false;
+            rt_trapExceptions = false;
     }
 
     void tryExec(scope void delegate() dg)
     {
-        if (trapExceptions)
+        if (rt_trapExceptions)
         {
             try
             {
@@ -475,6 +472,13 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 
         if (!rt_term())
             result = (result == EXIT_SUCCESS) ? EXIT_FAILURE : result;
+    }
+
+    import rt.config : rt_configOption;
+
+    if (rt_configOption("noTrapExceptions") !is null)
+    {
+        rt_trapExceptions = false;
     }
 
     tryExec(&runAll);
