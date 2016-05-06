@@ -18,6 +18,7 @@ COPY=\
 	$(IMPDIR)\core\internal\abort.d \
 	$(IMPDIR)\core\internal\convert.d \
 	$(IMPDIR)\core\internal\hash.d \
+	$(IMPDIR)\core\internal\spinlock.d \
 	$(IMPDIR)\core\internal\string.d \
 	$(IMPDIR)\core\internal\traits.d \
 	\
@@ -42,6 +43,9 @@ COPY=\
 	$(IMPDIR)\core\stdc\time.d \
 	$(IMPDIR)\core\stdc\wchar_.d \
 	$(IMPDIR)\core\stdc\wctype.d \
+	\
+	$(IMPDIR)\core\stdcpp\typeinfo.d \
+	$(IMPDIR)\core\stdcpp\exception.d \
 	\
 	$(IMPDIR)\core\sys\freebsd\dlfcn.d \
 	$(IMPDIR)\core\sys\freebsd\execinfo.d \

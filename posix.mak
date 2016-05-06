@@ -3,7 +3,7 @@
 #    pkg_add -r gmake
 # and then run as gmake rather than make.
 
-QUIET:=@
+QUIET:=
 
 include osmodel.mak
 
@@ -80,9 +80,6 @@ DOCS:=$(subst \,/,$(DOCS))
 include mak/IMPORTS
 IMPORTS:=$(subst \,/,$(IMPORTS))
 
-include mak/MANIFEST
-MANIFEST:=$(subst \,/,$(MANIFEST))
-
 include mak/SRCS
 SRCS:=$(subst \,/,$(SRCS))
 
@@ -99,6 +96,9 @@ SHARED=$(if $(findstring $(OS),linux freebsd),1,)
 LINKDL=$(if $(findstring $(OS),linux),-L-ldl,)
 
 MAKEFILE = $(firstword $(MAKEFILE_LIST))
+
+# use timelimit to avoid deadlocks if available
+TIMELIMIT:=$(if $(shell which timelimit 2>/dev/null || true),timelimit -t 10 ,)
 
 ######################## All of'em ##############################
 
@@ -242,7 +242,7 @@ $(ROOT)/unittest/% : $(ROOT)/unittest/test_runner
 # make the file very old so it builds and runs again if it fails
 	@touch -t 197001230123 $@
 # run unittest in its own directory
-	$(QUIET)$(RUN) $< $(call moduleName,$*)
+	$(QUIET)$(TIMELIMIT)$< $(call moduleName,$*)
 # succeeded, render the file new again
 	@touch $@
 
@@ -251,12 +251,14 @@ test/shared/.run: $(DRUNTIMESO)
 
 test/%/.run: test/%/Makefile
 	$(QUIET)$(MAKE) -C test/$* MODEL=$(MODEL) OS=$(OS) DMD=$(abspath $(DMD)) BUILD=$(BUILD) \
-		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) QUIET=$(QUIET) LINKDL=$(LINKDL)
+		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) LINKDL=$(LINKDL) \
+		QUIET=$(QUIET) TIMELIMIT='$(TIMELIMIT)'
 
 #################### test for undesired white spaces ##########################
-CWS_MANIFEST = $(shell git ls-tree --name-only -r HEAD)
-CWS_MAKEFILES = $(filter mak/% %.mak %/Makefile,$(CWS_MANIFEST))
-NOT_MAKEFILES = $(filter-out $(CWS_MAKEFILES) src/rt/minit.obj test/%.exp,$(CWS_MANIFEST))
+MANIFEST = $(shell git ls-tree --name-only -r HEAD)
+
+CWS_MAKEFILES = $(filter mak/% %.mak %/Makefile,$(MANIFEST))
+NOT_MAKEFILES = $(filter-out $(CWS_MAKEFILES) src/rt/minit.obj test/%.exp,$(MANIFEST))
 GREP = grep
 
 checkwhitespace:
