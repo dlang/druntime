@@ -1908,7 +1908,7 @@ version( CoreDdoc )
 {
     /**
      * Instruct the thread module, when initialized, to use a different set of
-     * signals besides SIGUSR1 and SIGUSR2 for suspension and resumption of threads.
+     * signals besides `SIGRTMIN` and `SIGRTMIN + 1` for suspension and resumption of threads.
      * This function should be called at most once, prior to thread_init().
      * This function is Posix-only.
      */
@@ -1966,12 +1966,13 @@ extern (C) void thread_init()
     {
         if( suspendSignalNumber == 0 )
         {
-            suspendSignalNumber = SIGUSR1;
+            suspendSignalNumber = SIGRTMIN;
         }
 
         if( resumeSignalNumber == 0 )
         {
-            resumeSignalNumber = SIGUSR2;
+            resumeSignalNumber = SIGRTMIN + 1;
+            assert(resumeSignalNumber <= SIGRTMAX);
         }
 
         int         status;
