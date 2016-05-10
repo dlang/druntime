@@ -338,6 +338,16 @@ struct GC
         runLocked!(go, otherTime, numOthers)(gcx);
     }
 
+    void lock() nothrow @nogc
+    {
+        gcLock.lock();
+    }
+
+    void unlock() nothrow @nogc
+    {
+        gcLock.unlock();
+    }
+
     auto runLocked(alias func, Args...)(auto ref Args args)
     {
         debug(PROFILE_API) immutable tm = (GC.config.profile > 1 ? currTime.ticks : 0);
