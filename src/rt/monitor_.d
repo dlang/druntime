@@ -56,7 +56,7 @@ extern (C) void _d_monitordelete(Object h, bool det)
     }
 }
 
-extern (C) void _d_monitorenter(Object h)
+extern (C) void _d_monitorenter(Object h) nothrow
 {
     auto m = cast(Monitor*) ensureMonitor(h);
     auto i = m.impl;
@@ -66,7 +66,7 @@ extern (C) void _d_monitorenter(Object h)
         i.lock();
 }
 
-extern (C) void _d_monitorexit(Object h)
+extern (C) void _d_monitorexit(Object h) nothrow
 {
     auto m = cast(Monitor*) getMonitor(h);
     auto i = m.impl;
@@ -176,22 +176,22 @@ else version (Posix)
     alias Mutex = pthread_mutex_t;
     __gshared pthread_mutexattr_t gattr;
 
-    void initMutex(pthread_mutex_t* mtx)
+    void initMutex(pthread_mutex_t* mtx) nothrow @nogc
     {
         pthread_mutex_init(mtx, &gattr) && assert(0);
     }
 
-    void destroyMutex(pthread_mutex_t* mtx)
+    void destroyMutex(pthread_mutex_t* mtx) nothrow @nogc
     {
         pthread_mutex_destroy(mtx) && assert(0);
     }
 
-    void lockMutex(pthread_mutex_t* mtx)
+    void lockMutex(pthread_mutex_t* mtx) nothrow @nogc
     {
         pthread_mutex_lock(mtx) && assert(0);
     }
 
-    void unlockMutex(pthread_mutex_t* mtx)
+    void unlockMutex(pthread_mutex_t* mtx) nothrow @nogc
     {
         pthread_mutex_unlock(mtx) && assert(0);
     }
@@ -211,24 +211,24 @@ struct Monitor
 
 private:
 
-@property ref shared(Monitor*) monitor(Object h) pure nothrow
+@property ref shared(Monitor*) monitor(Object h) pure nothrow @nogc
 {
     return *cast(shared Monitor**)&h.__monitor;
 }
 
-private shared(Monitor)* getMonitor(Object h) pure
+private shared(Monitor)* getMonitor(Object h) pure nothrow @nogc
 {
     return atomicLoad!(MemoryOrder.acq)(h.monitor);
 }
 
-void setMonitor(Object h, shared(Monitor)* m) pure
+void setMonitor(Object h, shared(Monitor)* m) pure nothrow @nogc
 {
     atomicStore!(MemoryOrder.rel)(h.monitor, m);
 }
 
 __gshared Mutex gmtx;
 
-shared(Monitor)* ensureMonitor(Object h)
+shared(Monitor)* ensureMonitor(Object h) nothrow
 {
     if (auto m = getMonitor(h))
         return m;
