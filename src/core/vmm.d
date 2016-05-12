@@ -52,6 +52,36 @@ enum MemoryOptions : uint
     hugePages = 0b0001_0000
 };
 
+/**
+    System's virtual memory manager capabilities flags,
+    indicate whether an operation is supported natively.
+    If some operation is not supported native, the "next best thing" is done
+    such as e.g. madvising memory as "won't use" instead of forcibly decommiting pages on FreeBSD.
+*/
+enum MemoryCapability
+{
+    commit = 0x1,
+    decommit = 0x2,
+    reset = 0x4
+};
+
+version(CoreDdoc)
+    enum MemoryCapability memoryCapability;
+version(Windows)
+    enum MemoryCapability memoryCapability = 
+        MemoryCapability.commit | MemoryCapability.decommit | MemoryCapability.reset;
+else version(linux)
+    enum MemoryCapability memoryCapability = 
+        MemoryCapability.commit | MemoryCapability.decommit;
+else version(FreeBSD)
+    enum MemoryCapability memoryCapability = 
+        MemoryCapability.commit | MemoryCapability.reset;
+else version(OSX)
+    enum MemoryCapability memoryCapability = 
+        MemoryCapability.commit | MemoryCapability.reset;
+else
+    static assert(false, "Don't know the memory capability of this OS");
+
 /// The page size as reported by the OS at the application start.
 public alias pageSize = PAGESIZE;
 
@@ -243,7 +273,7 @@ unittest
     //decommit - commit leaves memory zeroed-out on Linux/Windows
     version(Windows)
         assert(slice[$-1] == 0);
-    version(Linux)
+    version(linux)
         assert(slice[$-1] == 0);
 
     version(FreeBSD){} // Conflicts with default ZFS memory settings
