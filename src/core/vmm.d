@@ -29,6 +29,8 @@ module core.vmm;
 
 import core.thread;
 
+nothrow @nogc:
+
 /// Flags that specify desired kind of access to the memory.
 enum MemoryAccess : uint
 {
