@@ -66,18 +66,19 @@ enum MemoryCapability
 };
 
 version(CoreDdoc)
-    enum MemoryCapability memoryCapability;
-version(Windows)
-    enum MemoryCapability memoryCapability = 
+    enum MemoryCapability memoryCapability =
+        MemoryCapability.commit | MemoryCapability.decommit | MemoryCapability.reset;
+else version(Windows)
+    enum MemoryCapability memoryCapability =
         MemoryCapability.commit | MemoryCapability.decommit | MemoryCapability.reset;
 else version(linux)
-    enum MemoryCapability memoryCapability = 
+    enum MemoryCapability memoryCapability =
         MemoryCapability.commit | MemoryCapability.decommit;
 else version(FreeBSD)
-    enum MemoryCapability memoryCapability = 
+    enum MemoryCapability memoryCapability =
         MemoryCapability.commit | MemoryCapability.reset;
 else version(OSX)
-    enum MemoryCapability memoryCapability = 
+    enum MemoryCapability memoryCapability =
         MemoryCapability.commit | MemoryCapability.reset;
 else
     static assert(false, "Don't know the memory capability of this OS");
