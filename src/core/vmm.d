@@ -244,8 +244,12 @@ unittest
     version(Linux)
         assert(slice[$-1] == 0);
 
-    assert(lock(slice), "failed to lock memory");
-    assert(unlock(slice), "failed to unlock memory");
+    version(FreeBSD){} // Conflicts with default ZFS memory settings
+    else
+    {
+        assert(lock(slice), "failed to lock memory");
+        assert(unlock(slice), "failed to unlock memory");
+    }
     assert(protect(slice, MemoryAccess.read));
     free(slice);
 }
