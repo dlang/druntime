@@ -8,6 +8,7 @@ module core.sys.freebsd.sys.mman;
 version (FreeBSD):
 extern (C):
 nothrow:
+@nogc:
 
 public import core.sys.posix.sys.mman;
 import core.sys.freebsd.sys.cdefs;
