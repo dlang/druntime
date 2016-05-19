@@ -55,19 +55,22 @@ enum MemoryOptions : uint
 /**
     System's virtual memory manager capabilities flags,
     indicate whether an operation is supported natively.
-    If some operation is not supported native, the "next best thing" is done
+    If some operation is not supported natively, the "next best thing" is done where applicable
     such as e.g. madvising memory as "won't use" instead of forcibly decommiting pages on FreeBSD.
 */
 enum MemoryCapability
 {
     commit = 0x1,
     decommit = 0x2,
-    reset = 0x4
+    reset = 0x4,
+    hugePages = 0x8,
+    sharedMapping = 0x10
 };
 
 version(CoreDdoc)
     enum MemoryCapability memoryCapability =
-        MemoryCapability.commit | MemoryCapability.decommit | MemoryCapability.reset;
+        MemoryCapability.commit | MemoryCapability.decommit | MemoryCapability.reset
+        | MemoryCapability.hugePages | MemoryCapability.sharedMapping;
 else version(Windows)
     enum MemoryCapability memoryCapability =
         MemoryCapability.commit | MemoryCapability.decommit | MemoryCapability.reset;
@@ -269,8 +272,8 @@ unittest
     assert(commit(slice[$/2..$]));
     slice[$-1] = 0xEA;
     assert(slice[$-1] == 0xEA);
-//    assert(decommit(slice[$/2..$]));
-//    assert(commit(slice[$/2..$]));
+    decommit(slice[$/2..$]);
+    commit(slice[$/2..$]);
     //decommit - commit leaves memory zeroed-out on Linux/Windows
     version(Windows)
         assert(slice[$-1] == 0);
