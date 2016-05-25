@@ -93,6 +93,9 @@ $(DOCDIR)\core_vararg.html : src\core\vararg.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 
+$(DOCDIR)\core_stdc_clang_block.html : src\core\stdc\clang_block.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
 $(DOCDIR)\core_stdc_complex.html : src\core\stdc\complex.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
@@ -284,6 +287,9 @@ $(IMPDIR)\core\internal\string.d : src\core\internal\string.d
 	copy $** $@
 
 $(IMPDIR)\core\internal\traits.d : src\core\internal\traits.d
+	copy $** $@
+
+$(IMPDIR)\core\stdc\clang_block.d : src\core\stdc\clang_block.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\complex.d : src\core\stdc\complex.d
