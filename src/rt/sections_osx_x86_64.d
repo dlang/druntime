@@ -24,6 +24,7 @@ version(Darwin):
 version(X86_64):
 
 // debug = PRINTF;
+import core.stdc.clang_block;
 import core.stdc.stdio;
 import core.stdc.string, core.stdc.stdlib;
 import core.sys.posix.pthread;
@@ -95,11 +96,9 @@ void finiSections()
 
 void[] initTLSRanges()
 {
-    void* start = null;
-    size_t size = 0;
-    _d_dyld_getTLSRange(&dummyTlsSymbol, &start, &size);
-    assert(start && size, "Could not determine TLS range.");
-    return start[0 .. size];
+    auto range = getTLSRange();
+    assert(range.isValid, "Could not determine TLS range.");
+    return range.toArray();
 }
 
 void finiTLSRanges(void[] rng)
@@ -114,10 +113,64 @@ void scanTLSRanges(void[] rng, scope void delegate(void* pbeg, void* pend) nothr
 
 private:
 
-extern(C) void _d_dyld_getTLSRange(void*, void**, size_t*);
+// Declarations from dyld_priv.h in dyld, available on 10.7+.
+enum dyld_tlv_states
+{
+    allocated = 10,
+    deallocated = 20
+}
+
+struct dyld_tlv_info
+{
+    size_t info_size;
+    void * tlv_addr;
+    size_t tlv_size;
+}
+
+alias dyld_tlv_state_change_handler = Block!(void, dyld_tlv_states, dyld_tlv_info*)*;
+extern(C) void dyld_enumerate_tlv_storage(dyld_tlv_state_change_handler handler);
+
+ubyte dummyTlsSymbol;
+
+struct TLSRange
+{
+    void* start;
+    size_t size;
+
+    bool isValid()
+    {
+        return start !is null && size > 0;
+    }
+
+    void[] toArray()
+    {
+        return start[0 .. size];
+    }
+}
+
+TLSRange getTLSRange()
+{
+    void* tlsSymbol = &dummyTlsSymbol;
+    TLSRange range;
+
+    scope dg = (dyld_tlv_states state, dyld_tlv_info* info) {
+        assert(state == dyld_tlv_states.allocated);
+
+        if (info.tlv_addr <= tlsSymbol && tlsSymbol <
+            (info.tlv_addr + info.tlv_size)
+        )
+        {
+            range = TLSRange(info.tlv_addr, info.tlv_size);
+        }
+    };
+
+    auto handler = block(dg);
+    dyld_enumerate_tlv_storage(&handler);
+
+    return range;
+}
 
 __gshared SectionGroup _sections;
-ubyte dummyTlsSymbol;
 
 extern (C) void sections_osx_onAddImage(in mach_header* h, intptr_t slide)
 {
