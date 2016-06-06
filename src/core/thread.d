@@ -5369,3 +5369,29 @@ version (Windows)
 else
 version (Posix)
     alias ThreadID = pthread_t;
+
+version (Posix)
+{
+    private extern (C) void gc_lock() nothrow @nogc;
+    private extern (C) void gc_unlock() nothrow @nogc;
+
+    int fork() //nothrow @nogc
+    {
+        // Acquire the GC lock for ourselves to ensure it is not held by another thread
+        gc_lock();
+        auto id = core.sys.posix.unistd.fork();
+        gc_unlock();
+
+        if (id < 0)
+            return id;
+        if (id == 0)
+        {
+            // Unregister all threads other than self
+            auto thisThread = Thread.getThis();
+            foreach (Thread t; Thread)
+                if (thisThread && t !is thisThread)
+                    thread_detachInstance(t);
+        }
+        return id;
+    }
+}

@@ -62,6 +62,9 @@ private
             void function(in void[]) gc_runFinalizers;
 
             bool function() gc_inFinalizer;
+
+            void function() nothrow @nogc gc_lock;
+            void function() nothrow @nogc gc_unlock;
         }
     }
 
@@ -100,6 +103,9 @@ private
         pthis.gc_runFinalizers = &gc_runFinalizers;
 
         pthis.gc_inFinalizer = &gc_inFinalizer;
+
+        pthis.gc_lock = &gc_lock;
+        pthis.gc_unlock = &gc_unlock;
     }
 }
 
@@ -316,6 +322,20 @@ extern (C)
         if( proxy is null )
             return _gc.inFinalizer;
         return proxy.gc_inFinalizer();
+    }
+
+    void gc_lock() nothrow @nogc
+    {
+        if( proxy is null )
+            return _gc.lock();
+        return proxy.gc_lock();
+    }
+
+    void gc_unlock() nothrow @nogc
+    {
+        if( proxy is null )
+            return _gc.unlock();
+        return proxy.gc_unlock();
     }
 
     Proxy* gc_getProxy() nothrow
