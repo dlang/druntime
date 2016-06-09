@@ -280,78 +280,27 @@ else version( AsmX86_32 )
     {
         static if( T.sizeof == byte.sizeof )
         {
-            //////////////////////////////////////////////////////////////////
             // 1 Byte CAS
-            //////////////////////////////////////////////////////////////////
 
-            asm pure nothrow @nogc
-            {
-                mov DL, writeThis;
-                mov AL, ifThis;
-                mov ECX, here;
-                lock; // lock always needed to make this op atomic
-                cmpxchg [ECX], DL;
-                setz AL;
-            }
+            return cmpxchg(cast(shared(ubyte)*)here, cast(ubyte)ifThis, cast(ubyte)writeThis);
         }
         else static if( T.sizeof == short.sizeof )
         {
-            //////////////////////////////////////////////////////////////////
             // 2 Byte CAS
-            //////////////////////////////////////////////////////////////////
 
-            asm pure nothrow @nogc
-            {
-                mov DX, writeThis;
-                mov AX, ifThis;
-                mov ECX, here;
-                lock; // lock always needed to make this op atomic
-                cmpxchg [ECX], DX;
-                setz AL;
-            }
+            return cmpxchg(cast(shared(ushort)*)here, cast(ushort)ifThis, cast(ushort)writeThis);
         }
         else static if( T.sizeof == int.sizeof )
         {
-            //////////////////////////////////////////////////////////////////
             // 4 Byte CAS
-            //////////////////////////////////////////////////////////////////
 
-            asm pure nothrow @nogc
-            {
-                mov EDX, writeThis;
-                mov EAX, ifThis;
-                mov ECX, here;
-                lock; // lock always needed to make this op atomic
-                cmpxchg [ECX], EDX;
-                setz AL;
-            }
+            return cmpxchg(cast(shared(uint)*)here, *cast(uint*)&ifThis, *cast(uint*)&writeThis);
         }
         else static if( T.sizeof == long.sizeof && has64BitCAS )
         {
-
-            //////////////////////////////////////////////////////////////////
             // 8 Byte CAS on a 32-Bit Processor
-            //////////////////////////////////////////////////////////////////
 
-            asm pure nothrow @nogc
-            {
-                push EDI;
-                push EBX;
-                lea EDI, writeThis;
-                mov EBX, [EDI];
-                mov ECX, 4[EDI];
-                lea EDI, ifThis;
-                mov EAX, [EDI];
-                mov EDX, 4[EDI];
-                mov EDI, here;
-                lock; // lock always needed to make this op atomic
-                cmpxchg8b [EDI];
-                setz AL;
-                pop EBX;
-                pop EDI;
-
-            }
-
+            return cmpxchg(cast(shared(ulong)*)here, *cast(ulong*)&ifThis, *cast(ulong*)&writeThis);
         }
         else
         {
@@ -785,67 +734,27 @@ else version( AsmX86_64 )
     {
         static if( T.sizeof == byte.sizeof )
         {
-            //////////////////////////////////////////////////////////////////
             // 1 Byte CAS
-            //////////////////////////////////////////////////////////////////
 
-            asm pure nothrow @nogc
-            {
-                mov DL, writeThis;
-                mov AL, ifThis;
-                mov RCX, here;
-                lock; // lock always needed to make this op atomic
-                cmpxchg [RCX], DL;
-                setz AL;
-            }
+            return cmpxchg(cast(shared(ubyte)*)here, cast(ubyte)ifThis, cast(ubyte)writeThis);
         }
         else static if( T.sizeof == short.sizeof )
         {
-            //////////////////////////////////////////////////////////////////
             // 2 Byte CAS
-            //////////////////////////////////////////////////////////////////
 
-            asm pure nothrow @nogc
-            {
-                mov DX, writeThis;
-                mov AX, ifThis;
-                mov RCX, here;
-                lock; // lock always needed to make this op atomic
-                cmpxchg [RCX], DX;
-                setz AL;
-            }
+            return cmpxchg(cast(shared(ushort)*)here, cast(ushort)ifThis, cast(ushort)writeThis);
         }
         else static if( T.sizeof == int.sizeof )
         {
-            //////////////////////////////////////////////////////////////////
             // 4 Byte CAS
-            //////////////////////////////////////////////////////////////////
 
-            asm pure nothrow @nogc
-            {
-                mov EDX, writeThis;
-                mov EAX, ifThis;
-                mov RCX, here;
-                lock; // lock always needed to make this op atomic
-                cmpxchg [RCX], EDX;
-                setz AL;
-            }
+            return cmpxchg(cast(shared(uint)*)here, *cast(uint*)&ifThis, *cast(uint*)&writeThis);
         }
-        else static if( T.sizeof == long.sizeof )
+        else static if( T.sizeof == long.sizeof && has64BitCAS )
         {
-            //////////////////////////////////////////////////////////////////
-            // 8 Byte CAS on a 64-Bit Processor
-            //////////////////////////////////////////////////////////////////
+            // 8 Byte CAS on a 32-Bit Processor
 
-            asm pure nothrow @nogc
-            {
-                mov RDX, writeThis;
-                mov RAX, ifThis;
-                mov RCX, here;
-                lock; // lock always needed to make this op atomic
-                cmpxchg [RCX], RDX;
-                setz AL;
-            }
+            return cmpxchg(cast(shared(ulong)*)here, *cast(ulong*)&ifThis, *cast(ulong*)&writeThis);
         }
         else static if( T.sizeof == long.sizeof*2 && has128BitCAS)
         {
@@ -1270,6 +1179,146 @@ else version( AsmX86_64 )
             mfence;
             ret;
         }
+    }
+}
+
+/* ***
+ * Functions built in to the compiler, along with a default implementation.
+ */
+
+bool cmpxchg(shared(ubyte)* here, ubyte ifThis, ubyte writeThis) pure nothrow @nogc @trusted
+{
+    version (AsmX86_32)
+    {
+        asm pure nothrow @nogc
+        {
+            mov DL, writeThis;
+            mov AL, ifThis;
+            mov ECX, here;
+            lock; // lock always needed to make this op atomic
+            cmpxchg [ECX], DL;
+            setz AL;
+        }
+    }
+    else version (AsmX86_64)
+    {
+        asm pure nothrow @nogc
+        {
+            mov DL, writeThis;
+            mov AL, ifThis;
+            mov RCX, here;
+            lock; // lock always needed to make this op atomic
+            cmpxchg [RCX], DL;
+            setz AL;
+        }
+    }
+    else
+    {
+        assert(0);
+    }
+}
+
+bool cmpxchg(shared(ushort)* here, ushort ifThis, ushort writeThis) pure nothrow @nogc @trusted
+{
+    version (AsmX86_32)
+    {
+        asm pure nothrow @nogc
+        {
+            mov DX, writeThis;
+            mov AX, ifThis;
+            mov ECX, here;
+            lock; // lock always needed to make this op atomic
+            cmpxchg [ECX], DX;
+            setz AL;
+        }
+    }
+    else version (AsmX86_64)
+    {
+        asm pure nothrow @nogc
+        {
+            mov DX, writeThis;
+            mov AX, ifThis;
+            mov RCX, here;
+            lock; // lock always needed to make this op atomic
+            cmpxchg [RCX], DX;
+            setz AL;
+        }
+    }
+    else
+    {
+        assert(0);
+    }
+}
+
+bool cmpxchg(shared(uint)* here, uint ifThis, uint writeThis) pure nothrow @nogc @trusted
+{
+    version (AsmX86_32)
+    {
+        asm pure nothrow @nogc
+        {
+            mov EDX, writeThis;
+            mov EAX, ifThis;
+            mov ECX, here;
+            lock; // lock always needed to make this op atomic
+            cmpxchg [ECX], EDX;
+            setz AL;
+        }
+    }
+    else version (AsmX86_64)
+    {
+        asm pure nothrow @nogc
+        {
+            mov EDX, writeThis;
+            mov EAX, ifThis;
+            mov RCX, here;
+            lock; // lock always needed to make this op atomic
+            cmpxchg [RCX], EDX;
+            setz AL;
+        }
+    }
+    else
+    {
+        assert(0);
+    }
+}
+
+bool cmpxchg(shared(ulong)* here, ulong ifThis, ulong writeThis) pure nothrow @nogc @trusted
+{
+    version (AsmX86_32)
+    {
+        asm pure nothrow @nogc
+        {
+            push EDI;
+            push EBX;
+            lea EDI, writeThis;
+            mov EBX, [EDI];
+            mov ECX, 4[EDI];
+            lea EDI, ifThis;
+            mov EAX, [EDI];
+            mov EDX, 4[EDI];
+            mov EDI, here;
+            lock; // lock always needed to make this op atomic
+            cmpxchg8b [EDI];
+            setz AL;
+            pop EBX;
+            pop EDI;
+        }
+    }
+    else version (AsmX86_64)
+    {
+        asm pure nothrow @nogc
+        {
+            mov RDX, writeThis;
+            mov RAX, ifThis;
+            mov RCX, here;
+            lock; // lock always needed to make this op atomic
+            cmpxchg [RCX], RDX;
+            setz AL;
+        }
+    }
+    else
+    {
+        assert(0);
     }
 }
 
