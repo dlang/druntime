@@ -130,6 +130,8 @@ private
     extern (C) void*   gc_addrOf( void* p ) pure nothrow;
     extern (C) size_t  gc_sizeOf( void* p ) pure nothrow;
 
+    extern (C) void gc_usage( out size_t used, out size_t free) nothrow;
+
     struct BlkInfo_
     {
         void*  base;
@@ -787,5 +789,21 @@ struct GC
     static void runFinalizers( in void[] segment )
     {
         gc_runFinalizers( segment );
+    }
+
+    /**
+        Basic stats about current GC state
+
+        Exact meaning of reported stats may very depending on underlying
+        GC implementation but must be consistent for the same implementation.
+
+        Params:
+            used = will contain amount of bytes marked in GC as allocated
+            free = will contain amount of bytes allocated from OS but marked
+                in GC as free
+     */
+    static void usage( out size_t used, out size_t free) nothrow
+    {
+        gc_usage(used, free);
     }
 }

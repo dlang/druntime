@@ -53,6 +53,7 @@ private
             size_t  function(void*) gc_sizeOf;
 
             BlkInfo function(void*) gc_query;
+            void function(out size_t, out size_t) gc_usage;
 
             void function(void*) gc_addRoot;
             void function(void*, size_t, const TypeInfo ti) gc_addRange;
@@ -91,6 +92,7 @@ private
         pthis.gc_sizeOf = &gc_sizeOf;
 
         pthis.gc_query = &gc_query;
+        pthis.gc_usage = &gc_usage;
 
         pthis.gc_addRoot = &gc_addRoot;
         pthis.gc_addRange = &gc_addRange;
@@ -274,6 +276,22 @@ extern (C)
         //       finalized.
         //return proxy.gc_stats();
         return GCStats.init;
+    }
+
+    // Exposes part of gc_stats that makes sense for different kinds of
+    // GC via proxy
+    void gc_usage( out size_t used, out size_t free) nothrow
+    {
+        if( proxy is null )
+        { 
+            GCStats stats;
+            _gc.getStats(stats);
+            used = stats.usedsize;
+            free = stats.freeblocks;
+            return;
+        }
+
+        proxy.gc_usage(used, free);
     }
 
     void gc_addRoot( void* p ) nothrow
