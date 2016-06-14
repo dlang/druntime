@@ -16,6 +16,7 @@ COPY=\
 	$(IMPDIR)\core\vararg.d \
 	\
 	$(IMPDIR)\core\internal\abort.d \
+	$(IMPDIR)\core\internal\array.d \
 	$(IMPDIR)\core\internal\convert.d \
 	$(IMPDIR)\core\internal\hash.d \
 	$(IMPDIR)\core\internal\spinlock.d \
