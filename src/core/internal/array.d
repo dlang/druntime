@@ -3,7 +3,7 @@ import core.stdc.stdint : uintptr_t;
 
 /*
  * This allows safe use of a pointer without dereferencing. Useful when you
- * want to declare that all you care about it the pointer value itself. Keeps
+ * want to declare that all you care about is the pointer value itself. Keeps
  * the pointer as a pointer to allow GC to properly track things.
  *
  * Note that PtrVal has all the same characteristics of a normal pointer,
