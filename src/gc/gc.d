@@ -269,7 +269,11 @@ struct GC
     static gcLock = shared(AlignedSpinLock)(SpinLock.Contention.lengthy);
     static bool inFinalizer;
 
-    // lock GC, throw InvalidMemoryOperationError on recursive locking during finalization
+    /*
+     * Lock the GC.
+     *
+     * Throws: InvalidMemoryOperationError on recursive locking during finalization.
+     */
     static void lockNR() @nogc nothrow
     {
         if (inFinalizer)
@@ -279,6 +283,12 @@ struct GC
 
     __gshared Config config;
 
+    /*
+     * Initialize the GC based on command line configuration.
+     *
+     * Throws:
+     *  OutOfMemoryError if failed to initialize GC due to not enough memory.
+     */
     void initialize()
     {
         config.initialize();
@@ -313,7 +323,8 @@ struct GC
 
 
     /**
-     *
+     * Enables the GC if disable() was previously called. Must be called
+     * for each time disable was called in order to enable the GC again.
      */
     void enable()
     {
@@ -327,7 +338,7 @@ struct GC
 
 
     /**
-     *
+     * Disable the GC. The GC may still run if it deems necessary.
      */
     void disable()
     {
@@ -338,6 +349,13 @@ struct GC
         runLocked!(go, otherTime, numOthers)(gcx);
     }
 
+    /**
+     * Run a function inside a lock/unlock set.
+     *
+     * Params:
+     *  func = The function to run.
+     *  args = The function arguments.
+     */
     auto runLocked(alias func, Args...)(auto ref Args args)
     {
         debug(PROFILE_API) immutable tm = (GC.config.profile > 1 ? currTime.ticks : 0);
@@ -358,6 +376,17 @@ struct GC
             return res;
     }
 
+    /**
+     * Run a function in an lock/unlock set that keeps track of
+     * how much time was spend inside this function (in ticks)
+     * and how many times this fuction was called.
+     *
+     * Params:
+     *  func = The function to run.
+     *  time = The variable keeping track of the time (in ticks).
+     *  count = The variable keeping track of how many times this fuction was called.
+     *  args = The function arguments.
+     */
     auto runLocked(alias func, alias time, alias count, Args...)(auto ref Args args)
     {
         debug(PROFILE_API) immutable tm = (GC.config.profile > 1 ? currTime.ticks : 0);
@@ -384,7 +413,15 @@ struct GC
     }
 
     /**
+     * Returns a bit field representing all block attributes set for the memory
+     * referenced by p.
      *
+     * Params:
+     *  p = A pointer to the base of a valid memory block or to null.
+     *
+     * Returns:
+     *  A bit field containing any bits set for the memory block referenced by
+     *  p or zero on error.
      */
     uint getAttr(void* p) nothrow
     {
@@ -413,7 +450,18 @@ struct GC
 
 
     /**
+     * Sets the specified bits for the memory references by p.
      *
+     * If p was not allocated by the GC, points inside a block, or is null, no
+     * action will be taken.
+     *
+     * Params:
+     *  p = A pointer to the base of a valid memory block or to null.
+     *  mask = A bit field containing any bits to set for this memory block.
+     *
+     * Returns:
+     *  The result of a call to getAttr after the specified bits have been
+     *  set.
      */
     uint setAttr(void* p, uint mask) nothrow
     {
@@ -443,7 +491,18 @@ struct GC
 
 
     /**
+     * Clears the specified bits for the memory references by p.
      *
+     * If p was not allocated by the GC, points inside a block, or is null, no
+     * action will be taken.
+     *
+     * Params:
+     *  p = A pointer to the base of a valid memory block or to null.
+     *  mask = A bit field containing any bits to clear for this memory block.
+     *
+     * Returns:
+     *  The result of a call to getAttr after the specified bits have been
+     *  cleared
      */
     uint clrAttr(void* p, uint mask) nothrow
     {
@@ -472,7 +531,19 @@ struct GC
     }
 
     /**
+     * Requests an aligned block of managed memory from the garbage collector.
      *
+     * Params:
+     *  size = The desired allocation size in bytes.
+     *  bits = A bitmask of the attributes to set on this block.
+     *  alloc_size = The actuall size allocated in bytes.
+     *  ti = TypeInfo to describe the memory.
+     *
+     * Returns:
+     *  A reference to the allocated memory or null if no memory was requested.
+     *
+     * Throws:
+     *  OutOfMemoryError on allocation failure
      */
     void *malloc(size_t size, uint bits = 0, size_t *alloc_size = null, const TypeInfo ti = null) nothrow
     {
@@ -498,7 +569,7 @@ struct GC
 
 
     //
-    //
+    // Implementation for malloc and calloc.
     //
     private void *mallocNoSync(size_t size, uint bits, ref size_t alloc_size, const TypeInfo ti = null) nothrow
     {
@@ -525,7 +596,20 @@ struct GC
 
 
     /**
+     * Requests an aligned block of managed memory from the garbage collector,
+     * which is initialized with all bits set to zero.
      *
+     * Params:
+     *  size = The desired allocation size in bytes.
+     *  bits = A bitmask of the attributes to set on this block.
+     *  alloc_size = The actuall size allocated in bytes.
+     *  ti = TypeInfo to describe the memory.
+     *
+     * Returns:
+     *  A reference to the allocated memory or null if no memory was requested.
+     *
+     * Throws:
+     *  OutOfMemoryError on allocation failure.
      */
     void *calloc(size_t size, uint bits = 0, size_t *alloc_size = null, const TypeInfo ti = null) nothrow
     {
@@ -551,7 +635,25 @@ struct GC
     }
 
     /**
+     * Request that the GC reallocate a block of memory, attempting to adjust
+     * the size in place if possible. If size is 0, the memory will be freed.
      *
+     * If p was not allocated by the GC, points inside a block, or is null, no
+     * action will be taken.
+     *
+     * Params:
+     *  p = A pointer to the root of a valid memory block or to null.
+     *  size = The desired allocation size in bytes.
+     *  bits = A bitmask of the attributes to set on this block.
+     *  alloc_size = The actuall size allocated in bytes.
+     *  ti = TypeInfo to describe the memory.
+     *
+     * Returns:
+     *  A reference to the allocated memory on success or null if size is
+     *  zero.
+     *
+     * Throws:
+     *  OutOfMemoryError on allocation failure.
      */
     void *realloc(void *p, size_t size, uint bits = 0, size_t *alloc_size = null, const TypeInfo ti = null) nothrow
     {
@@ -570,6 +672,8 @@ struct GC
     }
 
 
+    //
+    // The implementation of realloc.
     //
     // bits will be set to the resulting bits of the new block
     //
@@ -727,7 +831,7 @@ struct GC
 
 
     //
-    //
+    // Implementation of extend.
     //
     private size_t extendNoSync(void* p, size_t minsize, size_t maxsize, const TypeInfo ti = null) nothrow
     in
@@ -783,7 +887,14 @@ struct GC
 
 
     /**
+     * Requests that at least size bytes of memory be obtained from the operating
+     * system and marked as free.
      *
+     * Params:
+     *  size = The desired size in bytes.
+     *
+     * Returns:
+     *  The actual number of bytes reserved or zero on error.
      */
     size_t reserve(size_t size) nothrow
     {
@@ -797,7 +908,7 @@ struct GC
 
 
     //
-    //
+    // Implementation of reserve
     //
     private size_t reserveNoSync(size_t size) nothrow
     {
@@ -809,7 +920,13 @@ struct GC
 
 
     /**
+     * Deallocates the memory referenced by p.
      *
+     * If p was not allocated by the GC, points inside a block, is null, or
+     * if free is called from a finalizer, no action will be taken.
+     *
+     * Params:
+     *  p = A pointer to the root of a valid memory block or to null.
      */
     void free(void *p) nothrow
     {
@@ -823,7 +940,7 @@ struct GC
 
 
     //
-    //
+    // Implementation of free.
     //
     private void freeNoSync(void *p) nothrow
     {
@@ -888,6 +1005,13 @@ struct GC
     /**
      * Determine the base address of the block containing p.  If p is not a gc
      * allocated pointer, return null.
+     *
+     * Params:
+     *  p = A pointer to the root or the interior of a valid memory block or to
+     *      null.
+     *
+     * Returns:
+     *  The base address of the memory block referenced by p or null on error.
      */
     void* addrOf(void *p) nothrow
     {
@@ -901,7 +1025,7 @@ struct GC
 
 
     //
-    //
+    // Implementation of addrOf.
     //
     void* addrOfNoSync(void *p) nothrow
     {
@@ -920,6 +1044,12 @@ struct GC
     /**
      * Determine the allocated size of pointer p.  If p is an interior pointer
      * or not a gc allocated pointer, return 0.
+     *
+     * Params:
+     *  p = A pointer to the root of a valid memory block or to null.
+     *
+     * Returns:
+     *  The size in bytes of the memory block referenced by p or zero on error.
      */
     size_t sizeOf(void *p) nothrow
     {
@@ -933,7 +1063,7 @@ struct GC
 
 
     //
-    //
+    // Implementation of sizeOf.
     //
     private size_t sizeOfNoSync(void *p) nothrow
     {
@@ -970,6 +1100,14 @@ struct GC
     /**
      * Determine the base address of the block containing p.  If p is not a gc
      * allocated pointer, return null.
+     *
+     * Params:
+     *  p = A pointer to the root or the interior of a valid memory block or to
+     *      null.
+     *
+     * Returns:
+     *  Information regarding the memory block referenced by p or BlkInfo.init
+     *  on error.
      */
     BlkInfo query(void *p) nothrow
     {
@@ -984,7 +1122,7 @@ struct GC
 
 
     //
-    //
+    // Implementation of query
     //
     BlkInfo queryNoSync(void *p) nothrow
     {
@@ -1004,10 +1142,14 @@ struct GC
 
 
     /**
-     * Verify that pointer p:
-     *  1) belongs to this memory pool
-     *  2) points to the start of an allocated piece of memory
-     *  3) is not on a free list
+     * Performs certain checks on a pointer. These checks will cause asserts to
+     * fail unless the following conditions are met:
+     *  1) The poiinter belongs to this memory pool.
+     *  2) The pointer points to the start of an allocated piece of memory.
+     *  3) The pointer is not on a free list.
+     *
+     * Params:
+     *  p = The pointer to be checked.
      */
     void check(void *p) nothrow
     {
@@ -1021,7 +1163,7 @@ struct GC
 
 
     //
-    //
+    // Implementation of check
     //
     private void checkNoSync(void *p) nothrow
     {
@@ -1062,7 +1204,10 @@ struct GC
 
 
     /**
-     * add p to list of roots
+     * Add p to list of roots. If p is null, no operation is performed.
+     *
+     * Params:
+     *  p = A pointer into a GC-managed memory block or null.
      */
     void addRoot(void *p) nothrow @nogc
     {
@@ -1076,7 +1221,11 @@ struct GC
 
 
     /**
-     * remove p from list of roots
+     * Remove p from list of roots. If p is null or is not a value
+     * previously passed to addRoot() then no operation is performed.
+     *
+     * Params:
+     *  p = A pointer into a GC-managed memory block or null.
      */
     void removeRoot(void *p) nothrow @nogc
     {
@@ -1090,7 +1239,7 @@ struct GC
 
 
     /**
-     *
+     * Returns an iterator allowing roots to be traversed via a foreach loop.
      */
     @property auto rootIter() @nogc
     {
@@ -1099,7 +1248,12 @@ struct GC
 
 
     /**
-     * add range to scan for roots
+     * Add range to scan for roots. If p is null or sz is 0, no operation is performed.
+     *
+     * Params:
+     *  p  = A pointer to a valid memory address or to null.
+     *  sz = The size in bytes of the block to add.
+     *  ti = TypeInfo to describe the memory.
      */
     void addRange(void *p, size_t sz, const TypeInfo ti = null) nothrow @nogc
     {
@@ -1113,7 +1267,12 @@ struct GC
 
 
     /**
-     * remove range
+     * Remove range from list of ranges. If p is null or does not represent
+     * a value previously passed to addRange() then no operation is
+     * performed.
+     *
+     * Params:
+     *  p  = A pointer to a valid memory address or to null.
      */
     void removeRange(void *p) nothrow @nogc
     {
@@ -1127,7 +1286,7 @@ struct GC
 
 
     /**
-     *
+     * Returns an iterator allowing ranges to be traversed via a foreach loop.
      */
     @property auto rangeIter() @nogc
     {
@@ -1136,7 +1295,10 @@ struct GC
 
 
     /**
-     * run finalizers
+     * Run all finalizers in the code segment.
+     *
+     * Params:
+     *  segment = address range of a code segment
      */
     void runFinalizers(in void[] segment) nothrow
     {
@@ -1149,8 +1311,10 @@ struct GC
 
 
     /**
-     * Do full garbage collection.
-     * Return number of pages free'd.
+     * Begins a full collection, scanning all stack segments for roots.
+     *
+     * Returns:
+     *  The number of pages freed.
      */
     size_t fullCollect() nothrow
     {
@@ -1179,7 +1343,7 @@ struct GC
 
 
     /**
-     * do full garbage collection ignoring roots
+     * Begins a full collection while ignoring all stack segments for roots.
      */
     void fullCollectNoStack() nothrow
     {
@@ -1194,7 +1358,7 @@ struct GC
 
 
     /**
-     * minimize free space usage
+     * Minimize free space usage.
      */
     void minimize() nothrow
     {
@@ -1217,7 +1381,7 @@ struct GC
 
 
     //
-    //
+    // Implementation of getStats.
     //
     private void getStatsNoSync(out GCStats stats) nothrow
     {
