@@ -67,8 +67,10 @@ struct PtrVal(T)
     /*
      * Cast to void pointer type. TODO: see if there is a way to make this
      * implicit.
+     *
+     * Templated to avoid extra imports if not used.
      */
-    auto toVoid() inout @trusted
+    auto toVoid()() inout @trusted
     {
         static if(is(const(T)* == const(void)*))
         {
@@ -102,7 +104,7 @@ inout(PtrVal!T) ptrval(T)(inout(T)[] arr) @trusted
     return arr.ptr.ptrval;
 }
 
-unittest
+pure nothrow unittest
 {
     import core.internal.traits: TypeTuple;
     void testItSafe(T)(T[] t1, T[] t2) @safe
