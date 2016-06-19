@@ -325,6 +325,11 @@ extern (C)
 
     export
     {
+        GC* gc_getGC()
+        {
+            return &_gc;
+        }
+
         void gc_setProxy( Proxy* p )
         {
             if( proxy !is null )
