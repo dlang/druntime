@@ -3,7 +3,7 @@
  * the root of the class object hierarchy.  This module is implicitly
  * imported.
  *
- * Copyright: Copyright Digital Mars 2000 - 2011.
+ * Copyright: Copyright Digital Mars 2000 - 2018.
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Sean Kelly
  */
@@ -137,10 +137,21 @@ class Object
     }
 }
 
-auto opEquals(Object lhs, Object rhs)
+/************************
+* Returns true if lhs and rhs are equal.
+*/
+bool opEquals(T, U)(T lhs, U rhs)
+    if (is(T == class) && is(U == class) &&
+        __traits(hasMember, T, "opEquals") &&
+        __traits(hasMember, U, "opEquals") &&
+        is(typeof(lhs.opEquals(rhs)) == bool) &&
+        is(typeof(rhs.opEquals(lhs)) == bool))
 {
-    // If aliased to the same object or both null => equal
-    if (lhs is rhs) return true;
+    static if (is(T : U) || is(U : T))
+    {
+        // If aliased to the same object or both null => equal
+        if (lhs is rhs) return true;
+    }
 
     // If either is null => non-equal
     if (lhs is null || rhs is null) return false;
@@ -159,13 +170,269 @@ auto opEquals(Object lhs, Object rhs)
     return lhs.opEquals(rhs) && rhs.opEquals(lhs);
 }
 
-/************************
-* Returns true if lhs and rhs are equal.
-*/
-auto opEquals(const Object lhs, const Object rhs)
+bool opEquals(T, U)(const T lhs, const U rhs)
+    if (is(T == class) && is(U == class) &&
+        __traits(hasMember, T, "opEquals") &&
+        __traits(hasMember, U, "opEquals") &&
+        !is(typeof(lhs.opEquals(rhs)) == bool) &&
+        !is(typeof(rhs.opEquals(lhs)) == bool))
 {
-    // A hack for the moment.
+    // FIXME. This is a hack.
+    // We shouldn't need to cast away const, and if either lhs' or rhs' opEquals
+    // mutates either object, it's undefined behavior. But before we can remove
+    // this, we need to make it so that TypeInfo and friends have the corect
+    // definitions for opEquals so that they work with the other overload. And
+    // any user code using const objects but which doesn't define opEquals such
+    // that it works with const with the other overload will also break once
+    // this is removed. So, we need to get rid of this, but we need to be
+    // careful about how and when we do it.
     return opEquals(cast()lhs, cast()rhs);
+}
+
+// In theory, these 3 attributes should be applicable, but TypeInfo's opEquals
+// will need to be updated to be @safe, pure, and nothrow for them; otherwise,
+// the free function version of opEquals is not inferred as @safe, pure, or
+// nothrow.
+/+@safe pure nothrow+/ unittest
+{
+    static void test(T, U)(bool expected, T lhs, U rhs, size_t line = __LINE__)
+    {
+        import core.exception;
+        enum typesStr = T.stringof ~ ", " ~ U.stringof;
+
+        if ((lhs == rhs) != expected)
+            throw new AssertError("unittest failure: mutable vs mutable: " ~ typesStr, __FILE__, line);
+        if ((lhs == cast(const U)rhs) != expected)
+            throw new AssertError("unittest failure: mutable vs const: " ~ typesStr, __FILE__, line);
+        if ((lhs == cast(immutable U)rhs) != expected)
+            throw new AssertError("unittest failure: mutable vs immutable: " ~ typesStr, __FILE__, line);
+        if (((cast(const T)lhs) == rhs) != expected)
+            throw new AssertError("unittest failure: const vs mutable: " ~ typesStr, __FILE__, line);
+        if (((cast(const T)lhs) == cast(const U)rhs) != expected)
+            throw new AssertError("unittest failure: const vs const: " ~ typesStr, __FILE__, line);
+        if (((cast(const T)lhs) == cast(immutable U)rhs) != expected)
+            throw new AssertError("unittest failure: const vs immutable: " ~ typesStr, __FILE__, line);
+        if (((cast(immutable T)lhs) == rhs) != expected)
+            throw new AssertError("unittest failure: immutable vs mutable: " ~ typesStr, __FILE__, line);
+        if (((cast(immutable T)lhs) == cast(const U)rhs) != expected)
+            throw new AssertError("unittest failure: immutable vs const: " ~ typesStr, __FILE__, line);
+        if (((cast(immutable T)lhs) == cast(immutable U)rhs) != expected)
+            throw new AssertError("unittest failure: immutable vs immutable: " ~ typesStr, __FILE__, line);
+    }
+
+    static void test2(T, U, V)(bool expected, V lhs, V rhs, size_t line = __LINE__)
+    {
+        import core.internal.traits;
+        foreach (TL; TypeTuple!(T, U))
+        {
+            foreach (TR; TypeTuple!(T, U))
+                test!(TL, TR)(expected, lhs, rhs, line);
+        }
+    }
+
+    static void testNull(T, U)(T tNonNull, U uNonNull, size_t line = __LINE__)
+    {
+        T tNull;
+        U uNull;
+        assert(tNull == tNull);
+        assert(uNull == uNull);
+        assert(tNull == uNull);
+        assert(uNull == tNull);
+
+        assert(tNonNull != tNull);
+        assert(uNonNull != uNull);
+        assert(tNull != tNonNull);
+        assert(uNull != uNonNull);
+    }
+
+    static class C
+    {
+        bool opEquals(const C rhs) @safe const pure nothrow @nogc { return _i == rhs._i; }
+        this(int i) @safe pure nothrow @nogc { _i = i; }
+        int _i;
+    }
+
+    static class D : C
+    {
+        override bool opEquals(const C rhs) @trusted const pure nothrow @nogc
+        {
+            if (auto dRHS = cast(D)rhs)
+                return this.opEquals(dRHS);
+            return super.opEquals(rhs);
+        }
+
+        bool opEquals(const D rhs) @safe const pure nothrow @nogc { return super.opEquals(rhs) && _s == rhs._s; }
+        this(string s, int i) @safe pure nothrow @nogc { super(i); _s = s; }
+        string _s;
+    }
+
+    static class E : C
+    {
+        override bool opEquals(const C rhs) @trusted const pure nothrow @nogc
+        {
+            if (auto dRHS = cast(E)rhs)
+                return this.opEquals(dRHS);
+            return super.opEquals(rhs);
+        }
+
+        bool opEquals(const E rhs) @safe const pure nothrow @nogc { return super.opEquals(rhs) && _b == rhs._b; }
+        this(bool b, int i) @safe pure nothrow @nogc { super(i); _b = b; }
+        bool _b;
+    }
+
+    auto c42    = new C(42);
+    auto c120   = new C(120);
+    auto c42Dup = new C(42);
+
+    assert(c42 == c42);
+    assert(c42 != c120);
+    assert(c42 == c42Dup);
+
+    assert(c120 != c42);
+    assert(c120 == c120);
+    assert(c120 != c42Dup);
+
+    assert(c42Dup == c42);
+    assert(c42Dup != c120);
+    assert(c42Dup == c42Dup);
+
+    auto dFoo42    = new D("foo", 42);
+    auto dBar42    = new D("bar", 42);
+    auto dFoo120   = new D("foo", 120);
+    auto dBar120   = new D("bar", 120);
+    auto dFoo42Dup = new D("foo", 42);
+
+    test2!(C, D)(true,  dFoo42, dFoo42);
+    test2!(C, D)(false, dFoo42, dBar42);
+    test2!(C, D)(false, dFoo42, dFoo120);
+    test2!(C, D)(false, dFoo42, dBar120);
+    test2!(C, D)(true,  dFoo42, dFoo42Dup);
+
+    test2!(C, D)(false, dBar42, dFoo42);
+    test2!(C, D)(true,  dBar42, dBar42);
+    test2!(C, D)(false, dBar42, dFoo120);
+    test2!(C, D)(false, dBar42, dBar120);
+    test2!(C, D)(false, dBar42, dFoo42Dup);
+
+    test2!(C, D)(false, dFoo120, dFoo42);
+    test2!(C, D)(false, dFoo120, dBar42);
+    test2!(C, D)(true,  dFoo120, dFoo120);
+    test2!(C, D)(false, dFoo120, dBar120);
+    test2!(C, D)(false, dFoo120, dFoo42Dup);
+
+    test2!(C, D)(false, dBar120, dFoo42);
+    test2!(C, D)(false, dBar120, dBar42);
+    test2!(C, D)(false, dBar120, dFoo120);
+    test2!(C, D)(true,  dBar120, dBar120);
+    test2!(C, D)(false, dBar120, dFoo42Dup);
+
+    test2!(C, D)(true,  dFoo42Dup, dFoo42);
+    test2!(C, D)(false, dFoo42Dup, dBar42);
+    test2!(C, D)(false, dFoo42Dup, dFoo120);
+    test2!(C, D)(false, dFoo42Dup, dBar120);
+    test2!(C, D)(true,  dFoo42Dup, dFoo42Dup);
+
+    test(true,  c42, dFoo42);
+    test(true,  c42, dBar42);
+    test(false, c42, dFoo120);
+    test(false, c42, dBar120);
+
+    test(false, c120, dFoo42);
+    test(false, c120, dBar42);
+    test(true,  c120, dFoo120);
+    test(true,  c120, dBar120);
+
+    test(true,  dFoo42,  c42);
+    test(true,  dBar42,  c42);
+    test(false, dFoo120, c42);
+    test(false, dBar120, c42);
+
+    test(false, dFoo42,  c120);
+    test(false, dBar42,  c120);
+    test(true,  dFoo120, c120);
+    test(true,  dBar120, c120);
+
+    test!(C, C)(true,  c42, dFoo42);
+    test!(C, C)(true,  c42, dBar42);
+    test!(C, C)(false, c42, dFoo120);
+    test!(C, C)(false, c42, dBar120);
+
+    test!(C, C)(false, c120, dFoo42);
+    test!(C, C)(false, c120, dBar42);
+    test!(C, C)(true,  c120, dFoo120);
+    test!(C, C)(true,  c120, dBar120);
+
+    test!(C, C)(true,  dFoo42,  c42);
+    test!(C, C)(true,  dBar42,  c42);
+    test!(C, C)(false, dFoo120, c42);
+    test!(C, C)(false, dBar120, c42);
+
+    test!(C, C)(false, dFoo42,  c120);
+    test!(C, C)(false, dBar42,  c120);
+    test!(C, C)(true,  dFoo120, c120);
+    test!(C, C)(true,  dBar120, c120);
+
+    auto eTrue42    = new E(true, 42);
+    auto eFalse42   = new E(false, 42);
+    auto eTrue120   = new E(true, 120);
+    auto eFalse120  = new E(false, 120);
+    auto eTrue42Dup = new E(true, 42);
+
+    test2!(C, E)(true,  eTrue42,    eTrue42);
+    test2!(C, E)(false, eTrue42,    eFalse42);
+    test2!(C, E)(false, eTrue42,    eTrue120);
+    test2!(C, E)(false, eTrue42,    eFalse120);
+    test2!(C, E)(true,  eTrue42,    eTrue42Dup);
+
+    test2!(C, E)(false, eFalse42,   eTrue42);
+    test2!(C, E)(true,  eFalse42,   eFalse42);
+    test2!(C, E)(false, eFalse42,   eTrue120);
+    test2!(C, E)(false, eFalse42,   eFalse120);
+    test2!(C, E)(false, eFalse42,   eTrue42Dup);
+
+    test2!(C, E)(false, eTrue120,   eTrue42);
+    test2!(C, E)(false, eTrue120,   eFalse42);
+    test2!(C, E)(true,  eTrue120,   eTrue120);
+    test2!(C, E)(false, eTrue120,   eFalse120);
+    test2!(C, E)(false, eTrue120,   eTrue42Dup);
+
+    test2!(C, E)(false, eFalse120,  eTrue42);
+    test2!(C, E)(false, eFalse120,  eFalse42);
+    test2!(C, E)(false, eFalse120,  eTrue120);
+    test2!(C, E)(true,  eFalse120,  eFalse120);
+    test2!(C, E)(false, eFalse120,  eTrue42Dup);
+
+    test2!(C, E)(true,  eTrue42Dup, eTrue42);
+    test2!(C, E)(false, eTrue42Dup, eFalse42);
+    test2!(C, E)(false, eTrue42Dup, eTrue120);
+    test2!(C, E)(false, eTrue42Dup, eFalse120);
+    test2!(C, E)(true,  eTrue42Dup, eTrue42Dup);
+
+    test(true,  eTrue42,   dFoo42);
+    test(true,  eTrue42,   dBar42);
+    test(false, eTrue42,   dFoo120);
+    test(false, eTrue42,   dBar120);
+
+    test(false, eFalse120, dFoo42);
+    test(false, eFalse120, dBar42);
+    test(true,  eFalse120, dFoo120);
+    test(true,  eFalse120, dBar120);
+
+    testNull(c42, dFoo42);
+    testNull(c42, eTrue42);
+
+    // Once Object.opEquals has been removed, this should pass.
+    // static assert(!is(typeof(dFoo42 == eTrue42)));
+
+    // Test CTFE
+    static assert(new C(42) == new C(42));
+    static assert(new C(42) != new C(24));
+    static assert(new C(42) == new D("hello", 42));
+    static assert(new D("hello", 42) == new C(42));
+    static assert(new C(42) != new D("hello", 22));
+    static assert(new D("hello", 22) != new C(42));
+    static assert(new D("hello", 42) == new D("hello", 42));
+    static assert(new D("world", 42) != new D("hello", 42));
 }
 
 private extern(C) void _d_setSameMutex(shared Object ownee, shared Object owner) nothrow;
