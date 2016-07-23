@@ -22,7 +22,7 @@
  * References: $(LINK2 http://blog.regehr.org/archives/1139, Fast Integer Overflow Checks)
  * Copyright: Copyright (c) Walter Bright 2014.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:   Walter Bright
+ * Authors:   Walter Bright, Denis Shelomovskij
  * Source:    $(DRUNTIMESRC core/_checkedint.d)
  */
 
@@ -49,10 +49,11 @@ pure:
 pragma(inline, true)
 int adds(int x, int y, ref bool overflow)
 {
-    long r = cast(long)x + cast(long)y;
-    if (r < int.min || r > int.max)
+    const r = x + y;
+    if (!x._differentSign(y) &&  // x and y has the same sign
+         x._differentSign(r))    // result has different sign
         overflow = true;
-    return cast(int)r;
+    return r;
 }
 
 unittest
@@ -77,9 +78,9 @@ unittest
 pragma(inline, true)
 long adds(long x, long y, ref bool overflow)
 {
-    long r = cast(ulong)x + cast(ulong)y;
-    if (x <  0 && y <  0 && r >= 0 ||
-        x >= 0 && y >= 0 && r <  0)
+    const r = x + y;
+    if (!x._differentSign(y) &&  // x and y has the same sign
+         x._differentSign(r))    // result has different sign
         overflow = true;
     return r;
 }
@@ -119,8 +120,8 @@ unittest
 pragma(inline, true)
 uint addu(uint x, uint y, ref bool overflow)
 {
-    uint r = x + y;
-    if (r < x || r < y)
+    const r = x + y;
+    if (r < x)
         overflow = true;
     return r;
 }
@@ -147,8 +148,8 @@ unittest
 pragma(inline, true)
 ulong addu(ulong x, ulong y, ref bool overflow)
 {
-    ulong r = x + y;
-    if (r < x || r < y)
+    const r = x + y;
+    if (r < x)
         overflow = true;
     return r;
 }
@@ -188,10 +189,11 @@ unittest
 pragma(inline, true)
 int subs(int x, int y, ref bool overflow)
 {
-    long r = cast(long)x - cast(long)y;
-    if (r < int.min || r > int.max)
+    const r = x - y;
+    if (x._differentSign(y) &&   // x and y has different sign
+        x._differentSign(r))     // result and x has different sign
         overflow = true;
-    return cast(int)r;
+    return r;
 }
 
 unittest
@@ -216,9 +218,9 @@ unittest
 pragma(inline, true)
 long subs(long x, long y, ref bool overflow)
 {
-    long r = cast(ulong)x - cast(ulong)y;
-    if (x <  0 && y >= 0 && r >= 0 ||
-        x >= 0 && y <  0 && (r <  0 || y == long.min))
+    const r = x - y;
+    if (x._differentSign(y) &&   // x and y has different sign
+        x._differentSign(r))     // result and x has different sign
         overflow = true;
     return r;
 }
@@ -385,10 +387,10 @@ unittest
 pragma(inline, true)
 int muls(int x, int y, ref bool overflow)
 {
-    long r = cast(long)x * cast(long)y;
+    const r = cast(long) x * y;
     if (r < int.min || r > int.max)
         overflow = true;
-    return cast(int)r;
+    return cast(int) r;
 }
 
 unittest
@@ -415,9 +417,10 @@ unittest
 pragma(inline, true)
 long muls(long x, long y, ref bool overflow)
 {
-    long r = cast(ulong)x * cast(ulong)y;
-    enum not0or1 = ~1L;
-    if((x & not0or1) && ((r == y)? r : (r / x) != y))
+    const r = x * y;
+    if (!x._differentSign(y) &&  // x and y has the same sign
+         r < 0 ||                // and result is negative (covers min * -1)
+        x && r / x != y)         // or perform simple check for x != 0
         overflow = true;
     return r;
 }
@@ -462,10 +465,10 @@ unittest
 pragma(inline, true)
 uint mulu(uint x, uint y, ref bool overflow)
 {
-    ulong r = ulong(x) * ulong(y);
+    const r = cast(ulong) x * y;
     if (r > uint.max)
         overflow = true;
-    return cast(uint)r;
+    return cast(uint) r;
 }
 
 unittest
@@ -492,7 +495,7 @@ unittest
 pragma(inline, true)
 ulong mulu(ulong x, ulong y, ref bool overflow)
 {
-    ulong r = x * y;
+    const r = x * y;
     if (x && (r / x) != y)
         overflow = true;
     return r;
@@ -516,4 +519,14 @@ unittest
     bool overflow = true;
     assert(mulu(0UL, 0UL, overflow) == 0);
     assert(overflow);                   // sticky
+}
+
+
+private:
+
+pragma(inline, true)
+bool _differentSign(T)(in T a, in T b)
+if(is(T == int) || is(T == long))
+{
+    return (a < 0) != (b < 0);
 }
