@@ -164,3 +164,101 @@ unittest
     }
 }
 
+/*************************************
+ * Round argument to float precision.
+ *
+ * D language types specify a minimum precision, not
+ * a maximum. toFloatPrec() forces float precision.
+ * Params:
+ *      f = value to convert
+ * Returns:
+ *      f in float precision
+ */
+
+@safe pure nothrow
+float toFloatPrec(float f)  { pragma(inline, false); return f; }
+
+/// ditto
+@safe pure nothrow
+float toFloatPrec(double f) { pragma(inline, false); return cast(float)f; }
+
+/// ditto
+@safe pure nothrow
+float toFloatPrec(real f)   { pragma(inline, false); return cast(float)f; }
+
+@safe unittest
+{
+    static float f = 1.1f;
+    static double d = 1.1;
+    static real r = 1.1L;
+    f = toFloatPrec(f + f);
+    f = toFloatPrec(d + d);
+    f = toFloatPrec(r + r);
+}
+
+
+/*************************************
+ * Round argument to double precision.
+ *
+ * D language types specify a minimum precision, not
+ * a maximum. toDoublePrec() forces double precision.
+ * Params:
+ *      f = value to convert
+ * Returns:
+ *      f in double precision
+ */
+
+@safe pure nothrow
+double toDoublePrec(float f)  { pragma(inline, false); return f; }
+
+/// ditto
+@safe pure nothrow
+double toDoublePrec(double f) { pragma(inline, false); return f; }
+
+/// ditto
+@safe pure nothrow
+double toDoublePrec(real f)   { pragma(inline, false); return cast(double)f; }
+
+@safe unittest
+{
+    static float f = 1.1f;
+    static double d = 1.1;
+    static real r = 1.1L;
+    d = toDoublePrec(f + f);
+    d = toDoublePrec(d + d);
+    d = toDoublePrec(r + r);
+}
+
+
+/*************************************
+ * Round argument to real precision.
+ *
+ * D language types specify a minimum precision, not
+ * a maximum. toRealPrec() forces real precision.
+ * Params:
+ *      f = value to convert
+ * Returns:
+ *      f in real precision
+ */
+
+@safe pure nothrow
+real toRealPrec(float f)  { pragma(inline, false); return f; }
+
+/// ditto
+@safe pure nothrow
+real toRealPrec(double f) { pragma(inline, false); return f; }
+
+/// ditto
+@safe pure nothrow
+real toRealPrec(real f)   { pragma(inline, false); return f; }
+
+@safe unittest
+{
+    static float f = 1.1f;
+    static double d = 1.1;
+    static real r = 1.1L;
+    r = toRealPrec(f + f);
+    r = toRealPrec(d + d);
+    r = toRealPrec(r + r);
+}
+
