@@ -250,12 +250,10 @@ TypeInfo_Struct fakeEntryTI(const TypeInfo keyti, const TypeInfo valti)
 
     auto kti = unqualify(keyti);
     auto vti = unqualify(valti);
-    if (!hasDtor(kti) && !hasDtor(vti))
-        return null;
 
     // save kti and vti after type info for struct
     enum sizeti = __traits(classInstanceSize, TypeInfo_Struct);
-    void* p = GC.malloc(sizeti + 2 * (void*).sizeof);
+    void* p = GC.malloc(sizeti + 4 * (void*).sizeof);
     import core.stdc.string : memcpy;
 
     memcpy(p, typeid(TypeInfo_Struct).initializer().ptr, sizeti);
@@ -268,21 +266,78 @@ TypeInfo_Struct fakeEntryTI(const TypeInfo keyti, const TypeInfo valti)
     static immutable tiName = __MODULE__ ~ ".Entry!(...)";
     ti.name = tiName;
 
+    auto rtinfoData = cast(size_t[2]*) (extra + 2);
+    ti.m_RTInfo = rtinfoEntry(keyti, valti, *rtinfoData);
+
     // we don't expect the Entry objects to be used outside of this module, so we have control
     // over the non-usage of the callback methods and other entries and can keep these null
     // xtoHash, xopEquals, xopCmp, xtoString and xpostblit
-    ti.m_RTInfo = null;
     immutable entrySize = talign(kti.tsize, vti.talign) + vti.tsize;
     ti.m_init = (cast(ubyte*) null)[0 .. entrySize]; // init length, but not ptr
 
-    // xdtor needs to be built from the dtors of key and value for the GC
-    ti.xdtorti = &entryDtor;
+    if (hasDtor(kti) || hasDtor(vti))
+    {
+        // xdtor needs to be built from the dtors of key and value for the GC
+        ti.xdtorti = &entryDtor;
+        ti.m_flags = TypeInfo_Struct.StructFlags.hasPointers | TypeInfo_Struct.StructFlags.isDynamicType;
+    }
+    else
+        ti.m_flags = TypeInfo_Struct.StructFlags.hasPointers;
 
-    ti.m_flags = TypeInfo_Struct.StructFlags.isDynamicType;
-    ti.m_flags |= (keyti.flags | valti.flags) & TypeInfo_Struct.StructFlags.hasPointers;
     ti.m_align = cast(uint) max(kti.talign, vti.talign);
 
     return ti;
+}
+
+// build type info with appropriate RTInfo at runtime
+immutable(void)* rtinfoEntry(const TypeInfo keyti, const TypeInfo valti, ref size_t[2] rtinfoData)
+{
+    static bool isNoClass(const TypeInfo ti) { return ti && typeid(ti) !is typeid(TypeInfo_Class); }
+
+    immutable(size_t)* keyinfo = cast(immutable(size_t)*) (isNoClass(keyti) ? keyti.rtInfo : rtinfoHasPointers);
+    immutable(size_t)* valinfo = cast(immutable(size_t)*) (isNoClass(valti) ? valti.rtInfo : rtinfoHasPointers);
+
+    enum maxSupportedSize = 8 * (void*).sizeof * (void*).sizeof;
+
+    size_t rtinfosize = 0;
+    size_t valuesize = valti.tsize();
+
+    size_t valbits;
+    if (valinfo is rtinfoNoPointers)
+        valbits = 0;
+    else if (rtinfosize + valuesize > maxSupportedSize)
+        return rtinfoHasPointers;
+    else if (valinfo is rtinfoHasPointers)
+        valbits = (1 << (valuesize / (void*).sizeof)) - 1;
+    else
+        valbits = valinfo[1];
+
+    if (valbits != 0)
+        rtinfosize += valuesize;
+
+    size_t keybits;
+    size_t keysize = keyti.tsize;
+    if (keyinfo is rtinfoNoPointers)
+        keybits = 0;
+    else if (rtinfosize + keysize > maxSupportedSize)
+        return rtinfoHasPointers;
+    else if (keyinfo is rtinfoHasPointers)
+        keybits = (1 << (keysize / (void*).sizeof)) - 1;
+    else
+        keybits = keyinfo[1];
+
+    if (valbits == 0 && keybits == 0)
+        return rtinfoNoPointers;
+
+    if (valbits != 0 || keybits != 0)
+        rtinfosize += keysize;
+
+    rtinfoData[0] = rtinfosize;
+
+    size_t valshift = (keysize + (void*).sizeof - 1) / (void*).sizeof;
+    rtinfoData[1] = keybits | (valbits << valshift);
+
+    return cast(immutable(void)*) rtinfoData.ptr;
 }
 
 //==============================================================================

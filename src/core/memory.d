@@ -96,7 +96,7 @@
  *   happens and there is insufficient _memory available.)
  * )
  *
- * Copyright: Copyright Sean Kelly 2005 - 2015.
+ * Copyright: Copyright Sean Kelly 2005 - 2016.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Source:    $(DRUNTIMESRC core/_memory.d)
@@ -126,6 +126,7 @@ private
     extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz, const TypeInfo = null ) pure nothrow;
     extern (C) size_t   gc_reserve( size_t sz ) nothrow;
     extern (C) void     gc_free( void* p ) pure nothrow @nogc;
+    extern (C) bool     gc_emplace( void *p, size_t len, const TypeInfo ti ) pure nothrow;
 
     extern (C) void*   gc_addrOf( void* p ) pure nothrow @nogc;
     extern (C) size_t  gc_sizeOf( void* p ) pure nothrow @nogc;
@@ -260,6 +261,10 @@ struct GC
         NO_INTERIOR = 0b0001_0000,
 
         STRUCTFINAL = 0b0010_0000, // the block has a finalizer for (an array of) structs
+
+        // additional info for allocating with type info
+        NO_RTINFO   = 0b0100_0000, // do not copy RTInfo in malloc/realloc
+        REP_RTINFO  = 0b1000_0000, // repeat RTInfo if allocation is larger than type info
     }
 
 
@@ -678,6 +683,22 @@ struct GC
     static Stats stats() nothrow
     {
         return gc_stats();
+    }
+
+    /**
+     * Describe the memory at the given address range for precise collection
+     *
+     * Params:
+     *  p = A pointer to the root or the interior of a valid memory block
+     *  len = Length of the memory range
+     *  ti = Type info describing the memory usage
+     *
+     * Returns:
+     *  true if p points to GC managed memory
+     */
+    static bool emplace( void *p, size_t len, const TypeInfo ti ) pure nothrow
+    {
+        return gc_emplace( p, len, ti );
     }
 
     /**

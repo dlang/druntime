@@ -170,6 +170,11 @@ extern (C)
     }
 
     void* gc_addrOf( void* p ) nothrow @nogc
+    bool gc_emplace( void* p, size_t len, const TypeInfo ti ) nothrow
+    {
+        return instance.emplace( p, len, ti );
+    }
+
     {
         return instance.addrOf( p );
     }

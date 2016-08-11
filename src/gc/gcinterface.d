@@ -149,6 +149,11 @@ interface GC
     core.memory.GC.Stats stats() nothrow;
 
     /**
+    * Tell the GC the type of the memory range
+    */
+    bool emplace(void *p, size_t len, const(TypeInfo) ti) nothrow;
+
+    /**
      * add p to list of roots
      */
     void addRoot(void* p) nothrow @nogc;

@@ -163,6 +163,11 @@ class ManualGC : GC
         cstdlib.free(p);
     }
 
+    bool emplace(void *p, size_t len, const(TypeInfo) ti) nothrow
+    {
+        return false;
+    }
+
     /**
      * Determine the base address of the block containing p.  If p is not a gc
      * allocated pointer, return null.
