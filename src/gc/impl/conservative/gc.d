@@ -294,7 +294,7 @@ class ConservativeGC : GC
     import core.internal.spinlock;
     static gcLock = shared(AlignedSpinLock)(SpinLock.Contention.lengthy);
     static bool _inFinalizer;
-    static bool isPrecise=false;
+    __gshared bool isPrecise=false;
 
     // lock GC, throw InvalidMemoryOperationError on recursive locking during finalization
     static void lockNR() @nogc nothrow
