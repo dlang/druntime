@@ -2087,57 +2087,61 @@ struct Gcx
      */
     int bitScanForwardOffset(size_t* bitArray, size_t index, size_t max) nothrow
     {
-        static import core.stdc.math;
         static import core.bitop;
 
         //based on core.bitop.bt
         static if (size_t.sizeof == 8)
         {
             auto bitIndex = index >> 6;
-            auto testBit = (1L << (index & 63));
+            int position = index & 63;
         }
         else static if (size_t.sizeof == 4)
         {
             auto bitIndex = index >> 5;
-            auto testBit = (1  << (index & 31));
+            int position = index & 31;
         }
         else
             static assert(0);
 
         auto bits = bitArray[bitIndex];
-
-        auto position = cast(uint)core.stdc.math.log2(cast(double)testBit);
-
         auto shifted = ( bits >> position) << position;
 
-        //bsf wasn't returning -1 on windows if shifted == 0
-        if(!shifted)
+        int internalOffset;
+
+        for(;;)
         {
-            static if(size_t.sizeof == 8)
-                auto maxBitIndex = (max >> 6);
-            else
-                auto maxBitIndex = (max >> 5);
-
-            //if index and max lie in the same bit set
-            if(bitIndex == maxBitIndex)
+            //check if the remaining bits == 0
+            if(!shifted)
             {
-                //nothing found here
-                return -1;
+                static if(size_t.sizeof == 8)
+                    auto maxBitIndex = (max >> 6);
+                else
+                    auto maxBitIndex = (max >> 5);
+                //if index and max lie in the same bit set
+                if(bitIndex == maxBitIndex)
+                {
+                    //nothing found here
+                    return -1;
+                }
+                else
+                {
+                    static if (size_t.sizeof == 8)
+                        internalOffset += 64-position;
+                    else static if (size_t.sizeof == 4)
+                        internalOffset += 32-position;
+                    position = 0;
+                    shifted = bitArray[++bitIndex];
+                    continue;
+                }
             }
-            else//if they don't
+            else
             {
-                static if (size_t.sizeof == 8)
-                    auto offsetToNext = 64-position;
-                else static if (size_t.sizeof == 4)
-                    auto offsetToNext = 32-position;
+                break;
+            }
 
-                auto ret = bitScanForwardOffset(bitArray, index+offsetToNext, max);
-                return (ret == -1)?-1:ret+offsetToNext;
-            }//else
-        }
-        auto nextPosition = core.bitop.bsf(shifted);
+        }//for
 
-        auto offset = core.bitop.bsf(shifted) - position;
+        int offset = core.bitop.bsf(shifted) - position + internalOffset;
         if(offset <= (max - index))
             return offset;
         else
