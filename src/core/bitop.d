@@ -794,13 +794,18 @@ void volatileStore(ulong * ptr, ulong  value);   /// ditto
 pragma(inline, true)
 uint bitswap( uint x ) pure
 {
-    if (!__ctfe)
+    static if (is(typeof(asmBitswap32(x))))
     {
-        static if (is(typeof(asmBitswap32(x))))
-            return asmBitswap32(x);
-    }
 
-    return softBitswap!uint(x);
+        if (!__ctfe)
+            return asmBitswap32(x);
+        else
+            return softBitswap!uint(x);
+    }
+    else
+    {
+        return softBitswap!uint(x);
+    }
 }
 
 unittest
@@ -828,13 +833,18 @@ unittest
 pragma(inline, true)
 ulong bitswap ( ulong x ) pure
 {
-    if (!__ctfe)
+    static if (is(typeof(asmBitswap64(x))))
     {
-        static if (is(typeof(asmBitswap64(x))))
-            return asmBitswap64(x);
-    }
 
-    return softBitswap!ulong(x);
+        if (!__ctfe)
+            return asmBitswap64(x);
+        else
+            return softBitswap!ulong(x);
+    }
+    else
+    {
+        return softBitswap!ulong(x);
+    }
 }
 
 unittest
