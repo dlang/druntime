@@ -1938,7 +1938,13 @@ extern (C)
     // alias _dg2_t = extern(D) int delegate(void*, void*);
     // int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    private struct AARange { void* impl; size_t idx; }
+    private struct AARange
+    {
+    private:
+        this(void* impl, size_t idx) { this.impl = impl; this.idx = idx; }
+        void* impl;
+        size_t idx;
+    }
     AARange _aaRange(void* aa) pure nothrow @nogc;
     bool _aaRangeEmpty(AARange r) pure nothrow @nogc;
     void* _aaRangeFrontKey(AARange r) pure nothrow @nogc;
@@ -2039,7 +2045,7 @@ V[K] dup(T : V[K], K, V)(T* aa)
     return (*aa).dup;
 }
 
-auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc
+auto byKey(K, V)(const(V[K]) aa) pure nothrow @nogc
 {
     import core.internal.traits : substInout;
 
@@ -2047,22 +2053,22 @@ auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc
     {
         AARange r;
 
-    pure nothrow @nogc:
+    pure nothrow @nogc @trusted:
         @property bool empty() { return _aaRangeEmpty(r); }
         @property ref front() { return *cast(substInout!K*)_aaRangeFrontKey(r); }
         void popFront() { _aaRangePopFront(r); }
         @property Result save() { return this; }
     }
 
-    return Result(_aaRange(cast(void*)aa));
+    return Result(((typeof(aa) aa) @trusted => _aaRange(cast(void*)aa))(aa));
 }
 
-auto byKey(T : V[K], K, V)(T* aa) pure nothrow @nogc
+auto byKey(T : V[K], K, V)(T* aa)
 {
     return (*aa).byKey();
 }
 
-auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc
+auto byValue(K, V)(const(V[K]) aa) pure nothrow @nogc
 {
     import core.internal.traits : substInout;
 
@@ -2070,22 +2076,22 @@ auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc
     {
         AARange r;
 
-    pure nothrow @nogc:
+    pure nothrow @nogc @trusted:
         @property bool empty() { return _aaRangeEmpty(r); }
-        @property ref front() { return *cast(substInout!V*)_aaRangeFrontValue(r); }
+        @property ref front() { return *cast(const(V)*)_aaRangeFrontValue(r); }
         void popFront() { _aaRangePopFront(r); }
         @property Result save() { return this; }
     }
 
-    return Result(_aaRange(cast(void*)aa));
+    return Result(((typeof(aa) aa) @trusted => _aaRange(cast(void*)aa))(aa));
 }
 
-auto byValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
+auto byValue(T : V[K], K, V)(T* aa)
 {
     return (*aa).byValue();
 }
 
-auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc
+auto byKeyValue(K, V)(const(V[K]) aa) pure nothrow @nogc
 {
     import core.internal.traits : substInout;
 
@@ -2093,7 +2099,7 @@ auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc
     {
         AARange r;
 
-    pure nothrow @nogc:
+    pure nothrow @nogc @trusted:
         @property bool empty() { return _aaRangeEmpty(r); }
         @property auto front() @trusted
         {
@@ -2114,7 +2120,7 @@ auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc
         @property Result save() { return this; }
     }
 
-    return Result(_aaRange(cast(void*)aa));
+    return Result(((typeof(aa) aa) @trusted => _aaRange(cast(void*)aa))(aa));
 }
 
 auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
@@ -2122,10 +2128,12 @@ auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
     return (*aa).byKeyValue();
 }
 
-Key[] keys(T : Value[Key], Value, Key)(T aa) @property
+Key[] keys(Value, Key)(Value[Key] aa) @property
 {
-    auto a = cast(void[])_aaKeys(cast(inout(void)*)aa, Key.sizeof, typeid(Key[]));
-    auto res = *cast(Key[]*)&a;
+    auto res = () @trusted {
+        auto voidRes = _aaKeys(cast(void*)aa, Key.sizeof, typeid(Key[]));
+        return *cast(Key[]*)&voidRes;
+    }();
     _doPostblit(res);
     return res;
 }
@@ -2135,10 +2143,12 @@ Key[] keys(T : Value[Key], Value, Key)(T *aa) @property
     return (*aa).keys;
 }
 
-Value[] values(T : Value[Key], Value, Key)(T aa) @property
+Value[] values(Value, Key)(Value[Key] aa) @property
 {
-    auto a = cast(void[])_aaValues(cast(inout(void)*)aa, Key.sizeof, Value.sizeof, typeid(Value[]));
-    auto res = *cast(Value[]*)&a;
+    auto res = () @trusted {
+        auto voidRes = _aaValues(cast(void*)aa, Key.sizeof, Value.sizeof, typeid(Key[]));
+        return *cast(Value[]*)&voidRes;
+    }();
     _doPostblit(res);
     return res;
 }
@@ -2173,6 +2183,20 @@ unittest
     auto keys = aa2.keys;
     assert(keys.length == 1);
     assert(T.count == 2);
+}
+
+@safe pure unittest
+{
+    string[string] saa = ["a" : "1", "b" : "2"];
+    string s = saa["a"];
+    saa["c"] = "3";
+    if ("c" in saa) {}
+    size_t l = saa.length;
+    foreach(k; saa.keys) {}
+    foreach(k; saa.byKey) {}
+    foreach(v; saa.values) {}
+    foreach(v; saa.byValue) {}
+    foreach(k, v; saa) {}
 }
 
 inout(V) get(K, V)(inout(V[K]) aa, K key, lazy inout(V) defaultValue)
