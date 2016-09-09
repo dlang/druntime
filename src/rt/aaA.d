@@ -115,21 +115,29 @@ private:
         for (size_t j = hash & mask, i = j++;;)
         {
             auto bucket = buckets[i];
-            auto bucket2 = buckets[j];
             if (bucket.hash == hash)
-                if (bucket2.hash != hash)
-                    return &buckets[i];
-                else if (keyti.equals(pkey, bucket.entry))
-                    return &buckets[i];
-                else if (keyti.equals(pkey, bucket2.entry))
-                    return &buckets[j];
-                else
-                    i += 2, j += 2;
-
-            else if (bucket.hash == 0)
+            {
+                if (j != dim)
+                {
+                    auto bucket2 = buckets[j]; 
+                    if (bucket2.hash != hash)
+                        return &buckets[i];
+                    else if (keyti.equals(pkey, bucket.entry))
+                        return &buckets[i];
+                    else if (keyti.equals(pkey, bucket2.entry))
+                        return &buckets[j];
+                    else if(j != (hash & mask))
+                        i += 2, j += 2;
+                    else
+                       assert(0, "We overflowd");
+                }
+                return &buckets[i];
+            }
+            else if (bucket.empty)
                 return null;
 
-            assert(i != (hash & mask), "Bucket overflow in AA");
+            if (++i == dim)
+               return null;
         }
     }
 
