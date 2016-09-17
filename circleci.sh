@@ -51,11 +51,17 @@ clone() {
 }
 
 coverage() {
-    if [ -n ${CIRCLE_PR_NUMBER:-} ]; then
-        local base_branch=$(curl -fsSL https://api.github.com/repos/dlang/dmd/pulls/$CIRCLE_PR_NUMBER | jq -r '.base.ref')
+    base_branch="master"
+    if [ -n "${CIRCLE_PR_NUMBER:-}" ]; then
+        base_branch=$(curl -fsSL https://api.github.com/repos/dlang/dmd/pulls/$CIRCLE_PR_NUMBER | jq -r '.base.ref')
     else
-        local base_branch=$CIRCLE_BRANCH
+        base_branch=$CIRCLE_BRANCH
     fi
+
+    # merge with latest upstream branch
+    git remote add upstream git@github.com:dlang/druntime.git
+    git fetch upstream
+    git merge upstream/$base_branch
 
     clone https://github.com/dlang/dmd.git ../dmd $base_branch
 
