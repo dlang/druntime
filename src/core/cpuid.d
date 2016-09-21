@@ -59,6 +59,7 @@ module core.cpuid;
 @trusted:
 nothrow:
 @nogc:
+pure:
 
 // If optimizing for a particular processor, it is generally better
 // to identify based on features rather than model. NOTE: Normally
