@@ -483,6 +483,7 @@ enum PT_LOOS =         0x60000000;
 enum PT_GNU_EH_FRAME = 0x6474e550;
 enum PT_GNU_STACK =    0x6474e551;
 enum PT_GNU_RELRO =    0x6474e552;
+enum PT_PAX_FLAGS =    0x65041580;
 enum PT_LOSUNW =       0x6ffffffa;
 enum PT_SUNWBSS =      0x6ffffffa;
 enum PT_SUNWSTACK =    0x6ffffffb;
