@@ -28,6 +28,7 @@ else version (WatchOS)
 
 extern (C):
 @system:
+nothrow:
 
 /* Placed outside @nogc in order to not constrain what the callback does.
  */
@@ -38,8 +39,6 @@ void*   bsearch(in void* key, in void* base, size_t nmemb, size_t size, _compare
 ///
 void    qsort(void* base, size_t nmemb, size_t size, _compare_fp_t compar);
 
-
-nothrow:
 @nogc:
 
 ///
@@ -231,4 +230,3 @@ version( CRuntime_Microsoft )
     ///
     long  _wcstoi64(in wchar *,wchar **,int);
 }
-
