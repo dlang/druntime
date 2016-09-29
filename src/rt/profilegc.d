@@ -95,10 +95,13 @@ static ~this()
                 foreach (name, entry; newCounts)
                 {
                     auto ptr = name in globalNewCounts;
-                    if(ptr) {
+                    if (ptr)
+                    {
                         ptr.count += entry.count;
                         ptr.size += entry.size;
-                    } else {
+                    }
+                    else
+                    {
                         globalNewCounts[name] = entry;
                     }
                 }
