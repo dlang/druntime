@@ -94,8 +94,13 @@ static ~this()
                 // Merge
                 foreach (name, entry; newCounts)
                 {
-                    globalNewCounts[name].count += entry.count;
-                    globalNewCounts[name].size += entry.size;
+                    auto ptr = name in globalNewCounts;
+                    if(ptr) {
+                        ptr.count += entry.count;
+                        ptr.size += entry.size;
+                    } else {
+                        globalNewCounts[name] = entry;
+                    }
                 }
             }
             else
