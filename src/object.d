@@ -1923,12 +1923,13 @@ class __cpp_type_info_ptr
 extern (C)
 {
     // from druntime/src/rt/aaA.d
+    private:
 
     // size_t _aaLen(in void* p) pure nothrow @nogc;
-    private void* _aaGetY(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey) pure nothrow;
+    void* _aaGetY(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey) pure nothrow;
     // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
-    inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize, const TypeInfo tiValArray) pure nothrow;
-    inout(void)[] _aaKeys(inout void* p, in size_t keysize, const TypeInfo tiKeyArray) pure nothrow;
+    inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize, const TypeInfo tiValArray) pure nothrow @trusted;
+    inout(void)[] _aaKeys(inout void* p, in size_t keysize, const TypeInfo tiKeyArray) pure nothrow @trusted;
     void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
     void _aaClear(void* p) pure nothrow;
 
@@ -1938,10 +1939,10 @@ extern (C)
     // alias _dg2_t = extern(D) int delegate(void*, void*);
     // int _aaApply2(void* aa, size_t keysize, _dg2_t dg);
 
-    private struct AARange
+    struct AARange
     {
     private:
-        this(void* impl, size_t idx) { this.impl = impl; this.idx = idx; }
+        this(void *impl) { this.impl = impl; }
         void* impl;
         size_t idx;
     }
@@ -2045,7 +2046,7 @@ V[K] dup(T : V[K], K, V)(T* aa)
     return (*aa).dup;
 }
 
-auto byKey(K, V)(const(V[K]) aa) pure nothrow @nogc
+auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc @trusted
 {
     import core.internal.traits : substInout;
 
@@ -2055,20 +2056,21 @@ auto byKey(K, V)(const(V[K]) aa) pure nothrow @nogc
 
     pure nothrow @nogc @trusted:
         @property bool empty() { return _aaRangeEmpty(r); }
-        @property ref front() { return *cast(substInout!K*)_aaRangeFrontKey(r); }
-        void popFront() { _aaRangePopFront(r); }
+        @property ref front() { assert(!empty); return *cast(substInout!K*)_aaRangeFrontKey(r); }
+        void popFront() { assert(!empty); _aaRangePopFront(r); }
         @property Result save() { return this; }
     }
 
-    return Result(((typeof(aa) aa) @trusted => _aaRange(cast(void*)aa))(aa));
+    static assert(!__traits(compiles, __traits(getAliasThis, T)), "cannot have alias this of associative array");
+    return Result(_aaRange(cast(void*)aa));
 }
 
-auto byKey(T : V[K], K, V)(T* aa)
+auto byKey(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byKey();
 }
 
-auto byValue(K, V)(const(V[K]) aa) pure nothrow @nogc
+auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc @trusted
 {
     import core.internal.traits : substInout;
 
@@ -2078,20 +2080,21 @@ auto byValue(K, V)(const(V[K]) aa) pure nothrow @nogc
 
     pure nothrow @nogc @trusted:
         @property bool empty() { return _aaRangeEmpty(r); }
-        @property ref front() { return *cast(const(V)*)_aaRangeFrontValue(r); }
-        void popFront() { _aaRangePopFront(r); }
+        @property ref front() { assert(!empty); return *cast(substInout!V*)_aaRangeFrontValue(r); }
+        void popFront() { assert(!empty); _aaRangePopFront(r); }
         @property Result save() { return this; }
     }
 
-    return Result(((typeof(aa) aa) @trusted => _aaRange(cast(void*)aa))(aa));
+    static assert(!__traits(compiles, __traits(getAliasThis, T)), "cannot have alias this of associative array");
+    return Result(_aaRange(cast(void*)aa));
 }
 
-auto byValue(T : V[K], K, V)(T* aa)
+auto byValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byValue();
 }
 
-auto byKeyValue(K, V)(const(V[K]) aa) pure nothrow @nogc
+auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc @trusted
 {
     import core.internal.traits : substInout;
 
@@ -2120,7 +2123,8 @@ auto byKeyValue(K, V)(const(V[K]) aa) pure nothrow @nogc
         @property Result save() { return this; }
     }
 
-    return Result(((typeof(aa) aa) @trusted => _aaRange(cast(void*)aa))(aa));
+    static assert(!__traits(compiles, __traits(getAliasThis, T)), "cannot have alias this of associative array");
+    return Result(_aaRange(cast(void*)aa));
 }
 
 auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
@@ -2128,12 +2132,17 @@ auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
     return (*aa).byKeyValue();
 }
 
-Key[] keys(Value, Key)(Value[Key] aa) @property
+Key[] keys(T : Value[Key], Value, Key)(T aa) @property
 {
-    auto res = () @trusted {
-        auto voidRes = _aaKeys(cast(void*)aa, Key.sizeof, typeid(Key[]));
-        return *cast(Key[]*)&voidRes;
-    }();
+    static assert(!__traits(compiles, __traits(getAliasThis, T)), "cannot have alias this of associative array");
+    void* trustedCastVoid(T aa) @trusted { return cast(void*)aa; }
+    void* p = trustedCastVoid(aa);
+
+    void[] a = _aaKeys(p, Key.sizeof, typeid(Key[]));
+
+    Key[] trustedCastKeyArray(ref void[] a) @trusted { return *cast(Key[]*)&a; }
+    auto res = trustedCastKeyArray(a);
+
     _doPostblit(res);
     return res;
 }
@@ -2143,12 +2152,17 @@ Key[] keys(T : Value[Key], Value, Key)(T *aa) @property
     return (*aa).keys;
 }
 
-Value[] values(Value, Key)(Value[Key] aa) @property
+Value[] values(T : Value[Key], Value, Key)(T aa) @property
 {
-    auto res = () @trusted {
-        auto voidRes = _aaValues(cast(void*)aa, Key.sizeof, Value.sizeof, typeid(Key[]));
-        return *cast(Value[]*)&voidRes;
-    }();
+    static assert(!__traits(compiles, __traits(getAliasThis, T)), "cannot have alias this of associative array");
+    void* trustedCastVoid(T aa) @trusted { return cast(void*)aa; }
+    void* p = trustedCastVoid(aa);
+
+    auto a = _aaValues(p, Key.sizeof, Value.sizeof, typeid(Value[]));
+
+    Value[] trustedCastValueArray(ref void[] a) @trusted { return *cast(Value[]*)&a; }
+    auto res = trustedCastValueArray(a);
+
     _doPostblit(res);
     return res;
 }
@@ -2185,7 +2199,7 @@ unittest
     assert(T.count == 2);
 }
 
-@safe pure unittest
+@safe unittest
 {
     string[string] saa = ["a" : "1", "b" : "2"];
     string s = saa["a"];
@@ -2503,6 +2517,21 @@ unittest
     const int[int] caa;
     static assert(is(typeof(caa.byValue().front) == const int));
 }
+
+unittest
+{
+    static struct Foo {
+        int[int] aa;
+        auto opCast() pure nothrow @nogc { *cast(uint*)0xdeadbeef = 0xcafebabe; return null; }
+        alias aa this;
+    }
+
+    static void test() @safe {
+        Foo f;
+        static assert(!__traits(compiles, { int i = !f.byKey.empty; }));
+    }
+}
+
 
 private void _destructRecurse(S)(ref S s)
     if (is(S == struct))
