@@ -982,6 +982,14 @@ size_t fread(void* ptr, size_t size, size_t nmemb, FILE* stream);
 ///
 size_t fwrite(in void* ptr, size_t size, size_t nmemb, FILE* stream);
 
+version(Posix)
+{
+    /// Posix only
+    sizediff_t getdelim(char** lineptr, size_t* n, int delimiter, FILE* stream);
+    /// Posix only
+    sizediff_t getline(char** lineptr, size_t* n, FILE* stream);
+}
+    
 // No unsafe pointer manipulation.
 @trusted
 {
