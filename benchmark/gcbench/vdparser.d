@@ -28,7 +28,16 @@ void main(string[] argv)
     Project prj = new Project;
     foreach(i; 0..nIter)
     {
-        foreach(string name; dirEntries(buildPath("gcbench", "vdparser.extra"), "*.d", SpanMode.depth))
+        int cnt = 0;
+        string path = buildPath("gcbench", "vdparser.extra");
+        foreach(name; dirEntries(path, SpanMode.depth))
+        {
+            if(!globMatch(baseName(name), "*.d"))
+                continue;
             prj.addAndParseFile(name);
+            cnt++;
+        }
+        if (cnt != 31)
+            assert(false);
     }
 }
