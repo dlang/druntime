@@ -2449,7 +2449,7 @@ extern(C) void _d_initMonoTime()
                     //  - it's negative
                     //  - it's zero
                     // In such cases, we'll just use nanosecond resolution.
-                    tps[i] = ts.tv_sec != 0 || ts.tv_nsec <= 0 || ts.tv_nsec >= 1000
+                    tps[i] = ts.tv_nsec <= 0 || ts.tv_nsec >= 1000
                         ? 1_000_000_000L : 1_000_000_000L / ts.tv_nsec;
                 }
             }
