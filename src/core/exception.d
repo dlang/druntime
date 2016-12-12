@@ -427,27 +427,44 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
     assertHandler = h;
 }
 
+/*
+Returns a singleton object of class type `C`, i.e. repeated calls to
+`singleton!C` within a given thread return the same instance. For that reason,
+no constructor parameters are accepted; `C` must allow default construction.
 
-///////////////////////////////////////////////////////////////////////////////
-// Overridable Callbacks
-///////////////////////////////////////////////////////////////////////////////
+Different threads own different instances of `C`.
 
-private C singleton(C)() if (is(C == class) && is(typeof(new C)))
+The destructor of the singleton object is called during application's exit.
+*/
+private @trusted C singleton(C)() if (is(C == class) && is(typeof(new C)))
 {
     static size_t[1 + (__traits(classInstanceSize, C) - 1) / size_t.sizeof] b;
     static bool initialized = false;
     auto result = cast(C) b.ptr;
     if (!initialized)
     {
-        assert(typeid(C).init.length == b.length * size_t.sizeof);
+        assert(typeid(C).initializer.length == b.length * size_t.sizeof);
         import core.stdc.string;
-        memcpy(b.ptr, typeid(C).init.ptr, b.length);
-        static if (is(typeof(result.__ctor())))
-            result.__ctor;
+        memcpy(b.ptr, typeid(C).initializer.ptr, b.length);
+        result.__ctor;
+        import core.internal.traits;
+        static if (hasElaborateDestructor!C)
+        {
+            import core.stdc.stdlib;
+            static void destroy()
+            {
+                (cast(C) b.ptr).__dtor;
+            }
+            atexit(&destroy);
+        }
         initialized = true;
     }
     return result;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Overridable Callbacks
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * A callback for assert errors in D.  The user-supplied assert handler will
