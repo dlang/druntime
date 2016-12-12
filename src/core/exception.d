@@ -449,7 +449,8 @@ private C perThreadInstance(C)() if (is(C == class) && is(typeof(new C)))
         {
             memcpy(b.ptr, typeid(C).initializer.ptr, b.length);
         }();
-        result.__ctor;
+        static if (is(typeof(result.__ctor())))
+            result.__ctor;
         import core.internal.traits;
         static if (hasElaborateDestructor!C)
         {
@@ -463,6 +464,16 @@ private C perThreadInstance(C)() if (is(C == class) && is(typeof(new C)))
         initialized = true;
     }
     return result;
+}
+
+unittest
+{
+    static class C
+    {
+        ~this() {}
+    }
+    // Ensure coverage of the atexit code
+    assert(perThreadInstance!C !is null);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
