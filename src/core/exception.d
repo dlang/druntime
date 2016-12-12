@@ -16,7 +16,11 @@ module core.exception;
  */
 class RangeError : Error
 {
-    @safe pure nothrow this( string file = __FILE__, size_t line = __LINE__, Throwable next = null )
+    @safe pure nothrow this()
+    {
+        super( "Range violation", null, 0, null );
+    }
+    @safe pure nothrow this( string file, size_t line, Throwable next = null )
     {
         super( "Range violation", file, line, next );
     }
@@ -25,7 +29,12 @@ class RangeError : Error
 unittest
 {
     {
-        auto re = new RangeError();
+        auto re = singleton!RangeError;
+        assert(re.msg == "Range violation");
+    }
+
+    {
+        auto re = new RangeError(__FILE__, __LINE__);
         assert(re.file == __FILE__);
         assert(re.line == __LINE__ - 2);
         assert(re.next is null);
@@ -523,7 +532,6 @@ extern (C) void onUnittestErrorMsg( string file, size_t line, string msg ) nothr
     onAssertErrorMsg( file, line, msg );
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // Internal Error Callbacks
 ///////////////////////////////////////////////////////////////////////////////
@@ -538,9 +546,12 @@ extern (C) void onUnittestErrorMsg( string file, size_t line, string msg ) nothr
  * Throws:
  *  $(LREF RangeError).
  */
-extern (C) void onRangeError( string file = __FILE__, size_t line = __LINE__ ) @safe pure nothrow
+extern (C) void onRangeError( string file = __FILE__, size_t line = __LINE__ ) @safe nothrow
 {
-    throw new RangeError( file, line, null );
+    auto result = singleton!RangeError;
+    result.file = file;
+    result.line = line;
+    throw result;
 }
 
 
