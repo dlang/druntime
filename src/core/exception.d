@@ -429,12 +429,18 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
 
 /*
 Returns a perThreadInstance object of class type `C`, i.e. repeated calls to
-`perThreadInstance!C` within a given thread return the same instance. For that reason,
-no constructor parameters are accepted; `C` must allow default construction.
+`perThreadInstance!C` within a given thread return the same instance. For that
+reason, no constructor parameters are accepted; `C` must allow default
+construction.
 
 Different threads own different instances of `C`.
 
-The destructor of the perThreadInstance object is called during application's exit.
+The destructor of the perThreadInstance object is called during application's
+exit.
+
+Returns: A thread-local instance of type `C`.
+
+Throws: If the default constructor of `C` throws.
 */
 private C perThreadInstance(C)() if (is(C == class) && is(typeof(new C)))
 {
