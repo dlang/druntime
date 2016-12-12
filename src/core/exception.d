@@ -71,7 +71,7 @@ class AssertError : Error
 @safe unittest
 {
     {
-        auto ae = singleton!AssertError;
+        auto ae = perThreadInstance!AssertError;
         assert(typeid(ae) is typeid(AssertError));
         assert(ae.file is null);
         assert(ae.line == 0);
@@ -428,15 +428,15 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
 }
 
 /*
-Returns a singleton object of class type `C`, i.e. repeated calls to
-`singleton!C` within a given thread return the same instance. For that reason,
+Returns a perThreadInstance object of class type `C`, i.e. repeated calls to
+`perThreadInstance!C` within a given thread return the same instance. For that reason,
 no constructor parameters are accepted; `C` must allow default construction.
 
 Different threads own different instances of `C`.
 
-The destructor of the singleton object is called during application's exit.
+The destructor of the perThreadInstance object is called during application's exit.
 */
-private C singleton(C)() if (is(C == class) && is(typeof(new C)))
+private C perThreadInstance(C)() if (is(C == class) && is(typeof(new C)))
 {
     static size_t[1 + (__traits(classInstanceSize, C) - 1) / size_t.sizeof] b;
     static bool initialized = false;
@@ -498,7 +498,7 @@ extern (C) void onAssertErrorMsg( string file, size_t line, string msg ) nothrow
 {
     if( _assertHandler is null )
     {
-        auto e = singleton!AssertError;
+        auto e = perThreadInstance!AssertError;
         e.msg = msg;
         e.file = file;
         e.line = line;
