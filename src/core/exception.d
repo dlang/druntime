@@ -68,11 +68,11 @@ class AssertError : Error
     }
 }
 
-unittest
+@safe unittest
 {
     {
         auto ae = singleton!AssertError;
-        assert(typeid(ae) == typeid(AssertError));
+        assert(typeid(ae) is typeid(AssertError));
         assert(ae.file is null);
         assert(ae.line == 0);
     }
@@ -436,16 +436,19 @@ Different threads own different instances of `C`.
 
 The destructor of the singleton object is called during application's exit.
 */
-private @trusted C singleton(C)() if (is(C == class) && is(typeof(new C)))
+private C singleton(C)() if (is(C == class) && is(typeof(new C)))
 {
     static size_t[1 + (__traits(classInstanceSize, C) - 1) / size_t.sizeof] b;
     static bool initialized = false;
-    auto result = cast(C) b.ptr;
+    auto result = () @trusted { return cast(C) b.ptr; }();
     if (!initialized)
     {
         assert(typeid(C).initializer.length == b.length * size_t.sizeof);
         import core.stdc.string;
-        memcpy(b.ptr, typeid(C).initializer.ptr, b.length);
+        () @trusted
+        {
+            memcpy(b.ptr, typeid(C).initializer.ptr, b.length);
+        }();
         result.__ctor;
         import core.internal.traits;
         static if (hasElaborateDestructor!C)
