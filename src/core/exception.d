@@ -47,6 +47,11 @@ unittest
  */
 class AssertError : Error
 {
+    @safe pure nothrow this()
+    {
+        super(null);
+    }
+
     @safe pure nothrow this( string file, size_t line )
     {
         this(cast(Throwable)null, file, line);
@@ -65,6 +70,12 @@ class AssertError : Error
 
 unittest
 {
+    {
+        auto ae = singleton!AssertError;
+        assert(typeid(ae) == typeid(AssertError));
+        assert(ae.file is null);
+        assert(ae.line == 0);
+    }
     {
         auto ae = new AssertError("hello", 42);
         assert(ae.file == "hello");
@@ -421,6 +432,22 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
 // Overridable Callbacks
 ///////////////////////////////////////////////////////////////////////////////
 
+private C singleton(C)() if (is(C == class) && is(typeof(new C)))
+{
+    static size_t[1 + (__traits(classInstanceSize, C) - 1) / size_t.sizeof] b;
+    static bool initialized = false;
+    auto result = cast(C) b.ptr;
+    if (!initialized)
+    {
+        assert(typeid(C).init.length == b.length * size_t.sizeof);
+        import core.stdc.string;
+        memcpy(b.ptr, typeid(C).init.ptr, b.length);
+        static if (is(typeof(result.__ctor())))
+            result.__ctor;
+        initialized = true;
+    }
+    return result;
+}
 
 /**
  * A callback for assert errors in D.  The user-supplied assert handler will
@@ -433,9 +460,7 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
  */
 extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) nothrow
 {
-    if( _assertHandler is null )
-        throw new AssertError( file, line );
-    _assertHandler( file, line, null);
+    onAssertErrorMsg(file, line, null);
 }
 
 
@@ -452,7 +477,13 @@ extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) 
 extern (C) void onAssertErrorMsg( string file, size_t line, string msg ) nothrow
 {
     if( _assertHandler is null )
-        throw new AssertError( msg, file, line );
+    {
+        auto e = singleton!AssertError;
+        e.msg = msg;
+        e.file = file;
+        e.line = line;
+        throw e;
+    }
     _assertHandler( file, line, msg );
 }
 
