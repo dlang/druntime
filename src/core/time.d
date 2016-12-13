@@ -409,7 +409,7 @@ unittest
 
 
 /++
-    Represents a duration of time of weeks or less (kept internally as hnsecs).
+    Represents a duration of time (kept internally as hnsecs).
     (e.g. 22 days or 700 seconds).
 
     It is used when representing a duration of time - such as how long to
