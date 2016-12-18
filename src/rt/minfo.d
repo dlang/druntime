@@ -16,6 +16,12 @@ import core.stdc.stdlib;  // alloca
 import core.stdc.string;  // memcpy
 import rt.sections;
 
+// Fixing the cycle detection would break some programs relying on that
+// bug. Only print such cycles with a deprecation warning for now.
+// https://issues.dlang.org/show_bug.cgi?id=16211
+// https://github.com/dlang/druntime/pull/1602
+enum deprecationForBugzilla16211 = true;
+
 enum
 {
     MIctorstart  = 0x1,   // we've started constructing it
@@ -168,6 +174,7 @@ struct ModuleGroup
         enum OnCycle
         {
             abort,
+            deprecate,
             print,
             ignore
         }
@@ -274,7 +281,7 @@ struct ModuleGroup
             .free(edges.ptr);
         }
 
-        void buildCycleMessage(size_t sourceIdx, size_t cycleIdx, scope void delegate(string) sink)
+        void printCycleMessage(size_t sourceIdx, size_t cycleIdx, in size_t[] cyclePath, scope void delegate(string) sink)
         {
             version (Windows)
                 enum EOL = "\r\n";
@@ -286,8 +293,6 @@ struct ModuleGroup
             sink(" and ");
             sink(_modules[cycleIdx].name);
             sink(EOL);
-            auto cyclePath = genCyclePath(sourceIdx, cycleIdx, edges);
-            scope(exit) .free(cyclePath.ptr);
 
             sink(_modules[sourceIdx].name);
             sink("* ->" ~ EOL);
@@ -298,6 +303,55 @@ struct ModuleGroup
             }
             sink(_modules[sourceIdx].name);
             sink("*" ~ EOL);
+        }
+
+        void handleCycle(size_t sourceIdx, size_t cycleIdx, OnCycle onCycle)
+        {
+            import core.stdc.stdio : fprintf, stderr;
+
+            if (onCycle == OnCycle.ignore)
+                return;
+
+            auto cyclePath = genCyclePath(sourceIdx, cycleIdx, edges);
+            scope (exit)
+                .free(cyclePath.ptr);
+
+            // Module cycles through a module without ctor/dtor were not
+            // detected as such since 2.064. Such cycles are correctly
+            // detected since 2.072.0 and are now deprecated.
+            if (deprecationForBugzilla16211 && onCycle == OnCycle.abort)
+            {
+                foreach (midx; cyclePath[1 .. $ - 1])
+                {
+                    if (!bt(relevant, midx))
+                    {
+                        onCycle = OnCycle.deprecate;
+                        break;
+                    }
+                }
+            }
+
+            final switch (onCycle) with (OnCycle)
+            {
+            case abort:
+                string errmsg = "";
+                printCycleMessage(sourceIdx, cycleIdx, cyclePath, (string s) {
+                    errmsg ~= s;
+                });
+                throw new Error(errmsg, __FILE__, __LINE__);
+            case ignore:
+                break;
+            case deprecate:
+                fprintf(stderr, "Deprecated: ");
+                goto case;
+            case print:
+                // print the message
+                printCycleMessage(sourceIdx, cycleIdx, cyclePath, (string s) {
+                    fprintf(stderr, "%.*s", cast(int) s.length, s.ptr);
+                });
+                // continue on as if this is correct.
+                break;
+            }
         }
 
         // find all the non-trivial dependencies (that is, dependencies that have a
@@ -348,23 +402,7 @@ struct ModuleGroup
                             if (bt(ctorstart, midx))
                             {
                                 // was already started, this is a cycle.
-                                final switch(onCycle) with(OnCycle)
-                                {
-                                case abort:
-                                    string errmsg = "";
-                                    buildCycleMessage(idx, midx, (string x) {errmsg ~= x;});
-                                    throw new Error(errmsg, __FILE__, __LINE__);
-                                case ignore:
-                                    break;
-                                case print:
-                                    // print the message
-                                    buildCycleMessage(idx, midx, (string x) {
-                                                      import core.stdc.stdio : fprintf, stderr;
-                                                      fprintf(stderr, "%.*s", cast(int) x.length, x.ptr);
-                                                      });
-                                    // continue on as if this is correct.
-                                    break;
-                                }
+                                handleCycle(idx, midx, onCycle);
                             }
                         }
                         else if (!bt(ctordone, midx))
@@ -796,8 +834,12 @@ unittest
         m0.setImports(&m2.mi);
         m1.setImports(&m2.mi);
         m2.setImports(&m0.mi, &m1.mi);
-        assertThrown!Throwable(checkExp("", true, [&m0.mi, &m1.mi, &m2.mi]),
-                "detects cycle with repeats");
+        static if (deprecationForBugzilla16211)
+            // Note: order implementation specific
+            checkExp("", true, [&m0.mi, &m1.mi, &m2.mi], [&m0.mi, &m2.mi, &m1.mi], null);
+        else
+            assertThrown!Throwable(checkExp("", true, [&m0.mi, &m1.mi, &m2.mi]),
+                                   "detects cycle with repeats");
     }
 
     {
@@ -845,8 +887,12 @@ unittest
         m0.setImports(&m1.mi);
         m1.setImports(&m0.mi, &m2.mi);
         m2.setImports(&m1.mi);
-        assertThrown!Throwable(checkExp("", true, [&m0.mi, &m1.mi, &m2.mi]),
-                "detects tlsctors cycle with repeats");
+        static if (deprecationForBugzilla16211)
+            // Note: order implementation specific
+            checkExp("", true, [&m0.mi, &m1.mi, &m2.mi], [&m1.mi], [&m0.mi, &m2.mi]);
+        else
+            assertThrown!Throwable(checkExp("", true, [&m0.mi, &m1.mi, &m2.mi]),
+                                   "detects tlsctors cycle with repeats");
     }
 
     {
