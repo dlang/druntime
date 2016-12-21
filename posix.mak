@@ -31,10 +31,12 @@ OPTIONAL_PIC:=$(if $(PIC),-fPIC,)
 OPTIONAL_COVERAGE:=$(if $(TEST_COVERAGE),-cov,)
 
 ifeq (osx,$(OS))
+	CLANG_BLOCKS:=1
 	DOTDLL:=.dylib
 	DOTLIB:=.a
 	export MACOSX_DEPLOYMENT_TARGET=10.7
 else
+	CLANG_BLOCKS:=0
 	DOTDLL:=.so
 	DOTLIB:=.a
 endif
@@ -91,12 +93,6 @@ SRCS:=$(subst \,/,$(SRCS))
 #       minit.asm is not used by dmd for Linux
 
 OBJS= $(ROOT)/errno_c.o $(ROOT)/bss_section.o $(ROOT)/threadasm.o
-
-ifeq ($(OS),osx)
-ifeq ($(MODEL), 64)
-	OBJS+=$(ROOT)/osx_tls.o
-endif
-endif
 
 # build with shared library support
 SHARED=$(if $(findstring $(OS),linux freebsd),1,)
@@ -199,6 +195,10 @@ HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
 ifeq ($(HAS_ADDITIONAL_TESTS),1)
 	ADDITIONAL_TESTS:=test/init_fini test/exceptions test/coverage test/profile test/cycles
 	ADDITIONAL_TESTS+=$(if $(SHARED),test/shared,)
+
+	ifeq ($(CLANG_BLOCKS),1)
+		ADDITIONAL_TESTS+=test/clang_block
+	endif
 endif
 
 .PHONY : unittest
