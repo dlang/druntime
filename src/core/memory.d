@@ -141,10 +141,10 @@ private
     extern (C) GC.Stats gc_stats ( ) nothrow @nogc;
 
     extern (C) void gc_addRoot( in void* p ) nothrow @nogc;
-    extern (C) void gc_addRange( in void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc;
+    extern (C) void gc_addRange( in void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc pure;
 
     extern (C) void gc_removeRoot( in void* p ) nothrow @nogc;
-    extern (C) void gc_removeRange( in void* p ) nothrow @nogc;
+    extern (C) void gc_removeRange( in void* p ) nothrow @nogc pure;
     extern (C) void gc_runFinalizers( in void[] segment );
 
     package extern (C) bool gc_inFinalizer();
@@ -773,7 +773,7 @@ struct GC
      * // rawMemory will be recognized on collection.
      * ---
      */
-    static void addRange( in void* p, size_t sz, const TypeInfo ti = null ) @nogc nothrow /* FIXME pure */
+    static void addRange( in void* p, size_t sz, const TypeInfo ti = null ) @nogc nothrow pure
     {
         gc_addRange( p, sz, ti );
     }
@@ -788,7 +788,7 @@ struct GC
      * Params:
      *  p  = A pointer to a valid memory address or to null.
      */
-    static void removeRange( in void* p ) nothrow @nogc /* FIXME pure */
+    static void removeRange( in void* p ) nothrow @nogc pure
     {
         gc_removeRange( p );
     }
