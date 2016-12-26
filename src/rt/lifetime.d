@@ -73,8 +73,9 @@ extern (C) Object _d_newclass(const ClassInfo ci)
     void* p;
 
     debug(PRINTF) printf("_d_newclass(ci = %p, %s)\n", ci, cast(char *)ci.name);
-    if (ci.m_flags & TypeInfo_Class.ClassFlags.isCOMclass)
-    {   /* COM objects are not garbage collected, they are reference counted
+    if (ci.m_flags & ClassInfo.ClassFlags.isCOMclass)
+    {
+        /* COM objects are not garbage collected, they are reference counted
          * using AddRef() and Release().  They get free'd by C's free()
          * function called by Release() when Release()'s reference count goes
          * to zero.
@@ -88,10 +89,10 @@ extern (C) Object _d_newclass(const ClassInfo ci)
         // TODO: should this be + 1 to avoid having pointers to the next block?
         BlkAttr attr = BlkAttr.NONE;
         // extern(C++) classes don't have a classinfo pointer in their vtable so the GC can't finalize them
-        if (ci.m_flags & TypeInfo_Class.ClassFlags.hasDtor
-            && !(ci.m_flags & TypeInfo_Class.ClassFlags.isCPPclass))
+        if (ci.m_flags & ClassInfo.ClassFlags.hasDtor
+            && !(ci.m_flags & ClassInfo.ClassFlags.isCPPclass))
             attr |= BlkAttr.FINALIZE;
-        if (ci.m_flags & TypeInfo_Class.ClassFlags.noPointers)
+        if (ci.m_flags & ClassInfo.ClassFlags.noPointers)
             attr |= BlkAttr.NO_SCAN;
         p = GC.malloc(ci.initializer.length, attr, ci);
         debug(PRINTF) printf(" p = %p\n", p);

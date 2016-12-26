@@ -142,7 +142,7 @@ class FinalizeError : Error
 
 unittest
 {
-    ClassInfo info = new ClassInfo;
+    auto info = new TypeInfo_Class;
     info.name = "testInfo";
 
     {
@@ -197,7 +197,7 @@ deprecated class HiddenFuncError : Error
 
 deprecated unittest
 {
-    ClassInfo info = new ClassInfo;
+    auto info = new TypeInfo_Class;
     info.name = "testInfo";
 
     {
