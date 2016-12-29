@@ -526,6 +526,9 @@ $(IMPDIR)\core\sys\linux\sys\socket.d : src\core\sys\linux\sys\socket.d
 $(IMPDIR)\core\sys\linux\sys\sysinfo.d : src\core\sys\linux\sys\sysinfo.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\linux\sys\syscalls.d: src\core\sys\linux\sys\syscalls.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\linux\sys\xattr.d : src\core\sys\linux\sys\xattr.d
 	copy $** $@
 

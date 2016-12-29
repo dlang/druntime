@@ -1,6 +1,8 @@
 module core.sys.linux.unistd;
 
 public import core.sys.posix.unistd;
+public import core.sys.linux.syscalls : SYS;
+import core.sys.posix.sys.types : c_long;
 
 version(linux):
 extern(C):
@@ -18,3 +20,17 @@ enum {
 
 /// Prompt for a password without echoing it.
 char* getpass(const(char)* prompt);
+
+/**
+Invoke `system call' number SYSNO, passing it the remaining arguments.
+This is completely system-dependent, and not often useful.
+
+In Unix, `syscall' sets `errno' for all errors and most calls return -1
+for errors; in many systems you cannot pass arguments or get return
+values for all system calls (`pipe', `fork', and `getppid' typically
+among them).
+
+In Mach, all system calls take normal arguments and always return an
+error code (zero for success).
+*/
+c_long syscall (c_long SYS, ...) @nogc nothrow;
