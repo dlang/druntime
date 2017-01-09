@@ -1280,6 +1280,8 @@ $(GCSTUB) : src\gcstub\gc.d win$(MODEL).mak
 $(DRUNTIME): $(OBJS) $(SRCS) win$(MODEL).mak
 	$(DMD) -lib -of$(DRUNTIME) -Xfdruntime.json $(DFLAGS) $(SRCS) $(OBJS)
 
+test: unittest
+
 unittest : $(SRCS) $(DRUNTIME)
 	$(DMD) $(UDFLAGS) -L/co -unittest -ofunittest.exe -main $(SRCS) $(DRUNTIME) -debuglib=$(DRUNTIME) -defaultlib=$(DRUNTIME)
 	unittest

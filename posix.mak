@@ -201,7 +201,9 @@ ifeq ($(HAS_ADDITIONAL_TESTS),1)
 	ADDITIONAL_TESTS+=$(if $(SHARED),test/shared,)
 endif
 
-.PHONY : unittest
+.PHONY : unittest test
+test: unittest
+
 ifeq (1,$(BUILD_WAS_SPECIFIED))
 unittest : $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
 	@echo done
