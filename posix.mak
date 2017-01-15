@@ -53,7 +53,7 @@ ifeq (solaris,$(OS))
 endif
 
 # Set DFLAGS
-UDFLAGS:=-conf= -Isrc -Iimport -w -dip25 $(MODEL_FLAG) $(OPTIONAL_PIC) $(OPTIONAL_COVERAGE)
+UDFLAGS:=-conf= -Isrc -Iimport -w $(MODEL_FLAG) $(OPTIONAL_PIC) $(OPTIONAL_COVERAGE)
 ifeq ($(BUILD),debug)
 	UDFLAGS += -g -debug
 	DFLAGS:=$(UDFLAGS)
@@ -61,6 +61,7 @@ else
 	UDFLAGS += -O -release
 	DFLAGS:=$(UDFLAGS) -inline # unittests don't compile with -inline
 endif
+UDFLAGS += -dip25 # only for tests, see Bugzilla 17072
 
 ROOT_OF_THEM_ALL = generated
 ROOT = $(ROOT_OF_THEM_ALL)/$(OS)/$(BUILD)/$(MODEL)

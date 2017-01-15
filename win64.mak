@@ -17,7 +17,8 @@ IMPDIR=import
 
 MAKE=make
 
-DFLAGS=-m$(MODEL) -conf= -O -release -dip25 -inline -w -Isrc -Iimport
+# use DIP25 only for tests, see Bugzilla 17072
+DFLAGS=-m$(MODEL) -conf= -O -release -inline -w -Isrc -Iimport
 UDFLAGS=-m$(MODEL) -conf= -O -release -dip25 -w -Isrc -Iimport
 DDOCFLAGS=-conf= -c -w -o- -Isrc -Iimport -version=CoreDdoc
 
