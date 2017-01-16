@@ -1396,7 +1396,7 @@ private:
     // Thread entry point.  Invokes the function or delegate passed on
     // construction (if any).
     //
-    final void run()
+    void run()
     {
         switch( m_call )
         {
@@ -1509,7 +1509,7 @@ private:
     ///////////////////////////////////////////////////////////////////////////
 
 
-    final void pushContext( Context* c ) nothrow @nogc
+    void pushContext( Context* c ) nothrow @nogc
     in
     {
         assert( !c.within );
@@ -1522,7 +1522,7 @@ private:
     }
 
 
-    final void popContext() nothrow @nogc
+    void popContext() nothrow @nogc
     in
     {
         assert( m_curr && m_curr.within );
@@ -1536,7 +1536,7 @@ private:
     }
 
 
-    final Context* topContext() nothrow @nogc
+    Context* topContext() nothrow @nogc
     in
     {
         assert( m_curr );
@@ -4045,7 +4045,7 @@ class Fiber
     }
 
     /// ditto
-    final Throwable call( Rethrow rethrow )()
+    Throwable call( Rethrow rethrow )()
     {
         callImpl();
         if( m_unhandled )
@@ -4278,7 +4278,7 @@ private:
     // Fiber entry point.  Invokes the function or delegate passed on
     // construction (if any).
     //
-    final void run()
+    void run()
     {
         switch( m_call )
         {
@@ -4329,7 +4329,7 @@ private:
     //
     // Allocate a new stack for this fiber.
     //
-    final void allocStack( size_t sz ) nothrow
+    void allocStack( size_t sz ) nothrow
     in
     {
         assert( !m_pmem && !m_ctxt );
@@ -4447,7 +4447,7 @@ private:
     //
     // Free this fiber's stack.
     //
-    final void freeStack() nothrow @nogc
+    void freeStack() nothrow @nogc
     in
     {
         assert( m_pmem && m_ctxt );
@@ -4490,7 +4490,7 @@ private:
     // Initialize the allocated stack.
     // Look above the definition of 'class Fiber' for some information about the implementation of this routine
     //
-    final void initStack() nothrow @nogc
+    void initStack() nothrow @nogc
     in
     {
         assert( m_ctxt.tstack && m_ctxt.tstack == m_ctxt.bstack );
@@ -4842,7 +4842,7 @@ private:
     //
     // Switches into the stack held by this fiber.
     //
-    final void switchIn() nothrow @nogc
+    void switchIn() nothrow @nogc
     {
         Thread  tobj = Thread.getThis();
         void**  oldp = &tobj.m_curr.tstack;
@@ -4876,7 +4876,7 @@ private:
     //
     // Switches out of the current stack and into the enclosing stack.
     //
-    final void switchOut() nothrow @nogc
+    void switchOut() nothrow @nogc
     {
         Thread  tobj = Thread.getThis();
         void**  oldp = &m_ctxt.tstack;
