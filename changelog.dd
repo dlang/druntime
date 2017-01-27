@@ -1,43 +1,49 @@
 Ddoc
 
-$(COMMENT Pending changelog for 2.071.0.
+$(COMMENT Pending changelog for 2.073. This will get copied to dlang.org and
+    cleared when master gets merged into stable.
 )
 
 $(BUGSTITLE Library Changes,
 
-$(LI $(RELATIVE_LINK2 aa-clear, A `clear` method has been added to associative
-    arrays to remove all elements.))
-$(LI $(RELATIVE_LINK2 spinlock, The GC now uses a spinlock instead of a recursive mutex.))
-$(LI Calls to $(NCXREF memory, GC.free) are now ignored during finalization instead of throwing an InvalidMemoryOperationError, see $(BUGZILLA 15353).)
-$(LI $(NCXREF memory, GC.addRoot) and $(NCXREF memory, GC.addRange) now use a separate lock.)
+$(LI $(RELATIVE_LINK2 gc-runtimeswitch-added, A switch for selecting
+the GC implementation at runtime was added.))
+
+$(LI $(RELATIVE_LINK2 manualgc-added, A GC implementation allowing manual
+memory management was added.))
+
 )
 
 $(BUGSTITLE Library Changes,
 
-$(LI $(LNAME2 aa-clear, A `clear` method has been added to associative
-    arrays to remove all elements.)
+$(LI $(LNAME2 gc-runtimeswitch-added, A runtime switch for selecting
+     the GC implementation was added.)
 
-    $(P One can now use `aa.clear()` to remove all elements from an
-        associative array. This allows removing all elements from all
-        references to the same array (setting to `null` just reset the
-        reference, but did not removed the elements from other references).
+    $(P This allows to select a GC at program startup.)
+    -------
+    ./my_d_exe --DRT-gc=gc:conservative # use conservative GC (default)
+    ./my_d_exe --DRT-gc=help # list available GC options
+    -------
+    $(P See $(LINK2 $(ROOT_DIR)spec/garbage.html#gc_config, gc_config) for more information about gcopt.)
+    $(P In a future release it should be possible to extend the list
+        of GCs by linking with an alternative one.
     )
-
--------
-auto aa = ["first" : "entry", "second": "entry"];
-auto aa2 = aa1; // reference to the same AA
-aa.clear(); // still retains its current capacity for faster imports
-assert(aa2.length == 0); // other references affected
--------
 )
 
-$(LI $(LNAME2 spinlock, The GC is no longer wrapped in a pthread_mutex, it
-    now uses a spinlock.)
+$(LI $(LNAME2 manualgc-added, A manual GC was added.)
 
-    $(P This results in a 5% faster GC on average, with the most benefits going
-        to multi-threaded programs that use the GC. See $(DRUNTIMEPR 1447) for
-        more details.
+    $(P Use the `--DRT-gc=gc:manual` option to select the manual GC.)
+
+    $(P This GC is a thin wrapper around malloc and free and does not collect
+        any garbage. It only releases memory explicity freed using $(REF_SHORT GC.free, core,memory).
+        Builtin language constructs such as arrays or delegates that might
+        allocate GC memory can leak.  It supersedes the gcstub implementation.
     )
+
+    $(P The manual GC is useful for applications that deterministically control memory.
+        Use dmd's `-vgc` switch to keep track of hidden allocations that might leak.
+    )
+    $(P It can also be helpful to find memory corruptions with tools like valgrind.)
 )
 )
 
@@ -49,18 +55,9 @@ Macros:
     RELATIVE_LINK2=<a href="#$1">$+</a>
     LNAME2=<a class="anchor" title="Permalink to this section" id="$1" href="#$1">$+</a>
 
-    STDMODREF = <a href="phobos/std_$1.html">$2</a>
-    COREMODREF = <a href="phobos/core_$1.html">$2</a>
-    XREF = <a href="phobos/std_$1.html#$2">$2</a>
-    CXREF = <a href="phobos/core_$1.html#$2">$2</a>
-    OXREF = <a href="phobos/object.html#$2">$2</a>
-    NXREF = <a href="phobos/std_$1.html#.$2">$2</a>
-    NCXREF = <a href="phobos/core_$1.html#.$2">$2</a>
-    NOXREF = <a href="phobos/object.html#.$2">$2</a>
-
     BUGZILLA = <a href="https://issues.dlang.org/show_bug.cgi?id=$0">Bugzilla $0</a>
 
-    PULL_REQUEST = $(LINK2 https://github.com/D-Programming-Language/$1/pull/$2, $1#$2)
+    PULL_REQUEST = $(LINK2 https://github.com/dlang/$1/pull/$2, $1#$2)
     DRUNTIMEPR = $(PULL_REQUEST druntime,$1)
 
     BOOKTABLE = <table><caption>$1</caption>$+</table>
