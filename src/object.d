@@ -4745,7 +4745,7 @@ Provides an "inline import", i.e. an `import` that is only available for a
 limited lookup. For example:
 
 ---
-void fun(from!"std.stdio".File input)
+void fun(_import!"std.stdio".File input)
 {
     ... use File from std.stdio normally ...
 }
@@ -4755,8 +4755,8 @@ There is no need to import `std.stdio` at top level, so `fun` carries its own
 dependencies. The same approach can be used for template constraints:
 
 ---
-void fun(T)(from!"std.stdio".File input, T value)
-if (from!"std.traits".isIntegral!T)
+void fun(T)(_import!"std.stdio".File input, T value)
+if (_import!"std.traits".isIntegral!T)
 {
     ...
 }
@@ -4769,8 +4769,8 @@ made available:
 ---
 void fun()
 {
-    with (from!"std.datetime")
-    with (from!"std.stdio")
+    with (_import!"std.datetime")
+    with (_import!"std.stdio")
     {
         Clock.currTime.writeln;
     }
@@ -4781,19 +4781,19 @@ The advantages of inline imports over top-level uses of the `import` declaration
 are the following:
 
 $(UL
-$(LI The `from` template specifies dependencies at declaration level, not at
+$(LI The `_import` template specifies dependencies at declaration level, not at
 module level. This allows reasoning about the dependency cost of declarations in
 separation instead of aggregated at module level.)
-$(LI Declarations using `from` are easier to move around because they don't
+$(LI Declarations using `_import` are easier to move around because they don't
 require top-level context, making for simpler and quicker refactorings.)
-$(LI Declarations using `from` scale better with templates. This is because
+$(LI Declarations using `_import` scale better with templates. This is because
 templates that are not instantiated do not have their parameters and constraints
 instantiated, so additional modules are not imported without necessity. This
 makes the cost of unused templates negligible. Dependencies are pulled on a need
 basis depending on the declarations used by client code.)
 )
 
-The use of `from` also has drawbacks:
+The use of `_import` also has drawbacks:
 
 $(UL
 $(LI If most declarations in a module need the same imports, then factoring them
@@ -4805,8 +4805,12 @@ $(LI Dependencies at the top of a module are easier to inspect quickly than
 dependencies spread throughout the module.)
 )
 
+See_Also: The $(HTTP forum.dlang.org/post/tzqzmqhankrkbrfsrmbo@forum.dlang.org,
+forum discussion) that led to the creation of the `_import` facility. Credit is
+due to Daniel Nielsen and Dominikus Dittes Scherkl.
+
 */
-template from(string moduleName)
+template _import(string moduleName)
 {
-    mixin("import from = " ~ moduleName ~ ";");
+    mixin("import _import = " ~ moduleName ~ ";");
 }
