@@ -496,11 +496,12 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     return result;
 }
 
-private void formatThrowable(Throwable t, scope void delegate(in char[] s) nothrow sink)
+@safe private void formatThrowable(Throwable t, scope void delegate(in char[] s) @safe nothrow sink)
 {
     for (; t; t = t.next)
     {
-        t.toString(sink); sink("\n");
+        () @trusted { t.toString(sink); } ();
+        sink("\n");
 
         auto e = cast(Error)t;
         if (e is null || e.bypassedException is null) continue;
@@ -508,7 +509,8 @@ private void formatThrowable(Throwable t, scope void delegate(in char[] s) nothr
         sink("=== Bypassed ===\n");
         for (auto t2 = e.bypassedException; t2; t2 = t2.next)
         {
-            t2.toString(sink); sink("\n");
+            () @trusted { t2.toString(sink); } ();
+            sink("\n");
         }
         sink("=== ~Bypassed ===\n");
     }
@@ -523,9 +525,11 @@ extern (C) void _d_print_throwable(Throwable t)
     {
         static struct WSink
         {
+          private:
             wchar_t* ptr; size_t len;
 
-            void sink(in char[] s) scope nothrow
+          public:
+            @trusted void sink(scope const char[] s) scope nothrow
             {
                 if (!s.length) return;
                 int swlen = MultiByteToWideChar(
@@ -613,7 +617,7 @@ extern (C) void _d_print_throwable(Throwable t)
         }
     }
 
-    void sink(in char[] buf) scope nothrow
+    @trusted void sink(scope const char[] buf) scope nothrow
     {
         fprintf(stderr, "%.*s", cast(int)buf.length, buf.ptr);
     }
