@@ -374,9 +374,9 @@ unittest
 }
 
 
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 // Overrides
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 
 
 // NOTE: One assert handler is used for all threads.  Thread-local
@@ -417,9 +417,9 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
 }
 
 
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 // Overridable Callbacks
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 
 
 /**
@@ -473,9 +473,9 @@ extern (C) void onUnittestErrorMsg( string file, size_t line, string msg ) nothr
 }
 
 
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 // Internal Error Callbacks
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 
 /**
  * A callback for array bounds errors in D.  A $(LREF RangeError) will be thrown.
@@ -631,6 +631,7 @@ extern (C)
         onAssertErrorMsg(file, line, msg);
     }
 
+    // obsoleted by _d_assertxxm()
     void _d_assert(string file, uint line)
     {
         onAssertError(file, line);
@@ -648,6 +649,7 @@ extern (C)
         onUnittestErrorMsg(file, line, msg);
     }
 
+    // obsoleted by _d_assertxxm()
     void _d_unittest(string file, uint line)
     {
         _d_unittest_msg("unittest failure", file, line);
@@ -660,6 +662,7 @@ extern (C)
         onRangeError(m.name, line);
     }
 
+    // obsoleted by _d_assertxxm()
     void _d_arraybounds(string file, uint line)
     {
         onRangeError(file, line);
@@ -670,6 +673,39 @@ extern (C)
     void _d_switch_error(immutable(ModuleInfo)* m, uint line)
     {
         onSwitchError(m.name, line);
+    }
+
+    /**
+     * Called by compiler generated code. Three calls are merged into one like this
+     * to reduce code bloat.
+     *
+     * Params:
+     *  m = ModuleInfo
+     *  line = (line & 0x3FFF_FFFF) is line number,
+     *         top 2 bits specify which of assert, array_bounds, or unittest it is
+     * Returns:
+     *  only unittest errors return
+     */
+    void _d_assertxxm(immutable(ModuleInfo)* m, uint line)
+    {
+        string file = m ? m.name : __FILE__;
+        switch (line & 0xC000_0000)
+        {
+            case 0:
+                onAssertError(file, line);
+                break;
+
+            case 0x4000_0000:
+                onRangeError(file, line & 0x3FFF_FFFF);
+                break;
+
+            case 0x8000_0000:
+                _d_unittest_msg("unittest failure", file, line & 0x3FFF_FFFF);
+                break;
+
+            default:
+                assert(0);
+        }
     }
 }
 
