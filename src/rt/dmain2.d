@@ -13,6 +13,7 @@ module rt.dmain2;
 
 private
 {
+    import rt.config: rt_configOption;
     import rt.memory;
     import rt.sections;
     import core.atomic;
@@ -430,7 +431,31 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         args = argsCopy[0..j];
     }
 
+    // override rt_trapExceptions with --DRT-trap-exceptions
+    auto drt_trap = rt_configOption("trap-exceptions", (string opt) {
+                if (opt == "true")
+                {
+                    rt_trapExceptions = true;
+                    return opt;
+                }
+                else if (opt == "false")
+                {
+                    rt_trapExceptions = false;
+                    return opt;
+                }
+                else
+                {
+                    return "err";
+                }
+            });
+
     bool trapExceptions = rt_trapExceptions;
+
+    if (drt_trap == "err")
+    {
+        .fprintf(.stderr, "Invalid value for DRT-trap-exceptions.\n");
+        goto flush_and_exit;
+    }
 
     version (Windows)
     {
@@ -479,6 +504,7 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 
     tryExec(&runAll);
 
+flush_and_exit:
     // Issue 10344: flush stdout and return nonzero on failure
     if (.fflush(.stdout) != 0)
     {
