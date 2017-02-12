@@ -416,6 +416,21 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
     assertHandler = h;
 }
 
+private __gshared bool assertEHEnabled = false;
+extern(C) void _d_setAssertEHEnabled( bool enabled )
+{
+    assertEHEnabled = enabled;
+}
+
+private void defaultAssertHandler( string file, size_t line, string msg ) nothrow
+{
+    if ( assertEHEnabled )
+        throw msg ? new AssertError( msg, file, line ) : new AssertError( file, line );
+
+    import core.internal.abort;
+    abort( file, line, "Assertion failure during runtime startup/teardown",
+        msg ? ": " : ".", msg );
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Overridable Callbacks
@@ -434,7 +449,7 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
 extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) nothrow
 {
     if( _assertHandler is null )
-        throw new AssertError( file, line );
+        defaultAssertHandler( file, line, null );
     _assertHandler( file, line, null);
 }
 
@@ -452,7 +467,7 @@ extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) 
 extern (C) void onAssertErrorMsg( string file, size_t line, string msg ) nothrow
 {
     if( _assertHandler is null )
-        throw new AssertError( msg, file, line );
+        defaultAssertHandler( file, line, msg );
     _assertHandler( file, line, msg );
 }
 

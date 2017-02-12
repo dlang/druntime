@@ -50,6 +50,7 @@ extern (C) void rt_moduleTlsDtor();
 extern (C) void thread_joinAll();
 extern (C) bool runModuleUnitTests();
 extern (C) void _d_initMonoTime();
+extern (C) void _d_setAssertEHEnabled(bool enabled);
 
 version (OSX)
 {
@@ -180,6 +181,7 @@ extern (C) int rt_init()
         initStaticDataGC();
         lifetime_init();
         rt_moduleCtor();
+        _d_setAssertEHEnabled(true);
         rt_moduleTlsCtor();
         return 1;
     }
@@ -205,6 +207,7 @@ extern (C) int rt_term()
     {
         rt_moduleTlsDtor();
         thread_joinAll();
+        _d_setAssertEHEnabled(false);
         rt_moduleDtor();
         gc_term();
         return 1;

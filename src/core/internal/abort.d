@@ -6,6 +6,11 @@ module core.internal.abort;
  */
 void abort(string msg, string filename = __FILE__, size_t line = __LINE__) @nogc nothrow @safe
 {
+    abort(filename, line, msg);
+}
+
+void abort(string filename, size_t line, const(char)[][] msgs...) @nogc nothrow @safe
+{
     import core.stdc.stdlib: c_abort = abort;
     // use available OS system calls to print the message to stderr
     version(Posix)
@@ -23,7 +28,7 @@ void abort(string msg, string filename = __FILE__, size_t line = __LINE__) @nogc
         auto h = (() @trusted => GetStdHandle(STD_ERROR_HANDLE))();
         if(h == INVALID_HANDLE_VALUE)
             // attempt best we can to print the message
-            assert(0, msg);
+            assert(0, msgs[0]);
         void writeStr(const(char)[][] m...) @nogc nothrow @trusted
         {
             foreach(s; m)
@@ -40,6 +45,7 @@ void abort(string msg, string filename = __FILE__, size_t line = __LINE__) @nogc
     UnsignedStringBuf strbuff;
 
     // write an appropriate message, then abort the program
-    writeStr("Aborting from ", filename, "(", line.unsignedToTempString(strbuff, 10), ") ", msg);
+    writeStr("Aborting from ", filename, "(", line.unsignedToTempString(strbuff, 10), "): ");
+    writeStr(msgs);
     c_abort();
 }
