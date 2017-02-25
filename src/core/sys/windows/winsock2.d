@@ -363,6 +363,8 @@ struct fd_set_custom(uint SETSIZE)
 
 alias fd_set = fd_set_custom!FD_SETSIZE;
 
+extern (D) {
+
 // Removes.
 void FD_CLR(SOCKET fd, fd_set* set) pure @nogc
 {
@@ -403,7 +405,7 @@ const(SOCKET)* stop = start + set.fd_count;
 
 
 // Adds.
-void FD_SET(SOCKET fd, fd_set* set)     pure @nogc
+void FD_SET(SOCKET fd, fd_set* set) pure @nogc
 {
     uint c = set.fd_count;
     set.fd_array.ptr[c] = fd;
@@ -417,7 +419,6 @@ void FD_ZERO(fd_set* set) pure @nogc
     set.fd_count = 0;
 }
 
-
 /// Creates a new $(D fd_set) with the specified capacity.
 fd_set* FD_CREATE(uint capacity) pure
 {
@@ -428,6 +429,8 @@ fd_set* FD_CREATE(uint capacity) pure
     FD_ZERO(set);
     return set;
 }
+
+} // extern (D)
 
 struct linger
 {
@@ -480,7 +483,7 @@ struct in_addr6
 }
 +/
 
-@safe pure @nogc
+extern (D) @safe pure @nogc
 {
 
 version(BigEndian)
@@ -733,7 +736,7 @@ struct hostent
     char** h_addr_list;
 
 
-    char* h_addr() @safe pure nothrow @nogc
+    extern(D) char* h_addr() @safe pure nothrow @nogc
     {
         return h_addr_list[0];
     }
