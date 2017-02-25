@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_lmconfig.d)
  */
 module core.sys.windows.lmconfig;
-version (Windows):
 
 // All functions in this file are deprecated!
 

@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_cpl.d)
  */
 module core.sys.windows.cpl;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

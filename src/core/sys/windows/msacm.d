@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_msacm.d)
  */
 module core.sys.windows.msacm;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

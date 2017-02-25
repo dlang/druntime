@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_shlguid.d)
  */
 module core.sys.windows.shlguid;
-version (Windows):
 
 private import core.sys.windows.basetyps, core.sys.windows.w32api;
 

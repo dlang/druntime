@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_dbt.d)
  */
 module core.sys.windows.dbt;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

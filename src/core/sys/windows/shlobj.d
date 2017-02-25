@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_shlobj.d)
  */
 module core.sys.windows.shlobj;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "shell32");
+version (Windows) pragma(lib, "shell32");
 
 // TODO: fix bitfields
 // TODO: CMIC_VALID_SEE_FLAGS

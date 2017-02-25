@@ -8,10 +8,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winver.d)
  */
 module core.sys.windows.winver;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "version");
+version (Windows) pragma(lib, "version");
 
 private import core.sys.windows.windef;
 

@@ -5,7 +5,6 @@
 
 
 module core.sys.windows.winsock2;
-version (Windows):
 
 extern(Windows):
 nothrow:

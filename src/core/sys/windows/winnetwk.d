@@ -8,10 +8,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winnetwk.d)
  */
 module core.sys.windows.winnetwk;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "mpr");
+version (Windows) pragma(lib, "mpr");
 
 private import core.sys.windows.winbase, core.sys.windows.winerror, core.sys.windows.winnt;
 

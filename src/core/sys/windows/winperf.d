@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winperf.d)
  */
 module core.sys.windows.winperf;
-version (Windows):
 
 import core.sys.windows.windef;
 import core.sys.windows.winbase; // for SYSTEMTIME

@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_rpcdce.d)
  */
 module core.sys.windows.rpcdce;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "Rpcrt4");
+version (Windows) pragma(lib, "Rpcrt4");
 
 // TODO: I think MinGW got this wrong. RPC_UNICODE_SUPPORTED should be
 // replaced aliases for version(Unicode)

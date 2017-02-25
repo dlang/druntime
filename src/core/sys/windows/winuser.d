@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winuser.d)
  */
 module core.sys.windows.winuser;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "user32");
+version (Windows) pragma(lib, "user32");
 
 // Conversion Notes:
 // The following macros were for win16 only, and are not included in this file:
@@ -3668,6 +3667,22 @@ extern (Windows) nothrow @nogc {
 } // extern (Windows)
 
 nothrow @nogc {
+    HCURSOR CopyCursor(HCURSOR c);
+    HWND CreateDialogA(HINSTANCE h, LPCSTR n, HWND w, DLGPROC f);
+    HWND CreateDialogW(HINSTANCE h, LPCWSTR n, HWND w, DLGPROC f);
+    HWND CreateDialogIndirectA(HINSTANCE h, LPCDLGTEMPLATE t, HWND w, DLGPROC f);
+    HWND CreateDialogIndirectW(HINSTANCE h, LPCDLGTEMPLATE t, HWND w, DLGPROC f);
+    HWND CreateWindowA(LPCSTR a, LPCSTR b, DWORD c, int d, int e, int f, int g, HWND h, HMENU i, HINSTANCE j, LPVOID k);
+    HWND CreateWindowW(LPCWSTR a, LPCWSTR b, DWORD c, int d, int e, int f, int g, HWND h, HMENU i, HINSTANCE j, LPVOID k);
+    INT_PTR DialogBoxA(HINSTANCE i, LPCSTR t, HWND p, DLGPROC f);
+    INT_PTR DialogBoxW(HINSTANCE i, LPCWSTR t, HWND p, DLGPROC f);
+    INT_PTR DialogBoxIndirectA(HINSTANCE i, LPCDLGTEMPLATE t, HWND p, DLGPROC f);
+    INT_PTR DialogBoxIndirectW(HINSTANCE i, LPCDLGTEMPLATE t, HWND p, DLGPROC f);
+    BOOL ExitWindows(UINT r, DWORD c);
+}
+
+version (Windows)
+nothrow @nogc {
     HCURSOR CopyCursor(HCURSOR c) {
         return cast(HCURSOR)CopyIcon(cast(HICON)c);
     }
@@ -4423,9 +4438,9 @@ int BroadcastSystemMessageW(DWORD, LPDWORD, UINT, WPARAM, LPARAM);
 UINT SendInput(UINT, LPINPUT, int);
 BOOL EnumDisplayMonitors(HDC, LPCRECT, MONITORENUMPROC, LPARAM);
 BOOL GetMonitorInfoA(HMONITOR, LPMONITORINFO);
-extern(D) BOOL GetMonitorInfoA(HMONITOR m, LPMONITORINFOEXA mi) { return GetMonitorInfoA(m, cast(LPMONITORINFO)mi); }
+version (Windows) extern(D) BOOL GetMonitorInfoA(HMONITOR m, LPMONITORINFOEXA mi) { return GetMonitorInfoA(m, cast(LPMONITORINFO)mi); }
 BOOL GetMonitorInfoW(HMONITOR, LPMONITORINFO);
-extern(D) BOOL GetMonitorInfoW(HMONITOR m, LPMONITORINFOEXW mi) { return GetMonitorInfoW(m, cast(LPMONITORINFO)mi); }
+version (Windows) extern(D) BOOL GetMonitorInfoW(HMONITOR m, LPMONITORINFOEXW mi) { return GetMonitorInfoW(m, cast(LPMONITORINFO)mi); }
 HMONITOR MonitorFromPoint(POINT, DWORD);
 HMONITOR MonitorFromRect(LPCRECT, DWORD);
 HMONITOR MonitorFromWindow(HWND, DWORD);

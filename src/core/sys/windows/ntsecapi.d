@@ -8,8 +8,7 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_ntsecapi.d)
  */
 module core.sys.windows.ntsecapi;
-version (Windows):
-pragma(lib, "advapi32");
+version (Windows) pragma(lib, "advapi32");
 
 version (ANSI) {} else version = Unicode;
 

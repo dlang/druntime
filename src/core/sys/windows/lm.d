@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_lm.d)
  */
 module core.sys.windows.lm;
-version (Windows):
 /* removed - now supporting only Win2k up
 version (WindowsVista) {
     version = WIN32_WINNT_ONLY;

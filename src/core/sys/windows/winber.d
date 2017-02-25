@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winber.d)
  */
 module core.sys.windows.winber;
-version (Windows):
 
 /* Comment from MinGW
   winber.h - Header file for the Windows LDAP Basic Encoding Rules API

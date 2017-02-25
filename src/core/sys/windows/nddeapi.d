@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_nddeapi.d)
  */
 module core.sys.windows.nddeapi;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

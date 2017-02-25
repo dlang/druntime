@@ -8,8 +8,7 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_ole.d)
  */
 module core.sys.windows.ole;
-version (Windows):
-pragma(lib, "ole32");
+version (Windows) pragma(lib, "ole32");
 
 private import core.sys.windows.windef, core.sys.windows.wingdi, core.sys.windows.uuid;
 

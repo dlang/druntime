@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_rpcnsip.d)
  */
 module core.sys.windows.rpcnsip;
-version (Windows):
 
 private import core.sys.windows.rpcdce, core.sys.windows.rpcdcep, core.sys.windows.rpcnsi;
 
