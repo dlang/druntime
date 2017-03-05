@@ -32,6 +32,25 @@ install_deps() {
     source "$(CURL_USER_AGENT=\"$CURL_USER_AGENT\" bash install.sh dmd-$HOST_DMD_VER --activate)"
     $DC --version
     env
+
+    if [ -n "${CIRCLE_PR_NUMBER:-}" ]; then
+        local base_branch=$(curl -fsSL https://api.github.com/repos/dlang/$CIRCLE_PROJECT_REPONAME/pulls/$CIRCLE_PR_NUMBER | jq -r '.base.ref')
+    else
+        local base_branch=$CIRCLE_BRANCH
+    fi
+
+   # merge upstream branch with changes, s.t. we check with the latest changes
+    if [ -n "${CIRCLE_PR_NUMBER:-}" ]; then
+        local current_branch=$(git rev-parse --abbrev-ref HEAD)
+        git config user.name dummyuser
+        git config user.email dummyuser@dummyserver.com
+        git remote add upstream https://github.com/dlang/druntime.git
+        git fetch upstream
+        git checkout -f upstream/$base_branch
+        git merge -m "Automatic merge" $current_branch
+    fi
+
+    clone https://github.com/dlang/dmd.git ../dmd $base_branch --depth 1
 }
 
 # clone dmd
@@ -52,26 +71,6 @@ clone() {
 }
 
 coverage() {
-    if [ -n "${CIRCLE_PR_NUMBER:-}" ]; then
-        local base_branch=$(curl -fsSL https://api.github.com/repos/dlang/$CIRCLE_PROJECT_REPONAME/pulls/$CIRCLE_PR_NUMBER | jq -r '.base.ref')
-    else
-        local base_branch=$CIRCLE_BRANCH
-    fi
-
-   # merge upstream branch with changes, s.t. we check with the latest changes
-    if [ -n "${CIRCLE_PR_NUMBER:-}" ]; then
-        local current_branch=$(git rev-parse --abbrev-ref HEAD)
-        git config user.name dummyuser
-        git config user.email dummyuser@dummyserver.com
-        git remote add upstream https://github.com/dlang/druntime.git
-        git fetch upstream
-        git checkout -f upstream/$base_branch
-        git merge -m "Automatic merge" $current_branch
-    fi
-
-
-    clone https://github.com/dlang/dmd.git ../dmd $base_branch --depth 1
-
     # load environment for bootstrap compiler
     source "$(CURL_USER_AGENT=\"$CURL_USER_AGENT\" bash ~/dlang/install.sh dmd-$HOST_DMD_VER --activate)"
 
