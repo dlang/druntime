@@ -2402,12 +2402,12 @@ struct Gcx
         }
     }
 
-    void markConservative(void *pbot, void *ptop) nothrow
+    void markConservative(void *pbot, void *ptop) scope nothrow
     {
         mark!false(pbot, ptop);
     }
 
-    void markPrecise(void *pbot, void *ptop) nothrow
+    void markPrecise(void *pbot, void *ptop) scope nothrow
     {
         mark!true(pbot, ptop);
     }

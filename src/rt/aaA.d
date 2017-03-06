@@ -290,7 +290,7 @@ TypeInfo_Struct fakeEntryTI(const TypeInfo keyti, const TypeInfo valti)
 }
 
 // build type info with appropriate RTInfo at runtime
-immutable(void)* rtinfoEntry(const TypeInfo keyti, const TypeInfo valti, ref size_t[2] rtinfoData)
+immutable(void)* rtinfoEntry(const TypeInfo keyti, const TypeInfo valti, return ref size_t[2] rtinfoData)
 {
     static bool isNoClass(const TypeInfo ti) { return ti && typeid(ti) !is typeid(TypeInfo_Class); }
 
