@@ -46,6 +46,7 @@ COPY=\
 	\
 	$(IMPDIR)\core\stdcpp\typeinfo.d \
 	$(IMPDIR)\core\stdcpp\exception.d \
+	$(IMPDIR)\core\stdcpp\stl_pair.d \
 	\
 	$(IMPDIR)\core\sys\darwin\execinfo.d \
 	$(IMPDIR)\core\sys\darwin\pthread.d \

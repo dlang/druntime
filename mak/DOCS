@@ -38,6 +38,7 @@ DOCS=\
 	\
 	$(DOCDIR)\core_stdcpp_exception.html \
 	$(DOCDIR)\core_stdcpp_typeinfo.html \
+	$(DOCDIR)\core_stdcpp_stl_pair.html \
 	\
 	$(DOCDIR)\core_sync_barrier.html \
 	$(DOCDIR)\core_sync_condition.html \
