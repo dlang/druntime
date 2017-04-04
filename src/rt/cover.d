@@ -287,17 +287,30 @@ string appendFN( string path, string name )
 string baseName( string name, string ext = null )
 {
     string ret;
+    bool leadDone = false;  // only replace leading invalid chars with '_'
     foreach (c; name)
     {
         switch (c)
         {
-        case ':':
-        case '\\':
-        case '/':
-            ret ~= '-';
-            break;
-        default:
-            ret ~= c;
+            case ':':
+            case '\\':
+            case '/':
+                if (leadDone)
+                    ret ~= '-';
+                else
+                    ret ~= '_';
+                break;
+
+            case '.':  // replace only when leading, addExt will replace extension
+                if (leadDone)
+                    ret ~= c;
+                else
+                    ret ~= '_';
+                break;
+
+            default:
+                leadDone = true;
+                ret ~= c;
         }
     }
     return ext.length ? chomp(ret,  ext) : ret;
