@@ -1,0 +1,5 @@
+`GC.Stats` provide new metric, total collected memory.
+
+Result struct of `core.memory.GC.stats()` method now provides additional field,
+`totalCollected`, which is set to total amount of bytes reclaimed by GC during
+collection cycles since the program start.

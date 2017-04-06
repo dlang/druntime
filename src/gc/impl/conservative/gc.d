@@ -115,6 +115,7 @@ __gshared long numFrees;
 __gshared long numReallocs;
 __gshared long numExtends;
 __gshared long numOthers;
+__gshared long totalCollectedPages;
 __gshared long mallocTime; // using ticks instead of MonoTime for better performance
 __gshared long freeTime;
 __gshared long reallocTime;
@@ -1227,6 +1228,7 @@ class ConservativeGC : GC
 
         stats.usedSize -= freeListSize;
         stats.freeSize += freeListSize;
+        stats.totalCollected = .totalCollectedPages * PAGESIZE;
     }
 }
 
@@ -2434,7 +2436,9 @@ struct Gcx
 
         updateCollectThresholds();
 
-        return freedLargePages + freedSmallPages;
+        auto total = freedLargePages + freedSmallPages;
+        totalCollectedPages += total;
+        return total;
     }
 
     /**
