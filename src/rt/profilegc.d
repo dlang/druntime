@@ -21,7 +21,7 @@ import core.stdc.string;
 
 import core.exception : onOutOfMemoryError;
 
-struct Entry { size_t count, size; }
+struct Entry { ulong count, size; }
 
 char[] buffer;
 Entry[string] newCounts;
@@ -46,7 +46,8 @@ extern (C) void profilegc_setlogfilename(string name)
 
 
 
-public void accumulate(string file, uint line, string funcname, string type, size_t sz)
+public void accumulate(string file, uint line, string funcname, string type,
+    ulong sz)
 {
     char[3 * line.sizeof + 1] buf;
     auto buflen = snprintf(buf.ptr, buf.length, "%u", line);
@@ -117,7 +118,7 @@ shared static ~this()
         {
             auto result1 = cast(Result*)r1;
             auto result2 = cast(Result*)r2;
-            ptrdiff_t cmp = result2.entry.size - result1.entry.size;
+            long cmp = result2.entry.size - result1.entry.size;
             if (cmp) return cmp < 0 ? -1 : 1;
             cmp = result2.entry.count - result1.entry.count;
             return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
