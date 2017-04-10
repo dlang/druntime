@@ -121,7 +121,8 @@ shared static ~this()
             long cmp = result2.entry.size - result1.entry.size;
             if (cmp) return cmp < 0 ? -1 : 1;
             cmp = result2.entry.count - result1.entry.count;
-            return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+            if (cmp) return cmp < 0 ? -1 : 1;
+            return result2.name < result1.name;
         }
     }
 
