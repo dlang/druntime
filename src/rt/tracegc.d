@@ -3,6 +3,8 @@
  *   -profile=gc
  * switch is thrown.
  *
+ * Tests for this functionality can be found in test/profile/src/profilegc.d
+ *
  * Copyright: Copyright Digital Mars 2015 - 2015.
  * License: Distributed under the
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
@@ -14,70 +16,6 @@
 module rt.tracegc;
 
 // version = tracegc;
-
-version (none)
-{
-    // this exercises each function
-
-    struct S { ~this() { } }
-    class C { }
-    interface I { }
-
-    void main()
-    {
-      {
-        auto a = new C();
-        auto b = new int;
-        auto c = new int[3];
-        auto d = new int[][](3,4);
-        auto e = new float;
-        auto f = new float[3];
-        auto g = new float[][](3,4);
-      }
-        printf("\n");
-      {
-        int[] a; delete a;
-        S[] as; delete as;
-        C c; delete c;
-        I i; delete i;
-        C* pc = &c; delete *pc;
-        I* pi = &i; delete *pi;
-        int* pint; delete pint;
-        S* ps; delete ps;
-      }
-        printf("\n");
-      {
-        int[] a = [1, 2, 3];
-        string[int] aa = [1:"one", 2:"two", 3:"three"];
-      }
-        printf("\n");
-      {
-        int[] a, b, c;
-        c = a ~ b;
-        c = a ~ b ~ c;
-      }
-        printf("\n");
-      {
-        dchar dc = 'a';
-        char[] ac; ac ~= dc;
-        wchar[] aw; aw ~= dc;
-        char[] ac2; ac2 ~= ac;
-        int[] ai; ai ~= 3;
-      }
-        printf("\n");
-      {
-        int[] ai; ai.length = 10;
-        float[] af; af.length = 10;
-      }
-        printf("\n");
-        int v;
-      {
-        int foo() { return v; }
-        static int delegate() dg;
-        dg = &foo;      // dynamic closure
-      }
-    }
-}
 
 extern (C) Object _d_newclass(const ClassInfo ci);
 extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length);
