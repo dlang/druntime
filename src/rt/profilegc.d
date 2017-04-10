@@ -30,6 +30,11 @@ __gshared
 {
     Entry[string] globalNewCounts;
     string logfilename = "profilegc.log";
+
+    // used to synchronize trace calls caused by allocations from multiple threads,
+    // not doing so would interfere with checking `GC.stats` as those are reported
+    // in global manner.
+    Object traceLock = new Object;
 }
 
 /****
@@ -88,7 +93,7 @@ static ~this()
 {
     if (newCounts.length)
     {
-        synchronized
+        synchronized(traceLock)
         {
             foreach (name, entry; newCounts)
             {

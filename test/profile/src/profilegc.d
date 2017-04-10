@@ -53,11 +53,30 @@ void main(string[] args)
         float[] af; af.length = 10;
     }
 
-    auto foo ( )
     {
-        int v = 42;
-        return { return v; };
+        auto foo ( )
+        {
+            int v = 42;
+            return { return v; };
+        }
+
+        auto x = foo()();
     }
 
-    auto x = foo()();
+    {
+        import core.thread;
+
+        Thread[] arr;
+
+        void bar ( )
+        {
+            auto x = new int[10];
+        }
+
+        for (int i = 0; i < 10; ++i)
+            arr ~= new Thread(&bar, 1024).start();
+
+        foreach (t; arr)
+            t.join();
+    }
 }
