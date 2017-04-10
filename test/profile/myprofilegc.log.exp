@@ -1,8 +1,8 @@
 bytes allocated, allocations, type, function, file:line
            2560	             10	core.thread.Thread D main src/profilegc.d:77
             640	             10	int[] profilegc.main.bar src/profilegc.d:73
-            288	              1	immutable(char)[][int] D main src/profilegc.d:34
             240	              4	core.thread.Thread[] D main src/profilegc.d:77
+            288	              1	immutable(char)[][int] D main src/profilegc.d:34
             160	              1	float[][] D main src/profilegc.d:18
             160	              1	int[][] D main src/profilegc.d:15
              64	              1	float[] D main src/profilegc.d:53

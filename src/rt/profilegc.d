@@ -123,7 +123,11 @@ shared static ~this()
         {
             auto result1 = cast(Result*)r1;
             auto result2 = cast(Result*)r2;
-            long cmp = result2.entry.size - result1.entry.size;
+            auto totalSize1 = result1.entry.size * result1.entry.count;
+            auto totalSize2 = result2.entry.size * result2.entry.count;
+            long cmp = totalSize2 - totalSize1;
+            if (cmp) return cmp < 0 ? -1 : 1;
+            cmp = result2.entry.size - result1.entry.size;
             if (cmp) return cmp < 0 ? -1 : 1;
             cmp = result2.entry.count - result1.entry.count;
             if (cmp) return cmp < 0 ? -1 : 1;
