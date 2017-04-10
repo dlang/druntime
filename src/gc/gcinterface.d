@@ -17,6 +17,8 @@ static import core.memory;
 alias BlkAttr = core.memory.GC.BlkAttr;
 alias BlkInfo = core.memory.GC.BlkInfo;
 
+static import core.sync.mutex;
+
 alias RootIterator = int delegate(scope int delegate(ref Root) nothrow dg);
 alias RangeIterator = int delegate(scope int delegate(ref Range) nothrow dg);
 
@@ -187,4 +189,7 @@ interface GC
      *
      */
     bool inFinalizer() nothrow;
+
+    void enableProfiling() nothrow @nogc;
+    shared(core.sync.mutex.Mutex) profilerLock() nothrow @nogc;
 }

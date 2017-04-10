@@ -30,11 +30,6 @@ __gshared
 {
     Entry[string] globalNewCounts;
     string logfilename = "profilegc.log";
-
-    // used to synchronize trace calls caused by allocations from multiple threads,
-    // not doing so would interfere with checking `GC.stats` as those are reported
-    // in global manner.
-    Object traceLock = new Object;
 }
 
 /****
@@ -46,6 +41,8 @@ __gshared
 
 extern (C) void profilegc_setlogfilename(string name)
 {
+    import gc.proxy : gc_getProxy;
+    gc_getProxy().enableProfiling();
     logfilename = name;
 }
 
@@ -91,19 +88,23 @@ public void accumulate(string file, uint line, string funcname, string type,
 // Merge thread local newCounts into globalNewCounts
 static ~this()
 {
+    import gc.proxy : gc_getProxy;
+    auto mtx = gc_getProxy().profilerLock();
+
     if (newCounts.length)
     {
-        synchronized(traceLock)
-        {
-            foreach (name, entry; newCounts)
-            {
-                if (!(name in globalNewCounts))
-                    globalNewCounts[name] = Entry.init;
+        mtx.lock();
+        scope(exit) mtx.unlock();
 
-                globalNewCounts[name].count += entry.count;
-                globalNewCounts[name].size += entry.size;
-            }
+        foreach (name, entry; newCounts)
+        {
+            if (!(name in globalNewCounts))
+                globalNewCounts[name] = Entry.init;
+
+            globalNewCounts[name].count += entry.count;
+            globalNewCounts[name].size += entry.size;
         }
+
         newCounts = null;
     }
     free(buffer.ptr);

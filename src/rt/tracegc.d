@@ -50,7 +50,7 @@ extern (C) void* _d_allocmemory(size_t sz);
 // Placed here as a separate string constant to simplify maintenance as it is
 // much more likely to be modified than rest of generation code.
 enum accumulator = q{
-    import rt.profilegc : accumulate, traceLock;
+    import rt.profilegc : accumulate;
     import core.memory : GC;
 
     static if (is(typeof(ci)))
@@ -79,29 +79,32 @@ enum accumulator = q{
         );
     }
 
-    synchronized (traceLock)
-    {
-        auto stats1 = GC.stats();
-        scope(exit)
-        {
-            auto stats2 = GC.stats();
-            if (stats2.totalCollected < stats1.totalCollected)
-            {
-                // need to account for unsigned overflow possibility if app is being
-                // run very long
-                stats2.totalCollected += typeof(stats1.totalCollected).max
-                    - stats1.totalCollected;
-                stats1.totalCollected = 0;
-            }
+    import gc.proxy : gc_getProxy;
+    auto mtx = gc_getProxy().profilerLock();
 
-            ulong size = (stats2.usedSize + stats2.totalCollected) -
-                (stats1.usedSize + stats1.totalCollected);
-            if (size > 0)
-                accumulate(file, line, funcname, name, size);
+    mtx.lock();
+    scope(exit) mtx.unlock();
+
+    auto stats1 = GC.stats();
+    scope(exit)
+    {
+        auto stats2 = GC.stats();
+        if (stats2.totalCollected < stats1.totalCollected)
+        {
+            // need to account for unsigned overflow possibility if app is being
+            // run very long
+            stats2.totalCollected += typeof(stats1.totalCollected).max
+                - stats1.totalCollected;
+            stats1.totalCollected = 0;
         }
 
-        return original_func();
+        ulong size = (stats2.usedSize + stats2.totalCollected) -
+            (stats1.usedSize + stats1.totalCollected);
+        if (size > 0)
+            accumulate(file, line, funcname, name, size);
     }
+
+    return original_func();
 };
 
 mixin(generateTraceWrappers());

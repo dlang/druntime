@@ -49,6 +49,7 @@ import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
 import core.stdc.string : memcpy, memset, memmove;
 import core.bitop;
 import core.thread;
+import core.sync.mutex;
 static import core.memory;
 
 version (GNU) import gcc.builtins;
@@ -252,6 +253,10 @@ debug (LOGGING)
 
 class ConservativeGC : GC
 {
+    bool profiling_enabled;
+    shared Mutex profiler_lock;
+    shared void[__traits(classInstanceSize, Mutex)] profiler_lock_bytes;
+
     // For passing to debug code (not thread safe)
     __gshared size_t line;
     __gshared char*  file;
@@ -316,6 +321,10 @@ class ConservativeGC : GC
             gcx.reserve(config.initReserve << 20);
         if (config.disable)
             gcx.disabled++;
+
+        this.profiler_lock_bytes[0..$] = typeid(Mutex).initializer[];
+        this.profiler_lock = cast(shared(Mutex)) this.profiler_lock_bytes.ptr;
+        this.profiler_lock.__ctor();
     }
 
 
@@ -359,6 +368,13 @@ class ConservativeGC : GC
 
     auto runLocked(alias func, Args...)(auto ref Args args)
     {
+        if (this.profiling_enabled)
+        {
+            this.profiler_lock.lock_nothrow();
+            scope(exit)
+                this.profiler_lock.unlock_nothrow();
+        }
+
         debug(PROFILE_API) immutable tm = (config.profile > 1 ? currTime.ticks : 0);
         lockNR();
         scope (failure) gcLock.unlock();
@@ -1229,6 +1245,16 @@ class ConservativeGC : GC
         stats.usedSize -= freeListSize;
         stats.freeSize += freeListSize;
         stats.totalCollected = .totalCollectedPages * PAGESIZE;
+    }
+
+    void enableProfiling() nothrow @nogc
+    {
+        this.profiling_enabled = true;
+    }
+
+    shared(Mutex) profilerLock() nothrow @nogc
+    {
+        return this.profiler_lock;
     }
 }
 
