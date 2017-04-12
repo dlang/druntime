@@ -218,6 +218,12 @@ version( CoreDdoc )
      *
      * This is a specialization for immutable lvalues. Since immutable is implicitly
      * unshared, this version accepts any type (even classes and interfaces).
+     *
+     * Params:
+     *  val = the shared lvalue.
+     *
+     * Returns:
+     *  The non-shared lvalue.
      */
     ref immutable(T) assumeUnshared(T)(ref immutable(T) val) @safe @nogc pure nothrow
     {
