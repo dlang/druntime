@@ -206,7 +206,7 @@ version( CoreDdoc )
     ref T assumeUnshared(T)(ref shared T val) @system @nogc pure nothrow
         if(!is(T == class) && !is(T == interface))
     {
-        return *cast(T*)&val;
+        return *cast(T*) &val;
     }
 
     /**
@@ -1361,7 +1361,7 @@ if(__traits(isFloating, T))
 ref auto assumeUnshared(T)(ref shared T val) @system @nogc pure nothrow
     if(!is(T == class) && !is(T == interface))
 {
-    return *cast(T*)&val;
+    return *cast(T*) &val;
 }
 
 // immutable is implicitly unshared
