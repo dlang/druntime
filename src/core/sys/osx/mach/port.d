@@ -1,8 +1,11 @@
 /**
+ * $(RED Deprecated. Use $(D core.sys.darwin.mach.port) instead. This module
+ *       will be removed in June 2018.)
+ *
  * D header file for OSX.
  *
  * Copyright: Copyright Sean Kelly 2008 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  */
 
@@ -13,15 +16,4 @@
  */
 module core.sys.osx.mach.port;
 
-version (OSX):
-extern (C):
-
-version( X86 )
-    version = i386;
-version( X86_64 )
-    version = i386;
-version( i386 )
-{
-    alias uint        natural_t;
-    alias natural_t   mach_port_t;
-}
+public import core.sys.darwin.mach.port;

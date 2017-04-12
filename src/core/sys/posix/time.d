@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly,
               Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
@@ -20,8 +20,19 @@ public import core.stdc.time;
 public import core.sys.posix.sys.types;
 public import core.sys.posix.signal; // for sigevent
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
+nothrow:
+@nogc:
 
 //
 // Required (defined in core.stdc.time)
@@ -38,11 +49,11 @@ size_t strftime(char*, size_t, in char*, in tm*);
 time_t time(time_t*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     time_t timegm(tm*); // non-standard
 }
-else version( OSX )
+else version( Darwin )
 {
     time_t timegm(tm*); // non-standard
 }
@@ -50,7 +61,15 @@ else version( FreeBSD )
 {
     time_t timegm(tm*); // non-standard
 }
+else version(NetBSD)
+{
+    time_t timegm(tm*); // non-standard
+}
 else version (Solaris)
+{
+    time_t timegm(tm*); // non-standard
+}
+else version (CRuntime_Bionic)
 {
     // Not supported.
 }
@@ -91,27 +110,36 @@ CLOCK_MONOTONIC
 
 version( linux )
 {
-    enum CLOCK_MONOTONIC        = 1;
-    enum CLOCK_MONOTONIC_RAW    = 4; // non-standard
-    enum CLOCK_MONOTONIC_COARSE = 6; // non-standard
+    enum CLOCK_MONOTONIC          = 1;
+    // To be removed in December 2015.
+    static import core.sys.linux.time;
+    deprecated("Please import it from core.sys.linux.time instead.")
+        alias CLOCK_MONOTONIC_RAW = core.sys.linux.time.CLOCK_MONOTONIC_RAW; // non-standard
+    deprecated("Please import it from core.sys.linux.time instead.")
+        alias CLOCK_MONOTONIC_COARSE = core.sys.linux.time.CLOCK_MONOTONIC_COARSE; // non-standard
 }
 else version (FreeBSD)
 {   // time.h
     enum CLOCK_MONOTONIC         = 4;
-    enum CLOCK_MONOTONIC_PRECISE = 11;
-    enum CLOCK_MONOTONIC_FAST    = 12;
+    // To be removed in December 2015.
+    static import core.sys.freebsd.time;
+    deprecated("Please import it from core.sys.freebsd.time instead.")
+        alias CLOCK_MONOTONIC_PRECISE = core.sys.freebsd.time.CLOCK_MONOTONIC_PRECISE;
+    deprecated("Please import it from core.sys.freebsd.time instead.")
+        alias CLOCK_MONOTONIC_FAST = core.sys.freebsd.time.CLOCK_MONOTONIC_FAST;
 }
-else version (OSX)
+else version (NetBSD)
+{
+    // time.h
+    enum CLOCK_MONOTONIC         = 3;
+}
+else version (Darwin)
 {
     // No CLOCK_MONOTONIC defined
 }
 else version (Solaris)
 {
     enum CLOCK_MONOTONIC = 4;
-}
-else version (Windows)
-{
-    pragma(msg, "no Windows support for CLOCK_MONOTONIC");
 }
 else
 {
@@ -157,7 +185,7 @@ int timer_getoverrun(timer_t);
 int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum CLOCK_PROCESS_CPUTIME_ID = 2;
     enum CLOCK_THREAD_CPUTIME_ID  = 3;
@@ -177,11 +205,14 @@ version( linux )
     }
 
     enum CLOCK_REALTIME         = 0;
-    enum CLOCK_REALTIME_COARSE  = 5; // non-standard
+    // To be removed in December 2015.
+    static import core.sys.linux.time;
+    deprecated("Please import it from core.sys.linux.time instead.")
+        alias CLOCK_REALTIME_COARSE = core.sys.linux.time.CLOCK_REALTIME_COARSE; // non-standard
     enum TIMER_ABSTIME          = 0x01;
 
     alias int clockid_t;
-    alias int timer_t;
+    alias void* timer_t;
 
     int clock_getres(clockid_t, timespec*);
     int clock_gettime(clockid_t, timespec*);
@@ -193,7 +224,7 @@ version( linux )
     int timer_getoverrun(timer_t);
     int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 }
-else version( OSX )
+else version( Darwin )
 {
     int nanosleep(in timespec*, timespec*);
 }
@@ -216,8 +247,32 @@ else version( FreeBSD )
         timespec it_value;
     }
 
-    enum CLOCK_REALTIME     = 0;
-    enum TIMER_ABSTIME      = 0x01;
+    enum CLOCK_REALTIME      = 0;
+    enum TIMER_ABSTIME       = 0x01;
+
+    alias int clockid_t; // <sys/_types.h>
+    alias int timer_t;
+
+    int clock_getres(clockid_t, timespec*);
+    int clock_gettime(clockid_t, timespec*);
+    int clock_settime(clockid_t, in timespec*);
+    int nanosleep(in timespec*, timespec*);
+    int timer_create(clockid_t, sigevent*, timer_t*);
+    int timer_delete(timer_t);
+    int timer_gettime(timer_t, itimerspec*);
+    int timer_getoverrun(timer_t);
+    int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
+}
+else version(NetBSD)
+{
+    struct itimerspec
+    {
+        timespec it_interval;
+        timespec it_value;
+    }
+
+    enum CLOCK_REALTIME      = 0;
+    enum TIMER_ABSTIME       = 0x01;
 
     alias int clockid_t; // <sys/_types.h>
     alias int timer_t;
@@ -234,12 +289,16 @@ else version( FreeBSD )
 }
 else version (Solaris)
 {
+    enum CLOCK_PROCESS_CPUTIME_ID = 5; // <sys/time_impl.h>
+    enum CLOCK_THREAD_CPUTIME_ID  = 2; // <sys/time_impl.h>
+
     struct itimerspec
     {
         timespec it_interval;
         timespec it_value;
     }
 
+    enum CLOCK_REALTIME = 3; // <sys/time_impl.h>
     enum TIMER_ABSOLUTE = 0x1;
 
     alias int clockid_t;
@@ -258,6 +317,33 @@ else version (Solaris)
     int timer_gettime(timer_t, itimerspec*);
     int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 }
+else version( CRuntime_Bionic )
+{
+    enum CLOCK_PROCESS_CPUTIME_ID = 2;
+    enum CLOCK_THREAD_CPUTIME_ID  = 3;
+
+    struct itimerspec
+    {
+        timespec it_interval;
+        timespec it_value;
+    }
+
+    enum CLOCK_REALTIME    = 0;
+    enum CLOCK_REALTIME_HR = 4;
+    enum TIMER_ABSTIME     = 0x01;
+
+    alias int clockid_t;
+    alias int timer_t;
+
+    int clock_getres(int, timespec*);
+    int clock_gettime(int, timespec*);
+    int nanosleep(in timespec*, timespec*);
+    int timer_create(int, sigevent*, timer_t*);
+    int timer_delete(timer_t);
+    int timer_gettime(timer_t, itimerspec*);
+    int timer_getoverrun(timer_t);
+    int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
+}
 else
 {
     static assert(false, "Unsupported platform");
@@ -273,14 +359,14 @@ tm*   gmtime_r(in time_t*, tm*);
 tm*   localtime_r(in time_t*, tm*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);
     tm*   gmtime_r(in time_t*, tm*);
     tm*   localtime_r(in time_t*, tm*);
 }
-else version( OSX )
+else version( Darwin )
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);
@@ -294,7 +380,21 @@ else version( FreeBSD )
     tm*   gmtime_r(in time_t*, tm*);
     tm*   localtime_r(in time_t*, tm*);
 }
+else version(NetBSD)
+{
+    char* asctime_r(in tm*, char*);
+    char* ctime_r(in time_t*, char*);
+    tm*   gmtime_r(in time_t*, tm*);
+    tm*   localtime_r(in time_t*, tm*);
+}
 else version (Solaris)
+{
+    char* asctime_r(in tm*, char*);
+    char* ctime_r(in time_t*, char*);
+    tm* gmtime_r(in time_t*, tm*);
+    tm* localtime_r(in time_t*, tm*);
+}
+else version (CRuntime_Bionic)
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);
@@ -319,7 +419,7 @@ tm* getdate(in char*);
 char* strptime(in char*, in char*, tm*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     extern __gshared int    daylight;
     extern __gshared c_long timezone;
@@ -327,7 +427,7 @@ version( linux )
     tm*   getdate(in char*);
     char* strptime(in char*, in char*, tm*);
 }
-else version( OSX )
+else version( Darwin )
 {
     extern __gshared c_long timezone;
     extern __gshared int    daylight;
@@ -340,6 +440,11 @@ else version( FreeBSD )
     //tm*   getdate(in char*);
     char* strptime(in char*, in char*, tm*);
 }
+else version(NetBSD)
+{
+    tm*   getdate(in char*);
+    char* strptime(in char*, in char*, tm*);
+}
 else version (Solaris)
 {
     extern __gshared c_long timezone, altzone;
@@ -348,6 +453,13 @@ else version (Solaris)
     tm* getdate(in char*);
     char* __strptime_dontzero(in char*, in char*, tm*);
     alias __strptime_dontzero strptime;
+}
+else version( CRuntime_Bionic )
+{
+    extern __gshared int    daylight;
+    extern __gshared c_long timezone;
+
+    char* strptime(in char*, in char*, tm*);
 }
 else
 {

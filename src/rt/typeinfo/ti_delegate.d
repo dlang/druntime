@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -28,7 +28,7 @@ class TypeInfo_D : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return hashOf(p, dg.sizeof);
+        return rt.util.hash.hashOf(p[0 .. dg.sizeof], 0);
     }
 
     override bool equals(in void* p1, in void* p2)
@@ -48,6 +48,13 @@ class TypeInfo_D : TypeInfo
         t = *cast(dg *)p1;
         *cast(dg *)p1 = *cast(dg *)p2;
         *cast(dg *)p2 = t;
+    }
+
+    override const(void)[] initializer() const @trusted
+    {
+        static immutable dg d;
+
+        return (cast(void *)null)[0 .. dg.sizeof];
     }
 
     override @property uint flags() nothrow pure

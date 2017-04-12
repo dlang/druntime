@@ -1,16 +1,13 @@
 /**
  * Contains SSE2 and MMX versions of certain operations for float.
  *
- * Copyright: Copyright Digital Mars 2008 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 2008 - 2016.
+ * License:   Distributed under the
+ *            $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  * Authors:   Walter Bright, based on code originally written by Burton Radons
+ * Source:    $(DRUNTIMESRC src/rt/_arrayfloat.d)
  */
 
-/*          Copyright Digital Mars 2008 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.arrayfloat;
 
 // debug=PRINTF
@@ -25,6 +22,8 @@ version (unittest)
      */
     int cpuid;
     const int CPUID_MAX = 5;
+
+nothrow:
     @property bool mmx()      { return cpuid == 1 && core.cpuid.mmx; }
     @property bool sse()      { return cpuid == 2 && core.cpuid.sse; }
     @property bool sse2()     { return cpuid == 3 && core.cpuid.sse2; }
@@ -67,7 +66,7 @@ private template CodeGenSliceSliceOp(string opD, string opSSE, string op3DNow)
             auto n = aptr + (b.length & ~15);
 
             // Unaligned case
-            asm
+            asm pure nothrow @nogc
             {
                 mov EAX, bptr; // left operand
                 mov ECX, cptr; // right operand
@@ -109,7 +108,7 @@ private template CodeGenSliceSliceOp(string opD, string opSSE, string op3DNow)
         {
             auto n = aptr + (b.length & ~7);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr; // destination operand
                 mov EDI, n;    // end comparison
@@ -140,6 +139,51 @@ private template CodeGenSliceSliceOp(string opD, string opSSE, string op3DNow)
                 mov aptr, ESI;
                 mov bptr, EAX;
                 mov cptr, ECX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (b.length >= 16)
+        {
+            auto n = aptr + (b.length & ~15);
+
+            // Unaligned case
+            asm pure nothrow @nogc
+            {
+                mov RAX, bptr; // left operand
+                mov RCX, cptr; // right operand
+                mov RSI, aptr; // destination operand
+                mov RDI, n;    // end comparison
+
+                align 8;
+            startsseloopb:
+                movups XMM0, [RAX];
+                movups XMM1, [RAX+16];
+                movups XMM2, [RAX+32];
+                movups XMM3, [RAX+48];
+                add RAX, 64;
+                movups XMM4, [RCX];
+                movups XMM5, [RCX+16];
+                movups XMM6, [RCX+32];
+                movups XMM7, [RCX+48];
+                add RSI, 64;
+                ` ~ opSSE ~ ` XMM0, XMM4;
+                ` ~ opSSE ~ ` XMM1, XMM5;
+                ` ~ opSSE ~ ` XMM2, XMM6;
+                ` ~ opSSE ~ ` XMM3, XMM7;
+                add RCX, 64;
+                movups [RSI+ 0-64], XMM0;
+                movups [RSI+16-64], XMM1;
+                movups [RSI+32-64], XMM2;
+                movups [RSI+48-64], XMM3;
+                cmp RSI, RDI;
+                jb startsseloopb;
+
+                mov aptr, RSI;
+                mov bptr, RAX;
+                mov cptr, RCX;
             }
         }
     }
@@ -341,7 +385,7 @@ private template CodeGenExpSliceOpAssign(string opD, string opSSE, string op3DNo
                     *aptr++ ` ~ opD ~ ` value;
 
                 // process aligned slice with fast SSE operations
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aabeg;
                     mov EDI, aaend;
@@ -378,7 +422,7 @@ private template CodeGenExpSliceOpAssign(string opD, string opSSE, string op3DNo
             ulong w = *cast(uint *) &value;
             ulong v = w | (w << 32L);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, dword ptr [aptr];
                 mov EDI, dword ptr [n];
@@ -404,6 +448,43 @@ private template CodeGenExpSliceOpAssign(string opD, string opSSE, string op3DNo
 
                 emms;
                 mov dword ptr [aptr], ESI;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+            if (aptr < n)
+
+            asm pure nothrow @nogc
+            {
+                mov RSI, aptr;
+                mov RDI, n;
+                movss XMM4, value;
+                shufps XMM4, XMM4, 0;
+
+                align 8;
+            startsseloopa:
+                movups XMM0, [RSI];
+                movups XMM1, [RSI+16];
+                movups XMM2, [RSI+32];
+                movups XMM3, [RSI+48];
+                add RSI, 64;
+                ` ~ opSSE ~ ` XMM0, XMM4;
+                ` ~ opSSE ~ ` XMM1, XMM4;
+                ` ~ opSSE ~ ` XMM2, XMM4;
+                ` ~ opSSE ~ ` XMM3, XMM4;
+                movups [RSI+ 0-64], XMM0;
+                movups [RSI+16-64], XMM1;
+                movups [RSI+32-64], XMM2;
+                movups [RSI+48-64], XMM3;
+                cmp RSI, RDI;
+                jb startsseloopa;
+
+                mov aptr, RSI;
             }
         }
     }
@@ -637,7 +718,7 @@ private template CodeGenSliceExpOp(string opD, string opSSE, string op3DNow)
             auto n = aptr + (a.length & ~15);
 
             // Unaligned case
-            asm
+            asm pure nothrow @nogc
             {
                 mov EAX, bptr;
                 mov ESI, aptr;
@@ -677,7 +758,7 @@ private template CodeGenSliceExpOp(string opD, string opSSE, string op3DNow)
             ulong w = *cast(uint *) &value;
             ulong v = w | (w << 32L);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -706,6 +787,46 @@ private template CodeGenSliceExpOp(string opD, string opSSE, string op3DNow)
                 emms;
                 mov aptr, ESI;
                 mov bptr, EAX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            // Unaligned case
+            asm pure nothrow @nogc
+            {
+                mov RAX, bptr;
+                mov RSI, aptr;
+                mov RDI, n;
+                movss XMM4, value;
+                shufps XMM4, XMM4, 0;
+
+                align 8;
+            startsseloop:
+                add RSI, 64;
+                movups XMM0, [RAX];
+                movups XMM1, [RAX+16];
+                movups XMM2, [RAX+32];
+                movups XMM3, [RAX+48];
+                add RAX, 64;
+                ` ~ opSSE ~ ` XMM0, XMM4;
+                ` ~ opSSE ~ ` XMM1, XMM4;
+                ` ~ opSSE ~ ` XMM2, XMM4;
+                ` ~ opSSE ~ ` XMM3, XMM4;
+                movups [RSI+ 0-64], XMM0;
+                movups [RSI+16-64], XMM1;
+                movups [RSI+32-64], XMM2;
+                movups [RSI+48-64], XMM3;
+                cmp RSI, RDI;
+                jb startsseloop;
+
+                mov aptr, RSI;
+                mov bptr, RAX;
             }
         }
     }
@@ -921,6 +1042,10 @@ unittest
 /* ======================================================================== */
 /* ======================================================================== */
 
+/* template for the case
+ *   a[] ?= b[]
+ * with some binary operator ?
+ */
 private template CodeGenSliceOpAssign(string opD, string opSSE, string op3DNow)
 {
     const CodeGenSliceOpAssign = `
@@ -936,7 +1061,7 @@ private template CodeGenSliceOpAssign(string opD, string opSSE, string op3DNow)
             auto n = aptr + (a.length & ~15);
 
             // Unaligned case
-            asm
+            asm pure nothrow @nogc
             {
                 mov ECX, bptr; // right operand
                 mov ESI, aptr; // destination operand
@@ -975,7 +1100,7 @@ private template CodeGenSliceOpAssign(string opD, string opSSE, string op3DNow)
         {
             auto n = aptr + (a.length & ~7);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, dword ptr [aptr]; // destination operand
                 mov EDI, dword ptr [n];    // end comparison
@@ -1003,6 +1128,48 @@ private template CodeGenSliceOpAssign(string opD, string opSSE, string op3DNow)
                 emms;
                 mov dword ptr [aptr], ESI;
                 mov dword ptr [bptr], ECX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            // Unaligned case
+            asm pure nothrow @nogc
+            {
+                mov RCX, bptr; // right operand
+                mov RSI, aptr; // destination operand
+                mov RDI, n; // end comparison
+
+                align 8;
+            startsseloopb:
+                movups XMM0, [RSI];
+                movups XMM1, [RSI+16];
+                movups XMM2, [RSI+32];
+                movups XMM3, [RSI+48];
+                add RSI, 64;
+                movups XMM4, [RCX];
+                movups XMM5, [RCX+16];
+                movups XMM6, [RCX+32];
+                movups XMM7, [RCX+48];
+                add RCX, 64;
+                ` ~ opSSE ~ ` XMM0, XMM4;
+                ` ~ opSSE ~ ` XMM1, XMM5;
+                ` ~ opSSE ~ ` XMM2, XMM6;
+                ` ~ opSSE ~ ` XMM3, XMM7;
+                movups [RSI+ 0-64], XMM0;
+                movups [RSI+16-64], XMM1;
+                movups [RSI+32-64], XMM2;
+                movups [RSI+48-64], XMM3;
+                cmp RSI, RDI;
+                jb startsseloopb;
+
+                mov aptr, RSI;
+                mov bptr, RCX;
             }
         }
     }
@@ -1194,7 +1361,7 @@ T[] _arrayExpSliceMinSliceAssign_f(T[] a, T[] b, T value)
             auto n = aptr + (a.length & ~15);
 
             // Unaligned case
-            asm
+            asm pure nothrow @nogc
             {
                 mov EAX, bptr;
                 mov ESI, aptr;
@@ -1238,7 +1405,7 @@ T[] _arrayExpSliceMinSliceAssign_f(T[] a, T[] b, T value)
             ulong w = *cast(uint *) &value;
             ulong v = w | (w << 32L);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;

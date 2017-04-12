@@ -2,7 +2,7 @@
  * D header file for FreeBSD.
  *
  * Copyright: Copyright Martin Nowak 2012.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Martin Nowak
  */
 module core.sys.freebsd.dlfcn;
@@ -11,6 +11,8 @@ public import core.sys.posix.dlfcn;
 
 version (FreeBSD):
 extern (C):
+nothrow:
+@nogc:
 
 enum __BSD_VISIBLE = true;
 
@@ -67,7 +69,7 @@ static if (__BSD_VISIBLE)
         int     __dlfunc_dummy;
     };
 
-    alias void function(__dlfunc_arg) dlfunc_t;
+    alias dlfunc_t = void function(__dlfunc_arg);
 
     /*
      * Structures, returned by the RTLD_DI_SERINFO dlinfo() request.
@@ -80,13 +82,13 @@ static if (__BSD_VISIBLE)
     struct Dl_serinfo {
         size_t          dls_size;       /* total buffer size */
         uint            dls_cnt;        /* number of path entries */
-        Dl_serpath      dls_serpath[1]; /* there may be more than one */
+        Dl_serpath[1]   dls_serpath;    /* there may be more than one */
     };
 }
 
 private template __externC(RT, P...)
 {
-    alias extern(C) RT function(P) __externC;
+    alias __externC = extern(C) RT function(P) nothrow @nogc;
 }
 
 /* XSI functions first. */

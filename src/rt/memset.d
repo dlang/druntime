@@ -2,7 +2,7 @@
  * Contains a memset implementation used by compiler-generated code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -137,4 +137,16 @@ double *_memsetDouble(double *p, double value, size_t count)
     for (ptop = &p[count]; p < ptop; p++)
         *p = value;
     return pstart;
+}
+
+version (D_SIMD)
+{
+    import core.simd;
+
+    void16* _memsetSIMD(void16 *p, void16 value, size_t count)
+    {
+        foreach (i; 0..count)
+            p[i] = value;
+        return p;
+    }
 }

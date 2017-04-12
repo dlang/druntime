@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -18,8 +18,20 @@ private import core.sys.posix.config;
 public import core.stdc.stdio;
 public import core.sys.posix.sys.types; // for off_t
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
+
+nothrow:
+@nogc:
 
 //
 // Required (defined in core.stdc.stdio)
@@ -93,7 +105,7 @@ int    vsprintf(char*, in char*, va_list);
 int    vsscanf(in char*, in char*, va_list arg);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     /*
      * actually, if __USE_FILE_OFFSET64 && !_LARGEFILE64_SOURCE
@@ -129,6 +141,14 @@ version( linux )
         FILE* tmpfile();
     }
 }
+else version( CRuntime_Bionic )
+{
+    int   fgetpos(FILE*, fpos_t *);
+    FILE* fopen(in char*, in char*);
+    FILE* freopen(in char*, in char*, FILE*);
+    int   fseek(FILE*, c_long, int);
+    int   fsetpos(FILE*, in fpos_t*);
+}
 
 //
 // C Extension (CX)
@@ -146,7 +166,7 @@ int    pclose(FILE*);
 FILE*  popen(in char*, in char*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum L_ctermid = 9;
 
@@ -176,16 +196,31 @@ else version( Posix )
     off_t ftello(FILE*);
 }
 
-version( Posix )
+char*  ctermid(char*);
+FILE*  fdopen(int, in char*);
+int    fileno(FILE*);
+//int    fseeko(FILE*, off_t, int);
+//off_t  ftello(FILE*);
+char*  gets(char*);
+int    pclose(FILE*);
+FILE*  popen(in char*, in char*);
+
+
+// memstream functions are conforming to POSIX.1-2008.  These functions are
+// not specified in POSIX.1-2001 and are not widely available on other
+// systems.
+version( CRuntime_Glibc )                     // as of glibc 1.0x
+    version = HaveMemstream;
+else version( FreeBSD )                      // as of FreeBSD 9.2
+    version = HaveMemstream;
+else version( OpenBSD )                      // as of OpenBSD 5.4
+    version = HaveMemstream;
+
+version( HaveMemstream )
 {
-    char*  ctermid(char*);
-    FILE*  fdopen(int, in char*);
-    int    fileno(FILE*);
-    //int    fseeko(FILE*, off_t, int);
-    //off_t  ftello(FILE*);
-    char*  gets(char*);
-    int    pclose(FILE*);
-    FILE*  popen(in char*, in char*);
+    FILE*  fmemopen(in void* buf, in size_t size, in char* mode);
+    FILE*  open_memstream(char** ptr, size_t* sizeloc);
+    FILE*  open_wmemstream(wchar_t** ptr, size_t* sizeloc);
 }
 
 //
@@ -201,7 +236,27 @@ int    putc_unlocked(int, FILE*);
 int    putchar_unlocked(int);
 */
 
-version( linux )
+version( CRuntime_Glibc )
+{
+    void   flockfile(FILE*);
+    int    ftrylockfile(FILE*);
+    void   funlockfile(FILE*);
+    int    getc_unlocked(FILE*);
+    int    getchar_unlocked();
+    int    putc_unlocked(int, FILE*);
+    int    putchar_unlocked(int);
+}
+else version( OpenBSD )
+{
+    void   flockfile(FILE*);
+    int    ftrylockfile(FILE*);
+    void   funlockfile(FILE*);
+    int    getc_unlocked(FILE*);
+    int    getchar_unlocked();
+    int    putc_unlocked(int, FILE*);
+    int    putchar_unlocked(int);
+}
+else version( Solaris )
 {
     void   flockfile(FILE*);
     int    ftrylockfile(FILE*);
@@ -222,9 +277,78 @@ va_list (defined in core.stdc.stdarg)
 char*  tempnam(in char*, in char*);
 */
 
-version( linux )
+char*  tempnam(in char*, in char*);
+
+version( CRuntime_Glibc )
 {
     enum P_tmpdir  = "/tmp";
-
-    char*  tempnam(in char*, in char*);
 }
+version( Darwin )
+{
+    enum P_tmpdir  = "/var/tmp";
+}
+version( FreeBSD )
+{
+    enum P_tmpdir  = "/var/tmp/";
+}
+version(NetBSD)
+{
+    enum P_tmpdir  = "/var/tmp/";
+}
+version( OpenBSD )
+{
+    enum P_tmpdir  = "/tmp/";
+}
+version( Solaris )
+{
+    enum P_tmpdir  = "/var/tmp/";
+}
+
+version( HaveMemstream )
+unittest
+{ /* fmemopen */
+    import core.stdc.string : memcmp;
+    byte[10] buf;
+    auto f = fmemopen(buf.ptr, 10, "w");
+    assert(f !is null);
+    assert(fprintf(f, "hello") == "hello".length);
+    assert(fflush(f) == 0);
+    assert(memcmp(buf.ptr, "hello".ptr, "hello".length) == 0);
+    //assert(buf
+    assert(fclose(f) == 0);
+}
+
+version( HaveMemstream )
+unittest
+{ /* Note: open_memstream is only useful for writing */
+    import core.stdc.string : memcmp;
+    char* ptr = null;
+    char[6] testdata = ['h', 'e', 'l', 'l', 'o', 0];
+    size_t sz = 0;
+    auto f = open_memstream(&ptr, &sz);
+    assert(f !is null);
+    assert(fprintf(f, "%s", testdata.ptr) == 5);
+    assert(fflush(f) == 0);
+    assert(memcmp(ptr, testdata.ptr, testdata.length) == 0);
+    assert(fclose(f) == 0);
+}
+
+version( HaveMemstream )
+unittest
+{ /* Note: open_wmemstream is only useful for writing */
+    import core.stdc.string : memcmp;
+    import core.stdc.wchar_ : fwprintf;
+    wchar_t* ptr = null;
+    wchar_t[6] testdata = ['h', 'e', 'l', 'l', 'o', 0];
+    size_t sz = 0;
+    auto f = open_wmemstream(&ptr, &sz);
+    assert(f !is null);
+    assert(fwprintf(f, testdata.ptr) == 5);
+    assert(fflush(f) == 0);
+    assert(memcmp(ptr, testdata.ptr, testdata.length*wchar_t.sizeof) == 0);
+    assert(fclose(f) == 0);
+}
+
+
+ssize_t getdelim (char** lineptr, size_t* n, int delimiter, FILE* stream);
+ssize_t getline (char** lineptr, size_t* n, FILE* stream);

@@ -2,8 +2,12 @@ doc/*
 lib/*
 obj/*
 import/*
+generated/*
 druntime.json
 .DS_Store
 trace.def
 trace.log
-Makefile
+/Makefile
+/errno_c*.obj
+/msvc*.obj
+make

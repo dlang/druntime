@@ -14,6 +14,7 @@ module rt.deh_win32;
 version (Win32):
 
 import core.sys.windows.windows;
+import rt.monitor_;
 //import core.stdc.stdio;
 
 version (D_InlineAsm_X86)
@@ -161,7 +162,7 @@ struct EXCEPTION_RECORD {
         EXCEPTION_RECORD* ExceptionRecord;
         PVOID ExceptionAddress;
         DWORD NumberParameters;
-        DWORD[EXCEPTION_MAXIMUM_PARAMETERS] ExceptionInformation;
+        ULONG_PTR[EXCEPTION_MAXIMUM_PARAMETERS] ExceptionInformation;
 }
 alias EXCEPTION_RECORD* PEXCEPTION_RECORD, LPEXCEPTION_RECORD;
 
@@ -321,7 +322,7 @@ struct DHandlerTable
     void *fptr;                 // pointer to start of function
     uint espoffset;         // offset of ESP from EBP
     uint retoffset;         // offset from start of function to return code
-    DHandlerInfo handler_info[1];
+    DHandlerInfo[1] handler_info;
 };
 
 struct DCatchBlock
@@ -335,7 +336,7 @@ struct DCatchBlock
 struct DCatchInfo
 {
     uint ncatches;                  // number of catch blocks
-    DCatchBlock catch_block[1];  // data for each catch block
+    DCatchBlock[1] catch_block;  // data for each catch block
 };
 
 // Macro to make our own exception code
@@ -372,10 +373,21 @@ enum int STATUS_DIGITAL_MARS_D_EXCEPTION = MAKE_EXCEPTION_CODE!(3,'D',1);
  * are shorter than D exceptions, for example.
  * (3) System exceptions don't have any space for a pointer to a D object.
  * So we cannot store the collision information in the exception record.
- * (4) it's important that this list is thread-local.
+ * (4) it's important that this list is fiber-local.
  */
 
 EXCEPTION_RECORD * inflightExceptionList = null;
+
+/***********************************
+ * Switch out inflightExceptionList on fiber context switches.
+ */
+extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc
+{
+    auto old = inflightExceptionList;
+    inflightExceptionList = cast(EXCEPTION_RECORD*)newContext;
+    return old;
+}
+
 
 /***********************************
  * Find the first non-collateral exception in the list. If the last

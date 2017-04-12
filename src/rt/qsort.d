@@ -3,7 +3,7 @@
  * qsort().
  *
  * Copyright: Copyright Digital Mars 2000 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Martin Nowak
  */
 
@@ -18,14 +18,23 @@ module rt.qsort;
 
 private import core.stdc.stdlib;
 
-version (linux)
-{
-    alias extern (C) int function(const void *, const void *, void *) Cmp;
-    extern (C) void qsort_r(void *base, size_t nmemb, size_t size, Cmp cmp, void *arg);
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
-    extern (C) void[] _adSort(void[] a, TypeInfo ti)
+version (CRuntime_Glibc)
+{
+    alias extern (C) int function(scope const void *, scope const void *, scope void *) Cmp;
+    extern (C) void qsort_r(scope void *base, size_t nmemb, size_t size, Cmp cmp, scope void *arg);
+
+    extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {
-        extern (C) int cmp(in void* p1, in void* p2, void* ti)
+        extern (C) int cmp(scope const void* p1, scope const void* p2, scope void* ti)
         {
             return (cast(TypeInfo)ti).compare(p1, p2);
         }
@@ -35,12 +44,12 @@ version (linux)
 }
 else version (FreeBSD)
 {
-    alias extern (C) int function(void *, const void *, const void *) Cmp;
-    extern (C) void qsort_r(void *base, size_t nmemb, size_t size, void *thunk, Cmp cmp);
+    alias extern (C) int function(scope void *, scope const void *, scope const void *) Cmp;
+    extern (C) void qsort_r(scope void *base, size_t nmemb, size_t size, scope void *thunk, Cmp cmp);
 
-    extern (C) void[] _adSort(void[] a, TypeInfo ti)
+    extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {
-        extern (C) int cmp(void* ti, in void* p1, in void* p2)
+        extern (C) int cmp(scope void* ti, scope const void* p1, scope const void* p2)
         {
             return (cast(TypeInfo)ti).compare(p1, p2);
         }
@@ -48,14 +57,14 @@ else version (FreeBSD)
         return a;
     }
 }
-else version (OSX)
+else version (Darwin)
 {
-    alias extern (C) int function(void *, const void *, const void *) Cmp;
-    extern (C) void qsort_r(void *base, size_t nmemb, size_t size, void *thunk, Cmp cmp);
+    alias extern (C) int function(scope void *, scope const void *, scope const void *) Cmp;
+    extern (C) void qsort_r(scope void *base, size_t nmemb, size_t size, scope void *thunk, Cmp cmp);
 
-    extern (C) void[] _adSort(void[] a, TypeInfo ti)
+    extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {
-        extern (C) int cmp(void* ti, in void* p1, in void* p2)
+        extern (C) int cmp(scope void* ti, scope const void* p1, scope const void* p2)
         {
             return (cast(TypeInfo)ti).compare(p1, p2);
         }
@@ -67,9 +76,9 @@ else
 {
     private TypeInfo tiglobal;
 
-    extern (C) void[] _adSort(void[] a, TypeInfo ti)
+    extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {
-        extern (C) int cmp(in void* p1, in void* p2)
+        extern (C) int cmp(scope const void* p1, scope const void* p2)
         {
             return tiglobal.compare(p1, p2);
         }
@@ -85,7 +94,7 @@ unittest
 {
     debug(qsort) printf("array.sort.unittest()\n");
 
-    int a[] = new int[10];
+    int[] a = new int[10];
 
     a[0] = 23;
     a[1] = 1;
@@ -98,7 +107,7 @@ unittest
     a[8] = 0;
     a[9] = -1;
 
-    a.sort;
+    _adSort(*cast(void[]*)&a, typeid(a[0]));
 
     for (int i = 0; i < a.length - 1; i++)
     {

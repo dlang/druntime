@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -17,8 +17,19 @@ module core.sys.posix.semaphore;
 private import core.sys.posix.config;
 private import core.sys.posix.time;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
+nothrow:
+@nogc:
 
 //
 // Required
@@ -38,7 +49,7 @@ int sem_unlink(in char*);
 int sem_wait(sem_t*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     private alias int __atomic_lock_t;
 
@@ -57,7 +68,7 @@ version( linux )
 
     enum SEM_FAILED = cast(sem_t*) null;
 }
-else version( OSX )
+else version( Darwin )
 {
     alias int sem_t;
 
@@ -79,6 +90,19 @@ else version( FreeBSD )
 
     enum SEM_FAILED = cast(sem_t*) null;
 }
+else version(NetBSD)
+{
+    alias size_t sem_t;
+
+    enum SEM_FAILED = cast(sem_t*) null;
+}
+else version( OpenBSD )
+{
+    struct __sem { }
+    alias sem_t = __sem*;
+
+    enum SEM_FAILED = cast(sem_t*) null;
+}
 else version (Solaris)
 {
     struct sem_t
@@ -92,23 +116,29 @@ else version (Solaris)
 
     enum SEM_FAILED = cast(sem_t*)-1;
 }
+else version( CRuntime_Bionic )
+{
+    struct sem_t
+    {
+        uint count; //volatile
+    }
+
+    enum SEM_FAILED = null;
+}
 else
 {
     static assert(false, "Unsupported platform");
 }
 
-version( Posix )
-{
-    int sem_close(sem_t*);
-    int sem_destroy(sem_t*);
-    int sem_getvalue(sem_t*, int*);
-    int sem_init(sem_t*, int, uint);
-    sem_t* sem_open(in char*, int, ...);
-    int sem_post(sem_t*);
-    int sem_trywait(sem_t*);
-    int sem_unlink(in char*);
-    int sem_wait(sem_t*);
-}
+int sem_close(sem_t*);
+int sem_destroy(sem_t*);
+int sem_getvalue(sem_t*, int*);
+int sem_init(sem_t*, int, uint);
+sem_t* sem_open(in char*, int, ...);
+int sem_post(sem_t*);
+int sem_trywait(sem_t*);
+int sem_unlink(in char*);
+int sem_wait(sem_t*);
 
 //
 // Timeouts (TMO)
@@ -117,11 +147,11 @@ version( Posix )
 int sem_timedwait(sem_t*, in timespec*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     int sem_timedwait(sem_t*, in timespec*);
 }
-else version( OSX )
+else version( Darwin )
 {
     int sem_timedwait(sem_t*, in timespec*);
 }
@@ -129,7 +159,19 @@ else version( FreeBSD )
 {
     int sem_timedwait(sem_t*, in timespec*);
 }
+else version(NetBSD)
+{
+    int sem_timedwait(sem_t*, in timespec*);
+}
+else version( OpenBSD )
+{
+    int sem_timedwait(sem_t*, in timespec*);
+}
 else version (Solaris)
+{
+    int sem_timedwait(sem_t*, in timespec*);
+}
+else version( CRuntime_Bionic )
 {
     int sem_timedwait(sem_t*, in timespec*);
 }

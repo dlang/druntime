@@ -9,7 +9,7 @@ version (linux):
 extern (C):
 nothrow:
 
-import core.stdc.stdint : uintptr_t, uint32_t;
+import core.stdc.stdint : uintptr_t, uint32_t, uint64_t;
 import core.sys.linux.config : __WORDSIZE;
 import core.sys.linux.dlfcn : Lmid_t;
 import core.sys.linux.elf;
@@ -28,6 +28,12 @@ else version (X86_64)
     alias uint32_t Elf_Symndx;
 }
 else version (MIPS32)
+{
+    // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
+    alias __WORDSIZE __ELF_NATIVE_CLASS;
+    alias uint32_t Elf_Symndx;
+}
+else version (MIPS64)
 {
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
     alias __WORDSIZE __ELF_NATIVE_CLASS;
@@ -56,6 +62,12 @@ else version (AArch64)
     // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
     alias __WORDSIZE __ELF_NATIVE_CLASS;
     alias uint32_t Elf_Symndx;
+}
+else version (SystemZ)
+{
+    // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/elfclass.h
+    alias __WORDSIZE __ELF_NATIVE_CLASS;
+    alias uint64_t Elf_Symndx;
 }
 else
     static assert(0, "unimplemented");
@@ -143,9 +155,10 @@ struct dl_phdr_info
     void *dlpi_tls_data;
 }
 
-private alias extern(C) int function(dl_phdr_info*, size_t, void *) __Callback;
-extern int dl_iterate_phdr(__Callback __callback, void*__data);
-
+private alias extern(C) int function(dl_phdr_info*, size_t, void *) dl_iterate_phdr_cb;
+private alias extern(C) int function(dl_phdr_info*, size_t, void *) @nogc dl_iterate_phdr_cb_ngc;
+extern int dl_iterate_phdr(dl_iterate_phdr_cb __callback, void*__data);
+extern int dl_iterate_phdr(dl_iterate_phdr_cb_ngc __callback, void*__data) @nogc;
 
 // ld.so auditing interfaces prototypes have to be defined by the auditing DSO.
 extern uint la_version(uint __version);

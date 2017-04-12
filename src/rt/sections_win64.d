@@ -12,12 +12,14 @@
 
 module rt.sections_win64;
 
-version(Win64):
+version(CRuntime_Microsoft):
 
 // debug = PRINTF;
 debug(PRINTF) import core.stdc.stdio;
 import core.stdc.stdlib : malloc, free;
 import rt.deh, rt.minfo;
+
+version = conservative;
 
 struct SectionGroup
 {
@@ -31,16 +33,17 @@ struct SectionGroup
         return dg(_sections);
     }
 
-    @property inout(ModuleInfo*)[] modules() inout
+    @property immutable(ModuleInfo*)[] modules() const nothrow @nogc
     {
         return _moduleGroup.modules;
     }
 
-    @property ref inout(ModuleGroup) moduleGroup() inout
+    @property ref inout(ModuleGroup) moduleGroup() inout nothrow @nogc
     {
         return _moduleGroup;
     }
 
+    version(Win64)
     @property immutable(FuncTable)[] ehTables() const
     {
         auto pbeg = cast(immutable(FuncTable)*)&_deh_beg;
@@ -48,44 +51,74 @@ struct SectionGroup
         return pbeg[0 .. pend - pbeg];
     }
 
-    @property inout(void[])[] gcRanges() inout
+    @property inout(void[])[] gcRanges() inout nothrow @nogc
     {
         return _gcRanges[];
     }
 
 private:
     ModuleGroup _moduleGroup;
-    void[][1] _gcRanges;
+    version(conservative)
+        void[][1] _gcRanges;
+    else
+        void[][] _gcRanges;
 }
 
-void initSections()
+void initSections() nothrow @nogc
 {
     _sections._moduleGroup = ModuleGroup(getModuleInfos());
 
-    auto pbeg = cast(void*)&__xc_a;
-    auto pend = cast(void*)&_deh_beg;
-    _sections._gcRanges[0] = pbeg[0 .. pend - pbeg];
+    // the ".data" image section includes both object file sections ".data" and ".bss"
+    void[] dataSection = findImageSection(".data");
+    debug(PRINTF) printf("found .data section: [%p,+%llx]\n", dataSection.ptr,
+                         cast(ulong)dataSection.length);
+    version(conservative)
+    {
+        _sections._gcRanges[0] = dataSection;
+    }
+    else
+    {
+        size_t count = &_DP_end - &_DP_beg;
+        auto ranges = cast(void[]*) malloc(count * (void[]).sizeof);
+        for (size_t i = 0; i < count; i++)
+        {
+            void* addr = dataSection.ptr + (&_DP_beg)[i];
+            ranges[i] = (cast(void**)addr)[0..1]; // TODO: optimize consecutive pointers into single range
+        }
+        _sections._gcRanges = ranges[0..count];
+    }
 }
 
-void finiSections()
+void finiSections() nothrow @nogc
 {
-    .free(_sections.modules.ptr);
+    .free(cast(void*)_sections.modules.ptr);
+    version(conservative) {} else
+        .free(_sections._gcRanges.ptr);
 }
 
-void[] initTLSRanges()
+void[] initTLSRanges() nothrow @nogc
 {
     auto pbeg = cast(void*)&_tls_start;
     auto pend = cast(void*)&_tls_end;
     return pbeg[0 .. pend - pbeg];
 }
 
-void finiTLSRanges(void[] rng)
+void finiTLSRanges(void[] rng) nothrow @nogc
 {
 }
 
-void scanTLSRanges(void[] rng, scope void delegate(void* pbeg, void* pend) dg)
+void scanTLSRanges(void[] rng, scope void delegate(void* pbeg, void* pend) nothrow dg) nothrow
 {
-    dg(rng.ptr, rng.ptr + rng.length);
+    version(conservative)
+    {
+        dg(rng.ptr, rng.ptr + rng.length);
+    }
+    else
+    {
+        size_t count = &_TP_end - &_TP_beg;
+        for (auto p = &_TP_beg; p < &_TP_end; p++)
+            dg(rng.ptr + *p, rng.ptr + *p + (void*).sizeof);
+    }
 }
 
 private:
@@ -97,7 +130,7 @@ extern(C)
     extern __gshared void* _minfo_end;
 }
 
-ModuleInfo*[] getModuleInfos()
+immutable(ModuleInfo*)[] getModuleInfos() nothrow @nogc
 out (result)
 {
     foreach(m; result)
@@ -105,7 +138,7 @@ out (result)
 }
 body
 {
-    auto m = (cast(ModuleInfo**)&_minfo_beg)[1 .. &_minfo_end - &_minfo_beg];
+    auto m = (cast(immutable(ModuleInfo*)*)&_minfo_beg)[1 .. &_minfo_end - &_minfo_beg];
     /* Because of alignment inserted by the linker, various null pointers
      * are there. We need to filter them out.
      */
@@ -119,14 +152,14 @@ body
         if (*p !is null) ++cnt;
     }
 
-    auto result = (cast(ModuleInfo**).malloc(cnt * size_t.sizeof))[0 .. cnt];
+    auto result = (cast(immutable(ModuleInfo)**).malloc(cnt * size_t.sizeof))[0 .. cnt];
 
     p = m.ptr;
     cnt = 0;
     for (; p < pend; ++p)
         if (*p !is null) result[cnt++] = *p;
 
-    return result;
+    return cast(immutable)result;
 }
 
 extern(C)
@@ -136,12 +169,15 @@ extern(C)
      */
     extern __gshared
     {
+        void* __ImageBase;
+
         void* _deh_beg;
         void* _deh_end;
 
-        int __xc_a;      // &__xc_a just happens to be start of data segment
-        //int _edata;    // &_edata is start of BSS segment
-        //void* _deh_beg;  // &_deh_beg is past end of BSS
+        uint _DP_beg;
+        uint _DP_end;
+        uint _TP_beg;
+        uint _TP_end;
     }
 
     extern
@@ -149,4 +185,74 @@ extern(C)
         int _tls_start;
         int _tls_end;
     }
+}
+
+/////////////////////////////////////////////////////////////////////
+
+enum IMAGE_DOS_SIGNATURE = 0x5A4D;      // MZ
+
+struct IMAGE_DOS_HEADER // DOS .EXE header
+{
+    ushort   e_magic;    // Magic number
+    ushort[29] e_res2;   // Reserved ushorts
+    int      e_lfanew;   // File address of new exe header
+}
+
+struct IMAGE_FILE_HEADER
+{
+    ushort Machine;
+    ushort NumberOfSections;
+    uint   TimeDateStamp;
+    uint   PointerToSymbolTable;
+    uint   NumberOfSymbols;
+    ushort SizeOfOptionalHeader;
+    ushort Characteristics;
+}
+
+struct IMAGE_NT_HEADERS
+{
+    uint Signature;
+    IMAGE_FILE_HEADER FileHeader;
+    // optional header follows
+}
+
+struct IMAGE_SECTION_HEADER
+{
+    char[8] Name;
+    union {
+        uint   PhysicalAddress;
+        uint   VirtualSize;
+    }
+    uint   VirtualAddress;
+    uint   SizeOfRawData;
+    uint   PointerToRawData;
+    uint   PointerToRelocations;
+    uint   PointerToLinenumbers;
+    ushort NumberOfRelocations;
+    ushort NumberOfLinenumbers;
+    uint   Characteristics;
+}
+
+bool compareSectionName(ref IMAGE_SECTION_HEADER section, string name) nothrow @nogc
+{
+    if (name[] != section.Name[0 .. name.length])
+        return false;
+    return name.length == 8 || section.Name[name.length] == 0;
+}
+
+void[] findImageSection(string name) nothrow @nogc
+{
+    if (name.length > 8) // section name from string table not supported
+        return null;
+    IMAGE_DOS_HEADER* doshdr = cast(IMAGE_DOS_HEADER*) &__ImageBase;
+    if (doshdr.e_magic != IMAGE_DOS_SIGNATURE)
+        return null;
+
+    auto nthdr = cast(IMAGE_NT_HEADERS*)(cast(void*)doshdr + doshdr.e_lfanew);
+    auto sections = cast(IMAGE_SECTION_HEADER*)(cast(void*)nthdr + IMAGE_NT_HEADERS.sizeof + nthdr.FileHeader.SizeOfOptionalHeader);
+    for(ushort i = 0; i < nthdr.FileHeader.NumberOfSections; i++)
+        if (compareSectionName (sections[i], name))
+            return (cast(void*)&__ImageBase + sections[i].VirtualAddress)[0 .. sections[i].VirtualSize];
+
+    return null;
 }

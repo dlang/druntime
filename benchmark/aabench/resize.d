@@ -3,16 +3,16 @@
  *
  * Copyright: Copyright Martin Nowak 2011 - 2011.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:    Martin Nowak
+ * Authors:   Martin Nowak
  */
 
 import std.random;
 
-enum Count = 1_000;
+enum Count = 256;
 enum MinSize = 512;
 enum MaxSize = 16_384;
 
-void runTest(Random gen)
+void runTest(RNG)(RNG gen)
 {
     bool[uint] aa;
 
@@ -43,15 +43,14 @@ void runTest(Random gen)
 
         auto nsize = uniform(MinSize, MaxSize, gen);
         diff = nsize - aa.length;
-
     } while (--cnt);
 }
 
 void main()
 {
     version (RANDOMIZE)
-        auto gen = Random(unpredictableSeed);
+        auto gen = Xorshift32(unpredictableSeed);
     else
-        auto gen = Random(12);
+        auto gen = Xorshift32(33);
     runTest(gen);
 }

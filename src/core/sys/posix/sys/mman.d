@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -15,12 +15,19 @@
 module core.sys.posix.sys.mman;
 
 private import core.sys.posix.config;
-public import core.stdc.stddef;          // for size_t
 public import core.sys.posix.sys.types; // for off_t, mode_t
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
-extern (C):
-nothrow:
+extern (C) nothrow @nogc:
 
 //
 // Advisory Information (ADV)
@@ -40,7 +47,7 @@ POSIX_MADV_WILLNEED
 POSIX_MADV_DONTNEED
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     version (Alpha)
         private enum __POSIX_MADV_DONTNEED = 6;
@@ -60,7 +67,7 @@ version( linux )
         int posix_madvise(void *__addr, size_t __len, int __advice);
     }
 }
-else version( OSX )
+else version( Darwin )
 {
     enum POSIX_MADV_NORMAL      = 0;
     enum POSIX_MADV_RANDOM      = 1;
@@ -78,7 +85,19 @@ else version( FreeBSD )
     enum POSIX_MADV_DONTNEED    = 4;
     int posix_madvise(void *addr, size_t len, int advice);
 }
+else version(NetBSD)
+{
+    enum POSIX_MADV_NORMAL      = 0;
+    enum POSIX_MADV_RANDOM      = 1;
+    enum POSIX_MADV_SEQUENTIAL  = 2;
+    enum POSIX_MADV_WILLNEED    = 3;
+    enum POSIX_MADV_DONTNEED    = 4;
+    int posix_madvise(void *addr, size_t len, int advice);
+}
 else version (Solaris)
+{
+}
+else version (CRuntime_Bionic)
 {
 }
 else
@@ -96,14 +115,14 @@ PROT_EXEC
 PROT_NONE
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum PROT_NONE      = 0x0;
     enum PROT_READ      = 0x1;
     enum PROT_WRITE     = 0x2;
     enum PROT_EXEC      = 0x4;
 }
-else version( OSX )
+else version( Darwin )
 {
     enum PROT_NONE      = 0x00;
     enum PROT_READ      = 0x01;
@@ -117,7 +136,21 @@ else version( FreeBSD )
     enum PROT_WRITE     = 0x02;
     enum PROT_EXEC      = 0x04;
 }
+else version(NetBSD)
+{
+    enum PROT_NONE      = 0x00;
+    enum PROT_READ      = 0x01;
+    enum PROT_WRITE     = 0x02;
+    enum PROT_EXEC      = 0x04;
+}
 else version (Solaris)
+{
+    enum PROT_NONE = 0x00;
+    enum PROT_READ = 0x01;
+    enum PROT_WRITE = 0x02;
+    enum PROT_EXEC = 0x04;
+}
+else version (CRuntime_Bionic)
 {
     enum PROT_NONE = 0x00;
     enum PROT_READ = 0x01;
@@ -137,7 +170,7 @@ void* mmap(void*, size_t, int, int, int, off_t);
 int munmap(void*, size_t);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     static if (__USE_LARGEFILE64) void* mmap64(void*, size_t, int, int, int, off_t);
     static if (__USE_FILE_OFFSET64)
@@ -146,7 +179,7 @@ version( linux )
         void* mmap(void*, size_t, int, int, int, off_t);
     int munmap(void*, size_t);
 }
-else version( OSX )
+else version( Darwin )
 {
     void* mmap(void*, size_t, int, int, int, off_t);
     int   munmap(void*, size_t);
@@ -156,7 +189,17 @@ else version( FreeBSD )
     void* mmap(void*, size_t, int, int, int, off_t);
     int   munmap(void*, size_t);
 }
+else version(NetBSD)
+{
+    void* mmap(void*, size_t, int, int, int, off_t);
+    int   munmap(void*, size_t);
+}
 else version (Solaris)
+{
+    void* mmap(void*, size_t, int, int, int, off_t);
+    int   munmap(void*, size_t);
+}
+else version (CRuntime_Bionic)
 {
     void* mmap(void*, size_t, int, int, int, off_t);
     int   munmap(void*, size_t);
@@ -182,51 +225,105 @@ MS_INVALIDATE (MF|SIO)
 int msync(void*, size_t, int); (MF|SIO)
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum MAP_SHARED     = 0x01;
     enum MAP_PRIVATE    = 0x02;
     enum MAP_FIXED      = 0x10;
 
-    static import core.sys.linux.sys.mman;
-    deprecated("Please use core.sys.linux.sys.mman for non-POSIX extensions")
-    alias MAP_ANON = core.sys.linux.sys.mman.MAP_ANON;
-
     enum MAP_FAILED     = cast(void*) -1;
 
-    version (Alpha) enum
+    version (MICROBLAZE)
+        private enum DEFAULTS = true;
+    else version (Alpha)
     {
-        MS_ASYNC = 1,
-        MS_SYNC = 2,
-        MS_INVALIDATE = 4,
+        private enum DEFAULTS = false;
+        enum MAP_ANON = 0x10;
+        enum MS_ASYNC = 1;
+        enum MS_SYNC = 2;
+        enum MS_INVALIDATE = 4;
     }
-    else version (HPPA) enum
+    else version (SH)
+        private enum DEFAULTS = true;
+    else version (SH64)
+        private enum DEFAULTS = true;
+    else version (AArch64)
+        private enum DEFAULTS = true;
+    else version (ARM)
+        private enum DEFAULTS = true;
+    else version (S390)
+        private enum DEFAULTS = true;
+    else version (SystemZ)
+        private enum DEFAULTS = true;
+    else version (IA64)
+        private enum DEFAULTS = true;
+    else version (HPPA)
     {
-        MS_ASYNC = 1,
-        MS_SYNC = 2,
-        MS_INVALIDATE = 4,
+        private enum DEFAULTS = false;
+        enum MAP_ANON = 0x10;
+        enum MS_SYNC = 1;
+        enum MS_ASYNC = 2;
+        enum MS_INVALIDATE = 4;
     }
-    else version (HPPA64) enum
+    else version (HPPA64)
     {
-        MS_ASYNC = 1,
-        MS_SYNC = 2,
-        MS_INVALIDATE = 4,
+        private enum DEFAULTS = false;
+        enum MAP_ANON = 0x10;
+        enum MS_SYNC = 1;
+        enum MS_ASYNC = 2;
+        enum MS_INVALIDATE = 4;
     }
-    else enum
+    else version (M68K)
+        private enum DEFAULTS = true;
+    else version (TILE)
+        private enum DEFAULTS = true;
+    else version (X86)
+        private enum DEFAULTS = true;
+    else version (X86_64)
+        private enum DEFAULTS = true;
+    else version (MIPS32)
     {
-        MS_ASYNC = 1,
-        MS_SYNC = 4,
-        MS_INVALIDATE = 2
+        private enum DEFAULTS = false;
+        enum MAP_ANON = 0x0800;
+        enum MS_ASYNC = 1;
+        enum MS_INVALIDATE = 2;
+        enum MS_SYNC = 4;
+    }
+    else version (MIPS64)
+    {
+        private enum DEFAULTS = false;
+        enum MAP_ANON = 0x0800;
+        enum MS_ASYNC = 1;
+        enum MS_INVALIDATE = 2;
+        enum MS_SYNC = 4;
+    }
+    else version (SPARC)
+        private enum DEFAULTS = true;
+    else version (SPARC64)
+        private enum DEFAULTS = true;
+    else version (PPC)
+        private enum DEFAULTS = true;
+    else version (PPC64)
+        private enum DEFAULTS = true;
+    else
+        static assert(0, "unimplemented");
+
+    static if (DEFAULTS)
+    {
+        enum MAP_ANON = 0x20;
+        enum MS_ASYNC = 1;
+        enum MS_INVALIDATE = 2;
+        enum MS_SYNC = 4;
     }
 
     int msync(void*, size_t, int);
 }
-else version( OSX )
+else version( Darwin )
 {
     enum MAP_SHARED     = 0x0001;
     enum MAP_PRIVATE    = 0x0002;
     enum MAP_FIXED      = 0x0010;
-    enum MAP_ANON       = 0x1000; // non-standard
+    enum MAP_ANON       = 0x1000;
 
     enum MAP_FAILED     = cast(void*)-1;
 
@@ -241,7 +338,7 @@ else version( FreeBSD )
     enum MAP_SHARED     = 0x0001;
     enum MAP_PRIVATE    = 0x0002;
     enum MAP_FIXED      = 0x0010;
-    enum MAP_ANON       = 0x1000; // non-standard
+    enum MAP_ANON       = 0x1000;
 
     enum MAP_FAILED     = cast(void*)-1;
 
@@ -250,6 +347,22 @@ else version( FreeBSD )
     enum MS_INVALIDATE  = 0x0002;
 
     int msync(void*, size_t, int);
+}
+else version(NetBSD)
+{
+    enum MAP_SHARED     = 0x0001;
+    enum MAP_PRIVATE    = 0x0002;
+    enum MAP_FIXED      = 0x0010;
+    enum MAP_ANON       = 0x1000;
+
+    enum MAP_FAILED     = cast(void*)-1;
+
+    enum MS_SYNC        = 0x0004;
+    enum MS_ASYNC       = 0x0001;
+    enum MS_INVALIDATE  = 0x0002;
+
+    int __msync13(void*, size_t, int);
+    alias msync = __msync13;
 }
 else version (Solaris)
 {
@@ -265,6 +378,33 @@ else version (Solaris)
     enum MS_INVALIDATE  = 0x0002;
 
     int msync(void*, size_t, int);
+}
+else version (CRuntime_Bionic)
+{
+    enum MAP_SHARED     = 0x0001;
+    enum MAP_PRIVATE    = 0x0002;
+    enum MAP_FIXED      = 0x0010;
+
+    version (X86)
+    {
+        enum MAP_ANON       = 0x0020;
+    }
+    else version (ARM)
+    {
+        enum MAP_ANON       = 0x0020;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    enum MAP_FAILED     = cast(void*)-1;
+
+    enum MS_SYNC        = 4;
+    enum MS_ASYNC       = 1;
+    enum MS_INVALIDATE  = 2;
+
+    int msync(in void*, size_t, int);
 }
 else
 {
@@ -282,7 +422,7 @@ int mlockall(int);
 int munlockall();
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     version (SPARC) enum
     {
@@ -319,7 +459,7 @@ version( linux )
     int munlockall();
 
 }
-else version( OSX )
+else version( Darwin )
 {
     enum MCL_CURRENT    = 0x0001;
     enum MCL_FUTURE     = 0x0002;
@@ -335,10 +475,26 @@ else version( FreeBSD )
     int mlockall(int);
     int munlockall();
 }
+else version(NetBSD)
+{
+    enum MCL_CURRENT    = 0x0001;
+    enum MCL_FUTURE     = 0x0002;
+
+    int mlockall(int);
+    int munlockall();
+}
 else version (Solaris)
 {
     enum MCL_CURRENT = 0x0001;
     enum MCL_FUTURE = 0x0002;
+
+    int mlockall(int);
+    int munlockall();
+}
+else version (CRuntime_Bionic)
+{
+    enum MCL_CURRENT = 1;
+    enum MCL_FUTURE  = 2;
 
     int mlockall(int);
     int munlockall();
@@ -356,12 +512,12 @@ int mlock(in void*, size_t);
 int munlock(in void*, size_t);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     int mlock(in void*, size_t);
     int munlock(in void*, size_t);
 }
-else version( OSX )
+else version( Darwin )
 {
     int mlock(in void*, size_t);
     int munlock(in void*, size_t);
@@ -371,7 +527,17 @@ else version( FreeBSD )
     int mlock(in void*, size_t);
     int munlock(in void*, size_t);
 }
+else version(NetBSD)
+{
+    int mlock(in void*, size_t);
+    int munlock(in void*, size_t);
+}
 else version (Solaris)
+{
+    int mlock(in void*, size_t);
+    int munlock(in void*, size_t);
+}
+else version (CRuntime_Bionic)
 {
     int mlock(in void*, size_t);
     int munlock(in void*, size_t);
@@ -388,11 +554,11 @@ else
 int mprotect(void*, size_t, int);
 */
 
-version (linux)
+version (CRuntime_Glibc)
 {
     int mprotect(void*, size_t, int);
 }
-else version( OSX )
+else version( Darwin )
 {
     int mprotect(void*, size_t, int);
 }
@@ -400,9 +566,17 @@ else version( FreeBSD )
 {
     int mprotect(void*, size_t, int);
 }
+else version(NetBSD)
+{
+    int mprotect(void*, size_t, int);
+}
 else version (Solaris)
 {
     int mprotect(void*, size_t, int);
+}
+else version (CRuntime_Bionic)
+{
+    int mprotect(in void*, size_t, int);
 }
 else
 {
@@ -417,12 +591,12 @@ int shm_open(in char*, int, mode_t);
 int shm_unlink(in char*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     int shm_open(in char*, int, mode_t);
     int shm_unlink(in char*);
 }
-else version( OSX )
+else version( Darwin )
 {
     int shm_open(in char*, int, mode_t);
     int shm_unlink(in char*);
@@ -432,10 +606,18 @@ else version( FreeBSD )
     int shm_open(in char*, int, mode_t);
     int shm_unlink(in char*);
 }
+else version(NetBSD)
+{
+    int shm_open(in char*, int, mode_t);
+    int shm_unlink(in char*);
+}
 else version (Solaris)
 {
     int shm_open(in char*, int, mode_t);
     int shm_unlink(in char*);
+}
+else version (CRuntime_Bionic)
+{
 }
 else
 {

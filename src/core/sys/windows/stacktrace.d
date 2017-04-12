@@ -2,18 +2,15 @@
  * ...
  *
  * Copyright: Copyright Benjamin Thaut 2010 - 2013.
- * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Benjamin Thaut, Sean Kelly
  * Source:    $(DRUNTIMESRC core/sys/windows/_stacktrace.d)
  */
 
-/*          Copyright Benjamin Thaut 2010 - 2012.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module core.sys.windows.stacktrace;
-version(Windows):
+version (Windows):
 
 import core.demangle;
 import core.runtime;
@@ -50,9 +47,9 @@ public:
         {
             version(Win64)
                 static enum INTERNALFRAMES = 3;
-            else
+            else version(Win32)
                 static enum INTERNALFRAMES = 2;
-                
+
             skip += INTERNALFRAMES; //skip the stack frames within the StackTrace class
         }
         else
@@ -60,9 +57,9 @@ public:
             //When a exception context is given the first stack frame is repeated for some reason
             version(Win64)
                 static enum INTERNALFRAMES = 1;
-            else
+            else version(Win32)
                 static enum INTERNALFRAMES = 1;
-                
+
             skip += INTERNALFRAMES;
         }
         if( initialized )
@@ -90,7 +87,7 @@ public:
     }
 
 
-    override string toString() const
+    @trusted override string toString() const
     {
         string result;
 
@@ -124,7 +121,7 @@ public:
      * Returns:
      *  An array of strings with the results.
      */
-    static char[][] resolve(const(ulong)[] addresses)
+    @trusted static char[][] resolve(const(ulong)[] addresses)
     {
         synchronized( typeid(StackTrace) )
         {
@@ -141,12 +138,12 @@ private:
         auto dbghelp  = DbgHelp.get();
         if(dbghelp is null)
             return []; // dbghelp.dll not available
-            
+
         if(RtlCaptureStackBackTrace !is null && context is null)
         {
             size_t[63] buffer = void; // On windows xp the sum of "frames to skip" and "frames to capture" can't be greater then 63
             auto backtraceLength = RtlCaptureStackBackTrace(cast(ULONG)skip, cast(ULONG)(buffer.length - skip), cast(void**)buffer.ptr, null);
-            
+
             // If we get a backtrace and it does not have the maximum length use it.
             // Otherwise rely on tracing through StackWalk64 which is slower but works when no frame pointers are available.
             if(backtraceLength > 1 && backtraceLength < buffer.length - skip)
@@ -156,7 +153,7 @@ private:
                 {
                     return buffer[0..backtraceLength].dup;
                 }
-                else
+                else version(Win32)
                 {
                     auto result = new ulong[backtraceLength];
                     foreach(i, ref e; result)
@@ -186,7 +183,7 @@ private:
         STACKFRAME64 stackframe;
         with (stackframe)
         {
-            version(X86) 
+            version(X86)
             {
                 enum Flat = ADDRESS_MODE.AddrModeFlat;
                 AddrPC.Offset    = ctxt.Eip;
@@ -214,9 +211,9 @@ private:
 
         ulong[] result;
         size_t frameNum = 0;
-        
+
         // do ... while so that we don't skip the first stackframe
-        do 
+        do
         {
             if( stackframe.AddrPC.Offset == stackframe.AddrReturn.Offset )
             {
@@ -245,12 +242,12 @@ private:
         static struct BufSymbol
         {
         align(1):
-            IMAGEHLP_SYMBOL64 _base;
+            IMAGEHLP_SYMBOLA64 _base;
             TCHAR[1024] _buf;
         }
         BufSymbol bufSymbol=void;
-        IMAGEHLP_SYMBOL64* symbol = &bufSymbol._base;
-        symbol.SizeOfStruct = IMAGEHLP_SYMBOL64.sizeof;
+        IMAGEHLP_SYMBOLA64* symbol = &bufSymbol._base;
+        symbol.SizeOfStruct = IMAGEHLP_SYMBOLA64.sizeof;
         symbol.MaxNameLength = bufSymbol._buf.length;
 
         char[][] trace;
@@ -263,8 +260,8 @@ private:
                     *symbol.Name.ptr)
                 {
                     DWORD disp;
-                    IMAGEHLP_LINE64 line=void;
-                    line.SizeOfStruct = IMAGEHLP_LINE64.sizeof;
+                    IMAGEHLP_LINEA64 line=void;
+                    line.SizeOfStruct = IMAGEHLP_LINEA64.sizeof;
 
                     if (dbghelp.SymGetLineFromAddr64(hProcess, pc, &disp, &line))
                         res = formatStackFrame(cast(void*)pc, symbol.Name.ptr,
@@ -296,7 +293,7 @@ private:
 
         auto res = formatStackFrame(pc);
         res ~= " in ";
-        const(char)[] tempSymName = symName[0 .. strlen(symName)];
+const(char)[] tempSymName = symName[0 .. strlen(symName)];
         //Deal with dmd mangling of long names
         version(DigitalMars) version(Win32)
         {
@@ -383,19 +380,19 @@ shared static this()
 
     if( dbghelp is null )
         return; // dbghelp.dll not available
-        
+
     auto kernel32Handle = LoadLibraryA( "kernel32.dll" );
     if(kernel32Handle !is null)
     {
         RtlCaptureStackBackTrace = cast(RtlCaptureStackBackTraceFunc) GetProcAddress(kernel32Handle, "RtlCaptureStackBackTrace");
-        debug(PRINTF) 
+        debug(PRINTF)
         {
             if(RtlCaptureStackBackTrace !is null)
                 printf("Found RtlCaptureStackBackTrace\n");
         }
     }
 
-    debug(PRINTF) 
+    debug(PRINTF)
     {
         API_VERSION* dbghelpVersion = dbghelp.ImagehlpApiVersion();
         printf("DbgHelp Version %d.%d.%d\n", dbghelpVersion.MajorVersion, dbghelpVersion.MinorVersion, dbghelpVersion.Revision);

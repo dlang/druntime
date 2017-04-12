@@ -3,18 +3,15 @@
  *
  * Copyright: Copyright Martin Nowak 2011 - 2011.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Authors:    Martin Nowak
+ * Authors:   Martin Nowak
  */
-
-import std.random, std.typetuple;
+import std.random, std.typetuple, std.conv;
 
 version (VERBOSE) import std.datetime, std.stdio;
 
-alias TypeTuple!(ubyte, short, uint, long, void*, Object, ubyte[16], ubyte[64],
-                 ubyte[256], ubyte[1024], ubyte[4096], ubyte[16384]
-) ValueTuple;
+alias ValueTuple = TypeTuple!(void[0], uint, void*, Object, ubyte[16], ubyte[64]);
 
-enum Size = 2 ^^ 24;
+size_t Size = 2 ^^ 16;
 size_t trot;
 
 void runTest(V)(ref V v)
@@ -45,48 +42,45 @@ void runTest(V)(ref V v)
     V[size_t] aa;
 
     start();
-    foreach(k; 0 .. Size / V.sizeof)
+    foreach(k; 0 .. Size)
     {
         aa[k] = v;
     }
     stop();
-    aa.clear();
+    aa.destroy();
 
     start();
-    foreach_reverse(k; 0 .. Size / V.sizeof)
+    foreach_reverse(k; 0 .. Size)
     {
         aa[k] = v;
     }
     stop();
-    aa.clear();
+    aa.destroy();
 
     start();
-    foreach(ref k; 0 .. trot * (Size / V.sizeof))
+    foreach(ref k; 0 .. trot * Size)
     {
         aa[k] = v;
         k += trot - 1;
     }
     stop();
-    aa.clear();
+    aa.destroy();
 
     start();
-    foreach_reverse(ref k; 0 .. trot * (Size / V.sizeof))
+    foreach_reverse(ref k; 0 .. trot * Size)
     {
         k -= trot - 1;
         aa[k] = v;
     }
     stop();
-    aa.clear();
+    aa.destroy();
 
     version (VERBOSE) writeln();
 }
 
-void main()
+void main(string[] args)
 {
-    version (RANDOMIZE)
-        trot = uniform(1, 200);
-    else
-        trot = 7;
+    trot = 7;
 
     version (VERBOSE)
     {

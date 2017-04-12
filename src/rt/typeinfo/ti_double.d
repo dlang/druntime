@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -13,78 +13,64 @@
  */
 module rt.typeinfo.ti_double;
 
-private import rt.util.hash;
+private import rt.util.typeinfo;
 
 // double
 
 class TypeInfo_d : TypeInfo
 {
-    @trusted:
-    pure:
-    nothrow:
+  pure:
+  nothrow:
+  @safe:
 
-    static bool _equals(double f1, double f2)
+    alias F = double;
+
+    override string toString() const { return F.stringof; }
+
+    override size_t getHash(in void* p) const @trusted
     {
-        return f1 == f2;
+        return Floating!F.hashOf(*cast(F*)p);
     }
 
-    static int _compare(double d1, double d2)
+    override bool equals(in void* p1, in void* p2) const @trusted
     {
-        if (d1 != d1 || d2 != d2) // if either are NaN
-        {
-            if (d1 != d1)
-            {
-                if (d2 != d2)
-                    return 0;
-                return -1;
-            }
-            return 1;
-        }
-        return (d1 == d2) ? 0 : ((d1 < d2) ? -1 : 1);
+        return Floating!F.equals(*cast(F*)p1, *cast(F*)p2);
     }
 
-    const:
-
-    override string toString() const pure nothrow @safe { return "double"; }
-
-    override size_t getHash(in void* p)
+    override int compare(in void* p1, in void* p2) const @trusted
     {
-        return hashOf(p, double.sizeof);
+        return Floating!F.compare(*cast(F*)p1, *cast(F*)p2);
     }
 
-    override bool equals(in void* p1, in void* p2)
+    override @property size_t tsize() const
     {
-        return _equals(*cast(double *)p1, *cast(double *)p2);
+        return F.sizeof;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override void swap(void *p1, void *p2) const @trusted
     {
-        return _compare(*cast(double *)p1, *cast(double *)p2);
+        F t = *cast(F*)p1;
+        *cast(F*)p1 = *cast(F*)p2;
+        *cast(F*)p2 = t;
     }
 
-    override @property size_t tsize() nothrow pure
+    override const(void)[] initializer() const @trusted
     {
-        return double.sizeof;
+        static immutable F r;
+        return (&r)[0 .. 1];
     }
 
-    override void swap(void *p1, void *p2)
+    override @property size_t talign() const
     {
-        double t;
-
-        t = *cast(double *)p1;
-        *cast(double *)p1 = *cast(double *)p2;
-        *cast(double *)p2 = t;
+        return F.alignof;
     }
 
-    override const(void)[] init() nothrow pure
+    version (Windows)
     {
-        static immutable double r;
-
-        return (cast(double *)&r)[0 .. 1];
     }
-
-    override @property size_t talign() nothrow pure
+    else version (X86_64)
     {
-        return double.alignof;
+        // 2 means arg to function is passed in XMM registers
+        override @property uint flags() const { return 2; }
     }
 }

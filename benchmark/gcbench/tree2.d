@@ -11,11 +11,12 @@
  *    (See accompanying file LICENSE or copy at
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
-import std.stdio, std.container, std.range;
+import std.stdio, std.container, std.range, std.conv, std.exception;
 
-void main() {
-    enum int range = 100;
-    enum int n = 1_000_000;
+void main(string[] args)
+{
+    int n = args.length > 1 ? to!int(args[1]) : 7000000;
+    int range = args.length > 2 ? to!int(args[2]) : 100;
 
     auto t = redBlackTree!int();
 
@@ -25,4 +26,3 @@ void main() {
         t.insert(i);
     }
 }
-

@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -53,10 +53,10 @@ class TypeInfo_a : TypeInfo
         *cast(char *)p2 = t;
     }
 
-    override const(void)[] init() nothrow pure
+    override const(void)[] initializer() const @trusted
     {
         static immutable char c;
 
-        return (cast(char *)&c)[0 .. 1];
+        return (&c)[0 .. 1];
     }
 }

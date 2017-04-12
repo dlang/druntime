@@ -15,7 +15,6 @@ private
 {
     import rt.memory;
     import rt.sections;
-    import rt.util.string;
     import core.atomic;
     import core.stdc.stddef;
     import core.stdc.stdlib;
@@ -36,24 +35,35 @@ version (FreeBSD)
 {
     import core.stdc.fenv;
 }
+version (NetBSD)
+{
+    import core.stdc.fenv;
+}
 
-extern (C) void _STI_monitor_staticctor();
-extern (C) void _STD_monitor_staticdtor();
-extern (C) void _STI_critical_init();
-extern (C) void _STD_critical_term();
+extern (C) void _d_monitor_staticctor();
+extern (C) void _d_monitor_staticdtor();
+extern (C) void _d_critical_init();
+extern (C) void _d_critical_term();
 extern (C) void gc_init();
 extern (C) void gc_term();
+extern (C) void lifetime_init();
 extern (C) void rt_moduleCtor();
 extern (C) void rt_moduleTlsCtor();
 extern (C) void rt_moduleDtor();
 extern (C) void rt_moduleTlsDtor();
 extern (C) void thread_joinAll();
 extern (C) bool runModuleUnitTests();
+extern (C) void _d_initMonoTime();
 
 version (OSX)
 {
     // The bottom of the stack
     extern (C) __gshared void* __osx_stack_end = cast(void*)0xC0000000;
+}
+
+version(CRuntime_Microsoft)
+{
+    extern(C) void init_msvc();
 }
 
 /***********************************
@@ -130,6 +140,9 @@ extern (C) string[] rt_args()
     return _d_args;
 }
 
+// make arguments passed to main available for being filtered by runtime initializers
+extern(C) __gshared char[][] _d_main_args = null;
+
 // This variable is only ever set by a debugger on initialization so it should
 // be fine to leave it as __gshared.
 extern (C) __gshared bool rt_trapExceptions = true;
@@ -155,14 +168,21 @@ extern (C) int rt_init()
        rt_init. */
     if (atomicOp!"+="(_initCount, 1) > 1) return 1;
 
-    _STI_monitor_staticctor();
-    _STI_critical_init();
+    version (CRuntime_Microsoft)
+        init_msvc();
+
+    _d_monitor_staticctor();
+    _d_critical_init();
 
     try
     {
         initSections();
+        // this initializes mono time before anything else to allow usage
+        // in other druntime systems.
+        _d_initMonoTime();
         gc_init();
         initStaticDataGC();
+        lifetime_init();
         rt_moduleCtor();
         rt_moduleTlsCtor();
         return 1;
@@ -170,10 +190,10 @@ extern (C) int rt_init()
     catch (Throwable t)
     {
         _initCount = 0;
-        printThrowable(t);
+        _d_print_throwable(t);
     }
-    _STD_critical_term();
-    _STD_monitor_staticdtor();
+    _d_critical_term();
+    _d_monitor_staticdtor();
     return 0;
 }
 
@@ -191,19 +211,66 @@ extern (C) int rt_term()
         thread_joinAll();
         rt_moduleDtor();
         gc_term();
-        finiSections();
         return 1;
     }
     catch (Throwable t)
     {
-        printThrowable(t);
+        _d_print_throwable(t);
     }
     finally
     {
-        _STD_critical_term();
-        _STD_monitor_staticdtor();
+        finiSections();
+        _d_critical_term();
+        _d_monitor_staticdtor();
     }
     return 0;
+}
+
+/**********************************************
+ * Trace handler
+ */
+alias Throwable.TraceInfo function(void* ptr) TraceHandler;
+private __gshared TraceHandler traceHandler = null;
+
+
+/**
+ * Overrides the default trace hander with a user-supplied version.
+ *
+ * Params:
+ *  h = The new trace handler.  Set to null to use the default handler.
+ */
+extern (C) void  rt_setTraceHandler(TraceHandler h)
+{
+    traceHandler = h;
+}
+
+/**
+ * Return the current trace handler
+ */
+extern (C) TraceHandler rt_getTraceHandler()
+{
+    return traceHandler;
+}
+
+/**
+ * This function will be called when an exception is constructed.  The
+ * user-supplied trace handler will be called if one has been supplied,
+ * otherwise no trace will be generated.
+ *
+ * Params:
+ *  ptr = A pointer to the location from which to generate the trace, or null
+ *        if the trace should be generated from within the trace handler
+ *        itself.
+ *
+ * Returns:
+ *  An object describing the current calling context or null if no handler is
+ *  supplied.
+ */
+extern (C) Throwable.TraceInfo _d_traceContext(void* ptr = null)
+{
+    if (traceHandler is null)
+        return null;
+    return traceHandler(ptr);
 }
 
 /***********************************
@@ -219,7 +286,7 @@ struct CArgs
 
 __gshared CArgs _cArgs;
 
-extern (C) CArgs rt_cArgs()
+extern (C) CArgs rt_cArgs() @nogc
 {
     return _cArgs;
 }
@@ -263,31 +330,32 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
             fldcw   fpucw;
         }
     }
-
-    version (Win64)
+    version (CRuntime_Microsoft)
     {
-        auto fp = __iob_func();
-        stdin = &fp[0];
-        stdout = &fp[1];
-        stderr = &fp[2];
-
-        // ensure that sprintf generates only 2 digit exponent when writing floating point values
-        _set_output_format(_TWO_DIGIT_EXPONENT);
-
         // enable full precision for reals
-        asm
+        version(Win64)
+            asm
+            {
+                push    RAX;
+                fstcw   word ptr [RSP];
+                or      [RSP], 0b11_00_111111; // 11: use 64 bit extended-precision
+                                               // 111111: mask all FP exceptions
+                fldcw   word ptr [RSP];
+                pop     RAX;
+            }
+        else version(Win32)
         {
-            push    RAX;
-            fstcw   word ptr [RSP];
-            or      [RSP], 0b11_00_111111; // 11: use 64 bit extended-precision
-                                           // 111111: mask all FP exceptions
-            fldcw   word ptr [RSP];
-            pop     RAX;
+            asm
+            {
+                push    EAX;
+                fstcw   word ptr [ESP];
+                or      [ESP], 0b11_00_111111; // 11: use 64 bit extended-precision
+                // 111111: mask all FP exceptions
+                fldcw   word ptr [ESP];
+                pop     EAX;
+            }
         }
     }
-
-    // Allocate args[] on the stack
-    char[][] args = (cast(char[]*) alloca(argc * (char[]).sizeof))[0 .. argc];
 
     version (Windows)
     {
@@ -300,7 +368,10 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
         immutable size_t wCommandLineLength = wcslen(wCommandLine);
         int wargc;
         wchar_t** wargs = CommandLineToArgvW(wCommandLine, &wargc);
-        assert(wargc == argc);
+        // assert(wargc == argc); /* argc can be broken by Unicode arguments */
+
+        // Allocate args[] on the stack - use wargc
+        char[][] args = (cast(char[]*) alloca(wargc * (char[]).sizeof))[0 .. wargc];
 
         // This is required because WideCharToMultiByte requires int as input.
         assert(wCommandLineLength <= cast(size_t) int.max, "Wide char command line length must not exceed int.max");
@@ -328,6 +399,9 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     }
     else version (Posix)
     {
+        // Allocate args[] on the stack
+        char[][] args = (cast(char[]*) alloca(argc * (char[]).sizeof))[0 .. argc];
+
         size_t totalArgsLength = 0;
         foreach(i, ref arg; args)
         {
@@ -338,21 +412,26 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     else
         static assert(0);
 
-    /* Create a copy of args[] on the stack, and set the global _d_args to refer to it.
-     * Why a copy instead of just using args[] is unclear.
-     * This also means that when this function returns, _d_args will refer to garbage.
+    /* Create a copy of args[] on the stack to be used for main, so that rt_args()
+     * cannot be modified by the user.
+     * Note that when this function returns, _d_args will refer to garbage.
      */
     {
-        auto buff = cast(char[]*) alloca(argc * (char[]).sizeof + totalArgsLength);
+        _d_args = cast(string[]) args;
+        auto buff = cast(char[]*) alloca(args.length * (char[]).sizeof + totalArgsLength);
 
-        char[][] argsCopy = buff[0 .. argc];
-        auto argBuff = cast(char*) (buff + argc);
-        foreach(i, arg; args)
+        char[][] argsCopy = buff[0 .. args.length];
+        auto argBuff = cast(char*) (buff + args.length);
+        size_t j = 0;
+        foreach(arg; args)
         {
-            argsCopy[i] = (argBuff[0 .. arg.length] = arg[]);
-            argBuff += arg.length;
+            if (arg.length < 6 || arg[0..6] != "--DRT-") // skip D runtime options
+            {
+                argsCopy[j++] = (argBuff[0 .. arg.length] = arg[]);
+                argBuff += arg.length;
+            }
         }
-        _d_args = cast(string[]) argsCopy;
+        args = argsCopy[0..j];
     }
 
     bool trapExceptions = rt_trapExceptions;
@@ -373,7 +452,7 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
             }
             catch (Throwable t)
             {
-                printThrowable(t);
+                _d_print_throwable(t);
                 result = EXIT_FAILURE;
             }
         }
@@ -417,7 +496,7 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     return result;
 }
 
-private void formatThrowable(Throwable t, void delegate(in char[] s) nothrow sink)
+private void formatThrowable(Throwable t, scope void delegate(in char[] s) nothrow sink)
 {
     for (; t; t = t.next)
     {
@@ -435,39 +514,55 @@ private void formatThrowable(Throwable t, void delegate(in char[] s) nothrow sin
     }
 }
 
-private void printThrowable(Throwable t)
+extern (C) void _d_print_throwable(Throwable t)
 {
     // On Windows, a console may not be present to print the output to.
-    // Show a message box instead.
+    // Show a message box instead. If the console is present, convert to
+    // the correct encoding.
     version (Windows)
     {
-        if (!GetConsoleWindow())
+        static struct WSink
         {
-            static struct WSink
+            wchar_t* ptr; size_t len;
+
+            void sink(in char[] s) scope nothrow
             {
-                wchar_t* ptr; size_t len;
-
-                void sink(in char[] s) nothrow
-                {
-                    if (!s.length) return;
-                    int swlen = MultiByteToWideChar(
+                if (!s.length) return;
+                int swlen = MultiByteToWideChar(
                         CP_UTF8, 0, s.ptr, cast(int)s.length, null, 0);
-                    if (!swlen) return;
+                if (!swlen) return;
 
-                    auto newPtr = cast(wchar_t*)realloc(ptr,
-                            (this.len + swlen + 1) * wchar_t.sizeof);
-                    if (!newPtr) return;
-                    ptr = newPtr;
-                    auto written = MultiByteToWideChar(
-                            CP_UTF8, 0, s.ptr, cast(int)s.length, ptr+len, swlen);
-                    len += written;
-                }
-
-                wchar_t* get() { if (ptr) ptr[len] = 0; return ptr; }
-
-                void free() { .free(ptr); }
+                auto newPtr = cast(wchar_t*)realloc(ptr,
+                        (this.len + swlen + 1) * wchar_t.sizeof);
+                if (!newPtr) return;
+                ptr = newPtr;
+                auto written = MultiByteToWideChar(
+                        CP_UTF8, 0, s.ptr, cast(int)s.length, ptr+len, swlen);
+                len += written;
             }
 
+            wchar_t* get() { if (ptr) ptr[len] = 0; return ptr; }
+
+            void free() { .free(ptr); }
+        }
+
+        HANDLE windowsHandle(int fd)
+        {
+            version (CRuntime_Microsoft)
+                return cast(HANDLE)_get_osfhandle(fd);
+            else
+                return _fdToHandle(fd);
+        }
+
+        auto hStdErr = windowsHandle(fileno(stderr));
+        CONSOLE_SCREEN_BUFFER_INFO sbi;
+        bool isConsole = GetConsoleScreenBufferInfo(hStdErr, &sbi) != 0;
+
+        // ensure the exception is shown at the beginning of the line, while also
+        // checking whether stderr is a valid file
+        int written = fprintf(stderr, "\n");
+        if (written <= 0)
+        {
             WSink buf;
             formatThrowable(t, &buf.sink);
 
@@ -494,9 +589,31 @@ private void printThrowable(Throwable t)
             }
             return;
         }
+        else if (isConsole)
+        {
+            WSink buf;
+            formatThrowable(t, &buf.sink);
+
+            if (buf.ptr)
+            {
+                uint codepage = GetConsoleOutputCP();
+                int slen = WideCharToMultiByte(codepage, 0,
+                        buf.ptr, cast(int)buf.len, null, 0, null, null);
+                auto sptr = cast(char*)malloc(slen * char.sizeof);
+                if (sptr)
+                {
+                    WideCharToMultiByte(codepage, 0,
+                        buf.ptr, cast(int)buf.len, sptr, slen, null, null);
+                    WriteFile(hStdErr, sptr, slen, null, null);
+                    free(sptr);
+                }
+                buf.free();
+            }
+            return;
+        }
     }
 
-    void sink(in char[] buf) nothrow
+    void sink(in char[] buf) scope nothrow
     {
         fprintf(stderr, "%.*s", cast(int)buf.length, buf.ptr);
     }

@@ -6,7 +6,7 @@
  * Source: $(DRUNTIMESRC core/_simd.d)
  *
  * Copyright: Copyright Digital Mars 2012.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   $(WEB digitalmars.com, Walter Bright),
  */
 
@@ -15,6 +15,7 @@ module core.simd;
 pure:
 nothrow:
 @safe:
+@nogc:
 
 /*******************************
  * Create a vector type.
@@ -37,29 +38,29 @@ template Vector(T)
 
 /* Handy aliases
  */
-alias Vector!(void[16])  void16;        ///
-alias Vector!(double[2]) double2;       ///
-alias Vector!(float[4])  float4;        ///
-alias Vector!(byte[16])  byte16;        ///
-alias Vector!(ubyte[16]) ubyte16;       ///
-alias Vector!(short[8])  short8;        ///
-alias Vector!(ushort[8]) ushort8;       ///
-alias Vector!(int[4])    int4;          ///
-alias Vector!(uint[4])   uint4;         ///
-alias Vector!(long[2])   long2;         ///
-alias Vector!(ulong[2])  ulong2;        ///
+static if (is(Vector!(void[16])))   alias Vector!(void[16])  void16;        ///
+static if (is(Vector!(double[2])))  alias Vector!(double[2]) double2;       ///
+static if (is(Vector!(float[4])))   alias Vector!(float[4])  float4;        ///
+static if (is(Vector!(byte[16])))   alias Vector!(byte[16])  byte16;        ///
+static if (is(Vector!(ubyte[16])))  alias Vector!(ubyte[16]) ubyte16;       ///
+static if (is(Vector!(short[8])))   alias Vector!(short[8])  short8;        ///
+static if (is(Vector!(ushort[8])))  alias Vector!(ushort[8]) ushort8;       ///
+static if (is(Vector!(int[4])))     alias Vector!(int[4])    int4;          ///
+static if (is(Vector!(uint[4])))    alias Vector!(uint[4])   uint4;         ///
+static if (is(Vector!(long[2])))    alias Vector!(long[2])   long2;         ///
+static if (is(Vector!(ulong[2])))   alias Vector!(ulong[2])  ulong2;        ///
 
-alias Vector!(void[32])   void32;        ///
-alias Vector!(double[4])  double4;       ///
-alias Vector!(float[8])   float8;        ///
-alias Vector!(byte[32])   byte32;        ///
-alias Vector!(ubyte[32])  ubyte32;       ///
-alias Vector!(short[16])  short16;       ///
-alias Vector!(ushort[16]) ushort16;      ///
-alias Vector!(int[8])     int8;          ///
-alias Vector!(uint[8])    uint8;         ///
-alias Vector!(long[4])    long4;         ///
-alias Vector!(ulong[4])   ulong4;        ///
+static if (is(Vector!(void[32])))   alias Vector!(void[32])   void32;        ///
+static if (is(Vector!(double[4])))  alias Vector!(double[4])  double4;       ///
+static if (is(Vector!(float[8])))   alias Vector!(float[8])   float8;        ///
+static if (is(Vector!(byte[32])))   alias Vector!(byte[32])   byte32;        ///
+static if (is(Vector!(ubyte[32])))  alias Vector!(ubyte[32])  ubyte32;       ///
+static if (is(Vector!(short[16])))  alias Vector!(short[16])  short16;       ///
+static if (is(Vector!(ushort[16]))) alias Vector!(ushort[16]) ushort16;      ///
+static if (is(Vector!(int[8])))     alias Vector!(int[8])     int8;          ///
+static if (is(Vector!(uint[8])))    alias Vector!(uint[8])    uint8;         ///
+static if (is(Vector!(long[4])))    alias Vector!(long[4])    long4;         ///
+static if (is(Vector!(ulong[4])))   alias Vector!(ulong[4])   ulong4;        ///
 
 version ( D_SIMD )
 {
@@ -445,5 +446,96 @@ version ( D_SIMD )
   pure @safe ushort8 pcmpeq()(ushort8 v1, ushort8 v2)
   {
       return __simd(XMM.PCMPEQW, v1, v2);
+  }
+
+  /*********************
+   * Emit prefetch instruction.
+   * Params:
+   *    address = address to be prefetched
+   *    writeFetch = true for write fetch, false for read fetch
+   *    locality = 0..3 (0 meaning least local, 3 meaning most local)
+   * Note:
+   *    The Intel mappings are:
+   *    $(TABLE
+   *    $(THEAD writeFetch, locality, Instruction)
+   *    $(TROW false, 0, prefetchnta)
+   *    $(TROW false, 1, prefetch2)
+   *    $(TROW false, 2, prefetch1)
+   *    $(TROW false, 3, prefetch0)
+   *    $(TROW false, 0, prefetchw)
+   *    $(TROW false, 1, prefetchw)
+   *    $(TROW false, 2, prefetchw)
+   *    $(TROW false, 3, prefetchw)
+   *    )
+   */
+  void prefetch(bool writeFetch, ubyte locality)(const(void)* address)
+  {
+        static if (writeFetch)
+            __prefetch(address, 4);
+        else static if (locality < 4)
+            __prefetch(address, 3 - locality);
+        else
+            static assert(0, "0..3 expected for locality");
+  }
+
+  private void __prefetch(const(void*) address, ubyte encoding);
+
+  /*************************************
+   * Load unaligned vector from address.
+   * This is a compiler intrinsic.
+   * Params:
+   *    p = pointer to vector
+   * Returns:
+   *    vector
+   */
+
+  V loadUnaligned(V)(const V* p)
+        if (is(V == void16) ||
+            is(V == byte16) ||
+            is(V == ubyte16) ||
+            is(V == short8) ||
+            is(V == ushort8) ||
+            is(V == int4) ||
+            is(V == uint4) ||
+            is(V == long2) ||
+            is(V == ulong2))
+  {
+        pragma(inline, true);
+        static if (is(V == double2))
+            return cast(V)__simd(XMM.LODUPD, *cast(const void16*)p);
+        else static if (is(V == float4))
+            return cast(V)__simd(XMM.LODUPS, *cast(const void16*)p);
+        else
+            return cast(V)__simd(XMM.LODDQU, *cast(const void16*)p);
+  }
+
+  /*************************************
+   * Store vector to unaligned address.
+   * This is a compiler intrinsic.
+   * Params:
+   *    p = pointer to vector
+   *    value = value to store
+   * Returns:
+   *    value
+   */
+
+  V storeUnaligned(V)(V* p, V value)
+        if (is(V == void16) ||
+            is(V == byte16) ||
+            is(V == ubyte16) ||
+            is(V == short8) ||
+            is(V == ushort8) ||
+            is(V == int4) ||
+            is(V == uint4) ||
+            is(V == long2) ||
+            is(V == ulong2))
+  {
+        pragma(inline, true);
+        static if (is(V == double2))
+            return cast(V)__simd_sto(XMM.STOUPD, *cast(void16*)p, value);
+        else static if (is(V == float4))
+            return cast(V)__simd_sto(XMM.STOUPS, *cast(void16*)p, value);
+        else
+            return cast(V)__simd_sto(XMM.STODQU, *cast(void16*)p, value);
   }
 }

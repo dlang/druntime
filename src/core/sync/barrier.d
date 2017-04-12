@@ -20,11 +20,7 @@ public import core.sync.exception;
 private import core.sync.condition;
 private import core.sync.mutex;
 
-version( Win32 )
-{
-    private import core.sys.windows.windows;
-}
-else version( Posix )
+version( Posix )
 {
     private import core.stdc.errno;
     private import core.sys.posix.pthread;
@@ -57,7 +53,7 @@ class Barrier
      *  limit = The number of waiting threads to release in unison.
      *
      * Throws:
-     *  SyncException on error.
+     *  SyncError on error.
      */
     this( uint limit )
     in
@@ -83,7 +79,7 @@ class Barrier
      * Wait for the pre-determined number of threads and then proceed.
      *
      * Throws:
-     *  SyncException on error.
+     *  SyncError on error.
      */
     void wait()
     {

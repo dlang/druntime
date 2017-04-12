@@ -2,25 +2,27 @@
  * The demangle module converts mangled D symbols to a representation similar
  * to what would have existed in code.
  *
- * Copyright: Copyright Sean Kelly 2010 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Sean Kelly 2010 - 2014.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Sean Kelly
+ * Source:    $(DRUNTIMESRC core/_demangle.d)
  */
 
-/*          Copyright Sean Kelly 2010 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module core.demangle;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
 debug(trace) import core.stdc.stdio : printf;
 debug(info) import core.stdc.stdio : printf;
-import core.stdc.stdio : snprintf;
-import core.stdc.string : memmove;
-import core.stdc.stdlib : strtold;
-
 
 private struct Demangle
 {
@@ -92,7 +94,7 @@ private struct Demangle
         //throw new ParseException( msg );
         debug(info) printf( "error: %.*s\n", cast(int) msg.length, msg.ptr );
         throw __ctfe ? new ParseException(msg)
-                     : cast(ParseException) cast(void*) typeid(ParseException).init;
+                     : cast(ParseException) cast(void*) typeid(ParseException).initializer;
 
     }
 
@@ -101,7 +103,7 @@ private struct Demangle
     {
         //throw new OverflowException( msg );
         debug(info) printf( "overflow: %.*s\n", cast(int) msg.length, msg.ptr );
-        throw cast(OverflowException) cast(void*) typeid(OverflowException).init;
+        throw cast(OverflowException) cast(void*) typeid(OverflowException).initializer;
     }
 
 
@@ -218,6 +220,18 @@ private struct Demangle
         return null;
     }
 
+    void putComma(size_t n)
+    {
+        pragma(inline, false);
+        if (n)
+            put(", ");
+    }
+
+    char[] put(char c)
+    {
+        char[1] val = c;
+        return put(val[]);
+    }
 
     char[] put( const(char)[] val )
     {
@@ -231,23 +245,20 @@ private struct Demangle
     }
 
 
-    char[] putAsHex( size_t val, int width = 0 )
+    void putAsHex( size_t val, int width = 0 )
     {
-        char tmp[20];
-        int  pos = tmp.length;
+        import core.internal.string;
 
-        while( val )
+        UnsignedStringBuf buf;
+
+        auto s = unsignedToTempString(val, buf, 16);
+        int slen = cast(int)s.length;
+        if (slen < width)
         {
-            int  digit = val % 16;
-
-            tmp[--pos] = digit < 10 ? cast(char)(digit + '0') :
-                                      cast(char)((digit - 10) + 'a');
-            val /= 16;
-            width--;
+            foreach(i; slen .. width)
+                put('0');
         }
-        for( ; width > 0; width-- )
-            tmp[--pos] = '0';
-        return put( tmp[pos .. $] );
+        put(s);
     }
 
 
@@ -273,8 +284,12 @@ private struct Demangle
     // Parsing Utility
     //////////////////////////////////////////////////////////////////////////
 
+    @property bool empty()
+    {
+        return pos >= buf.length;
+    }
 
-    char tok()
+    @property char front()
     {
         if( pos < buf.length )
             return buf[pos];
@@ -284,12 +299,12 @@ private struct Demangle
 
     void test( char val )
     {
-        if( val != tok() )
+        if( val != front )
             error();
     }
 
 
-    void next()
+    void popFront()
     {
         if( pos++ >= buf.length )
             error();
@@ -299,24 +314,24 @@ private struct Demangle
     void match( char val )
     {
         test( val );
-        next();
+        popFront();
     }
 
 
     void match( const(char)[] val )
     {
-        foreach( e; val )
+        foreach(char e; val )
         {
             test( e );
-            next();
+            popFront();
         }
     }
 
 
     void eat( char val )
     {
-        if( val == tok() )
-            next();
+        if( val == front )
+            popFront();
     }
 
 
@@ -339,9 +354,9 @@ private struct Demangle
 
         while( true )
         {
-            auto t = tok();
+            auto t = front;
             if (t >= '0' && t <= '9')
-                next();
+                popFront();
             else
                 return buf[beg .. pos];
         }
@@ -364,12 +379,15 @@ private struct Demangle
 
         size_t val = 0;
 
-        foreach( i, e; num )
+        foreach( c; num )
         {
-            size_t n = e - '0';
-            if( val > (val.max - n) / 10 )
+            import core.checkedint : mulu, addu;
+
+            bool overflow = false;
+            val = mulu(val, 10, overflow);
+            val = addu(val, c - '0',  overflow);
+            if (overflow)
                 error();
-            val = val * 10 + n;
         }
         return val;
     }
@@ -384,22 +402,22 @@ private struct Demangle
         size_t   tlen = 0;
         real     val  = void;
 
-        if( 'I' == tok() )
+        if( 'I' == front )
         {
             match( "INF" );
             put( "real.infinity" );
             return;
         }
-        if( 'N' == tok() )
+        if( 'N' == front )
         {
-            next();
-            if( 'I' == tok() )
+            popFront();
+            if( 'I' == front )
             {
                 match( "INF" );
                 put( "-real.infinity" );
                 return;
             }
-            if( 'A' == tok() )
+            if( 'A' == front )
             {
                 match( "AN" );
                 put( "real.nan" );
@@ -410,37 +428,39 @@ private struct Demangle
 
         tbuf[tlen++] = '0';
         tbuf[tlen++] = 'X';
-        if( !isHexDigit( tok() ) )
+        if( !isHexDigit( front ) )
             error( "Expected hex digit" );
-        tbuf[tlen++] = tok();
+        tbuf[tlen++] = front;
         tbuf[tlen++] = '.';
-        next();
+        popFront();
 
-        while( isHexDigit( tok() ) )
+        while( isHexDigit( front ) )
         {
-            tbuf[tlen++] = tok();
-            next();
+            tbuf[tlen++] = front;
+            popFront();
         }
         match( 'P' );
         tbuf[tlen++] = 'p';
-        if( 'N' == tok() )
+        if( 'N' == front )
         {
             tbuf[tlen++] = '-';
-            next();
+            popFront();
         }
         else
         {
             tbuf[tlen++] = '+';
         }
-        while( isDigit( tok() ) )
+        while( isDigit( front ) )
         {
-            tbuf[tlen++] = tok();
-            next();
+            tbuf[tlen++] = front;
+            popFront();
         }
 
         tbuf[tlen] = 0;
         debug(info) printf( "got (%s)\n", tbuf.ptr );
+        import core.stdc.stdlib : strtold;
         val = strtold( tbuf.ptr, null );
+        import core.stdc.stdio : snprintf;
         tlen = snprintf( tbuf.ptr, tbuf.length, "%#Lg", val );
         debug(info) printf( "converted (%.*s)\n", cast(int) tlen, tbuf.ptr );
         put( tbuf[0 .. tlen] );
@@ -476,9 +496,9 @@ private struct Demangle
 
         if( !n || n > buf.length || n > buf.length - pos )
             error( "LName must be at least 1 character" );
-        if( '_' != tok() && !isAlpha( tok() ) )
+        if( '_' != front && !isAlpha( front ) )
             error( "Invalid character in LName" );
-        foreach( e; buf[pos + 1 .. pos + n] )
+        foreach(char e; buf[pos + 1 .. pos + n] )
         {
             if( '_' != e && !isAlpha( e ) && !isDigit( e ) )
                 error( "Invalid character in LName" );
@@ -496,7 +516,7 @@ private struct Demangle
         Immutable
         Wild
         TypeArray
-        TypeNewArray
+        TypeVector
         TypeStaticArray
         TypeAssocArray
         TypePointer
@@ -517,6 +537,8 @@ private struct Demangle
         TypeUint
         TypeLong
         TypeUlong
+        TypeCent
+        TypeUcent
         TypeFloat
         TypeDouble
         TypeReal
@@ -547,8 +569,8 @@ private struct Demangle
     TypeArray:
         A Type
 
-    TypeNewArray:
-        Ne Type
+    TypeVector:
+        Nh Type
 
     TypeStaticArray:
         G Number Type
@@ -609,6 +631,12 @@ private struct Demangle
 
     TypeUlong:
         m
+
+    TypeCent
+        zi
+
+    TypeUcent
+        zk
 
     TypeFloat:
         f
@@ -683,80 +711,81 @@ private struct Demangle
         debug(trace) printf( "parseType+\n" );
         debug(trace) scope(success) printf( "parseType-\n" );
         auto beg = len;
-        auto t = tok();
+        auto t = front;
 
         switch( t )
         {
         case 'O': // Shared (O Type)
-            next();
+            popFront();
             put( "shared(" );
             parseType();
-            put( ")" );
+            put( ')' );
             pad( name );
             return dst[beg .. len];
         case 'x': // Const (x Type)
-            next();
+            popFront();
             put( "const(" );
             parseType();
-            put( ")" );
+            put( ')' );
             pad( name );
             return dst[beg .. len];
         case 'y': // Immutable (y Type)
-            next();
+            popFront();
             put( "immutable(" );
             parseType();
-            put( ")" );
+            put( ')' );
             pad( name );
             return dst[beg .. len];
         case 'N':
-            next();
-            switch( tok() )
+            popFront();
+            switch( front )
             {
             case 'g': // Wild (Ng Type)
-                next();
+                popFront();
                 // TODO: Anything needed here?
                 put( "inout(" );
                 parseType();
-                put( ")" );
+                put( ')' );
                 return dst[beg .. len];
-            case 'e': // TypeNewArray (Ne Type)
-                next();
-                // TODO: Anything needed here?
+            case 'h': // TypeVector (Nh Type)
+                popFront();
+                put( "__vector(" );
                 parseType();
+                put( ')' );
                 return dst[beg .. len];
             default:
                 error();
                 assert( 0 );
             }
         case 'A': // TypeArray (A Type)
-            next();
+            popFront();
             parseType();
             put( "[]" );
             pad( name );
             return dst[beg .. len];
         case 'G': // TypeStaticArray (G Number Type)
-            next();
+            popFront();
             auto num = sliceNumber();
             parseType();
-            put( "[" );
+            put( '[' );
             put( num );
-            put( "]" );
+            put( ']' );
             pad( name );
             return dst[beg .. len];
         case 'H': // TypeAssocArray (H Type Type)
-            next();
+            popFront();
             // skip t1
             auto tx = parseType();
             parseType();
-            put( "[" );
+            put( '[' );
             put( tx );
-            put( "]" );
+            put( ']' );
             pad( name );
             return dst[beg .. len];
         case 'P': // TypePointer (P Type)
-            next();
+            popFront();
             parseType();
-            put( "*" );
+            put( '*' );
             pad( name );
             return dst[beg .. len];
         case 'F': case 'U': case 'W': case 'V': case 'R': // TypeFunction
@@ -766,29 +795,59 @@ private struct Demangle
         case 'S': // TypeStruct (S LName)
         case 'E': // TypeEnum (E LName)
         case 'T': // TypeTypedef (T LName)
-            next();
+            popFront();
             parseQualifiedName();
             pad( name );
             return dst[beg .. len];
         case 'D': // TypeDelegate (D TypeFunction)
-            next();
+            popFront();
             parseTypeFunction( name, IsDelegate.yes );
             return dst[beg .. len];
         case 'n': // TypeNone (n)
-            next();
+            popFront();
             // TODO: Anything needed here?
             return dst[beg .. len];
         case 'B': // TypeTuple (B Number Arguments)
-            next();
+            popFront();
             // TODO: Handle this.
+            return dst[beg .. len];
+        case 'Z': // Internal symbol
+            // This 'type' is used for untyped internal symbols, i.e.:
+            // __array
+            // __init
+            // __vtbl
+            // __Class
+            // __Interface
+            // __ModuleInfo
+            popFront();
             return dst[beg .. len];
         default:
             if (t >= 'a' && t <= 'w')
             {
-                next();
+                popFront();
                 put( primitives[cast(size_t)(t - 'a')] );
                 pad( name );
                 return dst[beg .. len];
+            }
+            else if (t == 'z')
+            {
+                popFront();
+                switch( front )
+                {
+                case 'i':
+                    popFront();
+                    put( "cent" );
+                    pad( name );
+                    return dst[beg .. len];
+                case 'k':
+                    popFront();
+                    put( "ucent" );
+                    pad( name );
+                    return dst[beg .. len];
+                default:
+                    error();
+                    assert( 0 );
+                }
             }
             error();
             return null;
@@ -817,6 +876,8 @@ private struct Demangle
         FuncAttrNothrow
         FuncAttrProperty
         FuncAttrRef
+        FuncAttrReturn
+        FuncAttrScope
         FuncAttrTrusted
         FuncAttrSafe
 
@@ -837,6 +898,15 @@ private struct Demangle
 
     FuncAttrSafe:
         Nf
+
+    FuncAttrNogc:
+        Ni
+
+    FuncAttrReturn:
+        Nj
+
+    FuncAttrScope:
+        Nl
 
     Arguments:
         Argument
@@ -860,25 +930,25 @@ private struct Demangle
     void parseCallConvention()
     {
         // CallConvention
-        switch( tok() )
+        switch( front )
         {
         case 'F': // D
-            next();
+            popFront();
             break;
         case 'U': // C
-            next();
+            popFront();
             put( "extern (C) " );
             break;
         case 'W': // Windows
-            next();
+            popFront();
             put( "extern (Windows) " );
             break;
         case 'V': // Pascal
-            next();
+            popFront();
             put( "extern (Pascal) " );
             break;
         case 'R': // C++
-            next();
+            popFront();
             put( "extern (C++) " );
             break;
         default:
@@ -890,42 +960,58 @@ private struct Demangle
     {
         // FuncAttrs
         breakFuncAttrs:
-        while( 'N' == tok() )
+        while ('N' == front)
         {
-            next();
-            switch( tok() )
+            popFront();
+            switch( front )
             {
             case 'a': // FuncAttrPure
-                next();
+                popFront();
                 put( "pure " );
                 continue;
             case 'b': // FuncAttrNoThrow
-                next();
+                popFront();
                 put( "nothrow " );
                 continue;
             case 'c': // FuncAttrRef
-                next();
+                popFront();
                 put( "ref " );
                 continue;
             case 'd': // FuncAttrProperty
-                next();
+                popFront();
                 put( "@property " );
                 continue;
             case 'e': // FuncAttrTrusted
-                next();
+                popFront();
                 put( "@trusted " );
                 continue;
             case 'f': // FuncAttrSafe
-                next();
+                popFront();
                 put( "@safe " );
                 continue;
             case 'g':
-                // NOTE: The inout parameter type is represented as "Ng",
-                //       which makes it look like a FuncAttr.  So if we
-                //       see an "Ng" FuncAttr we know we're really in
+            case 'h':
+            case 'k':
+                // NOTE: The inout parameter type is represented as "Ng".
+                //       The vector parameter type is represented as "Nh".
+                //       The return parameter type is represented as "Nk".
+                //       These make it look like a FuncAttr, but infact
+                //       if we see these, then we know we're really in
                 //       the parameter list.  Rewind and break.
                 pos--;
                 break breakFuncAttrs;
+            case 'i': // FuncAttrNogc
+                popFront();
+                put( "@nogc " );
+                continue;
+            case 'j': // FuncAttrReturn
+                popFront();
+                put( "return " );
+                continue;
+            case 'l': // FuncAttrScope
+                popFront();
+                put( "scope " );
+                continue;
             default:
                 error();
             }
@@ -937,46 +1023,54 @@ private struct Demangle
         // Arguments
         for( size_t n = 0; true; n++ )
         {
-            debug(info) printf( "tok (%c)\n", tok() );
-            switch( tok() )
+            debug(info) printf( "tok (%c)\n", front );
+            switch( front )
             {
             case 'X': // ArgClose (variadic T t...) style)
-                next();
+                popFront();
                 put( "..." );
                 return;
             case 'Y': // ArgClose (variadic T t,...) style)
-                next();
+                popFront();
                 put( ", ..." );
                 return;
             case 'Z': // ArgClose (not variadic)
-                next();
+                popFront();
                 return;
             default:
                 break;
             }
-            if( n )
+            putComma(n);
+            if( 'M' == front )
             {
-                put( ", " );
-            }
-            if( 'M' == tok() )
-            {
-                next();
+                popFront();
                 put( "scope " );
             }
-            switch( tok() )
+            if( 'N' == front )
+            {
+                popFront();
+                if( 'k' == front ) // Return (Nk Parameter2)
+                {
+                    popFront();
+                    put( "return " );
+                }
+                else
+                    pos--;
+            }
+            switch( front )
             {
             case 'J': // out (J Type)
-                next();
+                popFront();
                 put( "out " );
                 parseType();
                 continue;
             case 'K': // ref (K Type)
-                next();
+                popFront();
                 put( "ref " );
                 parseType();
                 continue;
             case 'L': // lazy (L Type)
-                next();
+                popFront();
                 put( "lazy " );
                 parseType();
                 continue;
@@ -998,13 +1092,13 @@ private struct Demangle
         parseFuncAttr();
 
         beg = len;
-        put( "(" );
+        put( '(' );
         scope(success)
         {
-            put( ")" );
+            put( ')' );
             auto t = len;
             parseType();
-            put( " " );
+            put( ' ' );
             if( name.length )
             {
                 if( !contains( dst[0 .. len], name ) )
@@ -1075,54 +1169,62 @@ private struct Demangle
         debug(trace) printf( "parseValue+\n" );
         debug(trace) scope(success) printf( "parseValue-\n" );
 
-//        printf( "*** %c\n", tok() );
-        switch( tok() )
+//        printf( "*** %c\n", front );
+        switch( front )
         {
         case 'n':
-            next();
+            popFront();
             put( "null" );
             return;
         case 'i':
-            next();
-            if( '0' > tok() || '9' < tok() )
+            popFront();
+            if( '0' > front || '9' < front )
                 error( "Number expected" );
             goto case;
         case '0': .. case '9':
             parseIntegerValue( name, type );
             return;
         case 'N':
-            next();
-            put( "-" );
+            popFront();
+            put( '-' );
             parseIntegerValue( name, type );
             return;
         case 'e':
-            next();
+            popFront();
             parseReal();
             return;
         case 'c':
-            next();
+            popFront();
             parseReal();
-            put( "+" );
+            put( '+' );
             match( 'c' );
             parseReal();
-            put( "i" );
+            put( 'i' );
             return;
         case 'a': case 'w': case 'd':
-            char t = tok();
-            next();
+            char t = front;
+            popFront();
             auto n = decodeNumber();
             match( '_' );
-            put( "\"" );
+            put( '"' );
             foreach (i; 0..n)
             {
-                auto a = ascii2hex( tok() ); next();
-                auto b = ascii2hex( tok() ); next();
+                auto a = ascii2hex( front ); popFront();
+                auto b = ascii2hex( front ); popFront();
                 auto v = cast(char)((a << 4) | b);
-                put( __ctfe ? [v] : (cast(char*) &v)[0 .. 1] );
+                if (' ' <= v && v <= '~')   // ASCII printable
+                {
+                    put(v);
+                }
+                else
+                {
+                    put("\\x");
+                    putAsHex(v, 2);
+                }
             }
-            put( "\"" );
+            put( '"' );
             if( 'a' != t )
-                put( __ctfe ? [t] : (cast(char*) &t)[0 .. 1] );
+                put(t);
             return;
         case 'A':
             // NOTE: This is kind of a hack.  An associative array literal
@@ -1136,49 +1238,46 @@ private struct Demangle
                 goto LassocArray;
             // A Number Value...
             // An array literal. Value is repeated Number times.
-            next();
-            put( "[" );
+            popFront();
+            put( '[' );
             auto n = decodeNumber();
             foreach( i; 0 .. n )
             {
-                if( i != 0 )
-                    put( ", " );
+                putComma(i);
                 parseValue();
             }
-            put( "]" );
+            put( ']' );
             return;
         case 'H':
         LassocArray:
             // H Number Value...
             // An associative array literal. Value is repeated 2*Number times.
-            next();
-            put( "[" );
+            popFront();
+            put( '[' );
             auto n = decodeNumber();
             foreach( i; 0 .. n )
             {
-                if( i != 0 )
-                    put( ", " );
+                putComma(i);
                 parseValue();
-                put(":");
+                put(':');
                 parseValue();
             }
-            put( "]" );
+            put( ']' );
             return;
         case 'S':
             // S Number Value...
             // A struct literal. Value is repeated Number times.
-            next();
+            popFront();
             if( name.length )
                 put( name );
-            put( "(" );
+            put( '(' );
             auto n = decodeNumber();
             foreach( i; 0 .. n )
             {
-                if( i != 0 )
-                    put( ", " );
+                putComma(i);
                 parseValue();
             }
-            put( ")" );
+            put( ')' );
             return;
         default:
             error();
@@ -1236,10 +1335,9 @@ private struct Demangle
                 case 'a':
                     if( num >= 0x20 && num < 0x7F )
                     {
-                        put( "'" );
-                        char[1] tmp = cast(char)num;
-                        put( tmp[] );
-                        put( "'" );
+                        put( '\'' );
+                        put( cast(char)num );
+                        put( '\'' );
                         return;
                     }
                     put( "\\x" );
@@ -1248,12 +1346,12 @@ private struct Demangle
                 case 'u':
                     put( "'\\u" );
                     putAsHex( num, 4 );
-                    put( "'" );
+                    put( '\'' );
                     return;
                 case 'w':
                     put( "'\\U" );
                     putAsHex( num, 8 );
-                    put( "'" );
+                    put( '\'' );
                     return;
                 default:
                     assert( 0 );
@@ -1265,11 +1363,11 @@ private struct Demangle
             return;
         case 'h', 't', 'k': // ubyte, ushort, uint
             put( sliceNumber() );
-            put( "u" );
+            put( 'u' );
             return;
         case 'l': // long
             put( sliceNumber() );
-            put( "L" );
+            put( 'L' );
             return;
         case 'm': // ulong
             put( sliceNumber() );
@@ -1288,6 +1386,10 @@ private struct Demangle
         TemplateArg TemplateArgs
 
     TemplateArg:
+        TemplateArgX
+        H TemplateArgX
+
+    TemplateArgX:
         T Type
         V Type Value
         S LName
@@ -1299,33 +1401,81 @@ private struct Demangle
 
         for( size_t n = 0; true; n++ )
         {
-            switch( tok() )
+            if( front == 'H' )
+                popFront();
+
+            switch( front )
             {
             case 'T':
-                next();
-                if( n ) put( ", " );
+                popFront();
+                putComma(n);
                 parseType();
                 continue;
             case 'V':
-                next();
-                if( n ) put( ", " );
+                popFront();
+                putComma(n);
                 // NOTE: In the few instances where the type is actually
                 //       desired in the output it should precede the value
                 //       generated by parseValue, so it is safe to simply
                 //       decrement len and let put/append do its thing.
-                char t = tok(); // peek at type for parseValue
+                char t = front; // peek at type for parseValue
                 char[] name; silent( name = parseType() );
                 parseValue( name, t );
                 continue;
             case 'S':
-                next();
-                if( n ) put( ", " );
+                popFront();
+                putComma(n);
+
+                if ( mayBeMangledNameArg() )
+                {
+                    auto l = len;
+                    auto p = pos;
+
+                    try
+                    {
+                        debug(trace) printf( "may be mangled name arg\n" );
+                        parseMangledNameArg();
+                        continue;
+                    }
+                    catch( ParseException e )
+                    {
+                        len = l;
+                        pos = p;
+                        debug(trace) printf( "not a mangled name arg\n" );
+                    }
+                }
+
                 parseQualifiedName();
                 continue;
             default:
                 return;
             }
         }
+    }
+
+
+    bool mayBeMangledNameArg()
+    {
+        debug(trace) printf( "mayBeMangledNameArg+\n" );
+        debug(trace) scope(success) printf( "mayBeMangledNameArg-\n" );
+
+        auto p = pos;
+        scope(exit) pos = p;
+        auto n = decodeNumber();
+        return n >= 4 &&
+           pos < buf.length && '_' == buf[pos++] &&
+           pos < buf.length && 'D' == buf[pos++] &&
+           isDigit(buf[pos]);
+    }
+
+
+    void parseMangledNameArg()
+    {
+        debug(trace) printf( "parseMangledNameArg+\n" );
+        debug(trace) scope(success) printf( "parseMangledNameArg-\n" );
+
+        auto n = decodeNumber();
+        parseMangledName( n );
     }
 
 
@@ -1349,7 +1499,7 @@ private struct Demangle
         match( 'Z' );
         if( pos - beg != n )
             error( "Template name length mismatch" );
-        put( ")" );
+        put( ')' );
     }
 
 
@@ -1380,7 +1530,7 @@ private struct Demangle
 
         // LName -> Number
         // TemplateInstanceName -> Number "__T"
-        switch( tok() )
+        switch( front )
         {
         case '0': .. case '9':
             if( mayBeTemplateInstanceName() )
@@ -1422,10 +1572,10 @@ private struct Demangle
         do
         {
             if( n++ )
-                put( "." );
+                put( '.' );
             parseSymbolName();
 
-            if( isCallConvention( tok() ) )
+            if( isCallConvention( front ) )
             {
                 // try to demangle a function, in case we are pointing to some function local
                 auto prevpos = pos;
@@ -1436,15 +1586,15 @@ private struct Demangle
                 parseFuncAttr();
                 len = prevlen;
 
-                put( "(" );
+                put( '(' );
                 parseFuncArguments();
-                put( ")" );
-                if( !isDigit( tok() ) ) // voldemort types don't have a return type on the function
+                put( ')' );
+                if( !isDigit( front ) ) // voldemort types don't have a return type on the function
                 {
                     auto funclen = len;
                     parseType();
 
-                    if( !isDigit( tok() ) )
+                    if( !isDigit( front ) )
                     {
                         // not part of a qualified name, so back up
                         pos = prevpos;
@@ -1454,7 +1604,7 @@ private struct Demangle
                         len = funclen; // remove return type from qualified name
                 }
             }
-        } while( isDigit( tok() ) );
+        } while( isDigit( front ) );
         return dst[beg .. len];
     }
 
@@ -1464,11 +1614,13 @@ private struct Demangle
         _D QualifiedName Type
         _D QualifiedName M Type
     */
-    void parseMangledName()
+    void parseMangledName(size_t n = 0)
     {
         debug(trace) printf( "parseMangledName+\n" );
         debug(trace) scope(success) printf( "parseMangledName-\n" );
         char[] name = null;
+
+        auto end = pos + n;
 
         eat( '_' );
         match( 'D' );
@@ -1476,13 +1628,13 @@ private struct Demangle
         {
             name = parseQualifiedName();
             debug(info) printf( "name (%.*s)\n", cast(int) name.length, name.ptr );
-            if( 'M' == tok() )
-                next(); // has 'this' pointer
+            if( 'M' == front )
+                popFront(); // has 'this' pointer
             if( AddType.yes == addType )
                 parseType( name );
-            if( pos >= buf.length )
+            if( pos >= buf.length || (n != 0 && pos >= end) )
                 return;
-            put( "." );
+            put( '.' );
         } while( true );
     }
 
@@ -1587,19 +1739,7 @@ char[] demangleType( const(char)[] buf, char[] dst = null )
  */
 char[] mangle(T)(const(char)[] fqn, char[] dst = null) @safe pure nothrow
 {
-    static size_t numToString(char[] dst, size_t val) @safe pure nothrow
-    {
-        char[20] buf = void;
-        size_t i = buf.length;
-        do
-        {
-            buf[--i] = cast(char)(val % 10 + '0');
-        } while (val /= 10);
-        immutable len = buf.length - i;
-        if (dst.length >= len)
-            dst[0 .. len] = buf[i .. $];
-        return len;
-    }
+    import core.internal.string : numDigits, unsignedToTempString;
 
     static struct DotSplitter
     {
@@ -1629,7 +1769,7 @@ char[] mangle(T)(const(char)[] fqn, char[] dst = null) @safe pure nothrow
 
     size_t len = "_D".length;
     foreach (comp; DotSplitter(fqn))
-        len += numToString(null, comp.length) + comp.length;
+        len += numDigits(comp.length) + comp.length;
     len += T.mangleof.length;
     if (dst.length < len) dst.length = len;
 
@@ -1637,7 +1777,9 @@ char[] mangle(T)(const(char)[] fqn, char[] dst = null) @safe pure nothrow
     dst[0 .. i] = "_D";
     foreach (comp; DotSplitter(fqn))
     {
-        i += numToString(dst[i .. $], comp.length);
+        const ndigits = numDigits(comp.length);
+        unsignedToTempString(comp.length, dst[i .. i + ndigits]);
+        i += ndigits;
         dst[i .. i + comp.length] = comp[];
         i += comp.length;
     }
@@ -1761,6 +1903,15 @@ unittest
     static assert(!__traits(compiles, mangleFunc!(typeof(&fooCPP))("")));
 }
 
+/***
+ * C name mangling is done by adding a prefix on some platforms.
+ */
+version(Win32)
+    enum string cPrefix = "_";
+else version(Darwin)
+    enum string cPrefix = "_";
+else
+    enum string cPrefix = "";
 
 version(unittest)
 {
@@ -1784,9 +1935,9 @@ version(unittest)
         ["_D6plugin8generateFiiZAya", "immutable(char)[] plugin.generate(int, int)"],
         ["_D6plugin8generateFiiZAxa", "const(char)[] plugin.generate(int, int)"],
         ["_D6plugin8generateFiiZAOa", "shared(char)[] plugin.generate(int, int)"],
-        ["_D8demangle3fnAFZv3fnBMFZv", "void demangle.fnA().fnB()"],
-        ["_D8demangle4mainFZv1S3fnCFZv", "void demangle.main().S.fnC()"],
-        ["_D8demangle4mainFZv1S3fnDMFZv", "void demangle.main().S.fnD()"],
+        ["_D8demangle3fnAFZ3fnBMFZv", "void demangle.fnA().fnB()"],
+        ["_D8demangle4mainFZ1S3fnCMFZv", "void demangle.main().S.fnC()"],
+        ["_D8demangle4mainFZ1S3fnDMFZv", "void demangle.main().S.fnD()"],
         ["_D8demangle20__T2fnVAiA4i1i2i3i4Z2fnFZv", "void demangle.fn!([1, 2, 3, 4]).fn()"],
         ["_D8demangle10__T2fnVi1Z2fnFZv", "void demangle.fn!(1).fn()"],
         ["_D8demangle26__T2fnVS8demangle1SS2i1i2Z2fnFZv", "void demangle.fn!(demangle.S(1, 2)).fn()"],
@@ -1796,11 +1947,35 @@ version(unittest)
         ["_D8demangle21__T2fnVHiiA2i1i2i3i4Z2fnFZv", "void demangle.fn!([1:2, 3:4]).fn()"],
         ["_D8demangle2fnFNgiZNgi", "inout(int) demangle.fn(inout(int))"],
         ["_D8demangle29__T2fnVa97Va9Va0Vu257Vw65537Z2fnFZv", "void demangle.fn!('a', '\\t', \\x00, '\\u0101', '\\U00010001').fn()"],
-        ["_D2gc11gctemplates56__T8mkBitmapTS3std5range13__T4iotaTiTiZ4iotaFiiZ6ResultZ8mkBitmapFNbNfPmmZv",
-         "nothrow @safe void gc.gctemplates.mkBitmap!(std.range.iota!(int, int).iota(int, int).Result).mkBitmap(ulong*, ulong)"],
-        ["_D8serenity9persister6Sqlite70__T15SqlitePersisterTS8serenity9persister6Sqlite11__unittest6FZv4TestZ15SqlitePersister12__T7opIndexZ7opIndexMFmZS8serenity9persister6Sqlite11__unittest6FZv4Test",
+        ["_D2gc11gctemplates56__T8mkBitmapTS3std5range13__T4iotaTiTiZ4iotaFiiZ6ResultZ8mkBitmapFNbNiNfPmmZv",
+         "nothrow @nogc @safe void gc.gctemplates.mkBitmap!(std.range.iota!(int, int).iota(int, int).Result).mkBitmap(ulong*, ulong)"],
+        ["_D8serenity9persister6Sqlite69__T15SqlitePersisterTS8serenity9persister6Sqlite11__unittest6FZ4TestZ15SqlitePersister12__T7opIndexZ7opIndexMFmZS8serenity9persister6Sqlite11__unittest6FZ4Test",
          "serenity.persister.Sqlite.__unittest6().Test serenity.persister.Sqlite.SqlitePersister!(serenity.persister.Sqlite.__unittest6().Test).SqlitePersister.opIndex!().opIndex(ulong)"],
-        ["_D8bug100274mainFZv5localMFZi","int bug10027.main().local()"],
+        ["_D8bug100274mainFZ5localMFZi","int bug10027.main().local()"],
+        ["_D8demangle4testFNhG16gZv", "void demangle.test(__vector(byte[16]))"],
+        ["_D8demangle4testFNhG8sZv", "void demangle.test(__vector(short[8]))"],
+        ["_D8demangle4testFNhG4iZv", "void demangle.test(__vector(int[4]))"],
+        ["_D8demangle4testFNhG2lZv", "void demangle.test(__vector(long[2]))"],
+        ["_D8demangle4testFNhG4fZv", "void demangle.test(__vector(float[4]))"],
+        ["_D8demangle4testFNhG2dZv", "void demangle.test(__vector(double[2]))"],
+        ["_D8demangle4testFNhG4fNhG4fZv", "void demangle.test(__vector(float[4]), __vector(float[4]))"],
+        ["_D8bug1119234__T3fooS23_D8bug111924mainFZ3bariZ3fooMFZv","void bug11192.foo!(int bug11192.main().bar).foo()"],
+        ["_D13libd_demangle12__ModuleInfoZ", "libd_demangle.__ModuleInfo"],
+        ["_D15TypeInfo_Struct6__vtblZ", "TypeInfo_Struct.__vtbl"],
+        ["_D3std5stdio12__ModuleInfoZ", "std.stdio.__ModuleInfo"],
+        ["_D3std6traits15__T8DemangleTkZ8Demangle6__initZ", "std.traits.Demangle!(uint).Demangle.__init"],
+        ["_D3foo3Bar7__ClassZ", "foo.Bar.__Class"],
+        ["_D3foo3Bar6__vtblZ", "foo.Bar.__vtbl"],
+        ["_D3foo3Bar11__interfaceZ", "foo.Bar.__interface"],
+        ["_D3foo7__arrayZ", "foo.__array"],
+        ["_D8link657428__T3fooVE8link65746Methodi0Z3fooFZi", "int link6574.foo!(0).foo()"],
+        ["_D8link657429__T3fooHVE8link65746Methodi0Z3fooFZi", "int link6574.foo!(0).foo()"],
+        ["_D4test22__T4funcVAyaa3_610a62Z4funcFNaNbNiNfZAya", `pure nothrow @nogc @safe immutable(char)[] test.func!("a\x0ab").func()`],
+        ["_D3foo3barFzkZzi", "cent foo.bar(ucent)"],
+        ["_D5bug145Class3fooMFNlZPv", "scope void* bug14.Class.foo()"],
+        ["_D5bug145Class3barMFNjZPv", "return void* bug14.Class.bar()"],
+        ["_D5bug143fooFMPvZPv", "void* bug14.foo(scope void*)"],
+        ["_D5bug143barFMNkPvZPv", "void* bug14.bar(scope return void*)"],
     ];
 
     template staticIota(int x)

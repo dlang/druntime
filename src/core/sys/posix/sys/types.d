@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly,
               Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
@@ -17,7 +17,16 @@ module core.sys.posix.sys.types;
 
 private import core.sys.posix.config;
 private import core.stdc.stdint;
-public import core.stdc.stddef; // for size_t
+public import core.stdc.stddef;
+
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
 version (Posix):
 extern (C):
@@ -29,7 +38,7 @@ extern (C):
 __syscall_slong_t
 __syscall_ulong_t
 */
-version (linux)
+version (CRuntime_Glibc)
 {
     version (X86_64)
     {
@@ -76,7 +85,7 @@ time_t
 uid_t
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
   static if( __USE_FILE_OFFSET64 )
   {
@@ -101,13 +110,13 @@ version( linux )
     alias slong_t   time_t;
     alias uint      uid_t;
 }
-else version( OSX )
+else version( Darwin )
 {
     alias long      blkcnt_t;
     alias int       blksize_t;
     alias int       dev_t;
     alias uint      gid_t;
-    alias uint      ino_t;
+    alias ulong     ino_t;
     alias ushort    mode_t;
     alias ushort    nlink_t;
     alias long      off_t;
@@ -133,6 +142,22 @@ else version( FreeBSD )
     alias c_long    time_t;
     alias uint      uid_t;
     alias uint      fflags_t;
+}
+else version(NetBSD)
+{
+    alias long      blkcnt_t;
+    alias int       blksize_t;
+    alias ulong     dev_t;
+    alias uint      gid_t;
+    alias ulong     ino_t;
+    alias uint      mode_t;
+    alias uint      nlink_t;
+    alias ulong     off_t;
+    alias int       pid_t;
+    //size_t (defined in core.stdc.stddef)
+    alias c_long      ssize_t;
+    alias c_long      time_t;
+    alias uint        uid_t;
 }
 else version (Solaris)
 {
@@ -167,7 +192,7 @@ else version (Solaris)
     }
 
     alias uint blksize_t;
-    alias ulong dev_t;
+    alias c_ulong dev_t;
     alias uid_t gid_t;
     alias uint mode_t;
     alias uint nlink_t;
@@ -175,6 +200,39 @@ else version (Solaris)
     alias c_long ssize_t;
     alias c_long time_t;
     alias uint uid_t;
+}
+else version( CRuntime_Bionic )
+{
+    alias c_ulong   blkcnt_t;
+    alias c_ulong   blksize_t;
+    alias uint      dev_t;
+    alias uint      gid_t;
+    alias c_ulong   ino_t;
+    alias c_long    off_t;
+    alias int       pid_t;
+    alias int       ssize_t;
+    alias c_long    time_t;
+    alias uint      uid_t;
+
+    version(X86)
+    {
+        alias ushort    mode_t;
+        alias ushort    nlink_t;
+    }
+    else version(ARM)
+    {
+        alias ushort    mode_t;
+        alias ushort    nlink_t;
+    }
+    else version(MIPS32)
+    {
+        alias uint      mode_t;
+        alias uint      nlink_t;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
 }
 else
 {
@@ -194,7 +252,7 @@ suseconds_t
 useconds_t
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
   static if( __USE_FILE_OFFSET64 )
   {
@@ -212,7 +270,7 @@ version( linux )
     alias slong_t   suseconds_t;
     alias uint      useconds_t;
 }
-else version( OSX )
+else version( Darwin )
 {
     alias uint   fsblkcnt_t;
     alias uint   fsfilcnt_t;
@@ -223,6 +281,16 @@ else version( OSX )
     alias uint   useconds_t;
 }
 else version( FreeBSD )
+{
+    alias ulong     fsblkcnt_t;
+    alias ulong     fsfilcnt_t;
+    alias c_long    clock_t;
+    alias long      id_t;
+    alias c_long    key_t;
+    alias c_long    suseconds_t;
+    alias uint      useconds_t;
+}
+else version(NetBSD)
 {
     alias ulong     fsblkcnt_t;
     alias ulong     fsfilcnt_t;
@@ -257,6 +325,16 @@ else version (Solaris)
     alias id_t zoneid_t;
     alias id_t ctid_t;
 }
+else version( CRuntime_Bionic )
+{
+    alias c_ulong  fsblkcnt_t;
+    alias c_ulong  fsfilcnt_t;
+    alias c_long   clock_t;
+    alias uint     id_t;
+    alias int      key_t;
+    alias c_long   suseconds_t;
+    alias c_long   useconds_t;
+}
 else
 {
     static assert(false, "Unsupported platform");
@@ -278,7 +356,7 @@ pthread_rwlockattr_t
 pthread_t
 */
 
-version (linux)
+version (CRuntime_Glibc)
 {
     version (X86)
     {
@@ -415,7 +493,7 @@ version (linux)
         enum __SIZEOF_PTHREAD_BARRIER_T = 20;
         enum __SIZEOF_PTHREAD_BARRIERATTR_T = 4;
     }
-    else version (S390X)
+    else version (SystemZ)
     {
         enum __SIZEOF_PTHREAD_ATTR_T = 56;
         enum __SIZEOF_PTHREAD_MUTEX_T = 40;
@@ -434,7 +512,7 @@ version (linux)
 
     union pthread_attr_t
     {
-        byte __size[__SIZEOF_PTHREAD_ATTR_T];
+        byte[__SIZEOF_PTHREAD_ATTR_T] __size;
         c_long __align;
     }
 
@@ -450,13 +528,13 @@ version (linux)
 
     union pthread_cond_t
     {
-        byte __size[__SIZEOF_PTHREAD_COND_T];
+        byte[__SIZEOF_PTHREAD_COND_T] __size;
         long  __align;
     }
 
     union pthread_condattr_t
     {
-        byte __size[__SIZEOF_PTHREAD_CONDATTR_T];
+        byte[__SIZEOF_PTHREAD_CONDATTR_T] __size;
         int __align;
     }
 
@@ -464,13 +542,13 @@ version (linux)
 
     union pthread_mutex_t
     {
-        byte __size[__SIZEOF_PTHREAD_MUTEX_T];
+        byte[__SIZEOF_PTHREAD_MUTEX_T] __size;
         c_long __align;
     }
 
     union pthread_mutexattr_t
     {
-        byte __size[__SIZEOF_PTHREAD_MUTEXATTR_T];
+        byte[__SIZEOF_PTHREAD_MUTEXATTR_T] __size;
         int __align;
     }
 
@@ -478,19 +556,19 @@ version (linux)
 
     struct pthread_rwlock_t
     {
-        byte __size[__SIZEOF_PTHREAD_RWLOCK_T];
+        byte[__SIZEOF_PTHREAD_RWLOCK_T] __size;
         c_long __align;
     }
 
     struct pthread_rwlockattr_t
     {
-        byte __size[__SIZEOF_PTHREAD_RWLOCKATTR_T];
+        byte[__SIZEOF_PTHREAD_RWLOCKATTR_T] __size;
         c_long __align;
     }
 
     alias c_ulong pthread_t;
 }
-else version( OSX )
+else version( Darwin )
 {
     version( D_LP64 )
     {
@@ -598,6 +676,74 @@ else version( FreeBSD )
     alias void* pthread_rwlockattr_t;
     alias void* pthread_t;
 }
+else version(NetBSD)
+{
+   struct pthread_queue_t {
+         void*  ptqh_first;
+         void** ptqh_last;
+   }
+
+    alias lwpid_t = int;
+    alias pthread_spin_t = ubyte;
+    struct pthread_attr_t {
+        uint    pta_magic;
+        int     pta_flags;
+        void*   pta_private;
+    }
+    struct  pthread_spinlock_t {
+        uint    pts_magic;
+        pthread_spin_t  pts_spin;
+        int             pts_flags;
+    }
+    struct pthread_cond_t {
+        uint    ptc_magic;
+        pthread_spin_t  ptc_lock;
+        pthread_queue_t ptc_waiters;
+        pthread_mutex_t *ptc_mutex;
+        void*   ptc_private;
+    }
+    struct pthread_condattr_t {
+        uint    ptca_magic;
+        void    *ptca_private;
+    }
+    struct pthread_mutex_t {
+        uint ptm_magic;
+        pthread_spin_t  ptm_errorcheck;
+        ubyte[3]         ptm_pad1;
+        pthread_spin_t  ptm_interlock;
+        ubyte[3] ptm_pad2;
+        pthread_t ptm_owner;
+        void* ptm_waiters;
+        uint  ptm_recursed;
+        void* ptm_spare2;
+    }
+    struct pthread_mutexattr_t{
+        uint    ptma_magic;
+        void*   ptma_private;
+    }
+    struct pthread_once_t{
+        pthread_mutex_t pto_mutex;
+        int     pto_done;
+    }
+    struct pthread_rwlock_t{
+        uint    ptr_magic;
+
+        pthread_spin_t  ptr_interlock;
+
+        pthread_queue_t ptr_rblocked;
+        pthread_queue_t ptr_wblocked;
+        uint    ptr_nreaders;
+        pthread_t ptr_owner;
+        void    *ptr_private;
+    }
+    struct pthread_rwlockattr_t{
+        uint    ptra_magic;
+        void*   ptra_private;
+    }
+
+    alias uint pthread_key_t;
+    alias void* pthread_t;
+}
 else version (Solaris)
 {
     alias uint pthread_t;
@@ -648,7 +794,7 @@ else version (Solaris)
             ubyte __pthread_mutex_flag2;
             ubyte __pthread_mutex_ceiling;
             ushort __pthread_mutex_type;
-            ushort __pthread_mutex_magic; 
+            ushort __pthread_mutex_magic;
         }
 
         ___pthread_mutex_flags __pthread_mutex_flags;
@@ -688,6 +834,48 @@ else version (Solaris)
 
     alias uint pthread_key_t;
 }
+else version( CRuntime_Bionic )
+{
+    struct pthread_attr_t
+    {
+        uint    flags;
+        void*   stack_base;
+        size_t  stack_size;
+        size_t  guard_size;
+        int     sched_policy;
+        int     sched_priority;
+    }
+
+    struct pthread_cond_t
+    {
+        int value; //volatile
+    }
+
+    alias c_long pthread_condattr_t;
+    alias int    pthread_key_t;
+
+    struct pthread_mutex_t
+    {
+        int value; //volatile
+    }
+
+    alias c_long pthread_mutexattr_t;
+    alias int    pthread_once_t; //volatile
+
+    struct pthread_rwlock_t
+    {
+        pthread_mutex_t  lock;
+        pthread_cond_t   cond;
+        int              numLocks;
+        int              writerThreadId;
+        int              pendingReaders;
+        int              pendingWriters;
+        void*[4]         reserved;
+    }
+
+    alias int    pthread_rwlockattr_t;
+    alias c_long pthread_t;
+}
 else
 {
     static assert(false, "Unsupported platform");
@@ -701,17 +889,17 @@ pthread_barrier_t
 pthread_barrierattr_t
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     struct pthread_barrier_t
     {
-        byte __size[__SIZEOF_PTHREAD_BARRIER_T];
+        byte[__SIZEOF_PTHREAD_BARRIER_T] __size;
         c_long __align;
     }
 
     struct pthread_barrierattr_t
     {
-        byte __size[__SIZEOF_PTHREAD_BARRIERATTR_T];
+        byte[__SIZEOF_PTHREAD_BARRIERATTR_T] __size;
         int __align;
     }
 }
@@ -720,7 +908,12 @@ else version( FreeBSD )
     alias void* pthread_barrier_t;
     alias void* pthread_barrierattr_t;
 }
-else version( OSX )
+else version(NetBSD)
+{
+    alias void* pthread_barrier_t;
+    alias void* pthread_barrierattr_t;
+}
+else version( Darwin )
 {
 }
 else version (Solaris)
@@ -732,13 +925,16 @@ else version (Solaris)
         ulong __pthread_barrier_cycle;
         ulong __pthread_barrier_reserved;
         pthread_mutex_t __pthread_barrier_lock;
-        pthread_cond_t __pthread_barrier_cond; 
+        pthread_cond_t __pthread_barrier_cond;
     }
 
     struct pthread_barrierattr_t
     {
         void* __pthread_barrierattrp;
     }
+}
+else version( CRuntime_Bionic )
+{
 }
 else
 {
@@ -752,13 +948,17 @@ else
 pthread_spinlock_t
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     alias int pthread_spinlock_t; // volatile
 }
 else version( FreeBSD )
 {
     alias void* pthread_spinlock_t;
+}
+else version(NetBSD)
+{
+    //already defined
 }
 else version (Solaris)
 {

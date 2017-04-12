@@ -1,30 +1,33 @@
 /**
  * D header file for C99.
  *
+ * $(C_HEADER_DESCRIPTION pubs.opengroup.org/onlinepubs/009695399/basedefs/_stddef.h.html, _stddef.h)
+ *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Sean Kelly
+ * Source:    $(DRUNTIMESRC core/stdc/_stddef.d)
  * Standards: ISO/IEC 9899:1999 (E)
  */
 
-/*          Copyright Sean Kelly 2005 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module core.stdc.stddef;
 
 extern (C):
 @trusted: // Types only.
 nothrow:
+@nogc:
 
 // size_t and ptrdiff_t are defined in the object module.
 
 version( Windows )
 {
+    ///
     alias wchar wchar_t;
 }
-else
+else version( Posix )
 {
+    ///
     alias dchar wchar_t;
 }

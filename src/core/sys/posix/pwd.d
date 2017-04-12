@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -17,8 +17,19 @@ module core.sys.posix.pwd;
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for gid_t, uid_t
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
+nothrow:
+@nogc:
 
 //
 // Required
@@ -37,7 +48,7 @@ passwd* getpwnam(in char*);
 passwd* getpwuid(uid_t);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     struct passwd
     {
@@ -50,7 +61,7 @@ version( linux )
         char*   pw_shell;
     }
 }
-else version( OSX )
+else version( Darwin )
 {
     struct passwd
     {
@@ -83,6 +94,38 @@ else version( FreeBSD )
         int pw_fields;      /* internal: fields filled in */
     }
 }
+else version(NetBSD)
+{
+    struct passwd
+    {
+        char*   pw_name;        /* user name */
+        char*   pw_passwd;      /* encrypted password */
+        uid_t   pw_uid;         /* user uid */
+        gid_t   pw_gid;         /* user gid */
+        time_t  pw_change;      /* password change time */
+        char*   pw_class;       /* user access class */
+        char*   pw_gecos;       /* Honeywell login info */
+        char*   pw_dir;     /* home directory */
+        char*   pw_shell;       /* default shell */
+        time_t  pw_expire;      /* account expiration */
+    }
+}
+else version( OpenBSD )
+{
+    struct passwd
+    {
+        char*   pw_name;        /* user name */
+        char*   pw_passwd;      /* encrypted password */
+        uid_t   pw_uid;         /* user uid */
+        gid_t   pw_gid;         /* user gid */
+        time_t  pw_change;      /* password change time */
+        char*   pw_class;       /* user access class */
+        char*   pw_gecos;       /* Honeywell login info */
+        char*   pw_dir;     /* home directory */
+        char*   pw_shell;       /* default shell */
+        time_t  pw_expire;      /* account expiration */
+    }
+}
 else version (Solaris)
 {
     struct passwd
@@ -98,16 +141,25 @@ else version (Solaris)
         char* pw_shell;
     }
 }
+else version( CRuntime_Bionic )
+{
+    struct passwd
+    {
+        char*   pw_name;
+        char*   pw_passwd;
+        uid_t   pw_uid;
+        gid_t   pw_gid;
+        char*   pw_dir;
+        char*   pw_shell;
+    }
+}
 else
 {
     static assert(false, "Unsupported platform");
 }
 
-version( Posix )
-{
-    passwd* getpwnam(in char*);
-    passwd* getpwuid(uid_t);
-}
+passwd* getpwnam(in char*);
+passwd* getpwuid(uid_t);
 
 //
 // Thread-Safe Functions (TSF)
@@ -117,12 +169,12 @@ int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
 int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
 }
-else version( OSX )
+else version( Darwin )
 {
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
@@ -132,10 +184,25 @@ else version( FreeBSD )
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
 }
+else version(NetBSD)
+{
+    int __getpwnam_r50(in char*, passwd*, char*, size_t, passwd**);
+    alias __getpwnam_r50 getpwnam_r;
+    int __getpwuid_r50(uid_t, passwd*, char*, size_t, passwd**);
+    alias __getpwuid_r50 getpwuid_r;
+}
+else version( OpenBSD )
+{
+    int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
+    int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
+}
 else version (Solaris)
 {
     int getpwnam_r(in char*, passwd*, char*, size_t, passwd**);
     int getpwuid_r(uid_t, passwd*, char*, size_t, passwd**);
+}
+else version( CRuntime_Bionic )
+{
 }
 else
 {
@@ -151,13 +218,13 @@ passwd* getpwent();
 void    setpwent();
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     void    endpwent();
     passwd* getpwent();
     void    setpwent();
 }
-else version ( OSX )
+else version ( Darwin )
 {
     void    endpwent();
     passwd* getpwent();
@@ -169,11 +236,27 @@ else version ( FreeBSD )
     passwd* getpwent();
     void    setpwent();
 }
+else version (NetBSD)
+{
+    void    endpwent();
+    passwd* getpwent();
+    void    setpwent();
+}
+else version ( OpenBSD )
+{
+    void    endpwent();
+    passwd* getpwent();
+    void    setpwent();
+}
 else version (Solaris)
 {
     void endpwent();
     passwd* getpwent();
     void setpwent();
+}
+else version ( CRuntime_Bionic )
+{
+    void    endpwent();
 }
 else
 {

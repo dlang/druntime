@@ -2,16 +2,13 @@
  * Contains SSE/MMX versions of certain operations for dchar, int, and uint ('w',
  * 'i' and 'k' suffixes).
  *
- * Copyright: Copyright Digital Mars 2008 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 2008 - 2016.
+ * License:   Distributed under the
+ *            $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  * Authors:   Walter Bright, based on code originally written by Burton Radons
+ * Source:    $(DRUNTIMESRC src/rt/_arrayint.d)
  */
 
-/*          Copyright Digital Mars 2008 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.arrayint;
 
 // debug=PRINTF
@@ -26,6 +23,8 @@ version (unittest)
      */
     uint cpuid;
     enum CPUID_MAX = 14;
+
+nothrow:
     @property bool mmx()                { return cpuid == 1 && core.cpuid.mmx; }
     @property bool sse()                { return cpuid == 2 && core.cpuid.sse; }
     @property bool sse2()               { return cpuid == 3 && core.cpuid.sse2; }
@@ -107,7 +106,7 @@ T[] _arraySliceExpAddSliceAssign_i(T[] a, T value, T[] b)
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -134,7 +133,7 @@ T[] _arraySliceExpAddSliceAssign_i(T[] a, T value, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -167,7 +166,7 @@ T[] _arraySliceExpAddSliceAssign_i(T[] a, T value, T[] b)
 
             ulong l = cast(uint) value | ((cast(ulong)cast(uint) value) << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -195,13 +194,14 @@ T[] _arraySliceExpAddSliceAssign_i(T[] a, T value, T[] b)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -228,7 +228,7 @@ T[] _arraySliceExpAddSliceAssign_i(T[] a, T value, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -260,7 +260,7 @@ T[] _arraySliceExpAddSliceAssign_i(T[] a, T value, T[] b)
 
             ulong l = cast(uint) value | ((cast(ulong)cast(uint) value) << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -367,7 +367,7 @@ T[] _arraySliceSliceAddSliceAssign_i(T[] a, T[] c, T[] b)
 
             if (((cast(size_t) aptr | cast(size_t) bptr | cast(size_t) cptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -397,7 +397,7 @@ T[] _arraySliceSliceAddSliceAssign_i(T[] a, T[] c, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -431,7 +431,7 @@ T[] _arraySliceSliceAddSliceAssign_i(T[] a, T[] c, T[] b)
         {
             auto n = aptr + (a.length & ~3);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -463,13 +463,14 @@ T[] _arraySliceSliceAddSliceAssign_i(T[] a, T[] c, T[] b)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr | cast(size_t) bptr | cast(size_t) cptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -499,7 +500,7 @@ T[] _arraySliceSliceAddSliceAssign_i(T[] a, T[] c, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -532,7 +533,7 @@ T[] _arraySliceSliceAddSliceAssign_i(T[] a, T[] c, T[] b)
         {
             auto n = aptr + (a.length & ~3);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -641,7 +642,7 @@ T[] _arrayExpSliceAddass_i(T[] a, T value)
 
             if (((cast(size_t) aptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -665,7 +666,7 @@ T[] _arrayExpSliceAddass_i(T[] a, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -695,7 +696,7 @@ T[] _arrayExpSliceAddass_i(T[] a, T value)
 
             ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -720,13 +721,14 @@ T[] _arrayExpSliceAddass_i(T[] a, T value)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -750,7 +752,7 @@ T[] _arrayExpSliceAddass_i(T[] a, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -779,7 +781,7 @@ T[] _arrayExpSliceAddass_i(T[] a, T value)
 
             ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -882,7 +884,7 @@ T[] _arraySliceSliceAddass_i(T[] a, T[] b)
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -909,7 +911,7 @@ T[] _arraySliceSliceAddass_i(T[] a, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -940,7 +942,7 @@ T[] _arraySliceSliceAddass_i(T[] a, T[] b)
         {
             auto n = aptr + (a.length & ~3);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -969,13 +971,14 @@ T[] _arraySliceSliceAddass_i(T[] a, T[] b)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -1002,7 +1005,7 @@ T[] _arraySliceSliceAddass_i(T[] a, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -1033,7 +1036,7 @@ T[] _arraySliceSliceAddass_i(T[] a, T[] b)
         {
             auto n = aptr + (a.length & ~3);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -1143,7 +1146,7 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1170,7 +1173,7 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1203,7 +1206,7 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
 
             ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1231,13 +1234,14 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -1264,7 +1268,7 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -1296,7 +1300,7 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
 
             ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -1401,7 +1405,7 @@ T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1430,7 +1434,7 @@ T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1465,7 +1469,7 @@ T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
 
             ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1495,13 +1499,14 @@ T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -1530,7 +1535,7 @@ T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -1564,7 +1569,7 @@ T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
 
             ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -1672,7 +1677,7 @@ T[] _arraySliceSliceMinSliceAssign_i(T[] a, T[] c, T[] b)
 
             if (((cast(size_t) aptr | cast(size_t) bptr | cast(size_t) cptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1702,7 +1707,7 @@ T[] _arraySliceSliceMinSliceAssign_i(T[] a, T[] c, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1736,7 +1741,7 @@ T[] _arraySliceSliceMinSliceAssign_i(T[] a, T[] c, T[] b)
         {
             auto n = aptr + (a.length & ~3);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1768,13 +1773,14 @@ T[] _arraySliceSliceMinSliceAssign_i(T[] a, T[] c, T[] b)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr | cast(size_t) bptr | cast(size_t) cptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -1804,7 +1810,7 @@ T[] _arraySliceSliceMinSliceAssign_i(T[] a, T[] c, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -1837,7 +1843,7 @@ T[] _arraySliceSliceMinSliceAssign_i(T[] a, T[] c, T[] b)
         {
             auto n = aptr + (a.length & ~3);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -1946,7 +1952,7 @@ T[] _arrayExpSliceMinass_i(T[] a, T value)
 
             if (((cast(size_t) aptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1970,7 +1976,7 @@ T[] _arrayExpSliceMinass_i(T[] a, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -2000,7 +2006,7 @@ T[] _arrayExpSliceMinass_i(T[] a, T value)
 
             ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -2025,13 +2031,14 @@ T[] _arrayExpSliceMinass_i(T[] a, T value)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -2055,7 +2062,7 @@ T[] _arrayExpSliceMinass_i(T[] a, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -2084,7 +2091,7 @@ T[] _arrayExpSliceMinass_i(T[] a, T value)
 
             ulong l = cast(uint) value | (cast(ulong)cast(uint) value << 32);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -2187,7 +2194,7 @@ T[] _arraySliceSliceMinass_i(T[] a, T[] b)
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -2214,7 +2221,7 @@ T[] _arraySliceSliceMinass_i(T[] a, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -2245,7 +2252,7 @@ T[] _arraySliceSliceMinass_i(T[] a, T[] b)
         {
             auto n = aptr + (a.length & ~3);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -2274,13 +2281,14 @@ T[] _arraySliceSliceMinass_i(T[] a, T[] b)
     }
     version (D_InlineAsm_X86_64)
     {
-        if (sse2 && a.length >= 8)
+        // All known X86_64 have SSE2
+        if (a.length >= 8)
         {
             auto n = aptr + (a.length & ~7);
 
             if (((cast(size_t) aptr | cast(size_t) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -2307,7 +2315,7 @@ T[] _arraySliceSliceMinass_i(T[] a, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov RSI, aptr;
                     mov RDI, n;
@@ -2337,7 +2345,7 @@ T[] _arraySliceSliceMinass_i(T[] a, T[] b)
         {
             auto n = aptr + (a.length & ~3);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov RSI, aptr;
                 mov RDI, n;
@@ -2450,7 +2458,7 @@ T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
 
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EDI, n;
@@ -2477,7 +2485,7 @@ T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EDI, n;
@@ -2507,7 +2515,7 @@ T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
             {
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EAX, bptr;
@@ -2527,7 +2535,7 @@ T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EAX, bptr;
@@ -2560,7 +2568,7 @@ T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
 
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RDI, n;
@@ -2587,7 +2595,7 @@ T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RDI, n;
@@ -2617,7 +2625,7 @@ T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
             {
                 if (!aligned)
                 {//possibly slow, needs measuring
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RAX, bptr;
@@ -2637,7 +2645,7 @@ T[] _arraySliceExpMulSliceAssign_i(T[] a, T value, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RAX, bptr;
@@ -2741,7 +2749,7 @@ T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
 
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EDI, n;
@@ -2771,7 +2779,7 @@ T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EDI, n;
@@ -2804,7 +2812,7 @@ T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
             {
                 if (!aligned)
                 {//possibly not a good idea. Performance?
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EAX, bptr;
@@ -2826,7 +2834,7 @@ T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EAX, bptr;
@@ -2861,7 +2869,7 @@ T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
 
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RDI, n;
@@ -2891,7 +2899,7 @@ T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RDI, n;
@@ -2924,7 +2932,7 @@ T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
             {
                 if (!aligned)
                 {//possibly not a good idea. Performance?
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RAX, bptr;
@@ -2946,7 +2954,7 @@ T[] _arraySliceSliceMulSliceAssign_i(T[] a, T[] c, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RAX, bptr;
@@ -3053,7 +3061,7 @@ T[] _arrayExpSliceMulass_i(T[] a, T value)
 
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EDI, n;
@@ -3077,7 +3085,7 @@ T[] _arrayExpSliceMulass_i(T[] a, T value)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EDI, n;
@@ -3104,7 +3112,7 @@ T[] _arrayExpSliceMulass_i(T[] a, T value)
             {
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         movd XMM2,value;
@@ -3120,7 +3128,7 @@ T[] _arrayExpSliceMulass_i(T[] a, T value)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         movd XMM2,value;
@@ -3149,7 +3157,7 @@ T[] _arrayExpSliceMulass_i(T[] a, T value)
 
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RDI, n;
@@ -3173,7 +3181,7 @@ T[] _arrayExpSliceMulass_i(T[] a, T value)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RDI, n;
@@ -3200,7 +3208,7 @@ T[] _arrayExpSliceMulass_i(T[] a, T value)
             {
                 if (!aligned)
                 { //is the overhead worth it?
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         movd XMM2, value;
@@ -3216,7 +3224,7 @@ T[] _arrayExpSliceMulass_i(T[] a, T value)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         movd XMM2, value;
@@ -3318,7 +3326,7 @@ T[] _arraySliceSliceMulass_i(T[] a, T[] b)
 
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EDI, n;
@@ -3345,7 +3353,7 @@ T[] _arraySliceSliceMulass_i(T[] a, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov EDI, n;
@@ -3375,7 +3383,7 @@ T[] _arraySliceSliceMulass_i(T[] a, T[] b)
             {
                 if (!aligned)
                 {//is the unaligned overhead worth it
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov ECX, bptr;
@@ -3395,7 +3403,7 @@ T[] _arraySliceSliceMulass_i(T[] a, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov ESI, aptr;
                         mov ECX, bptr;
@@ -3428,7 +3436,7 @@ T[] _arraySliceSliceMulass_i(T[] a, T[] b)
 
                 if (!aligned)
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RDI, n;
@@ -3455,7 +3463,7 @@ T[] _arraySliceSliceMulass_i(T[] a, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RDI, n;
@@ -3485,7 +3493,7 @@ T[] _arraySliceSliceMulass_i(T[] a, T[] b)
             {
                 if (!aligned)
                 {//is the unaligned overhead worth it
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RCX, bptr;
@@ -3505,7 +3513,7 @@ T[] _arraySliceSliceMulass_i(T[] a, T[] b)
                 }
                 else
                 {
-                    asm
+                    asm pure nothrow @nogc
                     {
                         mov RSI, aptr;
                         mov RCX, bptr;

@@ -1,16 +1,13 @@
 /**
  * Contains SSE2 and MMX versions of certain operations for real.
  *
- * Copyright: Copyright Digital Mars 2008 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 2008 - 2016.
+ * License:   Distributed under the
+ *            $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  * Authors:   Walter Bright, based on code originally written by Burton Radons
+ * Source:    $(DRUNTIMESRC src/rt/_arrayreal.d)
  */
 
-/*          Copyright Digital Mars 2008 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.arrayreal;
 
 // debug=PRINTF
@@ -25,6 +22,8 @@ version (unittest)
      */
     int cpuid;
     const int CPUID_MAX = 1;
+
+nothrow:
     @property bool mmx()      { return cpuid == 1 && core.cpuid.mmx; }
     @property bool sse()      { return cpuid == 2 && core.cpuid.sse; }
     @property bool sse2()     { return cpuid == 3 && core.cpuid.sse2; }

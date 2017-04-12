@@ -80,7 +80,7 @@ else version (S390)
     }
 }
 // http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/s390/bits/mman.h
-else version (S390X)
+else version (SystemZ)
 {
     static if (__USE_MISC) enum
     {
@@ -216,7 +216,7 @@ else version (X86_64)
     }
 }
 // http://sourceware.org/git/?p=glibc.git;a=blob;f=ports/sysdeps/unix/sysv/linux/aarch64/bits/mman.h
-else version (AARCH64)
+else version (AArch64)
 {
     static if (__USE_MISC) enum
     {
@@ -253,8 +253,9 @@ else version (Alpha)
     static if (__USE_MISC) enum
     {
         MAP_FILE = 0,
-        MAP_ANONYMOUS = 0x10,
-        MAP_ANON = MAP_ANONYMOUS,
+        MAP_ANONYMOUS = MAP_ANON,
+        // in core.sys.posix.sys.mman
+        // MAP_ANON = MAP_ANONYMOUS,
         MAP_HUGE_SHIFT = 26,
         MAP_HUGE_MASK = 0x3f,
     }
@@ -360,8 +361,9 @@ else version (HPPA)
     static if (__USE_MISC) enum
     {
         MAP_FILE = 0,
-        MAP_ANONYMOUS = 0x10,
-        MAP_ANON = MAP_ANONYMOUS,
+        MAP_ANONYMOUS = MAP_ANON,
+        // in core.sys.posix.sys.mman
+        // MAP_ANON = MAP_ANONYMOUS,
         MAP_VARIABLE = 0,
         MAP_HUGE_SHIFT = 26,
         MAP_HUGE_MASK = 0x3f,
@@ -460,8 +462,9 @@ else version (HPPA64)
     static if (__USE_MISC) enum
     {
         MAP_FILE = 0,
-        MAP_ANONYMOUS = 0x10,
-        MAP_ANON = MAP_ANONYMOUS,
+        MAP_ANONYMOUS = MAP_ANON,
+        // in core.sys.posix.sys.mman
+        // MAP_ANON = MAP_ANONYMOUS,
         MAP_VARIABLE = 0,
         MAP_HUGE_SHIFT = 26,
         MAP_HUGE_MASK = 0x3f,
@@ -587,9 +590,7 @@ else version (MIPS32)
         MAP_HUGETLB = 0x80000,
     }
 
-    private enum __MAP_ANONYMOUS = 0x0800;
-
-    static if (__USE_MISC) enum MAP_RENAME MAP_ANONYMOUS;
+    static if (__USE_MISC) enum MAP_RENAME = MAP_ANONYMOUS;
 }
 // http://sourceware.org/git/?p=glibc.git;a=blob;f=ports/sysdeps/unix/sysv/linux/mips/bits/mman.h
 else version (MIPS64)
@@ -607,9 +608,7 @@ else version (MIPS64)
         MAP_HUGETLB = 0x80000,
     }
 
-    private enum __MAP_ANONYMOUS = 0x0800;
-
-    static if (__USE_MISC) enum MAP_RENAME MAP_ANONYMOUS;
+    static if (__USE_MISC) enum MAP_RENAME = MAP_ANONYMOUS;
 }
 else
 {
@@ -644,25 +643,14 @@ else
         enum MAP_TYPE = 0x0f;
 
     enum MAP_FIXED = 0x10;
-    static if (!is(typeof(__MAP_ANONYMOUS)))
-        private enum __MAP_ANONYMOUS = 0x20;
     static if (__USE_MISC) enum
     {
         MAP_FILE = 0,
-        //MAP_ANONYMOUS = __MAP_ANONYMOUS,
-        //MAP_ANON = MAP_ANONYMOUS,
+        MAP_ANONYMOUS = MAP_ANON,
+        // in core.sys.posix.sys.mman
+        // MAP_ANON = 0xXX,
         MAP_HUGE_SHIFT = 26,
         MAP_HUGE_MASK = 0x3f,
-    }
-
-    /* This should be behind the static if (__USE_MISC), but it runs into
-     * trouble with the alias declaration for MAP_ANON in core.sys.posix.sys.mman
-     * due to forward reference problems. See Bugzilla 11301 for a fuller explanation.
-     */
-    enum
-    {
-        MAP_ANONYMOUS = __MAP_ANONYMOUS,
-        MAP_ANON = MAP_ANONYMOUS,
     }
 
     // in core.sys.posix.sys.mman

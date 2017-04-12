@@ -3,7 +3,7 @@
  * This module provides functions to uniform calculating hash values for different types
  *
  * Copyright: Copyright Igor Stepanov 2013-2013.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Igor Stepanov
  * Source: $(DRUNTIMESRC core/internal/_hash.d)
  */
@@ -12,7 +12,6 @@ module core.internal.hash;
 import core.internal.convert;
 
 //enum hash. CTFE depends on base type
-@trusted nothrow
 size_t hashOf(T)(auto ref T val, size_t seed = 0) if (is(T == enum))
 {
     static if (is(T EType == enum)) //for EType
@@ -27,7 +26,6 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (is(T == enum))
 }
 
 //CTFE ready (depends on base type). Can be merged with dynamic array hash
-@trusted nothrow
 size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && __traits(isStaticArray, T))
 {
     size_t cur_hash = seed;
@@ -39,8 +37,9 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && __traits
 }
 
 //dynamic array hash
-@trusted nothrow
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T S: S[]) && !__traits(isStaticArray, T))
+size_t hashOf(T)(auto ref T val, size_t seed = 0)
+if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStaticArray, T)
+    && !is(T == struct) && !is(T == class) && !is(T == union))
 {
     alias ElementType = typeof(val[0]);
     static if (is(ElementType == interface) || is(ElementType == class) ||
@@ -85,9 +84,18 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && __traits
     }
 }
 
+//typeof(null) hash. CTFE supported
+@trusted nothrow pure
+size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T : typeof(null)))
+{
+    return hashOf(cast(void*)null);
+}
+
 //Pointers hash. CTFE unsupported if not null
 @trusted nothrow pure
-size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T V : V*))
+size_t hashOf(T)(auto ref T val, size_t seed = 0)
+if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null))
+    && !is(T == struct) && !is(T == class) && !is(T == union))
 {
     if(__ctfe)
     {
@@ -105,17 +113,18 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T V :
 }
 
 //struct or union hash
-@trusted nothrow pure
 size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && (is(T == struct) || is(T == union)))
 {
     static if (is(typeof(val.toHash()) == size_t)) //CTFE depends on toHash()
     {
-        return seedHash(val.toHash(), seed);
+        return hashOf(val.toHash(), seed);
     }
     else
     {
-        static assert(!(__traits(hasMember, T, "toHash") && is(typeof(T.toHash) == function)),
-            "Error: struct "~__traits(identifier, T)~" has method toHash, however it cannot be called with "~T.stringof~" this.");
+        static if(__traits(hasMember, T, "toHash") && is(typeof(T.toHash) == function))
+        {
+            pragma(msg, "Warning: struct "~__traits(identifier, T)~" has method toHash, however it cannot be called with "~T.stringof~" this.");
+        }
 
         static if (is(typeof(toUbyte(val)) == const(ubyte)[]))//CTFE ready for structs without reference fields
         {
@@ -141,35 +150,26 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T == 
 }
 
 //class or interface hash. CTFE depends on toHash
-@trusted nothrow
 size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T == interface) || is(T == class))
 {
-    return seedHash(val ? (cast(Object)val).toHash() : 0, seed);
+    return hashOf(val ? (cast(Object)val).toHash() : 0, seed);
 }
 
 //associative array hash. CTFE depends on base types
-@trusted nothrow
 size_t hashOf(T)(auto ref T aa, size_t seed = 0) if (!is(T == enum) && __traits(isAssociativeArray, T))
 {
-    try
-    {
-        if (!aa.length) return seedHash(0, seed);
-        size_t h = 0;
+    if (!aa.length) return hashOf(0, seed);
+    size_t h = 0;
 
-        // The computed hash is independent of the foreach traversal order.
-        foreach (key, val; aa)
-        {
-            size_t[2] hpair;
-            hpair[0] = key.hashOf();
-            hpair[1] = val.hashOf();
-            h ^= hpair.hashOf();
-        }
-        return seedHash(h, seed);
-    }
-    catch
+    // The computed hash is independent of the foreach traversal order.
+    foreach (key, ref val; aa)
     {
-        assert(0);
+        size_t[2] hpair;
+        hpair[0] = key.hashOf();
+        hpair[1] = val.hashOf();
+        h ^= hpair.hashOf();
     }
+    return h.hashOf(seed);
 }
 
 unittest
@@ -222,7 +222,7 @@ unittest
             return 1;
         }
     }
-    
+
     enum Gun: long
     {
         A = 99,
@@ -246,6 +246,7 @@ unittest
     enum Bar[] vsaexpr = [Bar(), Bar(), Bar()];
     enum realexpr = 7.88;
     enum raexpr = [8.99L+86i, 3.12L+99i, 5.66L+12i];
+    enum nullexpr = null;
 
     //No CTFE:
     Boom rstructexpr = Boom();
@@ -289,6 +290,7 @@ unittest
 
     enum h28 = realexpr.hashOf();
     enum h29 = raexpr.hashOf();
+    enum h30 = nullexpr.hashOf();
 
     auto v1 = dexpr;
     auto v2 = fexpr;
@@ -313,6 +315,7 @@ unittest
     auto v21 = cast(Boo[3])[new Boo, new Boo, new Boo];
     auto v22 = cast(IBoo[3])[cast(IBoo)new Boo, cast(IBoo)new Boo, cast(IBoo)new Boo];
     auto v23 = cast(Bar[3])vsaexpr;
+    auto v30 = null;
 
     //NO CTFE:
     /*auto v24 = rstructexpr;
@@ -346,6 +349,7 @@ unittest
     auto rth21 = hashOf(v21);
     auto rth22 = hashOf(v22);
     auto rth23 = hashOf(v23);
+    auto rth30 = hashOf(v30);
     /*//NO CTFE:
     auto rth24 = hashOf(v24);
     auto rth25 = hashOf(v25);
@@ -383,14 +387,31 @@ unittest
     assert(h27 == rth27);
     assert(h28 == rth28);
     assert(h29 == rth29);*/
-    
-    
-    //Fail tests:
-    
-    static assert(!__traits(compiles, {const Goo fail01; auto h = hashOf(fail01); return h;}));
+    assert(h30 == rth30);
 }
 
 
+unittest // issue 15111
+{
+    void testAlias(T)()
+    {
+        static struct Foo
+        {
+            T t;
+            alias t this;
+        }
+        Foo foo;
+        static assert(is(typeof(hashOf(foo))));
+    }
+    // was fixed
+    testAlias!(int[]);
+    testAlias!(int*);
+    // was not affected
+    testAlias!int;
+    testAlias!(void delegate());
+    testAlias!(string[string]);
+    testAlias!(int[8]);
+}
 
 // MurmurHash3 was written by Austin Appleby, and is placed in the public
 // domain. The author hereby disclaims copyright to this source code.
@@ -411,10 +432,11 @@ version(AnyX86)
     }
 }
 
-@trusted pure nothrow
-size_t bytesHash(const(void)* buf, size_t len, size_t seed = 0)
+
+@system pure nothrow @nogc
+size_t bytesHash(const(void)* buf, size_t len, size_t seed)
 {
-    static uint rotl32(uint n)(in uint x) pure nothrow @safe
+    static uint rotl32(uint n)(in uint x) pure nothrow @safe @nogc
     {
         return (x << n) | (x >> (32 - n));
     }
@@ -422,7 +444,7 @@ size_t bytesHash(const(void)* buf, size_t len, size_t seed = 0)
     //-----------------------------------------------------------------------------
     // Block read - if your platform needs to do endian-swapping or can only
     // handle aligned reads, do the conversion here
-    static uint get32bits(const (ubyte)* x) pure nothrow
+    static uint get32bits(const (ubyte)* x) pure nothrow @nogc
     {
         //Compiler can optimize this code to simple *cast(uint*)x if it possible.
         version(HasUnalignedOps)
@@ -442,7 +464,7 @@ size_t bytesHash(const(void)* buf, size_t len, size_t seed = 0)
 
     //-----------------------------------------------------------------------------
     // Finalization mix - force all bits of a hash block to avalanche
-    static uint fmix32(uint h) pure nothrow @safe
+    static uint fmix32(uint h) pure nothrow @safe @nogc
     {
         h ^= h >> 16;
         h *= 0x85ebca6b;
@@ -498,26 +520,15 @@ size_t bytesHash(const(void)* buf, size_t len, size_t seed = 0)
     return h1;
 }
 
-
-@trusted pure nothrow
-private size_t seedHash( size_t hash, size_t seed)
-{
-    auto h = hash.toUbyte();
-    return bytesHash(h.ptr, h.length, seed);
-}
-
 //  Check that bytesHash works with CTFE
-unittest
+pure nothrow @system @nogc unittest
 {
     size_t ctfeHash(string x)
     {
-        return bytesHash(x.ptr, x.length);
+        return bytesHash(x.ptr, x.length, 0);
     }
 
     enum test_str = "Sample string";
     enum size_t hashVal = ctfeHash(test_str);
-    assert(hashVal == bytesHash(test_str.ptr, test_str.length));
+    assert(hashVal == bytesHash(&test_str[0], test_str.length, 0));
 }
-
-
-

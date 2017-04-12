@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -16,9 +16,12 @@ module core.sys.posix.ucontext;
 
 private import core.sys.posix.config;
 public import core.sys.posix.signal; // for sigset_t, stack_t
+private import core.stdc.stdint : uintptr_t;
 
 version (Posix):
 extern (C):
+nothrow:
+@nogc:
 
 //
 // XOpen (XSI)
@@ -35,7 +38,7 @@ struct ucontext_t
 }
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
 
     version( X86_64 )
@@ -191,7 +194,7 @@ version( linux )
             _libc_fpstate   __fpregs_mem;
         }
     }
-    else version (MIPS)
+    else version (MIPS32)
     {
         private
         {
@@ -259,6 +262,58 @@ version( linux )
                 uint dsp;
                 uint reserved;
             }
+        }
+
+        struct ucontext_t
+        {
+            c_ulong     uc_flags;
+            ucontext_t* uc_link;
+            stack_t     uc_stack;
+            mcontext_t  uc_mcontext;
+            sigset_t    uc_sigmask;
+        }
+    }
+    else version (MIPS64)
+    {
+        private
+        {
+            enum NGREG  = 32;
+            enum NFPREG = 32;
+
+            alias ulong         greg_t;
+            alias greg_t[NGREG] gregset_t;
+
+            struct fpregset_t
+            {
+                union fp_r_t
+                {
+                    double[NFPREG]  fp_dregs;
+                    static struct fp_fregs_t
+                    {
+                        float   _fp_fregs;
+                        uint    _fp_pad;
+                    } fp_fregs_t[NFPREG] fp_fregs;
+                } fp_r_t fp_r;
+            }
+        }
+
+        struct mcontext_t
+        {
+            gregset_t gregs;
+            fpregset_t fpregs;
+            greg_t mdhi;
+            greg_t hi1;
+            greg_t hi2;
+            greg_t hi3;
+            greg_t mdlo;
+            greg_t lo1;
+            greg_t lo2;
+            greg_t lo3;
+            greg_t pc;
+            uint fpc_csr;
+            uint used_math;
+            uint dsp;
+            uint reserved;
         }
 
         struct ucontext_t
@@ -468,12 +523,12 @@ version( linux )
         struct sigcontext {
             ulong           fault_address;
             /* AArch64 registers */
-            ulong           regs[31];
+            ulong[31]       regs;
             ulong           sp;
             ulong           pc;
             ulong           pstate;
             /* 4K reserved for FP/SIMD state and future expansion */
-            align(16) ubyte __reserved[4096];
+            align(16) ubyte[4096] __reserved;
         }
 
         alias sigcontext mcontext_t;
@@ -486,6 +541,52 @@ version( linux )
             sigset_t    uc_sigmask;
             mcontext_t  uc_mcontext;
         }
+    }
+    else version (SystemZ)
+    {
+        public import core.sys.posix.signal : sigset_t;
+
+        enum NGREG = 27;
+
+        alias greg_t = c_ulong;
+        alias gregset_t = align(8) greg_t[NGREG];
+
+        align(8) struct __psw_t
+        {
+            c_ulong mask;
+            c_ulong addr;
+        }
+
+        union fpreg_t
+        {
+            double d;
+            float  f;
+        }
+
+        struct fpregset_t
+        {
+            uint        fpc;
+            fpreg_t[16] fprs;
+        }
+
+        struct  mcontext_t
+        {
+            __psw_t     psw;
+            c_ulong[16] gregs;
+            uint[16]    aregs;
+            fpregset_t  fpregs;
+        }
+
+        struct ucontext
+        {
+            c_ulong    uc_flags;
+            ucontext*  uc_link;
+            stack_t    uc_stack;
+            mcontext_t uc_mcontext;
+            sigset_t   uc_sigmask;
+        }
+
+        alias ucontext_t = ucontext;
     }
     else
         static assert(0, "unimplemented");
@@ -536,12 +637,12 @@ else version( FreeBSD )
        long    mc_ownedfp;
 
        align(16)
-       long    mc_fpstate[64];
+       long[64]    mc_fpstate;
 
        __register_t    mc_fsbase;
        __register_t    mc_gsbase;
 
-       long    mc_spare[6];
+       long[6]    mc_spare;
       }
     }
     else version( X86 )
@@ -600,6 +701,156 @@ else version( FreeBSD )
         int[4]          __spare__;
     }
 }
+else version(NetBSD)
+{
+
+    version( X86_64 )
+    {
+      enum { NGREG = 26 };
+      alias __greg_t = ulong;
+      alias __gregset_t = __greg_t[NGREG];
+      alias __fpregset_t = align(8)ubyte[512];
+
+      struct mcontext_t {
+        __gregset_t     __gregs;
+        __greg_t        _mc_tlsbase;
+        __fpregset_t    __fpregs;
+      }
+    }
+    else version( X86 )
+    {
+      enum { NGREG = 19 };
+      alias __greg_t = ulong;
+      alias __gregset_t = __greg_t[_NGREG];
+      struct __fpregset_t{
+        union __fp_reg_set{
+                struct __fpchip_state{
+                        int[27]     __fp_state; /* Environment and registers */
+                } ;       /* x87 regs in fsave format */
+                struct __fp_xmm_state{
+                        ubyte[512]    __fp_xmm;
+                } ;       /* x87 and xmm regs in fxsave format */
+                int[128]     __fp_fpregs;
+        };
+        __fpregset_t __fp_reg_set;
+        int[33]     __fp_pad;                   /* Historic padding */
+      };
+
+      struct mcontext_t {
+        __gregset_t     __gregs;
+        __fpregset_t    __fpregs;
+        __greg_t        _mc_tlsbase;
+      }
+    }
+
+    struct ucontext_t
+    {
+        uint    uc_flags;       /* properties */
+        ucontext_t *    uc_link;        /* context to resume */
+        sigset_t        uc_sigmask;     /* signals blocked in this context */
+        stack_t         uc_stack;       /* the stack used by this context */
+        mcontext_t      uc_mcontext;    /* machine state */
+        /+ todo #if defined(_UC_MACHINE_PAD)
+                long            __uc_pad[_UC_MACHINE_PAD];
+        #endif
+        +/
+
+    }
+}
+else version ( Solaris )
+{
+    alias uint[4] upad128_t;
+
+    version ( X86_64 )
+    {
+        enum _NGREG = 28;
+        alias long greg_t;
+    }
+    else version ( X86 )
+    {
+        enum _NGREG = 19;
+        alias int greg_t;
+    }
+
+    alias greg_t[_NGREG] gregset_t;
+
+    version ( X86_64 )
+    {
+        union _u_st
+        {
+            ushort[5]   fpr_16;
+            upad128_t   __fpr_pad;
+        }
+
+        struct fpregset_t
+        {
+            union fp_reg_set
+            {
+                struct fpchip_state
+                {
+                    ushort          cw;
+                    ushort          sw;
+                    ubyte           fctw;
+                    ubyte           __fx_rsvd;
+                    ushort          fop;
+                    ulong           rip;
+                    ulong           rdp;
+                    uint            mxcsr;
+                    uint            mxcsr_mask;
+                    _u_st[8]        st;
+                    upad128_t[16]   xmm;
+                    upad128_t[6]    __fx_ign2;
+                    uint            status;
+                    uint            xstatus;
+                }
+                uint[130]   f_fpregs;
+            }
+        }
+    }
+    else version ( X86 )
+    {
+        struct fpregset_t
+        {
+            union u_fp_reg_set
+            {
+                struct s_fpchip_state
+                {
+                    uint[27]        state;
+                    uint            status;
+                    uint            mxcsr;
+                    uint            xstatus;
+                    uint[2]         __pad;
+                    upad128_t[8]    xmm;
+                }
+                s_fpchip_state    fpchip_state;
+
+                struct s_fp_emul_space
+                {
+                    ubyte[246]  fp_emul;
+                    ubyte[2]    fp_epad;
+                }
+                s_fp_emul_space   fp_emul_space;
+                uint[95]        f_fpregs;
+            }
+        u_fp_reg_set fp_reg_set;
+        }
+    }
+    struct mcontext_t
+    {
+        gregset_t   gregs;
+        fpregset_t  fpregs;
+    }
+
+    struct ucontext_t
+    {
+        c_ulong      uc_flags;
+        ucontext_t  *uc_link;
+        sigset_t    uc_sigmask;
+        stack_t     uc_stack;
+        mcontext_t  uc_mcontext;
+        c_long[5]   uc_filler;
+    }
+}
 
 //
 // Obsolescent (OB)
@@ -618,3 +869,11 @@ static if( is( ucontext_t ) )
     int  setcontext(in ucontext_t*);
     int  swapcontext(ucontext_t*, in ucontext_t*);
 }
+
+version (Solaris)
+{
+    int walkcontext(in ucontext_t*, int function(uintptr_t, int, void*), void*);
+    int addrtosymstr(uintptr_t, char*, int);
+    int printstack(int);
+}
+

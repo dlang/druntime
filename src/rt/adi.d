@@ -1,16 +1,14 @@
 /**
  * Implementation of dynamic array property support routines.
  *
- * Copyright: Copyright Digital Mars 2000 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 2000 - 2015.
+ * License: Distributed under the
+ *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
+ *    (See accompanying file LICENSE)
  * Authors:   Walter Bright
+ * Source: $(DRUNTIMESRC src/rt/_adi.d)
  */
 
-/*          Copyright Digital Mars 2000 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE_1_0.txt or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.adi;
 
 //debug=adi;            // uncomment to turn on debugging printf's
@@ -23,18 +21,7 @@ private
     import core.memory;
     import rt.util.utf;
 
-    enum BlkAttr : uint
-    {
-        FINALIZE    = 0b0000_0001,
-        NO_SCAN     = 0b0000_0010,
-        NO_MOVE     = 0b0000_0100,
-        APPENDABLE  = 0b0000_1000,
-        ALL_BITS    = 0b1111_1111
-    }
-
-    extern (C) void* gc_malloc( size_t sz, uint ba = 0 );
-    extern (C) void* gc_calloc( size_t sz, uint ba = 0 );
-    extern (C) void  gc_free( void* p );
+    extern (C) void[] _adSort(void[] a, TypeInfo ti);
 }
 
 
@@ -111,24 +98,24 @@ unittest
 {
     auto a = "abcd"c[];
 
-    auto r = a.dup.reverse;
+    auto r = _adReverseChar(a.dup);
     //writefln(r);
     assert(r == "dcba");
 
     a = "a\u1235\u1234c";
     //writefln(a);
-    r = a.dup.reverse;
+    r = _adReverseChar(a.dup);
     //writefln(r);
     assert(r == "c\u1234\u1235a");
 
     a = "ab\u1234c";
     //writefln(a);
-    r = a.dup.reverse;
+    r = _adReverseChar(a.dup);
     //writefln(r);
     assert(r == "c\u1234ba");
 
     a = "\u3026\u2021\u3061\n";
-    r = a.dup.reverse;
+    r = _adReverseChar(a.dup);
     assert(r == "\n\u3061\u2021\u3026");
 }
 
@@ -207,23 +194,23 @@ unittest
   {
     wstring a = "abcd";
 
-    auto r = a.dup.reverse;
+    auto r = _adReverseWchar(a.dup);
     assert(r == "dcba");
 
     a = "a\U00012356\U00012346c";
-    r = a.dup.reverse;
+    r = _adReverseWchar(a.dup);
     assert(r == "c\U00012346\U00012356a");
 
     a = "ab\U00012345c";
-    r = a.dup.reverse;
+    r = _adReverseWchar(a.dup);
     assert(r == "c\U00012345ba");
   }
   {
     wstring a = "a\U00000081b\U00002000c\U00010000";
     wchar[] b = a.dup;
 
-    b.reverse;
-    b.reverse;
+    _adReverseWchar(b);
+    _adReverseWchar(b);
     assert(b == "a\U00000081b\U00002000c\U00010000");
   }
 }
@@ -254,7 +241,7 @@ body
             //version (Windows)
                 tmp = cast(byte*) alloca(szelem);
             //else
-                //tmp = gc_malloc(szelem);
+                //tmp = GC.malloc(szelem);
         }
 
         for (; lo < hi; lo += szelem, hi -= szelem)
@@ -272,7 +259,7 @@ body
             //if (szelem > 16)
                 // BUG: bad code is generate for delete pointer, tries
                 // to call delclass.
-                //gc_free(tmp);
+                //GC.free(tmp);
         }
     }
     return a;
@@ -287,7 +274,7 @@ unittest
 
     for (auto i = 0; i < 5; i++)
         a[i] = i;
-    b = a.reverse;
+    *(cast(void[]*)&b) = _adReverse(*cast(void[]*)&a, a[0].sizeof);
     assert(b is a);
     for (auto i = 0; i < 5; i++)
         assert(a[i] == 4 - i);
@@ -305,13 +292,23 @@ unittest
     {   c[i].a = i;
         c[i].e = 10;
     }
-    d = c.reverse;
+    *(cast(void[]*)&d) = _adReverse(*(cast(void[]*)&c), c[0].sizeof);
     assert(d is c);
     for (auto i = 0; i < 5; i++)
     {
         assert(c[i].a == 4 - i);
         assert(c[i].e == 10);
     }
+}
+
+private dchar[] mallocUTF32(C)(in C[] s)
+{
+    size_t j = 0;
+    auto p = cast(dchar*)malloc(dchar.sizeof * s.length);
+    auto r = p[0..s.length]; // r[] will never be longer than s[]
+    foreach (dchar c; s)
+        r[j++] = c;
+    return r[0 .. j];
 }
 
 /**********************************************
@@ -322,8 +319,8 @@ extern (C) char[] _adSortChar(char[] a)
 {
     if (a.length > 1)
     {
-        dchar[] da = cast(dchar[])toUTF32(a);
-        da.sort;
+        auto da = mallocUTF32(a);
+        _adSort(*cast(void[]*)&da, typeid(da[0]));
         size_t i = 0;
         foreach (dchar d; da)
         {   char[4] buf;
@@ -331,7 +328,7 @@ extern (C) char[] _adSortChar(char[] a)
             a[i .. i + t.length] = t[];
             i += t.length;
         }
-        GC.free(da.ptr);
+        free(da.ptr);
     }
     return a;
 }
@@ -344,8 +341,8 @@ extern (C) wchar[] _adSortWchar(wchar[] a)
 {
     if (a.length > 1)
     {
-        dchar[] da = cast(dchar[])toUTF32(a);
-        da.sort;
+        auto da = mallocUTF32(a);
+        _adSort(*cast(void[]*)&da, typeid(da[0]));
         size_t i = 0;
         foreach (dchar d; da)
         {   wchar[2] buf;
@@ -353,7 +350,7 @@ extern (C) wchar[] _adSortWchar(wchar[] a)
             a[i .. i + t.length] = t[];
             i += t.length;
         }
-        GC.free(da.ptr);
+        free(da.ptr);
     }
     return a;
 }

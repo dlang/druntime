@@ -3,11 +3,12 @@
  * This module provides functions to converting different values to const(ubyte)[]
  *
  * Copyright: Copyright Igor Stepanov 2013-2013.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Igor Stepanov
  * Source: $(DRUNTIMESRC core/internal/_convert.d)
  */
 module core.internal.convert;
+import core.internal.traits : Unqual;
 
 @trusted pure nothrow
 const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float) || is(Unqual!T == double) || is(Unqual!T == real) ||
@@ -57,22 +58,13 @@ const(ubyte)[] toUbyte(T)(ref T val) if(is(Unqual!T == float) || is(Unqual!T == 
         sign <<= 7;
         buff[off_bytes] |= sign;
 
-        try
+        version(LittleEndian)
         {
-            
-            version(LittleEndian)
-            {
-                return buff.dup;
-            }
-            else
-            {
-                return reverse_(buff);
-            }
+            return buff.dup;
         }
-        catch
+        else
         {
-            //dup cannot throw inside CTFE
-            assert(0);
+            return reverse_(buff);
         }
     }
     else
@@ -333,7 +325,10 @@ version(unittest)
 
         enum ctbytes = toUbyte2(ctval);
 
-        assert(rtbytes[] == ctbytes);
+        // don't test pad bytes because can be anything
+        enum testsize =
+            (FloatTraits!TYPE.EXPONENT + FloatTraits!TYPE.MANTISSA + 1)/8;
+        assert(rtbytes[0..testsize] == ctbytes[0..testsize]);
     }
 
     private void testConvert()
@@ -366,11 +361,11 @@ version(unittest)
         */
         testNumberConvert!("float.min_normal");
         testNumberConvert!("float.max");
-        
+
         /**Test common values*/
         testNumberConvert!("-0.17F");
         testNumberConvert!("3.14F");
-        
+
         /**Test immutable and const*/
         testNumberConvert!("cast(const)3.14F");
         testNumberConvert!("cast(immutable)3.14F");
@@ -389,14 +384,14 @@ version(unittest)
         testNumberConvert!("3.14L");
         testNumberConvert!("cast(const)3.14L");
         testNumberConvert!("cast(immutable)3.14L");
-        
+
         /**Test denormalized values*/
-        
+
         /**Max denormalized value, first bit is 1*/
         testNumberConvert!("float.min_normal/2");
         /**Min denormalized value, last bit is 1*/
         testNumberConvert!("float.min_normal/2UL^^23");
-        
+
         /**Denormalized values with round*/
         testNumberConvert!("float.min_normal/19");
         testNumberConvert!("float.min_normal/17");
@@ -426,12 +421,12 @@ version(unittest)
         testNumberConvert!("0x7.36e6e264012dp+879");
         testNumberConvert!("-0x1.05df6ce4708ep+658");
         testNumberConvert!("0x9.54bb0d888061p-708");
-        
+
         testNumberConvert!("-0x9.0f7eefp-101F");
         testNumberConvert!("0x7.36e6ep+87F");
         testNumberConvert!("-0x1.05df6p+112F");
         testNumberConvert!("0x9.54bb0p-70F");
-        
+
         /**Big overflow or underflow*/
         testNumberConvert!("cast(double)-0x9.0f7ee55df77618fp-13829L");
         testNumberConvert!("cast(double)0x7.36e6e2640120d28p+8797L");
@@ -476,16 +471,7 @@ template floatFormat(T) if(is(T:real) || is(T:ireal))
         enum floatFormat = FloatFormat.Quadruple;
     else
         static assert(0);
-    
-}
-private template Unqual(T)
-{
-         static if (is(T U == shared(const U))) alias U Unqual;
-    else static if (is(T U ==        const U )) alias U Unqual;
-    else static if (is(T U ==    immutable U )) alias U Unqual;
-    else static if (is(T U ==        inout U )) alias U Unqual;
-    else static if (is(T U ==       shared U )) alias U Unqual;
-    else                                        alias T Unqual;
+
 }
 
 //  all toUbyte functions must be evaluable at compile time
@@ -496,7 +482,7 @@ const(ubyte)[] toUbyte(T)(T[] arr) if (T.sizeof == 1)
 }
 
 @trusted pure nothrow
-const(ubyte)[] toUbyte(T)(T[] arr) if ((is(typeof(toUbyte(arr[0])) == const(ubyte)[]))&&(T.sizeof > 1))
+const(ubyte)[] toUbyte(T)(T[] arr) if ((is(typeof(toUbyte(arr[0])) == const(ubyte)[])) && (T.sizeof > 1))
 {
     if (__ctfe)
     {
@@ -531,7 +517,7 @@ const(ubyte)[] toUbyte(T)(ref T val) if (__traits(isIntegral, T) && !is(T == enu
     {
         ubyte[T.sizeof] tmp;
         Unqual!T val_ = val;
-        for (size_t i=0; i<T.sizeof; ++i)
+        for (size_t i = 0; i < T.sizeof; ++i)
         {
             size_t idx;
             version(LittleEndian) idx = i;
@@ -539,9 +525,7 @@ const(ubyte)[] toUbyte(T)(ref T val) if (__traits(isIntegral, T) && !is(T == enu
             tmp[idx] = cast(ubyte)(val_&0xff);
             val_ >>= 8;
         }
-
-        return tmp[];
-
+        return tmp[].dup;
     }
     else
     {
@@ -645,7 +629,7 @@ const(ubyte)[] toUbyte(T)(ref T val) if (is(T == struct) || is(T == union))
                 assert(0, "Unable to compute byte representation of "~typeof(CUR_TYPE).stringof~" field at compile time");
             }
         }
-        return bytes[];
+        return bytes[].dup;
     }
     else
     {

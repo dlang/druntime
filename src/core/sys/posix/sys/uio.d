@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -15,10 +15,19 @@
 module core.sys.posix.sys.uio;
 
 private import core.sys.posix.config;
-public import core.sys.posix.sys.types; // for ssize_t, size_t
+public import core.sys.posix.sys.types; // for ssize_t
+
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
 version (Posix):
-extern (C):
+extern (C) nothrow @nogc:
 
 //
 // Required
@@ -37,7 +46,7 @@ ssize_t readv(int, in iovec*, int);
 ssize_t writev(int, in iovec*, int);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     struct iovec
     {
@@ -48,7 +57,7 @@ version( linux )
     ssize_t readv(int, in iovec*, int);
     ssize_t writev(int, in iovec*, int);
 }
-else version( OSX )
+else version( Darwin )
 {
     struct iovec
     {
@@ -70,6 +79,17 @@ else version( FreeBSD )
     ssize_t readv(int, in iovec*, int);
     ssize_t writev(int, in iovec*, int);
 }
+else version(NetBSD)
+{
+    struct iovec
+    {
+        void*  iov_base;
+        size_t iov_len;
+    }
+
+    ssize_t readv(int, in iovec*, int);
+    ssize_t writev(int, in iovec*, int);
+}
 else version (Solaris)
 {
     struct iovec
@@ -80,6 +100,17 @@ else version (Solaris)
 
     ssize_t readv(int, in iovec*, int);
     ssize_t writev(int, in iovec*, int);
+}
+else version( CRuntime_Bionic )
+{
+    struct iovec
+    {
+        void* iov_base;
+        uint  iov_len;
+    }
+
+    int readv(int, in iovec*, int);
+    int writev(int, in iovec*, int);
 }
 else
 {

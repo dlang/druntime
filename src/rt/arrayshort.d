@@ -2,16 +2,13 @@
  * Contains SSE2 and MMX versions of certain operations for wchar, short,
  * and ushort ('u', 's' and 't' suffixes).
  *
- * Copyright: Copyright Digital Mars 2008 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * Copyright: Copyright Digital Mars 2008 - 2016.
+ * License:   Distributed under the
+ *            $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  * Authors:   Walter Bright, based on code originally written by Burton Radons
+ * Source:    $(DRUNTIMESRC src/rt/_arrayshort.d)
  */
 
-/*          Copyright Digital Mars 2008 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.arrayshort;
 
 // debug=PRINTF
@@ -26,6 +23,8 @@ version (unittest)
      */
     int cpuid;
     const int CPUID_MAX = 4;
+
+nothrow:
     @property bool mmx()      { return cpuid == 1 && core.cpuid.mmx; }
     @property bool sse()      { return cpuid == 2 && core.cpuid.sse; }
     @property bool sse2()     { return cpuid == 3 && core.cpuid.sse2; }
@@ -83,7 +82,7 @@ T[] _arraySliceExpAddSliceAssign_s(T[] a, T value, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -110,7 +109,7 @@ T[] _arraySliceExpAddSliceAssign_s(T[] a, T value, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -144,7 +143,7 @@ T[] _arraySliceExpAddSliceAssign_s(T[] a, T value, T[] b)
 
             uint l = cast(ushort) value;
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -168,6 +167,72 @@ T[] _arraySliceExpAddSliceAssign_s(T[] a, T value, T[] b)
                 emms;
                 mov aptr, ESI;
                 mov bptr, EAX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            uint l = cast(ushort) value;
+            l |= (l << 16);
+
+            if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startaddsse2u:
+                    add RSI, 32;
+                    movdqu XMM0, [RAX];
+                    movdqu XMM1, [RAX+16];
+                    add RAX, 32;
+                    paddw XMM0, XMM2;
+                    paddw XMM1, XMM2;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startaddsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startaddsse2a:
+                    add RSI, 32;
+                    movdqa XMM0, [RAX];
+                    movdqa XMM1, [RAX+16];
+                    add RAX, 32;
+                    paddw XMM0, XMM2;
+                    paddw XMM1, XMM2;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startaddsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                }
             }
         }
     }
@@ -254,7 +319,7 @@ T[] _arraySliceSliceAddSliceAssign_s(T[] a, T[] c, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -284,7 +349,7 @@ T[] _arraySliceSliceAddSliceAssign_s(T[] a, T[] c, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -319,7 +384,7 @@ T[] _arraySliceSliceAddSliceAssign_s(T[] a, T[] c, T[] b)
         {
             auto n = aptr + (a.length & ~7);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -346,6 +411,75 @@ T[] _arraySliceSliceAddSliceAssign_s(T[] a, T[] c, T[] b)
                 mov aptr, ESI;
                 mov bptr, EAX;
                 mov cptr, ECX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    mov RCX, cptr;
+
+                    align 4;
+                startsse2u:
+                    add RSI, 32;
+                    movdqu XMM0, [RAX];
+                    movdqu XMM1, [RAX+16];
+                    add RAX, 32;
+                    movdqu XMM2, [RCX];
+                    movdqu XMM3, [RCX+16];
+                    add RCX, 32;
+                    paddw XMM0, XMM2;
+                    paddw XMM1, XMM3;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                    mov cptr, RCX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    mov RCX, cptr;
+
+                    align 4;
+                startsse2a:
+                    add RSI, 32;
+                    movdqa XMM0, [RAX];
+                    movdqa XMM1, [RAX+16];
+                    add RAX, 32;
+                    movdqa XMM2, [RCX];
+                    movdqa XMM3, [RCX+16];
+                    add RCX, 32;
+                    paddw XMM0, XMM2;
+                    paddw XMM1, XMM3;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                    mov cptr, RCX;
+                }
             }
         }
     }
@@ -430,7 +564,7 @@ T[] _arrayExpSliceAddass_s(T[] a, T value)
 
             if (((cast(uint) aptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -454,7 +588,7 @@ T[] _arrayExpSliceAddass_s(T[] a, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -485,7 +619,7 @@ T[] _arrayExpSliceAddass_s(T[] a, T value)
 
             uint l = cast(ushort) value;
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -506,6 +640,66 @@ T[] _arrayExpSliceAddass_s(T[] a, T value)
 
                 emms;
                 mov aptr, ESI;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            uint l = cast(ushort) value;
+            l |= (l << 16);
+
+            if (((cast(uint) aptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startaddsse2u:
+                    movdqu XMM0, [RSI];
+                    movdqu XMM1, [RSI+16];
+                    add RSI, 32;
+                    paddw XMM0, XMM2;
+                    paddw XMM1, XMM2;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startaddsse2u;
+
+                    mov aptr, RSI;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startaddsse2a:
+                    movdqa XMM0, [RSI];
+                    movdqa XMM1, [RSI+16];
+                    add RSI, 32;
+                    paddw XMM0, XMM2;
+                    paddw XMM1, XMM2;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startaddsse2a;
+
+                    mov aptr, RSI;
+                }
             }
         }
     }
@@ -591,7 +785,7 @@ T[] _arraySliceSliceAddass_s(T[] a, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -618,7 +812,7 @@ T[] _arraySliceSliceAddass_s(T[] a, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -650,7 +844,7 @@ T[] _arraySliceSliceAddass_s(T[] a, T[] b)
         {
             auto n = aptr + (a.length & ~7);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -674,6 +868,69 @@ T[] _arraySliceSliceAddass_s(T[] a, T[] b)
                 emms;
                 mov aptr, ESI;
                 mov bptr, ECX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RCX, bptr;
+
+                    align 4;
+                startsse2u:
+                    movdqu XMM0, [RSI];
+                    movdqu XMM1, [RSI+16];
+                    add RSI, 32;
+                    movdqu XMM2, [RCX];
+                    movdqu XMM3, [RCX+16];
+                    add RCX, 32;
+                    paddw XMM0, XMM2;
+                    paddw XMM1, XMM3;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RCX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RCX, bptr;
+
+                    align 4;
+                startsse2a:
+                    movdqa XMM0, [RSI];
+                    movdqa XMM1, [RSI+16];
+                    add RSI, 32;
+                    movdqa XMM2, [RCX];
+                    movdqa XMM3, [RCX+16];
+                    add RCX, 32;
+                    paddw XMM0, XMM2;
+                    paddw XMM1, XMM3;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RCX;
+                }
             }
         }
     }
@@ -762,7 +1019,7 @@ T[] _arraySliceExpMinSliceAssign_s(T[] a, T value, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -789,7 +1046,7 @@ T[] _arraySliceExpMinSliceAssign_s(T[] a, T value, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -823,7 +1080,7 @@ T[] _arraySliceExpMinSliceAssign_s(T[] a, T value, T[] b)
 
             uint l = cast(ushort) value;
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -847,6 +1104,106 @@ T[] _arraySliceExpMinSliceAssign_s(T[] a, T value, T[] b)
                 emms;
                 mov aptr, ESI;
                 mov bptr, EAX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            uint l = cast(ushort) value;
+            l |= (l << 16);
+
+            if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startaddsse2u:
+                    add RSI, 32;
+                    movdqu XMM0, [RAX];
+                    movdqu XMM1, [RAX+16];
+                    add RAX, 32;
+                    psubw XMM0, XMM2;
+                    psubw XMM1, XMM2;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startaddsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startaddsse2a:
+                    add RSI, 32;
+                    movdqa XMM0, [RAX];
+                    movdqa XMM1, [RAX+16];
+                    add RAX, 32;
+                    psubw XMM0, XMM2;
+                    psubw XMM1, XMM2;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startaddsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                }
+            }
+        }
+        else
+        // MMX version is 3049% faster
+        if (mmx && a.length >= 8)
+        {
+            auto n = aptr + (a.length & ~7);
+
+            uint l = cast(ushort) value;
+
+            asm pure nothrow @nogc
+            {
+                mov RSI, aptr;
+                mov RDI, n;
+                mov RAX, bptr;
+                movd MM2, l;
+                pshufw MM2, MM2, 0;
+
+                align 4;
+            startmmx:
+                add RSI, 16;
+                movq MM0, [RAX];
+                movq MM1, [RAX+8];
+                add RAX, 16;
+                psubw MM0, MM2;
+                psubw MM1, MM2;
+                movq [RSI  -16], MM0;
+                movq [RSI+8-16], MM1;
+                cmp RSI, RDI;
+                jb startmmx;
+
+                emms;
+                mov aptr, RSI;
+                mov bptr, RAX;
             }
         }
     }
@@ -934,7 +1291,7 @@ T[] _arrayExpSliceMinSliceAssign_s(T[] a, T[] b, T value)
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -963,7 +1320,7 @@ T[] _arrayExpSliceMinSliceAssign_s(T[] a, T[] b, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -999,7 +1356,7 @@ T[] _arrayExpSliceMinSliceAssign_s(T[] a, T[] b, T value)
 
             uint l = cast(ushort) value;
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1025,6 +1382,76 @@ T[] _arrayExpSliceMinSliceAssign_s(T[] a, T[] b, T value)
                 emms;
                 mov aptr, ESI;
                 mov bptr, EAX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            uint l = cast(ushort) value;
+            l |= (l << 16);
+
+            if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+
+                    align 4;
+                startaddsse2u:
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+                    movd XMM3, l;
+                    pshufd XMM3, XMM3, 0;
+                    add RSI, 32;
+                    movdqu XMM0, [RAX];
+                    movdqu XMM1, [RAX+16];
+                    add RAX, 32;
+                    psubw XMM2, XMM0;
+                    psubw XMM3, XMM1;
+                    movdqu [RSI   -32], XMM2;
+                    movdqu [RSI+16-32], XMM3;
+                    cmp RSI, RDI;
+                    jb startaddsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+
+                    align 4;
+                startaddsse2a:
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+                    movd XMM3, l;
+                    pshufd XMM3, XMM3, 0;
+                    add RSI, 32;
+                    movdqa XMM0, [RAX];
+                    movdqa XMM1, [RAX+16];
+                    add RAX, 32;
+                    psubw XMM2, XMM0;
+                    psubw XMM3, XMM1;
+                    movdqa [RSI   -32], XMM2;
+                    movdqa [RSI+16-32], XMM3;
+                    cmp RSI, RDI;
+                    jb startaddsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                }
             }
         }
     }
@@ -1110,7 +1537,7 @@ T[] _arraySliceSliceMinSliceAssign_s(T[] a, T[] c, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1140,7 +1567,7 @@ T[] _arraySliceSliceMinSliceAssign_s(T[] a, T[] c, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1175,7 +1602,7 @@ T[] _arraySliceSliceMinSliceAssign_s(T[] a, T[] c, T[] b)
         {
             auto n = aptr + (a.length & ~7);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1202,6 +1629,75 @@ T[] _arraySliceSliceMinSliceAssign_s(T[] a, T[] c, T[] b)
                 mov aptr, ESI;
                 mov bptr, EAX;
                 mov cptr, ECX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    mov RCX, cptr;
+
+                    align 4;
+                startsse2u:
+                    add RSI, 32;
+                    movdqu XMM0, [RAX];
+                    movdqu XMM1, [RAX+16];
+                    add RAX, 32;
+                    movdqu XMM2, [RCX];
+                    movdqu XMM3, [RCX+16];
+                    add RCX, 32;
+                    psubw XMM0, XMM2;
+                    psubw XMM1, XMM3;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                    mov cptr, RCX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    mov RCX, cptr;
+
+                    align 4;
+                startsse2a:
+                    add RSI, 32;
+                    movdqa XMM0, [RAX];
+                    movdqa XMM1, [RAX+16];
+                    add RAX, 32;
+                    movdqa XMM2, [RCX];
+                    movdqa XMM3, [RCX+16];
+                    add RCX, 32;
+                    psubw XMM0, XMM2;
+                    psubw XMM1, XMM3;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                    mov cptr, RCX;
+                }
             }
         }
     }
@@ -1286,7 +1782,7 @@ T[] _arrayExpSliceMinass_s(T[] a, T value)
 
             if (((cast(uint) aptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1310,7 +1806,7 @@ T[] _arrayExpSliceMinass_s(T[] a, T value)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1341,7 +1837,7 @@ T[] _arrayExpSliceMinass_s(T[] a, T value)
 
             uint l = cast(ushort) value;
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1362,6 +1858,66 @@ T[] _arrayExpSliceMinass_s(T[] a, T value)
 
                 emms;
                 mov aptr, ESI;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            uint l = cast(ushort) value;
+            l |= (l << 16);
+
+            if (((cast(uint) aptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startaddsse2u:
+                    movdqu XMM0, [RSI];
+                    movdqu XMM1, [RSI+16];
+                    add RSI, 32;
+                    psubw XMM0, XMM2;
+                    psubw XMM1, XMM2;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startaddsse2u;
+
+                    mov aptr, RSI;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startaddsse2a:
+                    movdqa XMM0, [RSI];
+                    movdqa XMM1, [RSI+16];
+                    add RSI, 32;
+                    psubw XMM0, XMM2;
+                    psubw XMM1, XMM2;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startaddsse2a;
+
+                    mov aptr, RSI;
+                }
             }
         }
     }
@@ -1447,7 +2003,7 @@ T[] _arraySliceSliceMinass_s(T[] a, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
-                asm // unaligned case
+                asm pure nothrow @nogc // unaligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1474,7 +2030,7 @@ T[] _arraySliceSliceMinass_s(T[] a, T[] b)
             }
             else
             {
-                asm // aligned case
+                asm pure nothrow @nogc // aligned case
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1506,7 +2062,7 @@ T[] _arraySliceSliceMinass_s(T[] a, T[] b)
         {
             auto n = aptr + (a.length & ~7);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1530,6 +2086,69 @@ T[] _arraySliceSliceMinass_s(T[] a, T[] b)
                 emms;
                 mov aptr, ESI;
                 mov bptr, ECX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc // unaligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RCX, bptr;
+
+                    align 4;
+                startsse2u:
+                    movdqu XMM0, [RSI];
+                    movdqu XMM1, [RSI+16];
+                    add RSI, 32;
+                    movdqu XMM2, [RCX];
+                    movdqu XMM3, [RCX+16];
+                    add RCX, 32;
+                    psubw XMM0, XMM2;
+                    psubw XMM1, XMM3;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RCX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc // aligned case
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RCX, bptr;
+
+                    align 4;
+                startsse2a:
+                    movdqa XMM0, [RSI];
+                    movdqa XMM1, [RSI+16];
+                    add RSI, 32;
+                    movdqa XMM2, [RCX];
+                    movdqa XMM3, [RCX+16];
+                    add RCX, 32;
+                    psubw XMM0, XMM2;
+                    psubw XMM1, XMM3;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RCX;
+                }
             }
         }
     }
@@ -1618,7 +2237,7 @@ T[] _arraySliceExpMulSliceAssign_s(T[] a, T value, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1645,7 +2264,7 @@ T[] _arraySliceExpMulSliceAssign_s(T[] a, T value, T[] b)
             }
             else
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1679,7 +2298,7 @@ T[] _arraySliceExpMulSliceAssign_s(T[] a, T value, T[] b)
 
             uint l = cast(ushort) value;
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1703,6 +2322,72 @@ T[] _arraySliceExpMulSliceAssign_s(T[] a, T value, T[] b)
                 emms;
                 mov aptr, ESI;
                 mov bptr, EAX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            uint l = cast(ushort) value;
+            l |= l << 16;
+
+            if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startsse2u:
+                    add RSI, 32;
+                    movdqu XMM0, [RAX];
+                    movdqu XMM1, [RAX+16];
+                    add RAX, 32;
+                    pmullw XMM0, XMM2;
+                    pmullw XMM1, XMM2;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startsse2a:
+                    add RSI, 32;
+                    movdqa XMM0, [RAX];
+                    movdqa XMM1, [RAX+16];
+                    add RAX, 32;
+                    pmullw XMM0, XMM2;
+                    pmullw XMM1, XMM2;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                }
             }
         }
     }
@@ -1789,7 +2474,7 @@ T[] _arraySliceSliceMulSliceAssign_s(T[] a, T[] c, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1819,7 +2504,7 @@ T[] _arraySliceSliceMulSliceAssign_s(T[] a, T[] c, T[] b)
             }
             else
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1854,7 +2539,7 @@ T[] _arraySliceSliceMulSliceAssign_s(T[] a, T[] c, T[] b)
         {
             auto n = aptr + (a.length & ~7);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -1881,6 +2566,75 @@ T[] _arraySliceSliceMulSliceAssign_s(T[] a, T[] c, T[] b)
                 mov aptr, ESI;
                 mov bptr, EAX;
                 mov cptr, ECX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            if (((cast(uint) aptr | cast(uint) bptr | cast(uint) cptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    mov RCX, cptr;
+
+                    align 4;
+                startsse2u:
+                    add RSI, 32;
+                    movdqu XMM0, [RAX];
+                    movdqu XMM2, [RCX];
+                    movdqu XMM1, [RAX+16];
+                    movdqu XMM3, [RCX+16];
+                    add RAX, 32;
+                    add RCX, 32;
+                    pmullw XMM0, XMM2;
+                    pmullw XMM1, XMM3;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                    mov cptr, RCX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RAX, bptr;
+                    mov RCX, cptr;
+
+                    align 4;
+                startsse2a:
+                    add RSI, 32;
+                    movdqa XMM0, [RAX];
+                    movdqa XMM2, [RCX];
+                    movdqa XMM1, [RAX+16];
+                    movdqa XMM3, [RCX+16];
+                    add RAX, 32;
+                    add RCX, 32;
+                    pmullw XMM0, XMM2;
+                    pmullw XMM1, XMM3;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RAX;
+                    mov cptr, RCX;
+               }
             }
         }
     }
@@ -1965,7 +2719,7 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
 
             if (((cast(uint) aptr) & 15) != 0)
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -1989,7 +2743,7 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
             }
             else
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -2020,7 +2774,7 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
 
             uint l = cast(ushort) value;
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -2041,6 +2795,66 @@ T[] _arrayExpSliceMulass_s(T[] a, T value)
 
                 emms;
                 mov aptr, ESI;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            uint l = cast(ushort) value;
+            l |= l << 16;
+
+            if (((cast(uint) aptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startsse2u:
+                    movdqu XMM0, [RSI];
+                    movdqu XMM1, [RSI+16];
+                    add RSI, 32;
+                    pmullw XMM0, XMM2;
+                    pmullw XMM1, XMM2;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2u;
+
+                    mov aptr, RSI;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    movd XMM2, l;
+                    pshufd XMM2, XMM2, 0;
+
+                    align 4;
+                startsse2a:
+                    movdqa XMM0, [RSI];
+                    movdqa XMM1, [RSI+16];
+                    add RSI, 32;
+                    pmullw XMM0, XMM2;
+                    pmullw XMM1, XMM2;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2a;
+
+                    mov aptr, RSI;
+                }
             }
         }
     }
@@ -2126,7 +2940,7 @@ T[] _arraySliceSliceMulass_s(T[] a, T[] b)
 
             if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -2153,7 +2967,7 @@ T[] _arraySliceSliceMulass_s(T[] a, T[] b)
             }
             else
             {
-                asm
+                asm pure nothrow @nogc
                 {
                     mov ESI, aptr;
                     mov EDI, n;
@@ -2185,7 +2999,7 @@ T[] _arraySliceSliceMulass_s(T[] a, T[] b)
         {
             auto n = aptr + (a.length & ~7);
 
-            asm
+            asm pure nothrow @nogc
             {
                 mov ESI, aptr;
                 mov EDI, n;
@@ -2209,6 +3023,101 @@ T[] _arraySliceSliceMulass_s(T[] a, T[] b)
                 emms;
                 mov aptr, ESI;
                 mov bptr, ECX;
+            }
+        }
+    }
+    else version (D_InlineAsm_X86_64)
+    {
+        // All known X86_64 have SSE2
+        if (a.length >= 16)
+        {
+            auto n = aptr + (a.length & ~15);
+
+            if (((cast(uint) aptr | cast(uint) bptr) & 15) != 0)
+            {
+                asm pure nothrow @nogc
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RCX, bptr;
+
+                    align 4;
+                startsse2u:
+                    movdqu XMM0, [RSI];
+                    movdqu XMM2, [RCX];
+                    movdqu XMM1, [RSI+16];
+                    movdqu XMM3, [RCX+16];
+                    add RSI, 32;
+                    add RCX, 32;
+                    pmullw XMM0, XMM2;
+                    pmullw XMM1, XMM3;
+                    movdqu [RSI   -32], XMM0;
+                    movdqu [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2u;
+
+                    mov aptr, RSI;
+                    mov bptr, RCX;
+                }
+            }
+            else
+            {
+                asm pure nothrow @nogc
+                {
+                    mov RSI, aptr;
+                    mov RDI, n;
+                    mov RCX, bptr;
+
+                    align 4;
+                startsse2a:
+                    movdqa XMM0, [RSI];
+                    movdqa XMM2, [RCX];
+                    movdqa XMM1, [RSI+16];
+                    movdqa XMM3, [RCX+16];
+                    add RSI, 32;
+                    add RCX, 32;
+                    pmullw XMM0, XMM2;
+                    pmullw XMM1, XMM3;
+                    movdqa [RSI   -32], XMM0;
+                    movdqa [RSI+16-32], XMM1;
+                    cmp RSI, RDI;
+                    jb startsse2a;
+
+                    mov aptr, RSI;
+                    mov bptr, RCX;
+               }
+            }
+        }
+        else
+        // MMX version is 1712% faster
+        if (mmx && a.length >= 8)
+        {
+            auto n = aptr + (a.length & ~7);
+
+            asm pure nothrow @nogc
+            {
+                mov RSI, aptr;
+                mov RDI, n;
+                mov RCX, bptr;
+
+                align 4;
+            startmmx:
+                movq MM0, [RSI];
+                movq MM2, [RCX];
+                movq MM1, [RSI+8];
+                movq MM3, [RCX+8];
+                add RSI, 16;
+                add RCX, 16;
+                pmullw MM0, MM2;
+                pmullw MM1, MM3;
+                movq [RSI  -16], MM0;
+                movq [RSI+8-16], MM1;
+                cmp RSI, RDI;
+                jb startmmx;
+
+                emms;
+                mov aptr, RSI;
+                mov bptr, RCX;
             }
         }
     }

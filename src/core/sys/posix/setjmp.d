@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -18,7 +18,7 @@ private import core.sys.posix.config;
 private import core.sys.posix.signal; // for sigset_t
 
 version (Posix):
-extern (C):
+extern (C) nothrow @nogc:
 
 //
 // Required
@@ -30,7 +30,7 @@ int  setjmp(ref jmp_buf);
 void longjmp(ref jmp_buf, int);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     version( X86_64 )
     {
@@ -62,6 +62,10 @@ version( linux )
     {
         alias int[3] __jmp_buf;
     }
+    else version (AArch64)
+    {
+        alias long[22] __jmp_buf;
+    }
     else version (ARM)
     {
         alias int[64] __jmp_buf;
@@ -82,7 +86,7 @@ version( linux )
             {
                 void * __pc;
                 void * __sp;
-                int __regs[8];
+                int[8] __regs;
                 void * __fp;
                 void * __gp;
             }
@@ -90,16 +94,41 @@ version( linux )
             {
                 long __pc;
                 long __sp;
-                long __regs[8];
+                long[8] __regs;
                 long __fp;
                 long __gp;
             }
             int __fpc_csr;
             version (MIPS_N64)
-                double __fpregs[8];
+                double[8] __fpregs;
             else
-                double __fpregs[6];
+                double[6] __fpregs;
         }
+    }
+    else version (MIPS64)
+    {
+        struct __jmp_buf
+        {
+            long __pc;
+            long __sp;
+            long[8] __regs;
+            long __fp;
+            long __gp;
+            int __fpc_csr;
+            version (MIPS_N64)
+                double[8] __fpregs;
+            else
+                double[6] __fpregs;
+        }
+    }
+    else version (SystemZ)
+    {
+        struct __s390_jmp_buf
+        {
+            c_long[10] __gregs;
+            c_long[8] __fpregs;
+        }
+        alias __jmp_buf = __s390_jmp_buf[1];
     }
     else
         static assert(0, "unimplemented");
@@ -141,6 +170,86 @@ else version( FreeBSD )
     int  setjmp(ref jmp_buf);
     void longjmp(ref jmp_buf, int);
 }
+else version(NetBSD)
+{
+    // <machine/setjmp.h>
+    version( X86 )
+    {
+        enum _JBLEN = 13;
+        struct _jmp_buf { int[_JBLEN + 1] _jb; }
+    }
+    else version( X86_64)
+    {
+        enum _JBLEN = 11;
+        struct _jmp_buf { c_long[_JBLEN] _jb; }
+    }
+    else
+        static assert(0);
+    alias _jmp_buf[_JBLEN] jmp_buf;
+
+    int  setjmp(ref jmp_buf);
+    void longjmp(ref jmp_buf, int);
+}
+else version( OpenBSD )
+{
+    // <machine/setjmp.h>
+    version( X86 )
+    {
+        enum _JBLEN = 10;
+    }
+    else version( X86_64)
+    {
+        enum _JBLEN = 11;
+    }
+    else version( ARM )
+    {
+        enum _JBLEN = 64;
+    }
+    else version( PPC )
+    {
+        enum _JBLEN = 100;
+    }
+    else version( MIPS64 )
+    {
+        enum _JBLEN = 83;
+    }
+    else version( SPARC )
+    {
+        enum _JBLEN = 10;
+    }
+    else version( SPARC64 )
+    {
+        enum _JBLEN = 14;
+    }
+    else
+        static assert(0);
+
+    alias jmp_buf = c_long[_JBLEN];
+
+    int  setjmp(ref jmp_buf);
+    void longjmp(ref jmp_buf, int);
+}
+else version( CRuntime_Bionic )
+{
+    // <machine/setjmp.h>
+    version( X86 )
+    {
+        enum _JBLEN = 10;
+    }
+    else version( ARM )
+    {
+        enum _JBLEN = 64;
+    }
+    else
+    {
+        static assert(false, "Architecture not supported.");
+    }
+
+    alias c_long[_JBLEN] jmp_buf;
+
+    int  setjmp(ref jmp_buf);
+    void longjmp(ref jmp_buf, int);
+}
 
 //
 // C Extension (CX)
@@ -152,7 +261,7 @@ int  sigsetjmp(sigjmp_buf, int);
 void siglongjmp(sigjmp_buf, int);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     alias jmp_buf sigjmp_buf;
 
@@ -188,6 +297,38 @@ else version( FreeBSD )
     int  sigsetjmp(ref sigjmp_buf);
     void siglongjmp(ref sigjmp_buf, int);
 }
+else version(NetBSD)
+{
+    // <machine/setjmp.h>
+    version( X86 )
+    {
+        struct _sigjmp_buf { int[_JBLEN + 1] _ssjb; }
+    }
+    else version( X86_64)
+    {
+        struct _sigjmp_buf { c_long[_JBLEN] _sjb; }
+    }
+    else
+        static assert(0);
+    alias _sigjmp_buf[_JBLEN + 1] sigjmp_buf;
+
+    int  sigsetjmp(ref sigjmp_buf);
+    void siglongjmp(ref sigjmp_buf, int);
+}
+else version( OpenBSD )
+{
+    alias sigjmp_buf = c_long[_JBLEN + 1];
+
+    int  sigsetjmp(ref sigjmp_buf);
+    void siglongjmp(ref sigjmp_buf, int);
+}
+else version( CRuntime_Bionic )
+{
+    alias c_long[_JBLEN + 1] sigjmp_buf;
+
+    int  sigsetjmp(ref sigjmp_buf, int);
+    void siglongjmp(ref sigjmp_buf, int);
+}
 
 //
 // XOpen (XSI)
@@ -197,12 +338,27 @@ int  _setjmp(jmp_buf);
 void _longjmp(jmp_buf, int);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     int  _setjmp(ref jmp_buf);
     void _longjmp(ref jmp_buf, int);
 }
 else version( FreeBSD )
+{
+    int  _setjmp(ref jmp_buf);
+    void _longjmp(ref jmp_buf, int);
+}
+else version(NetBSD)
+{
+    int  _setjmp(ref jmp_buf);
+    void _longjmp(ref jmp_buf, int);
+}
+else version( OpenBSD )
+{
+    int  _setjmp(ref jmp_buf);
+    void _longjmp(ref jmp_buf, int);
+}
+else version( CRuntime_Bionic )
 {
     int  _setjmp(ref jmp_buf);
     void _longjmp(ref jmp_buf, int);

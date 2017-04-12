@@ -4,39 +4,33 @@
  * of those.
  *
  * Copyright: Copyright Digital Mars 2004 - 2010.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
- */
-
-/*          Copyright Digital Mars 2004 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
+ * Source: $(DRUNTIMESRC src/rt/_aApply.d)
  */
 module rt.aApply;
 
-private import rt.util.utf;
+private import rt.util.utf : decode, toUTF8;
 
-/**********************************************
- */
+/**********************************************/
+/* 1 argument versions */
 
 // dg is D, but _aApplycd() is C
 extern (D) alias int delegate(void *) dg_t;
 
-extern (C) int _aApplycd1(char[] aa, dg_t dg)
-{   int result;
-    size_t i;
+extern (C) int _aApplycd1(in char[] aa, dg_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplycd1(), len = %d\n", len);
-    for (i = 0; i < len; )
-    {   dchar d;
-
-        d = aa[i];
+    for (size_t i = 0; i < len; )
+    {
+        dchar d = aa[i];
         if (d & 0x80)
             d = decode(aa, i);
         else
-            i++;
+            ++i;
         result = dg(cast(void *)&d);
         if (result)
             break;
@@ -44,20 +38,61 @@ extern (C) int _aApplycd1(char[] aa, dg_t dg)
     return result;
 }
 
-extern (C) int _aApplywd1(wchar[] aa, dg_t dg)
-{   int result;
-    size_t i;
+unittest
+{
+    debug(apply) printf("_aApplycd1.unittest\n");
+
+    auto s = "hello"c[];
+    int i;
+
+    foreach(dchar d; s)
+    {
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(dchar d; s)
+    {
+        //printf("i = %d, d = %x\n", i, d);
+        switch (i)
+        {
+            case 0:     assert(d == 'a'); break;
+            case 1:     assert(d == '\u1234'); break;
+            case 2:     assert(d == '\U000A0456'); break;
+            case 3:     assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 4);
+}
+
+/*****************************/
+
+extern (C) int _aApplywd1(in wchar[] aa, dg_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplywd1(), len = %d\n", len);
-    for (i = 0; i < len; )
-    {   dchar d;
-
-        d = aa[i];
-        if (d & ~0x7F)
+    for (size_t i = 0; i < len; )
+    {
+        dchar d = aa[i];
+        if (d >= 0xD800)
             d = decode(aa, i);
         else
-            i++;
+            ++i;
         result = dg(cast(void *)&d);
         if (result)
             break;
@@ -65,19 +100,60 @@ extern (C) int _aApplywd1(wchar[] aa, dg_t dg)
     return result;
 }
 
-extern (C) int _aApplycw1(char[] aa, dg_t dg)
-{   int result;
-    size_t i;
+unittest
+{
+    debug(apply) printf("_aApplywd1.unittest\n");
+
+    auto s = "hello"w[];
+    int i;
+
+    foreach(dchar d; s)
+    {
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(dchar d; s)
+    {
+        //printf("i = %d, d = %x\n", i, d);
+        switch (i)
+        {
+            case 0:     assert(d == 'a'); break;
+            case 1:     assert(d == '\u1234'); break;
+            case 2:     assert(d == '\U000A0456'); break;
+            case 3:     assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 4);
+}
+
+/*****************************/
+
+extern (C) int _aApplycw1(in char[] aa, dg_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplycw1(), len = %d\n", len);
-    for (i = 0; i < len; )
-    {   dchar d;
-        wchar w;
-
-        w = aa[i];
+    for (size_t i = 0; i < len; )
+    {
+        wchar w = aa[i];
         if (w & 0x80)
-        {   d = decode(aa, i);
+        {
+            dchar d = decode(aa, i);
             if (d <= 0xFFFF)
                 w = cast(wchar) d;
             else
@@ -90,7 +166,7 @@ extern (C) int _aApplycw1(char[] aa, dg_t dg)
             }
         }
         else
-            i++;
+            ++i;
         result = dg(cast(void *)&w);
         if (result)
             break;
@@ -98,23 +174,63 @@ extern (C) int _aApplycw1(char[] aa, dg_t dg)
     return result;
 }
 
-extern (C) int _aApplywc1(wchar[] aa, dg_t dg)
-{   int result;
-    size_t i;
+unittest
+{
+    debug(apply) printf("_aApplycw1.unittest\n");
+
+    auto s = "hello"c[];
+    int i;
+
+    foreach(wchar d; s)
+    {
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(wchar d; s)
+    {
+        //printf("i = %d, d = %x\n", i, d);
+        switch (i)
+        {
+            case 0:     assert(d == 'a'); break;
+            case 1:     assert(d == 0x1234); break;
+            case 2:     assert(d == 0xDA41); break;
+            case 3:     assert(d == 0xDC56); break;
+            case 4:     assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+}
+
+/*****************************/
+
+extern (C) int _aApplywc1(in wchar[] aa, dg_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplywc1(), len = %d\n", len);
-    for (i = 0; i < len; )
-    {   dchar d;
-        wchar w;
-        char c;
-
-        w = aa[i];
+    for (size_t i = 0; i < len; )
+    {
+        wchar w = aa[i];
         if (w & ~0x7F)
         {
-            char[4] buf;
+            char[4] buf = void;
 
-            d = decode(aa, i);
+            dchar d = decode(aa, i);
             auto b = toUTF8(buf, d);
             foreach (char c2; b)
             {
@@ -122,30 +238,76 @@ extern (C) int _aApplywc1(wchar[] aa, dg_t dg)
                 if (result)
                     return result;
             }
-            continue;
         }
         else
-        {   c = cast(char)w;
-            i++;
+        {
+            char c = cast(char)w;
+            ++i;
+            result = dg(cast(void *)&c);
+            if (result)
+                break;
         }
-        result = dg(cast(void *)&c);
-        if (result)
-            break;
     }
     return result;
 }
 
-extern (C) int _aApplydc1(dchar[] aa, dg_t dg)
-{   int result;
+unittest
+{
+    debug(apply) printf("_aApplywc1.unittest\n");
+
+    auto s = "hello"w[];
+    int i;
+
+    foreach(char d; s)
+    {
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(char d; s)
+    {
+        //printf("i = %d, d = %x\n", i, d);
+        switch (i)
+        {
+            case 0:     assert(d == 'a'); break;
+            case 1:     assert(d == 0xE1); break;
+            case 2:     assert(d == 0x88); break;
+            case 3:     assert(d == 0xB4); break;
+            case 4:     assert(d == 0xF2); break;
+            case 5:     assert(d == 0xA0); break;
+            case 6:     assert(d == 0x91); break;
+            case 7:     assert(d == 0x96); break;
+            case 8:     assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 9);
+}
+
+/*****************************/
+
+extern (C) int _aApplydc1(in dchar[] aa, dg_t dg)
+{
+    int result;
 
     debug(apply) printf("_aApplydc1(), len = %d\n", aa.length);
     foreach (dchar d; aa)
     {
-        char c;
-
         if (d & ~0x7F)
         {
-            char[4] buf;
+            char[4] buf = void;
 
             auto b = toUTF8(buf, d);
             foreach (char c2; b)
@@ -154,21 +316,68 @@ extern (C) int _aApplydc1(dchar[] aa, dg_t dg)
                 if (result)
                     return result;
             }
-            continue;
         }
         else
         {
-            c = cast(char)d;
+            char c = cast(char)d;
+            result = dg(cast(void *)&c);
+            if (result)
+                break;
         }
-        result = dg(cast(void *)&c);
-        if (result)
-            break;
     }
     return result;
 }
 
-extern (C) int _aApplydw1(dchar[] aa, dg_t dg)
-{   int result;
+unittest
+{
+    debug(apply) printf("_aApplyRdc1.unittest\n");
+
+    auto s = "hello"d[];
+    int i;
+
+    foreach(char d; s)
+    {
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(char d; s)
+    {
+        //printf("i = %d, d = %x\n", i, d);
+        switch (i)
+        {
+            case 0:     assert(d == 'a'); break;
+            case 1:     assert(d == 0xE1); break;
+            case 2:     assert(d == 0x88); break;
+            case 3:     assert(d == 0xB4); break;
+            case 4:     assert(d == 0xF2); break;
+            case 5:     assert(d == 0xA0); break;
+            case 6:     assert(d == 0x91); break;
+            case 7:     assert(d == 0x96); break;
+            case 8:     assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 9);
+}
+
+/*****************************/
+
+extern (C) int _aApplydw1(in dchar[] aa, dg_t dg)
+{
+    int result;
 
     debug(apply) printf("_aApplydw1(), len = %d\n", aa.length);
     foreach (dchar d; aa)
@@ -192,23 +401,64 @@ extern (C) int _aApplydw1(dchar[] aa, dg_t dg)
     return result;
 }
 
+unittest
+{
+    debug(apply) printf("_aApplydw1.unittest\n");
+
+    auto s = "hello"d[];
+    int i;
+
+    foreach(wchar d; s)
+    {
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(wchar d; s)
+    {
+        //printf("i = %d, d = %x\n", i, d);
+        switch (i)
+        {
+            case 0:     assert(d == 'a'); break;
+            case 1:     assert(d == 0x1234); break;
+            case 2:     assert(d == 0xDA41); break;
+            case 3:     assert(d == 0xDC56); break;
+            case 4:     assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+}
+
 
 /****************************************************************************/
+/* 2 argument versions */
 
 // dg is D, but _aApplycd2() is C
 extern (D) alias int delegate(void *, void *) dg2_t;
 
-extern (C) int _aApplycd2(char[] aa, dg2_t dg)
-{   int result;
-    size_t i;
-    size_t n;
+extern (C) int _aApplycd2(in char[] aa, dg2_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplycd2(), len = %d\n", len);
-    for (i = 0; i < len; i += n)
-    {   dchar d;
-
-        d = aa[i];
+    size_t n;
+    for (size_t i = 0; i < len; i += n)
+    {
+        dchar d = aa[i];
         if (d & 0x80)
         {
             n = i;
@@ -224,17 +474,60 @@ extern (C) int _aApplycd2(char[] aa, dg2_t dg)
     return result;
 }
 
-extern (C) int _aApplywd2(wchar[] aa, dg2_t dg)
-{   int result;
-    size_t i;
-    size_t n;
+unittest
+{
+    debug(apply) printf("_aApplycd2.unittest\n");
+
+    auto s = "hello"c[];
+    int i;
+
+    foreach(k, dchar d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        assert(k == i);
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(k, dchar d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        switch (i)
+        {
+            case 0:     assert(d == 'a'); assert(k == 0); break;
+            case 1:     assert(d == '\u1234'); assert(k == 1); break;
+            case 2:     assert(d == '\U000A0456'); assert(k == 4); break;
+            case 3:     assert(d == 'b'); assert(k == 8); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 4);
+}
+
+/*****************************/
+
+extern (C) int _aApplywd2(in wchar[] aa, dg2_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplywd2(), len = %d\n", len);
-    for (i = 0; i < len; i += n)
-    {   dchar d;
-
-        d = aa[i];
+    size_t n;
+    for (size_t i = 0; i < len; i += n)
+    {
+        dchar d = aa[i];
         if (d & ~0x7F)
         {
             n = i;
@@ -250,21 +543,64 @@ extern (C) int _aApplywd2(wchar[] aa, dg2_t dg)
     return result;
 }
 
-extern (C) int _aApplycw2(char[] aa, dg2_t dg)
-{   int result;
-    size_t i;
-    size_t n;
+unittest
+{
+    debug(apply) printf("_aApplywd2.unittest\n");
+
+    auto s = "hello"w[];
+    int i;
+
+    foreach(k, dchar d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        assert(k == i);
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(k, dchar d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        switch (i)
+        {
+            case 0:     assert(k == 0); assert(d == 'a'); break;
+            case 1:     assert(k == 1); assert(d == '\u1234'); break;
+            case 2:     assert(k == 2); assert(d == '\U000A0456'); break;
+            case 3:     assert(k == 4); assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 4);
+}
+
+/*****************************/
+
+extern (C) int _aApplycw2(in char[] aa, dg2_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplycw2(), len = %d\n", len);
-    for (i = 0; i < len; i += n)
-    {   dchar d;
-        wchar w;
-
-        w = aa[i];
+    size_t n;
+    for (size_t i = 0; i < len; i += n)
+    {
+        wchar w = aa[i];
         if (w & 0x80)
-        {   n = i;
-            d = decode(aa, n);
+        {
+            n = i;
+            dchar d = decode(aa, n);
             n -= i;
             if (d <= 0xFFFF)
                 w = cast(wchar) d;
@@ -286,25 +622,67 @@ extern (C) int _aApplycw2(char[] aa, dg2_t dg)
     return result;
 }
 
-extern (C) int _aApplywc2(wchar[] aa, dg2_t dg)
-{   int result;
-    size_t i;
-    size_t n;
+unittest
+{
+    debug(apply) printf("_aApplycw2.unittest\n");
+
+    auto s = "hello"c[];
+    int i;
+
+    foreach(k, wchar d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        assert(k == i);
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(k, wchar d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        switch (i)
+        {
+            case 0:     assert(k == 0); assert(d == 'a'); break;
+            case 1:     assert(k == 1); assert(d == 0x1234); break;
+            case 2:     assert(k == 4); assert(d == 0xDA41); break;
+            case 3:     assert(k == 4); assert(d == 0xDC56); break;
+            case 4:     assert(k == 8); assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+}
+
+/*****************************/
+
+extern (C) int _aApplywc2(in wchar[] aa, dg2_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplywc2(), len = %d\n", len);
-    for (i = 0; i < len; i += n)
-    {   dchar d;
-        wchar w;
-        char c;
-
-        w = aa[i];
+    size_t n;
+    for (size_t i = 0; i < len; i += n)
+    {
+        wchar w = aa[i];
         if (w & ~0x7F)
         {
-            char[4] buf;
+            char[4] buf = void;
 
             n = i;
-            d = decode(aa, n);
+            dchar d = decode(aa, n);
             n -= i;
             auto b = toUTF8(buf, d);
             foreach (char c2; b)
@@ -313,33 +691,80 @@ extern (C) int _aApplywc2(wchar[] aa, dg2_t dg)
                 if (result)
                     return result;
             }
-            continue;
         }
         else
-        {   c = cast(char)w;
+        {
+            char c = cast(char)w;
             n = 1;
+            result = dg(&i, cast(void *)&c);
+            if (result)
+                break;
         }
-        result = dg(&i, cast(void *)&c);
-        if (result)
-            break;
     }
     return result;
 }
 
-extern (C) int _aApplydc2(dchar[] aa, dg2_t dg)
-{   int result;
-    size_t i;
+unittest
+{
+    debug(apply) printf("_aApplywc2.unittest\n");
+
+    auto s = "hello"w[];
+    int i;
+
+    foreach(k, char d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        assert(k == i);
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(k, char d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        switch (i)
+        {
+            case 0:     assert(k == 0); assert(d == 'a'); break;
+            case 1:     assert(k == 1); assert(d == 0xE1); break;
+            case 2:     assert(k == 1); assert(d == 0x88); break;
+            case 3:     assert(k == 1); assert(d == 0xB4); break;
+            case 4:     assert(k == 2); assert(d == 0xF2); break;
+            case 5:     assert(k == 2); assert(d == 0xA0); break;
+            case 6:     assert(k == 2); assert(d == 0x91); break;
+            case 7:     assert(k == 2); assert(d == 0x96); break;
+            case 8:     assert(k == 4); assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 9);
+}
+
+/*****************************/
+
+extern (C) int _aApplydc2(in dchar[] aa, dg2_t dg)
+{
+    int result;
     size_t len = aa.length;
 
     debug(apply) printf("_aApplydc2(), len = %d\n", len);
-    for (i = 0; i < len; i++)
-    {   dchar d;
-        char c;
-
-        d = aa[i];
+    for (size_t i = 0; i < len; i++)
+    {
+        dchar d = aa[i];
         if (d & ~0x7F)
         {
-            char[4] buf;
+            char[4] buf = void;
 
             auto b = toUTF8(buf, d);
             foreach (char c2; b)
@@ -348,19 +773,68 @@ extern (C) int _aApplydc2(dchar[] aa, dg2_t dg)
                 if (result)
                     return result;
             }
-            continue;
         }
         else
-        {   c = cast(char)d;
+        {
+            char c = cast(char)d;
+            result = dg(&i, cast(void *)&c);
+            if (result)
+                break;
         }
-        result = dg(&i, cast(void *)&c);
-        if (result)
-            break;
     }
     return result;
 }
 
-extern (C) int _aApplydw2(dchar[] aa, dg2_t dg)
+unittest
+{
+    debug(apply) printf("_aApplydc2.unittest\n");
+
+    auto s = "hello"d[];
+    int i;
+
+    foreach(k, char d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        assert(k == i);
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(k, char d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        switch (i)
+        {
+            case 0:     assert(k == 0); assert(d == 'a'); break;
+            case 1:     assert(k == 1); assert(d == 0xE1); break;
+            case 2:     assert(k == 1); assert(d == 0x88); break;
+            case 3:     assert(k == 1); assert(d == 0xB4); break;
+            case 4:     assert(k == 2); assert(d == 0xF2); break;
+            case 5:     assert(k == 2); assert(d == 0xA0); break;
+            case 6:     assert(k == 2); assert(d == 0x91); break;
+            case 7:     assert(k == 2); assert(d == 0x96); break;
+            case 8:     assert(k == 3); assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 9);
+}
+
+/*****************************/
+
+extern (C) int _aApplydw2(in dchar[] aa, dg2_t dg)
 {   int result;
 
     debug(apply) printf("_aApplydw2(), len = %d\n", aa.length);
@@ -384,4 +858,47 @@ extern (C) int _aApplydw2(dchar[] aa, dg2_t dg)
             break;
     }
     return result;
+}
+
+unittest
+{
+    debug(apply) printf("_aApplydw2.unittest\n");
+
+    auto s = "hello"d[];
+    int i;
+
+    foreach(k, wchar d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        assert(k == i);
+        switch (i)
+        {
+            case 0:     assert(d == 'h'); break;
+            case 1:     assert(d == 'e'); break;
+            case 2:     assert(d == 'l'); break;
+            case 3:     assert(d == 'l'); break;
+            case 4:     assert(d == 'o'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
+
+    s = "a\u1234\U000A0456b";
+    i = 0;
+    foreach(k, wchar d; s)
+    {
+        //printf("i = %d, k = %d, d = %x\n", i, k, d);
+        switch (i)
+        {
+            case 0:     assert(k == 0); assert(d == 'a'); break;
+            case 1:     assert(k == 1); assert(d == 0x1234); break;
+            case 2:     assert(k == 2); assert(d == 0xDA41); break;
+            case 3:     assert(k == 2); assert(d == 0xDC56); break;
+            case 4:     assert(k == 3); assert(d == 'b'); break;
+            default:    assert(0);
+        }
+        i++;
+    }
+    assert(i == 5);
 }

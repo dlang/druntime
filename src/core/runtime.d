@@ -16,6 +16,14 @@ module core.runtime;
 
 version (Windows) import core.stdc.wchar_ : wchar_t;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
 /// C interface for Runtime.loadLibrary
 extern (C) void* rt_loadLibrary(const char* name);
@@ -42,31 +50,12 @@ private
     extern (C) TraceHandler rt_getTraceHandler();
 
     alias void delegate( Throwable ) ExceptionHandler;
+    extern (C) void _d_print_throwable(Throwable t);
 
     extern (C) void* thread_stackBottom();
 
     extern (C) string[] rt_args();
-    extern (C) CArgs rt_cArgs();
-
-    // backtrace
-    version( linux )
-        import core.sys.linux.execinfo;
-    else version( OSX )
-        import core.sys.osx.execinfo;
-    else version( FreeBSD )
-        import core.sys.freebsd.execinfo;
-    else version( Windows )
-        import core.sys.windows.stacktrace;
-
-    // For runModuleUnitTests error reporting.
-    version( Windows )
-    {
-        import core.sys.windows.windows;
-    }
-    else version( Posix )
-    {
-        import core.sys.posix.unistd;
-    }
+    extern (C) CArgs rt_cArgs() @nogc;
 }
 
 
@@ -105,7 +94,7 @@ struct Runtime
      * standard program initialization process is not executed.  This is most
      * often in shared libraries or in libraries linked to a C program.
      * If the runtime was already successfully initialized this returns true.
-     * Each call to initialize must be paired by a call to $(LREF, terminate).
+     * Each call to initialize must be paired by a call to $(LREF terminate).
      *
      * Returns:
      *  true if initialization succeeded or false if initialization failed.
@@ -175,7 +164,7 @@ struct Runtime
      * }
      * ---
      */
-    static @property CArgs cArgs()
+    static @property CArgs cArgs() @nogc
     {
         return rt_cArgs();
     }
@@ -250,7 +239,7 @@ struct Runtime
 
 
     /**
-     * Overrides the default trace mechanism with s user-supplied version.  A
+     * Overrides the default trace mechanism with a user-supplied version.  A
      * trace represents the context from which an exception was thrown, and the
      * trace handler will be called when this occurs.  The pointer supplied to
      * this routine indicates the base address from which tracing should occur.
@@ -313,6 +302,47 @@ struct Runtime
      *
      * Params:
      *  h = The new unit tester.  Set to null to use the default unit tester.
+     *
+     * Example:
+     * ---------
+     * version (unittest) shared static this()
+     * {
+     *     import core.runtime;
+     *
+     *     Runtime.moduleUnitTester = &customModuleUnitTester;
+     * }
+     *
+     * bool customModuleUnitTester()
+     * {
+     *     import std.stdio;
+     *
+     *     writeln("Using customModuleUnitTester");
+     *
+     *     // Do the same thing as the default moduleUnitTester:
+     *     size_t failed = 0;
+     *     foreach (m; ModuleInfo)
+     *     {
+     *         if (m)
+     *         {
+     *             auto fp = m.unitTest;
+     *
+     *             if (fp)
+     *             {
+     *                 try
+     *                 {
+     *                     fp();
+     *                 }
+     *                 catch (Throwable e)
+     *                 {
+     *                     writeln(e);
+     *                     failed++;
+     *                 }
+     *             }
+     *         }
+     *     }
+     *     return failed == 0;
+     * }
+     * ---------
      */
     static @property void moduleUnitTester( ModuleUnitTester h )
     {
@@ -333,11 +363,75 @@ struct Runtime
 
 
 private:
+
     // NOTE: This field will only ever be set in a static ctor and should
     //       never occur within any but the main thread, so it is safe to
     //       make it __gshared.
     __gshared ModuleUnitTester sm_moduleUnitTester = null;
 }
+
+/**
+ * Set source file path for coverage reports.
+ *
+ * Params:
+ *  path = The new path name.
+ * Note:
+ *  This is a dmd specific setting.
+ */
+extern (C) void dmd_coverSourcePath(string path);
+
+/**
+ * Set output path for coverage reports.
+ *
+ * Params:
+ *  path = The new path name.
+ * Note:
+ *  This is a dmd specific setting.
+ */
+extern (C) void dmd_coverDestPath(string path);
+
+/**
+ * Enable merging of coverage reports with existing data.
+ *
+ * Params:
+ *  flag = enable/disable coverage merge mode
+ * Note:
+ *  This is a dmd specific setting.
+ */
+extern (C) void dmd_coverSetMerge(bool flag);
+
+/**
+ * Set the output file name for profile reports (-profile switch).
+ * An empty name will set the output to stdout.
+ *
+ * Params:
+ *  name = file name
+ * Note:
+ *  This is a dmd specific setting.
+ */
+extern (C) void trace_setlogfilename(string name);
+
+/**
+ * Set the output file name for the optimized profile linker DEF file (-profile switch).
+ * An empty name will set the output to stdout.
+ *
+ * Params:
+ *  name = file name
+ * Note:
+ *  This is a dmd specific setting.
+ */
+extern (C) void trace_setdeffilename(string name);
+
+/**
+ * Set the output file name for memory profile reports (-profile=gc switch).
+ * An empty name will set the output to stdout.
+ *
+ * Params:
+ *  name = file name
+ * Note:
+ *  This is a dmd specific setting.
+ */
+extern (C) void profilegc_setlogfilename(string name);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Overridable Callbacks
@@ -355,11 +449,25 @@ private:
  */
 extern (C) bool runModuleUnitTests()
 {
+    // backtrace
+    version( CRuntime_Glibc )
+        import core.sys.linux.execinfo;
+    else version( Darwin )
+        import core.sys.darwin.execinfo;
+    else version( FreeBSD )
+        import core.sys.freebsd.execinfo;
+    else version( NetBSD )
+        import core.sys.netbsd.execinfo;
+    else version( Windows )
+        import core.sys.windows.stacktrace;
+    else version( Solaris )
+        import core.sys.solaris.execinfo;
+
     static if( __traits( compiles, backtrace ) )
     {
         import core.sys.posix.signal; // segv handler
 
-        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr )
+        static extern (C) void unittestSegvHandler( int signum, siginfo_t* info, void* ptr ) nothrow
         {
             static enum MAXFRAMES = 128;
             void*[MAXFRAMES]  callstack;
@@ -388,11 +496,6 @@ extern (C) bool runModuleUnitTests()
 
     if( Runtime.sm_moduleUnitTester is null )
     {
-        void printErr(in char[] buf)
-        {
-            .fprintf(.stderr, "%.*s", cast(int)buf.length, buf.ptr);
-        }
-
         size_t failed = 0;
         foreach( m; ModuleInfo )
         {
@@ -408,7 +511,7 @@ extern (C) bool runModuleUnitTests()
                     }
                     catch( Throwable e )
                     {
-                        e.toString(&printErr); printErr("\n");
+                        _d_print_throwable(e);
                         failed++;
                     }
                 }
@@ -428,9 +531,27 @@ extern (C) bool runModuleUnitTests()
 /**
  *
  */
-import core.stdc.stdio;
 Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 {
+    // backtrace
+    version( CRuntime_Glibc )
+        import core.sys.linux.execinfo;
+    else version( Darwin )
+        import core.sys.darwin.execinfo;
+    else version( FreeBSD )
+        import core.sys.freebsd.execinfo;
+    else version( NetBSD )
+        import core.sys.netbsd.execinfo;
+    else version( Windows )
+        import core.sys.windows.stacktrace;
+    else version( Solaris )
+        import core.sys.solaris.execinfo;
+
+    // avoid recursive GC calls in finalizer, trace handlers should be made @nogc instead
+    import core.memory : gc_inFinalizer;
+    if (gc_inFinalizer)
+        return null;
+
     //printf("runtime.defaultTraceHandler()\n");
     static if( __traits( compiles, backtrace ) )
     {
@@ -442,8 +563,6 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         {
             this()
             {
-                static enum MAXFRAMES = 128;
-                void*[MAXFRAMES]  callstack;
                 numframes = 0; //backtrace( callstack, MAXFRAMES );
                 if (numframes < 2) // backtrace() failed, do it ourselves
                 {
@@ -470,17 +589,13 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                                             stackPtr < stackBottom &&
                                             numframes < MAXFRAMES; )
                         {
-                            callstack[numframes++] = *(stackPtr + 1);
+                            enum CALL_INSTRUCTION_SIZE = 1; // it may not be 1 but it is good enough to get
+                                                            // in CALL instruction address range for backtrace
+                            callstack[numframes++] = *(stackPtr + 1) - CALL_INSTRUCTION_SIZE;
                             stackPtr = cast(void**) *stackPtr;
                         }
                     }
                 }
-                framelist = backtrace_symbols( callstack.ptr, numframes );
-            }
-
-            ~this()
-            {
-                free( framelist );
             }
 
             override int opApply( scope int delegate(ref const(char[])) dg ) const
@@ -493,36 +608,68 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
             override int opApply( scope int delegate(ref size_t, ref const(char[])) dg ) const
             {
-                version( Posix )
+                version(Posix)
                 {
-                    // NOTE: The first 5 frames with the current implementation are
+                    // NOTE: The first 4 frames with the current implementation are
                     //       inside core.runtime and the object code, so eliminate
                     //       these for readability.  The alternative would be to
                     //       exclude the first N frames that are in a list of
                     //       mangled function names.
-                    static enum FIRSTFRAME = 5;
+                    enum FIRSTFRAME = 4;
                 }
-                else
+                else version(Windows)
                 {
                     // NOTE: On Windows, the number of frames to exclude is based on
                     //       whether the exception is user or system-generated, so
                     //       it may be necessary to exclude a list of function names
                     //       instead.
-                    static enum FIRSTFRAME = 0;
+                    enum FIRSTFRAME = 0;
                 }
-                int ret = 0;
 
-                for( int i = FIRSTFRAME; i < numframes; ++i )
+                version(linux) enum enableDwarf = true;
+                else version(FreeBSD) enum enableDwarf = true;
+                else enum enableDwarf = false;
+
+                static if (enableDwarf)
                 {
-                    char[4096] fixbuf;
-                    auto buf = framelist[i][0 .. strlen(framelist[i])];
-                    auto pos = cast(size_t)(i - FIRSTFRAME);
-                    buf = fixline( buf, fixbuf );
-                    ret = dg( pos, buf );
-                    if( ret )
-                        break;
+                    import core.internal.traits : externDFunc;
+
+                    alias traceHandlerOpApplyImpl = externDFunc!(
+                        "rt.backtrace.dwarf.traceHandlerOpApplyImpl",
+                        int function(const void*[], scope int delegate(ref size_t, ref const(char[])))
+                    );
+
+                    if (numframes >= FIRSTFRAME)
+                    {
+                        return traceHandlerOpApplyImpl(
+                            callstack[FIRSTFRAME .. numframes],
+                            dg
+                        );
+                    }
+                    else
+                    {
+                        return 0;
+                    }
                 }
-                return ret;
+                else
+                {
+                    const framelist = backtrace_symbols( callstack.ptr, numframes );
+                    scope(exit) free(cast(void*) framelist);
+
+                    int ret = 0;
+                    for( int i = FIRSTFRAME; i < numframes; ++i )
+                    {
+                        char[4096] fixbuf;
+                        auto buf = framelist[i][0 .. strlen(framelist[i])];
+                        auto pos = cast(size_t)(i - FIRSTFRAME);
+                        buf = fixline( buf, fixbuf );
+                        ret = dg( pos, buf );
+                        if( ret )
+                            break;
+                    }
+                    return ret;
+                }
+
             }
 
             override string toString() const
@@ -535,13 +682,14 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
         private:
             int     numframes;
-            char**  framelist;
+            static enum MAXFRAMES = 128;
+            void*[MAXFRAMES]  callstack = void;
 
         private:
-            const(char)[] fixline( const(char)[] buf, ref char[4096] fixbuf ) const
+            const(char)[] fixline( const(char)[] buf, return ref char[4096] fixbuf ) const
             {
                 size_t symBeg, symEnd;
-                version( OSX )
+                version( Darwin )
                 {
                     // format is:
                     //  1  module    0x00000000 D6module4funcAFZv + 0
@@ -562,7 +710,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                         }
                     }
                 }
-                else version( linux )
+                else version( CRuntime_Glibc )
                 {
                     // format is:  module(_D6module4funcAFZv) [0x00000000]
                     // or:         module(_D6module4funcAFZv+0x78) [0x00000000]
@@ -591,13 +739,37 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                         symEnd = eptr - buf.ptr;
                     }
                 }
+                else version( NetBSD )
+                {
+                    // format is: 0x00000000 <_D6module4funcAFZv+0x78> at module
+                    auto bptr = cast(char*) memchr( buf.ptr, '<', buf.length );
+                    auto eptr = cast(char*) memchr( buf.ptr, '+', buf.length );
+
+                    if( bptr++ && eptr )
+                    {
+                        symBeg = bptr - buf.ptr;
+                        symEnd = eptr - buf.ptr;
+                    }
+                }
+                else version( Solaris )
+                {
+                    // format is object'symbol+offset [pc]
+                    auto bptr = cast(char*) memchr( buf.ptr, '\'', buf.length );
+                    auto eptr = cast(char*) memchr( buf.ptr, '+', buf.length );
+
+                    if( bptr++ && eptr )
+                    {
+                        symBeg = bptr - buf.ptr;
+                        symEnd = eptr - buf.ptr;
+                    }
+                }
                 else
                 {
                     // fallthrough
                 }
 
                 assert(symBeg < buf.length && symEnd < buf.length);
-                assert(symBeg < symEnd);
+                assert(symBeg <= symEnd);
 
                 enum min = (size_t a, size_t b) => a <= b ? a : b;
                 if (symBeg == symEnd || symBeg >= fixbuf.length)
@@ -639,10 +811,11 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         {
             static enum FIRSTFRAME = 4;
         }
-        else
+        else version (Win32)
         {
             static enum FIRSTFRAME = 0;
         }
+        import core.sys.windows.windows : CONTEXT;
         auto s = new StackTrace(FIRSTFRAME, cast(CONTEXT*)ptr);
         return s;
     }

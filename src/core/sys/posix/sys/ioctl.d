@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Alex Rønne Petersen 2011 - 2012.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -16,13 +16,20 @@ module core.sys.posix.sys.ioctl;
 
 import core.stdc.config;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 
-extern (C):
-@system:
-nothrow:
+extern (C) nothrow @nogc:
 
-version (linux)
+version (CRuntime_Glibc)
 {
     import core.sys.posix.termios; // tcflag_t, speed_t, cc_t
 
@@ -320,18 +327,12 @@ version (linux)
 
     int ioctl(int __fd, c_ulong __request, ...);
 }
-else version (OSX)
+else version (Darwin)
 {
     import core.sys.posix.termios; // termios
     import core.sys.posix.sys.time; // timeval
 
-    struct winsize
-    {
-        ushort ws_row;
-        ushort ws_col;
-        ushort ws_xpixel;
-        ushort ws_ypixel;
-    }
+    public import core.sys.posix.sys.ttycom; // Terminal related ioctls
 
     struct ttysize
     {
@@ -340,6 +341,11 @@ else version (OSX)
         ushort ts_xxx;
         ushort ts_yyy;
     }
+
+    enum uint TIOCGSIZE = TIOCGWINSZ;
+    enum uint TIOCSSIZE = TIOCSWINSZ;
+
+    public import core.sys.posix.sys.filio; // File related ioctls
 
     int ioctl(int fildes, c_ulong request, ...);
 }
@@ -361,9 +367,25 @@ else version (FreeBSD)
 
     int ioctl(int, c_ulong, ...);
 }
+else version (NetBSD)
+{
+    struct winsize
+    {
+        ushort ws_row;
+        ushort ws_col;
+        ushort ws_xpixel;
+        ushort ws_ypixel;
+    }
+
+    int ioctl(int, c_ulong, ...);
+}
 else version (Solaris)
 {
     int ioctl(int fildes, int request, ...);
+}
+else version (CRuntime_Bionic)
+{
+    int ioctl(int, int, ...);
 }
 else
 {

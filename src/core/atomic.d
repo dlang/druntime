@@ -2,17 +2,12 @@
  * The atomic module provides basic support for lock-free
  * concurrent programming.
  *
- * Copyright: Copyright Sean Kelly 2005 - 2010.
+ * Copyright: Copyright Sean Kelly 2005 - 2016.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Source:    $(DRUNTIMESRC core/_atomic.d)
  */
 
-/*          Copyright Sean Kelly 2005 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module core.atomic;
 
 version( D_InlineAsm_X86 )
@@ -20,16 +15,19 @@ version( D_InlineAsm_X86 )
     version = AsmX86;
     version = AsmX86_32;
     enum has64BitCAS = true;
+    enum has128BitCAS = false;
 }
 else version( D_InlineAsm_X86_64 )
 {
     version = AsmX86;
     version = AsmX86_64;
     enum has64BitCAS = true;
+    enum has128BitCAS = true;
 }
 else
 {
     enum has64BitCAS = false;
+    enum has128BitCAS = false;
 }
 
 private
@@ -49,9 +47,19 @@ version( AsmX86 )
     // NOTE: Strictly speaking, the x86 supports atomic operations on
     //       unaligned values.  However, this is far slower than the
     //       common case, so such behavior should be prohibited.
-    private bool atomicValueIsProperlyAligned(T)( size_t addr ) pure nothrow
+    private bool atomicValueIsProperlyAligned(T)( ref T val ) pure nothrow @nogc @trusted
     {
-        return addr % T.sizeof == 0;
+        return atomicPtrIsProperlyAligned(&val);
+    }
+
+    private bool atomicPtrIsProperlyAligned(T)( T* ptr ) pure nothrow @nogc @safe
+    {
+        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
+        //       4 byte alignment, so use size_t as the align type here.
+        static if( T.sizeof > size_t.sizeof )
+            return cast(size_t)ptr % size_t.sizeof == 0;
+        else
+            return cast(size_t)ptr % T.sizeof == 0;
     }
 }
 
@@ -68,7 +76,7 @@ version( CoreDdoc )
      * Returns:
      *  The result of the operation.
      */
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) pure nothrow @nogc @safe
         if( __traits( compiles, mixin( "*cast(T*)&val" ~ op ~ "mod" ) ) )
     {
         return HeadUnshared!(T).init;
@@ -88,21 +96,22 @@ version( CoreDdoc )
      * Returns:
      *  true if the store occurred, false if not.
      */
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, V2 writeThis ) pure nothrow @nogc @safe
         if( !is(T == class) && !is(T U : U*) && __traits( compiles, { *here = writeThis; } ) );
 
     /// Ditto
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) pure nothrow @nogc @safe
         if( is(T == class) && __traits( compiles, { *here = writeThis; } ) );
 
     /// Ditto
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) pure nothrow @nogc @safe
         if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) );
 
     /**
      * Loads 'val' from memory and returns it.  The memory barrier specified
      * by 'ms' is applied to the operation, which is fully sequenced by
-     * default.
+     * default.  Valid memory orders are MemoryOrder.raw, MemoryOrder.acq,
+     * and MemoryOrder.seq.
      *
      * Params:
      *  val = The target variable.
@@ -110,7 +119,7 @@ version( CoreDdoc )
      * Returns:
      *  The value of 'val'.
      */
-    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq,T)( ref const shared T val ) nothrow
+    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq,T)( ref const shared T val ) pure nothrow @nogc @safe
     {
         return HeadUnshared!(T).init;
     }
@@ -119,12 +128,14 @@ version( CoreDdoc )
     /**
      * Writes 'newval' into 'val'.  The memory barrier specified by 'ms' is
      * applied to the operation, which is fully sequenced by default.
+     * Valid memory orders are MemoryOrder.raw, MemoryOrder.rel, and
+     * MemoryOrder.seq.
      *
      * Params:
      *  val    = The target variable.
      *  newval = The value to store.
      */
-    void atomicStore(MemoryOrder ms = MemoryOrder.seq,T,V1)( ref shared T val, V1 newval ) nothrow
+    void atomicStore(MemoryOrder ms = MemoryOrder.seq,T,V1)( ref shared T val, V1 newval ) pure nothrow @nogc @safe
         if( __traits( compiles, { val = newval; } ) )
     {
 
@@ -150,7 +161,7 @@ version( CoreDdoc )
      * that all loads and stores before a call to this function are executed before any
      * loads and stores after the call.
      */
-    void atomicFence() nothrow;
+    void atomicFence() nothrow @nogc;
 
     /**
      * Converts a shared lvalue to a non-shared lvalue.
@@ -170,11 +181,11 @@ version( CoreDdoc )
      *     atomicOp!"+="(i, 1); // possible overhead
      *
      *     // Directly modify i
-     *     assumeLocal(i) += 1;
+     *     assumeUnshared(i) += 1;
      *     // or:
-     *     ++assumeLocal(i);
+     *     ++assumeUnshared(i);
      *     // or:
-     *     i.assumeLocal += 1;
+     *     i.assumeUnshared += 1;
      * }
      * ---
      * Usage of this function is restricted to allowing limited lvalue access to shared instances of
@@ -182,7 +193,7 @@ version( CoreDdoc )
      *
      * Note: this function does not perform any ordering.
      *
-     * Note: assumeLocal is a special-purpose primitive and should be used with care. When accessing
+     * Note: assumeUnshared is a special-purpose primitive and should be used with care. When accessing
      * shared variables both inside and outside of synchronized blocks, atomic operations should be
      * used instead.
      *
@@ -192,24 +203,62 @@ version( CoreDdoc )
      * Returns:
      *  The non-shared lvalue.
      */
-    ref T assumeLocal(T)( ref shared T val ) @trusted pure nothrow
-        if( !is( T == class ) )
+    ref T assumeUnshared(T)(ref shared T val) @system @nogc pure nothrow
+        if(!is(T == class) && !is(T == interface))
     {
         return *cast(T*)&val;
+    }
+
+    /**
+     * Converts a shared lvalue to a non-shared lvalue.
+     *
+     * This functions allows to treat a shared lvalue as if it was thread-local.
+     * It is useful to avoid overhead of atomic operations when access to shared data
+     * is known to be within one thread (i.e. always under a lock).
+     *
+     * This is a specialization for immutable lvalues. Since immutable is implicitly
+     * unshared, this version accepts any type (even classes and interfaces).
+     */
+    ref immutable(T) assumeUnshared(T)(ref immutable(T) val) @safe @nogc pure nothrow
+    {
+        return val;
     }
 }
 else version( AsmX86_32 )
 {
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
+    // Uses specialized asm for fast fetch and add operations
+    private HeadUnshared!(T) atomicFetchAdd(T)( ref shared T val, size_t mod ) pure nothrow @nogc @safe
+        if( T.sizeof <= 4 )
+    {
+        size_t tmp = mod;
+        asm pure nothrow @nogc @trusted
+        {
+            mov EAX, tmp;
+            mov EDX, val;
+        }
+        static if (T.sizeof == 1) asm pure nothrow @nogc @trusted { lock; xadd[EDX], AL; }
+        else static if (T.sizeof == 2) asm pure nothrow @nogc @trusted { lock; xadd[EDX], AX; }
+        else static if (T.sizeof == 4) asm pure nothrow @nogc @trusted { lock; xadd[EDX], EAX; }
+
+        asm pure nothrow @nogc @trusted
+        {
+            mov tmp, EAX;
+        }
+
+        return cast(T)tmp;
+    }
+
+    private HeadUnshared!(T) atomicFetchSub(T)( ref shared T val, size_t mod ) pure nothrow @nogc @safe
+        if( T.sizeof <= 4)
+    {
+        return atomicFetchAdd(val, -mod);
+    }
+
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) pure nothrow @nogc
         if( __traits( compiles, mixin( "*cast(T*)&val" ~ op ~ "mod" ) ) )
     in
     {
-        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
-        //       4 byte alignment, so use size_t as the align type here.
-        static if( T.sizeof > size_t.sizeof )
-            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) &val ) );
-        else
-            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) &val ) );
+        assert(atomicValueIsProperlyAligned(val));
     }
     body
     {
@@ -233,7 +282,15 @@ else version( AsmX86_32 )
         //
         // +=   -=  *=  /=  %=  ^^= &=
         // |=   ^=  <<= >>= >>>=    ~=
-        static if( op == "+=" || op == "-="  || op == "*="  || op == "/=" ||
+        static if( op == "+=" && __traits(isIntegral, T) && T.sizeof <= 4 && V1.sizeof <= 4)
+        {
+            return cast(T)(atomicFetchAdd!(T)(val, mod) + mod);
+        }
+        else static if( op == "-=" && __traits(isIntegral, T) && T.sizeof <= 4 && V1.sizeof <= 4)
+        {
+            return cast(T)(atomicFetchSub!(T)(val, mod) - mod);
+        }
+        else static if( op == "+=" || op == "-="  || op == "*="  || op == "/=" ||
                    op == "%=" || op == "^^=" || op == "&="  || op == "|=" ||
                    op == "^=" || op == "<<=" || op == ">>=" || op == ">>>=" ) // skip "~="
         {
@@ -243,7 +300,7 @@ else version( AsmX86_32 )
             {
                 get = set = atomicLoad!(MemoryOrder.raw)( val );
                 mixin( "set " ~ op ~ " mod;" );
-            } while( !cas( &val, get, set ) );
+            } while( !casByRef( val, get, set ) );
             return set;
         }
         else
@@ -252,33 +309,33 @@ else version( AsmX86_32 )
         }
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
+    bool casByRef(T,V1,V2)( ref T value, V1 ifThis, V2 writeThis ) pure nothrow @nogc @trusted
+    {
+        return cas(&value, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, V2 writeThis ) pure nothrow @nogc @safe
         if( !is(T == class) && !is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) pure nothrow @nogc @safe
         if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) pure nothrow @nogc @safe
         if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) nothrow
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) pure nothrow @nogc @safe
     in
     {
-        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
-        //       4 byte alignment, so use size_t as the align type here.
-        static if( T.sizeof > size_t.sizeof )
-            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) here ) );
-        else
-            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) here ) );
+        assert( atomicPtrIsProperlyAligned( here ) );
     }
     body
     {
@@ -288,7 +345,7 @@ else version( AsmX86_32 )
             // 1 Byte CAS
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 mov DL, writeThis;
                 mov AL, ifThis;
@@ -304,7 +361,7 @@ else version( AsmX86_32 )
             // 2 Byte CAS
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 mov DX, writeThis;
                 mov AX, ifThis;
@@ -320,7 +377,7 @@ else version( AsmX86_32 )
             // 4 Byte CAS
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 mov EDX, writeThis;
                 mov EAX, ifThis;
@@ -332,11 +389,12 @@ else version( AsmX86_32 )
         }
         else static if( T.sizeof == long.sizeof && has64BitCAS )
         {
+
             //////////////////////////////////////////////////////////////////
             // 8 Byte CAS on a 32-Bit Processor
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 push EDI;
                 push EBX;
@@ -352,7 +410,9 @@ else version( AsmX86_32 )
                 setz AL;
                 pop EBX;
                 pop EDI;
+
             }
+
         }
         else
         {
@@ -375,26 +435,11 @@ else version( AsmX86_32 )
 
     private
     {
-        template isHoistOp(MemoryOrder ms)
-        {
-            enum bool isHoistOp = ms == MemoryOrder.acq ||
-                                  ms == MemoryOrder.seq;
-        }
-
-
-        template isSinkOp(MemoryOrder ms)
-        {
-            enum bool isSinkOp = ms == MemoryOrder.rel ||
-                                 ms == MemoryOrder.seq;
-        }
-
-
         // NOTE: x86 loads implicitly have acquire semantics so a memory
         //       barrier is only necessary on releases.
         template needsLoadBarrier( MemoryOrder ms )
         {
-            enum bool needsLoadBarrier = ms == MemoryOrder.seq ||
-                                               isSinkOp!(ms);
+            enum bool needsLoadBarrier = ms == MemoryOrder.seq;
         }
 
 
@@ -402,20 +447,18 @@ else version( AsmX86_32 )
         //       barrier is only necessary on acquires.
         template needsStoreBarrier( MemoryOrder ms )
         {
-            enum bool needsStoreBarrier = ms == MemoryOrder.seq ||
-                                                isHoistOp!(ms);
+            enum bool needsStoreBarrier = ms == MemoryOrder.seq;
         }
     }
 
 
-    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) nothrow
+    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) pure nothrow @nogc @safe
     if(!__traits(isFloating, T))
     {
-        static if (!__traits(isPOD, T))
-        {
-            static assert( false, "argument to atomicLoad() must be POD" );
-        }
-        else static if( T.sizeof == byte.sizeof )
+        static assert( ms != MemoryOrder.rel, "invalid MemoryOrder for atomicLoad()" );
+        static assert( __traits(isPOD, T), "argument to atomicLoad() must be POD" );
+
+        static if( T.sizeof == byte.sizeof )
         {
             //////////////////////////////////////////////////////////////////
             // 1 Byte Load
@@ -423,7 +466,7 @@ else version( AsmX86_32 )
 
             static if( needsLoadBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov DL, 0;
                     mov AL, 0;
@@ -434,7 +477,7 @@ else version( AsmX86_32 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov AL, [EAX];
@@ -449,7 +492,7 @@ else version( AsmX86_32 )
 
             static if( needsLoadBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov DX, 0;
                     mov AX, 0;
@@ -460,7 +503,7 @@ else version( AsmX86_32 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov AX, [EAX];
@@ -475,7 +518,7 @@ else version( AsmX86_32 )
 
             static if( needsLoadBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EDX, 0;
                     mov EAX, 0;
@@ -486,7 +529,7 @@ else version( AsmX86_32 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov EAX, [EAX];
@@ -499,7 +542,7 @@ else version( AsmX86_32 )
             // 8 Byte Load on a 32-Bit Processor
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 push EDI;
                 push EBX;
@@ -520,9 +563,12 @@ else version( AsmX86_32 )
         }
     }
 
-    void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V1)( ref shared T val, V1 newval ) nothrow
+    void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V1)( ref shared T val, V1 newval ) pure nothrow @nogc @safe
         if( __traits( compiles, { val = newval; } ) )
     {
+        static assert( ms != MemoryOrder.acq, "invalid MemoryOrder for atomicStore()" );
+        static assert( __traits(isPOD, T), "argument to atomicStore() must be POD" );
+
         static if( T.sizeof == byte.sizeof )
         {
             //////////////////////////////////////////////////////////////////
@@ -531,7 +577,7 @@ else version( AsmX86_32 )
 
             static if( needsStoreBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov DL, newval;
@@ -541,7 +587,7 @@ else version( AsmX86_32 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov DL, newval;
@@ -557,7 +603,7 @@ else version( AsmX86_32 )
 
             static if( needsStoreBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov DX, newval;
@@ -567,7 +613,7 @@ else version( AsmX86_32 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov DX, newval;
@@ -583,7 +629,7 @@ else version( AsmX86_32 )
 
             static if( needsStoreBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov EDX, newval;
@@ -593,7 +639,7 @@ else version( AsmX86_32 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EAX, val;
                     mov EDX, newval;
@@ -607,7 +653,7 @@ else version( AsmX86_32 )
             // 8 Byte Store on a 32-Bit Processor
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 push EDI;
                 push EBX;
@@ -631,11 +677,11 @@ else version( AsmX86_32 )
     }
 
 
-    void atomicFence() nothrow
+    void atomicFence() nothrow @nogc @safe
     {
         import core.cpuid;
 
-        asm
+        asm pure nothrow @nogc @trusted
         {
             naked;
 
@@ -668,16 +714,45 @@ else version( AsmX86_32 )
 }
 else version( AsmX86_64 )
 {
-    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) nothrow
+    // Uses specialized asm for fast fetch and add operations
+    private HeadUnshared!(T) atomicFetchAdd(T)( ref shared T val, size_t mod ) pure nothrow @nogc @trusted
+        if( __traits(isIntegral, T) )
+    in
+    {
+        assert( atomicValueIsProperlyAligned(val));
+    }
+    body
+    {
+        size_t tmp = mod;
+        asm pure nothrow @nogc @trusted
+        {
+            mov RAX, tmp;
+            mov RDX, val;
+        }
+        static if (T.sizeof == 1) asm pure nothrow @nogc @trusted { lock; xadd[RDX], AL; }
+        else static if (T.sizeof == 2) asm pure nothrow @nogc @trusted { lock; xadd[RDX], AX; }
+        else static if (T.sizeof == 4) asm pure nothrow @nogc @trusted { lock; xadd[RDX], EAX; }
+        else static if (T.sizeof == 8) asm pure nothrow @nogc @trusted { lock; xadd[RDX], RAX; }
+
+        asm pure nothrow @nogc @trusted
+        {
+            mov tmp, RAX;
+        }
+
+        return cast(T)tmp;
+    }
+
+    private HeadUnshared!(T) atomicFetchSub(T)( ref shared T val, size_t mod ) pure nothrow @nogc @safe
+        if( __traits(isIntegral, T) )
+    {
+        return atomicFetchAdd(val, -mod);
+    }
+
+    HeadUnshared!(T) atomicOp(string op, T, V1)( ref shared T val, V1 mod ) pure nothrow @nogc
         if( __traits( compiles, mixin( "*cast(T*)&val" ~ op ~ "mod" ) ) )
     in
     {
-        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
-        //       4 byte alignment, so use size_t as the align type here.
-        static if( T.sizeof > size_t.sizeof )
-            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) &val ) );
-        else
-            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) &val ) );
+        assert( atomicValueIsProperlyAligned(val));
     }
     body
     {
@@ -701,7 +776,15 @@ else version( AsmX86_64 )
         //
         // +=   -=  *=  /=  %=  ^^= &=
         // |=   ^=  <<= >>= >>>=    ~=
-        static if( op == "+=" || op == "-="  || op == "*="  || op == "/=" ||
+        static if( op == "+=" && __traits(isIntegral, T) && __traits(isIntegral, V1))
+        {
+            return cast(T)(atomicFetchAdd!(T)(val, mod) + mod);
+        }
+        else static if( op == "-=" && __traits(isIntegral, T) && __traits(isIntegral, V1))
+        {
+            return cast(T)(atomicFetchSub!(T)(val, mod) - mod);
+        }
+        else static if( op == "+=" || op == "-="  || op == "*="  || op == "/=" ||
                    op == "%=" || op == "^^=" || op == "&="  || op == "|=" ||
                    op == "^=" || op == "<<=" || op == ">>=" || op == ">>>=" ) // skip "~="
         {
@@ -711,7 +794,7 @@ else version( AsmX86_64 )
             {
                 get = set = atomicLoad!(MemoryOrder.raw)( val );
                 mixin( "set " ~ op ~ " mod;" );
-            } while( !cas( &val, get, set ) );
+            } while( !casByRef( val, get, set ) );
             return set;
         }
         else
@@ -721,33 +804,33 @@ else version( AsmX86_64 )
     }
 
 
-    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, const V2 writeThis ) nothrow
+    bool casByRef(T,V1,V2)( ref T value, V1 ifThis, V2 writeThis ) pure nothrow @nogc @trusted
+    {
+        return cas(&value, ifThis, writeThis);
+    }
+
+    bool cas(T,V1,V2)( shared(T)* here, const V1 ifThis, V2 writeThis ) pure nothrow @nogc @safe
         if( !is(T == class) && !is(T U : U*) &&  __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) nothrow
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1) ifThis, shared(V2) writeThis ) pure nothrow @nogc @safe
         if( is(T == class) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) nothrow
+    bool cas(T,V1,V2)( shared(T)* here, const shared(V1)* ifThis, shared(V2)* writeThis ) pure nothrow @nogc @safe
         if( is(T U : U*) && __traits( compiles, { *here = writeThis; } ) )
     {
         return casImpl(here, ifThis, writeThis);
     }
 
-    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) nothrow
+    private bool casImpl(T,V1,V2)( shared(T)* here, V1 ifThis, V2 writeThis ) pure nothrow @nogc @safe
     in
     {
-        // NOTE: 32 bit x86 systems support 8 byte CAS, which only requires
-        //       4 byte alignment, so use size_t as the align type here.
-        static if( T.sizeof > size_t.sizeof )
-            assert( atomicValueIsProperlyAligned!(size_t)( cast(size_t) here ) );
-        else
-            assert( atomicValueIsProperlyAligned!(T)( cast(size_t) here ) );
+        assert( atomicPtrIsProperlyAligned( here ) );
     }
     body
     {
@@ -757,7 +840,7 @@ else version( AsmX86_64 )
             // 1 Byte CAS
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 mov DL, writeThis;
                 mov AL, ifThis;
@@ -773,7 +856,7 @@ else version( AsmX86_64 )
             // 2 Byte CAS
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 mov DX, writeThis;
                 mov AX, ifThis;
@@ -789,7 +872,7 @@ else version( AsmX86_64 )
             // 4 Byte CAS
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 mov EDX, writeThis;
                 mov EAX, ifThis;
@@ -805,7 +888,7 @@ else version( AsmX86_64 )
             // 8 Byte CAS on a 64-Bit Processor
             //////////////////////////////////////////////////////////////////
 
-            asm
+            asm pure nothrow @nogc @trusted
             {
                 mov RDX, writeThis;
                 mov RAX, ifThis;
@@ -813,6 +896,59 @@ else version( AsmX86_64 )
                 lock; // lock always needed to make this op atomic
                 cmpxchg [RCX], RDX;
                 setz AL;
+            }
+        }
+        else static if( T.sizeof == long.sizeof*2 && has128BitCAS)
+        {
+            //////////////////////////////////////////////////////////////////
+            // 16 Byte CAS on a 64-Bit Processor
+            //////////////////////////////////////////////////////////////////
+            version(Win64){
+                //Windows 64 calling convention uses different registers.
+                //DMD appears to reverse the register order.
+                asm pure nothrow @nogc @trusted
+                {
+                    push RDI;
+                    push RBX;
+                    mov R9, writeThis;
+                    mov R10, ifThis;
+                    mov R11, here;
+
+                    mov RDI, R9;
+                    mov RBX, [RDI];
+                    mov RCX, 8[RDI];
+
+                    mov RDI, R10;
+                    mov RAX, [RDI];
+                    mov RDX, 8[RDI];
+
+                    mov RDI, R11;
+                    lock;
+                    cmpxchg16b [RDI];
+                    setz AL;
+                    pop RBX;
+                    pop RDI;
+                }
+
+            }else{
+
+                asm pure nothrow @nogc @trusted
+                {
+                    push RDI;
+                    push RBX;
+                    lea RDI, writeThis;
+                    mov RBX, [RDI];
+                    mov RCX, 8[RDI];
+                    lea RDI, ifThis;
+                    mov RAX, [RDI];
+                    mov RDX, 8[RDI];
+                    mov RDI, here;
+                    lock; // lock always needed to make this op atomic
+                    cmpxchg16b [RDI];
+                    setz AL;
+                    pop RBX;
+                    pop RDI;
+                }
             }
         }
         else
@@ -836,26 +972,11 @@ else version( AsmX86_64 )
 
     private
     {
-        template isHoistOp(MemoryOrder ms)
-        {
-            enum bool isHoistOp = ms == MemoryOrder.acq ||
-                                  ms == MemoryOrder.seq;
-        }
-
-
-        template isSinkOp(MemoryOrder ms)
-        {
-            enum bool isSinkOp = ms == MemoryOrder.rel ||
-                                 ms == MemoryOrder.seq;
-        }
-
-
         // NOTE: x86 loads implicitly have acquire semantics so a memory
         //       barrier is only necessary on releases.
         template needsLoadBarrier( MemoryOrder ms )
         {
-            enum bool needsLoadBarrier = ms == MemoryOrder.seq ||
-                                               isSinkOp!(ms);
+            enum bool needsLoadBarrier = ms == MemoryOrder.seq;
         }
 
 
@@ -863,14 +984,17 @@ else version( AsmX86_64 )
         //       barrier is only necessary on acquires.
         template needsStoreBarrier( MemoryOrder ms )
         {
-            enum bool needsStoreBarrier = ms == MemoryOrder.seq ||
-                                                isHoistOp!(ms);
+            enum bool needsStoreBarrier = ms == MemoryOrder.seq;
         }
     }
 
 
-    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) nothrow
-    if(!__traits(isFloating, T)) {
+    HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) pure nothrow @nogc @safe
+    if(!__traits(isFloating, T))
+    {
+        static assert( ms != MemoryOrder.rel, "invalid MemoryOrder for atomicLoad()" );
+        static assert( __traits(isPOD, T), "argument to atomicLoad() must be POD" );
+
         static if( T.sizeof == byte.sizeof )
         {
             //////////////////////////////////////////////////////////////////
@@ -879,7 +1003,7 @@ else version( AsmX86_64 )
 
             static if( needsLoadBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov DL, 0;
                     mov AL, 0;
@@ -890,7 +1014,7 @@ else version( AsmX86_64 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov AL, [RAX];
@@ -905,7 +1029,7 @@ else version( AsmX86_64 )
 
             static if( needsLoadBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov DX, 0;
                     mov AX, 0;
@@ -916,7 +1040,7 @@ else version( AsmX86_64 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov AX, [RAX];
@@ -931,7 +1055,7 @@ else version( AsmX86_64 )
 
             static if( needsLoadBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov EDX, 0;
                     mov EAX, 0;
@@ -942,7 +1066,7 @@ else version( AsmX86_64 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov EAX, [RAX];
@@ -957,7 +1081,7 @@ else version( AsmX86_64 )
 
             static if( needsLoadBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RDX, 0;
                     mov RAX, 0;
@@ -968,10 +1092,52 @@ else version( AsmX86_64 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov RAX, [RAX];
+                }
+            }
+        }
+        else static if( T.sizeof == long.sizeof*2 && has128BitCAS )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 16 Byte Load on a 64-Bit Processor
+            //////////////////////////////////////////////////////////////////
+            version(Win64){
+                size_t[2] retVal;
+                asm pure nothrow @nogc @trusted
+                {
+                    push RDI;
+                    push RBX;
+                    mov RDI, val;
+                    mov RBX, 0;
+                    mov RCX, 0;
+                    mov RAX, 0;
+                    mov RDX, 0;
+                    lock; // lock always needed to make this op atomic
+                    cmpxchg16b [RDI];
+                    lea RDI, retVal;
+                    mov [RDI], RAX;
+                    mov 8[RDI], RDX;
+                    pop RBX;
+                    pop RDI;
+                }
+                return cast(typeof(return)) retVal;
+            }else{
+                asm pure nothrow @nogc @trusted
+                {
+                    push RDI;
+                    push RBX;
+                    mov RBX, 0;
+                    mov RCX, 0;
+                    mov RAX, 0;
+                    mov RDX, 0;
+                    mov RDI, val;
+                    lock; // lock always needed to make this op atomic
+                    cmpxchg16b [RDI];
+                    pop RBX;
+                    pop RDI;
                 }
             }
         }
@@ -982,9 +1148,12 @@ else version( AsmX86_64 )
     }
 
 
-    void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V1)( ref shared T val, V1 newval ) nothrow
+    void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V1)( ref shared T val, V1 newval ) pure nothrow @nogc @safe
         if( __traits( compiles, { val = newval; } ) )
     {
+        static assert( ms != MemoryOrder.acq, "invalid MemoryOrder for atomicStore()" );
+        static assert( __traits(isPOD, T), "argument to atomicStore() must be POD" );
+
         static if( T.sizeof == byte.sizeof )
         {
             //////////////////////////////////////////////////////////////////
@@ -993,7 +1162,7 @@ else version( AsmX86_64 )
 
             static if( needsStoreBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov DL, newval;
@@ -1003,7 +1172,7 @@ else version( AsmX86_64 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov DL, newval;
@@ -1019,7 +1188,7 @@ else version( AsmX86_64 )
 
             static if( needsStoreBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov DX, newval;
@@ -1029,7 +1198,7 @@ else version( AsmX86_64 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov DX, newval;
@@ -1045,7 +1214,7 @@ else version( AsmX86_64 )
 
             static if( needsStoreBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov EDX, newval;
@@ -1055,7 +1224,7 @@ else version( AsmX86_64 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov EDX, newval;
@@ -1071,7 +1240,7 @@ else version( AsmX86_64 )
 
             static if( needsStoreBarrier!(ms) )
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov RDX, newval;
@@ -1081,11 +1250,57 @@ else version( AsmX86_64 )
             }
             else
             {
-                asm
+                asm pure nothrow @nogc @trusted
                 {
                     mov RAX, val;
                     mov RDX, newval;
                     mov [RAX], RDX;
+                }
+            }
+        }
+        else static if( T.sizeof == long.sizeof*2 && has128BitCAS )
+        {
+            //////////////////////////////////////////////////////////////////
+            // 16 Byte Store on a 64-Bit Processor
+            //////////////////////////////////////////////////////////////////
+            version(Win64){
+                asm pure nothrow @nogc @trusted
+                {
+                    push RDI;
+                    push RBX;
+                    mov R9, val;
+                    mov R10, newval;
+
+                    mov RDI, R10;
+                    mov RBX, [RDI];
+                    mov RCX, 8[RDI];
+
+                    mov RDI, R9;
+                    mov RAX, [RDI];
+                    mov RDX, 8[RDI];
+
+                    L1: lock; // lock always needed to make this op atomic
+                    cmpxchg16b [RDI];
+                    jne L1;
+                    pop RBX;
+                    pop RDI;
+                }
+            }else{
+                asm pure nothrow @nogc @trusted
+                {
+                    push RDI;
+                    push RBX;
+                    lea RDI, newval;
+                    mov RBX, [RDI];
+                    mov RCX, 8[RDI];
+                    mov RDI, val;
+                    mov RAX, [RDI];
+                    mov RDX, 8[RDI];
+                    L1: lock; // lock always needed to make this op atomic
+                    cmpxchg16b [RDI];
+                    jne L1;
+                    pop RBX;
+                    pop RDI;
                 }
             }
         }
@@ -1096,10 +1311,10 @@ else version( AsmX86_64 )
     }
 
 
-    void atomicFence() nothrow
+    void atomicFence() nothrow @nogc @safe
     {
         // SSE2 is always present in 64-bit x86 chips.
-        asm
+        asm nothrow @nogc @trusted
         {
             naked;
 
@@ -1113,7 +1328,7 @@ else version( AsmX86_64 )
 // floats and doubles to ints and longs, atomically loads them, then puns
 // them back.  This is necessary so that they get returned in floating
 // point instead of integer registers.
-HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) nothrow
+HeadUnshared!(T) atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)( ref const shared T val ) pure nothrow @nogc @trusted
 if(__traits(isFloating, T))
 {
     static if(T.sizeof == int.sizeof)
@@ -1136,11 +1351,17 @@ if(__traits(isFloating, T))
     }
 }
 
-// assumeLocal is architecture-independent: it is just a cast
-ref auto assumeLocal(T)( ref shared T val ) @trusted pure nothrow
-    if( !is( T == class ) )
+// assumeUnshared is architecture-independent: it is just a cast
+ref auto assumeUnshared(T)(ref shared T val) @system @nogc pure nothrow
+    if(!is(T == class) && !is(T == interface))
 {
     return *cast(T*)&val;
+}
+
+// immutable is implicitly unshared
+ref auto assumeUnshared(T)(ref immutable(T) val) @safe @nogc pure nothrow
+{
+    return val;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1150,7 +1371,7 @@ ref auto assumeLocal(T)( ref shared T val ) @trusted pure nothrow
 
 version( unittest )
 {
-    void testCAS(T)( T val ) pure nothrow
+    void testCAS(T)( T val ) pure nothrow @nogc @trusted
     in
     {
         assert(val !is T.init);
@@ -1169,7 +1390,7 @@ version( unittest )
         assert( atom is val, T.stringof );
     }
 
-    void testLoadStore(MemoryOrder ms = MemoryOrder.seq, T)( T val = T.init + 1 ) pure nothrow
+    void testLoadStore(MemoryOrder ms = MemoryOrder.seq, T)( T val = T.init + 1 ) pure nothrow @nogc @trusted
     {
         T         base = cast(T) 0;
         shared(T) atom = cast(T) 0;
@@ -1184,16 +1405,14 @@ version( unittest )
     }
 
 
-    void testType(T)( T val = T.init + 1 ) pure nothrow
+    void testType(T)( T val = T.init + 1 ) pure nothrow @nogc @safe
     {
         testCAS!(T)( val );
         testLoadStore!(MemoryOrder.seq, T)( val );
         testLoadStore!(MemoryOrder.raw, T)( val );
     }
 
-
-    //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=8081
-    /+pure nothrow+/ unittest
+    @safe pure nothrow unittest
     {
         testType!(bool)();
 
@@ -1237,8 +1456,47 @@ version( unittest )
         assert( d == 1 );
     }
 
-    //@@@BUG@@@ http://d.puremagic.com/issues/show_bug.cgi?id=8081
-    /+pure nothrow+/ unittest
+    pure nothrow unittest
+    {
+        static if (has128BitCAS)
+        {
+            struct DoubleValue
+            {
+                long value1;
+                long value2;
+            }
+
+            align(16) shared DoubleValue a;
+            atomicStore(a, DoubleValue(1,2));
+            assert(a.value1 == 1 && a.value2 ==2);
+
+            while(!cas(&a, DoubleValue(1,2), DoubleValue(3,4))){}
+            assert(a.value1 == 3 && a.value2 ==4);
+
+            align(16) DoubleValue b = atomicLoad(a);
+            assert(b.value1 == 3 && b.value2 ==4);
+        }
+
+        version (D_LP64)
+        {
+            enum hasDWCAS = has128BitCAS;
+        }
+        else
+        {
+            enum hasDWCAS = has64BitCAS;
+        }
+
+        static if (hasDWCAS)
+        {
+            static struct List { size_t gen; List* next; }
+            shared(List) head;
+            assert(cas(&head, shared(List)(0, null), shared(List)(1, cast(List*)1)));
+            assert(head.gen == 1);
+            assert(cast(size_t)head.next == 1);
+        }
+    }
+
+    pure nothrow unittest
     {
         static struct S { int val; }
         auto s = shared(S)(1);
@@ -1300,24 +1558,142 @@ version( unittest )
         assert(*r == 42);
     }
 
-    unittest
+    // === atomicFetchAdd and atomicFetchSub operations ====
+    pure nothrow @nogc @safe unittest
+    {
+        shared ubyte u8 = 1;
+        shared ushort u16 = 2;
+        shared uint u32 = 3;
+        shared byte i8 = 5;
+        shared short i16 = 6;
+        shared int i32 = 7;
+
+        assert(atomicOp!"+="(u8, 8) == 9);
+        assert(atomicOp!"+="(u16, 8) == 10);
+        assert(atomicOp!"+="(u32, 8) == 11);
+        assert(atomicOp!"+="(i8, 8) == 13);
+        assert(atomicOp!"+="(i16, 8) == 14);
+        assert(atomicOp!"+="(i32, 8) == 15);
+        version( AsmX86_64 )
+        {
+            shared ulong u64 = 4;
+            shared long i64 = 8;
+            assert(atomicOp!"+="(u64, 8) == 12);
+            assert(atomicOp!"+="(i64, 8) == 16);
+        }
+    }
+
+    pure nothrow @nogc @safe unittest
+    {
+        shared ubyte u8 = 1;
+        shared ushort u16 = 2;
+        shared uint u32 = 3;
+        shared byte i8 = 5;
+        shared short i16 = 6;
+        shared int i32 = 7;
+
+        assert(atomicOp!"-="(u8, 1) == 0);
+        assert(atomicOp!"-="(u16, 1) == 1);
+        assert(atomicOp!"-="(u32, 1) == 2);
+        assert(atomicOp!"-="(i8, 1) == 4);
+        assert(atomicOp!"-="(i16, 1) == 5);
+        assert(atomicOp!"-="(i32, 1) == 6);
+        version( AsmX86_64 )
+        {
+            shared ulong u64 = 4;
+            shared long i64 = 8;
+            assert(atomicOp!"-="(u64, 1) == 3);
+            assert(atomicOp!"-="(i64, 1) == 7);
+        }
+    }
+
+    pure nothrow @nogc @safe unittest // issue 16651
+    {
+        shared ulong a = 2;
+        uint b = 1;
+        atomicOp!"-="( a, b );
+        assert(a == 1);
+
+        shared uint c = 2;
+        ubyte d = 1;
+        atomicOp!"-="( c, d );
+        assert(c == 1);
+    }
+
+    pure nothrow @nogc @system unittest
     {
                int base = 0;
         shared int atom = 0;
 
         // only accept shared lvalues
-        static assert(!__traits(compiles, assumeLocal(base)));
-        static assert(!__traits(compiles, assumeLocal(cast(shared)base)));
+        static assert(!is(typeof(assumeUnshared(base))));
+        static assert(!is(typeof(assumeUnshared(cast(shared)base))));
 
-        ++assumeLocal(atom);
+        ++assumeUnshared(atom);
         assert(atomicLoad!(MemoryOrder.raw)(atom) == 1);
+    }
 
-        static class Klass {}
-        auto c1 = new Klass;
-        auto c2 = new shared Klass;
+    pure nothrow @nogc @system unittest
+    {
+        shared const     int catom = 0;
+        shared immutable int iatom = 0;
+        // allow const
+        static assert(is(typeof(assumeUnshared(catom))));
+        static assert(is(typeof(assumeUnshared(iatom))));
+        // preserve const
+        static assert(!is(typeof(++assumeUnshared(catom))));
+        static assert(!is(typeof(++assumeUnshared(iatom))));
+    }
+
+    pure nothrow @nogc @system unittest
+    {
+        class Klass {}
+
+               Klass c1;
+        shared Klass c2;
 
         // don't accept class instances
-        static assert(!__traits(compiles, assumeLocal(c1)));
-        static assert(!__traits(compiles, assumeLocal(c2)));
+        static assert(!is(typeof(assumeUnshared(c1))));
+        static assert(!is(typeof(assumeUnshared(c2))));
+    }
+
+    pure nothrow @nogc @system unittest
+    {
+        interface Interface {}
+               Interface i1;
+        shared Interface i2;
+
+        // don't accept interfaces
+        static assert(!is(typeof(assumeUnshared(i1))));
+        static assert(!is(typeof(assumeUnshared(i2))));
+    }
+
+    pure nothrow @nogc @system unittest
+    {
+        // test assumeShared with inout
+        shared struct S
+        {
+            int atom = 0;
+
+            @property ref get() inout
+            {
+                return atom.assumeUnshared;
+            }
+        }
+
+        shared           S sm;
+        shared const     S sc;
+        shared immutable S si;
+
+        static assert(is(typeof(sm.get) == int));
+        static assert(is(typeof(sc.get) == const(int)));
+        static assert(is(typeof(si.get) == immutable(int)));
+
+        static assert( is(typeof(++sm.get)));
+        static assert(!is(typeof(++sc.get)));
+        static assert(!is(typeof(++si.get)));
+
+        sm.get += 10;
+        assert(atomicLoad!(MemoryOrder.raw)(sm.atom) == 10);
     }
 }

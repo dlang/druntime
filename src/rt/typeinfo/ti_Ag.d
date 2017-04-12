@@ -2,7 +2,7 @@
  * TypeInfo support code.
  *
  * Copyright: Copyright Digital Mars 2004 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
  */
 
@@ -15,7 +15,7 @@ module rt.typeinfo.ti_Ag;
 
 private import core.stdc.string;
 private import rt.util.hash;
-private import rt.util.string;
+private import core.internal.string;
 
 // byte[]
 
@@ -27,8 +27,8 @@ class TypeInfo_Ag : TypeInfo_Array
 
     override size_t getHash(in void* p) @trusted const
     {
-        byte[] s = *cast(byte[]*)p;
-        return hashOf(s.ptr, s.length * byte.sizeof);
+        const s = *cast(const void[]*)p;
+        return rt.util.hash.hashOf(s, 0);
     }
 
     override bool equals(in void* p1, in void* p2) const

@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -17,8 +17,19 @@ module core.sys.posix.utime;
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for time_t
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
+nothrow:
+@nogc:
 
 //
 // Required
@@ -33,7 +44,7 @@ struct utimbuf
 int utime(in char*, in utimbuf*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     struct utimbuf
     {
@@ -43,7 +54,7 @@ version( linux )
 
     int utime(in char*, in utimbuf*);
 }
-else version( OSX )
+else version( Darwin )
 {
     struct utimbuf
     {
@@ -54,6 +65,36 @@ else version( OSX )
     int utime(in char*, in utimbuf*);
 }
 else version( FreeBSD )
+{
+    struct utimbuf
+    {
+        time_t  actime;
+        time_t  modtime;
+    }
+
+    int utime(in char*, in utimbuf*);
+}
+else version(NetBSD)
+{
+    struct utimbuf
+    {
+        time_t  actime;
+        time_t  modtime;
+    }
+
+    int utime(in char*, in utimbuf*);
+}
+else version( Solaris )
+{
+    struct utimbuf
+    {
+        time_t  actime;
+        time_t  modtime;
+    }
+
+    int utime(in char*, in utimbuf*);
+}
+else version( CRuntime_Bionic )
 {
     struct utimbuf
     {

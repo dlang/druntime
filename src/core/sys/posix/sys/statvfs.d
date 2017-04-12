@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Robert Klotzner 2012
- * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Robert Klotzner
  * Standards: The Open Group Base Specifications Issue 6 IEEE Std 1003.1, 2004 Edition
  */
@@ -15,8 +15,8 @@ public import core.sys.posix.sys.types;
 version (Posix):
 extern (C) :
 
-version(linux) {
-    static if(__WORDSIZE == 32) 
+version(CRuntime_Glibc) {
+    static if(__WORDSIZE == 32)
     {
         version=_STATVFSBUF_F_UNUSED;
     }
@@ -31,17 +31,17 @@ version(linux) {
         fsfilcnt_t f_ffree;
         fsfilcnt_t f_favail;
         c_ulong f_fsid;
-        version(_STATVFSBUF_F_UNUSED) 
+        version(_STATVFSBUF_F_UNUSED)
         {
             int __f_unused;
         }
         c_ulong f_flag;
         c_ulong f_namemax;
-        int __f_spare[6];
+        int[6] __f_spare;
     }
     /* Definitions for the flag in `f_flag'.  These definitions should be
       kept in sync with the definitions in <sys/mount.h>.  */
-    static if(__USE_GNU) 
+    static if(__USE_GNU)
     {
         enum FFlag
         {
@@ -60,7 +60,7 @@ version(linux) {
 
         }
     }  /* Use GNU.  */
-    else 
+    else
     { // Posix defined:
         enum FFlag
         {
@@ -74,7 +74,7 @@ version(linux) {
         int statvfs64 (const char * file, statvfs_t* buf);
         alias statvfs64 statvfs;
 
-        int fstatvfs64 (int fildes, statvfs_t *buf);
+        int fstatvfs64 (int fildes, statvfs_t *buf) @trusted;
         alias fstatvfs64 fstatvfs;
     }
     else
@@ -108,5 +108,5 @@ else
     }
 
     int statvfs (const char * file, statvfs_t* buf);
-    int fstatvfs (int fildes, statvfs_t *buf);
+    int fstatvfs (int fildes, statvfs_t *buf) @trusted;
 }
