@@ -753,6 +753,9 @@ private struct Demangle
                 parseType();
                 put( ')' );
                 return dst[beg .. len];
+            case 'p': // extern(Pascal) function
+                pos--; // step back to 'N'
+                return parseTypeFunction( name );
             default:
                 error();
                 assert( 0 );
@@ -943,6 +946,11 @@ private struct Demangle
             popFront();
             put( "extern (Windows) " );
             break;
+        case 'N':
+            popFront();
+            if( front != 'p' )
+                error();
+            goto case;
         case 'V': // Pascal
             popFront();
             put( "extern (Pascal) " );
