@@ -88,19 +88,19 @@ class Semaphore
         {
             m_hndl = CreateSemaphoreA( null, count, int.max, null );
             if( m_hndl == m_hndl.init )
-                throw new SyncError( "Unable to create semaphore" );
+                assert(0, "Unable to create semaphore" );
         }
         else version( Darwin )
         {
             auto rc = semaphore_create( mach_task_self(), &m_hndl, SYNC_POLICY_FIFO, count );
             if( rc )
-                throw new SyncError( "Unable to create semaphore" );
+                assert(0, "Unable to create semaphore" );
         }
         else version( Posix )
         {
             int rc = sem_init( &m_hndl, 0, count );
             if( rc )
-                throw new SyncError( "Unable to create semaphore" );
+                assert(0, "Unable to create semaphore" );
         }
     }
 
@@ -143,7 +143,7 @@ class Semaphore
         {
             DWORD rc = WaitForSingleObject( m_hndl, INFINITE );
             if( rc != WAIT_OBJECT_0 )
-                throw new SyncError( "Unable to wait for semaphore" );
+                assert(0, "Unable to wait for semaphore" );
         }
         else version( Darwin )
         {
@@ -154,7 +154,7 @@ class Semaphore
                     return;
                 if( rc == KERN_ABORTED && errno == EINTR )
                     continue;
-                throw new SyncError( "Unable to wait for semaphore" );
+                assert(0, "Unable to wait for semaphore" );
             }
         }
         else version( Posix )
@@ -164,7 +164,7 @@ class Semaphore
                 if( !sem_wait( &m_hndl ) )
                     return;
                 if( errno != EINTR )
-                    throw new SyncError( "Unable to wait for semaphore" );
+                    assert(0, "Unable to wait for semaphore" );
             }
         }
     }
@@ -211,7 +211,7 @@ class Semaphore
                     period -= maxWaitMillis;
                     continue;
                 default:
-                    throw new SyncError( "Unable to wait for semaphore" );
+                    assert(0, "Unable to wait for semaphore" );
                 }
             }
             switch( WaitForSingleObject( m_hndl, cast(uint) period.total!"msecs" ) )
@@ -221,7 +221,7 @@ class Semaphore
             case WAIT_TIMEOUT:
                 return false;
             default:
-                throw new SyncError( "Unable to wait for semaphore" );
+                assert(0, "Unable to wait for semaphore" );
             }
         }
         else version( Darwin )
@@ -244,7 +244,7 @@ class Semaphore
                 if( rc == KERN_OPERATION_TIMED_OUT )
                     return false;
                 if( rc != KERN_ABORTED || errno != EINTR )
-                    throw new SyncError( "Unable to wait for semaphore" );
+                    assert(0, "Unable to wait for semaphore" );
             }
         }
         else version( Posix )
@@ -259,7 +259,7 @@ class Semaphore
                 if( errno == ETIMEDOUT )
                     return false;
                 if( errno != EINTR )
-                    throw new SyncError( "Unable to wait for semaphore" );
+                    assert(0, "Unable to wait for semaphore" );
             }
         }
     }
@@ -277,19 +277,19 @@ class Semaphore
         version( Windows )
         {
             if( !ReleaseSemaphore( m_hndl, 1, null ) )
-                throw new SyncError( "Unable to notify semaphore" );
+                assert(0, "Unable to notify semaphore" );
         }
         else version( Darwin )
         {
             auto rc = semaphore_signal( m_hndl );
             if( rc )
-                throw new SyncError( "Unable to notify semaphore" );
+                assert(0, "Unable to notify semaphore" );
         }
         else version( Posix )
         {
             int rc = sem_post( &m_hndl );
             if( rc )
-                throw new SyncError( "Unable to notify semaphore" );
+                assert(0, "Unable to notify semaphore" );
         }
     }
 
@@ -315,7 +315,7 @@ class Semaphore
             case WAIT_TIMEOUT:
                 return false;
             default:
-                throw new SyncError( "Unable to wait for semaphore" );
+                assert(0, "Unable to wait for semaphore" );
             }
         }
         else version( Darwin )
@@ -331,7 +331,7 @@ class Semaphore
                 if( errno == EAGAIN )
                     return false;
                 if( errno != EINTR )
-                    throw new SyncError( "Unable to wait for semaphore" );
+                    assert(0, "Unable to wait for semaphore" );
             }
         }
     }
@@ -448,7 +448,10 @@ version( unittest )
 
     unittest
     {
+        import core.stdc.stdio;
+        fputs(__MODULE__~"testWait", stderr);
         testWait();
+        fputs(__MODULE__~"testWaitTimeout", stderr);
         testWaitTimeout();
     }
 }

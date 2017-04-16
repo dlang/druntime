@@ -440,6 +440,9 @@ unittest
 
         scope group = new ThreadGroup;
 
+        import core.stdc.stdio;
+        fputs(__MODULE__~" 2 readers", stderr);
+
         // 2 simultaneous readers
         group.create(&readerFn); group.create(&readerFn);
         rdSemA.wait(); rdSemA.wait();
@@ -449,6 +452,7 @@ unittest
         assert(numReaders == 0);
         foreach (t; group) group.remove(t);
 
+        fputs(__MODULE__~" 1 writer", stderr);
         // 1 writer at a time
         group.create(&writerFn); group.create(&writerFn);
         wrSemA.wait();
@@ -462,6 +466,7 @@ unittest
         assert(numWriters == 0);
         foreach (t; group) group.remove(t);
 
+        fputs(__MODULE__~" reader and writer", stderr);
         // reader and writer are mutually exclusive
         group.create(&readerFn);
         rdSemA.wait();
@@ -477,6 +482,7 @@ unittest
         assert(numReaders == 0 && numWriters == 0);
         foreach (t; group) group.remove(t);
 
+        fputs(__MODULE__~" writer and reader", stderr);
         // writer and reader are mutually exclusive
         group.create(&writerFn);
         wrSemA.wait();
@@ -492,6 +498,7 @@ unittest
         assert(numReaders == 0 && numWriters == 0);
         foreach (t; group) group.remove(t);
 
+        fputs(__MODULE__~" policy", stderr);
         // policy determines whether queued reader or writers progress first
         group.create(&writerFn);
         wrSemA.wait();
@@ -503,6 +510,7 @@ unittest
 
         if (policy == ReadWriteMutex.Policy.PREFER_READERS)
         {
+            fputs(__MODULE__~" prefer readers", stderr);
             rdSemA.wait();
             assert(numReaders == 1 && numWriters == 0);
             rdSemB.notify();
@@ -512,6 +520,7 @@ unittest
         }
         else if (policy == ReadWriteMutex.Policy.PREFER_WRITERS)
         {
+            fputs(__MODULE__~" prefer writers", stderr);
             wrSemA.wait();
             assert(numReaders == 0 && numWriters == 1);
             wrSemB.notify();
@@ -519,8 +528,10 @@ unittest
             assert(numReaders == 1 && numWriters == 0);
             rdSemB.notify();
         }
+        fputs(__MODULE__~" join all", stderr);
         group.joinAll();
         assert(numReaders == 0 && numWriters == 0);
+        fputs(__MODULE__~" remove all", stderr);
         foreach (t; group) group.remove(t);
     }
     runTest(ReadWriteMutex.Policy.PREFER_READERS);
