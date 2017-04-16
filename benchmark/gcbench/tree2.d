@@ -18,7 +18,7 @@ void main(string[] args)
     int n = args.length > 1 ? to!int(args[1]) : 7000000;
     int range = args.length > 2 ? to!int(args[2]) : 100;
 
-    auto t = redBlackTree!int();
+    auto t = redBlackTree!int(null);
 
     for (int i = 0; i < n; i++) {
         if (i > range)
