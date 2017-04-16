@@ -3557,7 +3557,7 @@ private
         obj.m_ctxt.tstack = obj.m_ctxt.bstack;
         obj.m_state = Fiber.State.EXEC;
 
-        try
+        if( obj.catch_exceptions ) try
         {
             obj.run();
         }
@@ -3565,6 +3565,8 @@ private
         {
             obj.m_unhandled = t;
         }
+        else
+            obj.run();
 
         static if( __traits( compiles, ucontext_t ) )
           obj.m_ucur = &obj.m_utxt;
@@ -3976,11 +3978,12 @@ class Fiber
      * Params:
      *  fn = The fiber function.
      *  sz = The stack size for this fiber.
+     *  ce = If true, exceptions will be caught and assigned to m_unhandled
      *
      * In:
      *  fn must not be null.
      */
-    this( void function() fn, size_t sz = PAGESIZE*4 ) nothrow
+    this( void function() fn, size_t sz = PAGESIZE*4, bool ce = true ) nothrow
     in
     {
         assert( fn );
@@ -3988,6 +3991,7 @@ class Fiber
     body
     {
         allocStack( sz );
+        catch_exceptions = ce;
         reset( fn );
     }
 
@@ -3999,11 +4003,12 @@ class Fiber
      * Params:
      *  dg = The fiber function.
      *  sz = The stack size for this fiber.
+     *  ce = If true, exceptions will be caught and assigned to m_unhandled
      *
      * In:
      *  dg must not be null.
      */
-    this( void delegate() dg, size_t sz = PAGESIZE*4 ) nothrow
+    this( void delegate() dg, size_t sz = PAGESIZE*4, bool ce = true ) nothrow
     in
     {
         assert( dg );
@@ -4011,6 +4016,7 @@ class Fiber
     body
     {
         allocStack( sz );
+        catch_exceptions = ce;
         reset( dg );
     }
 
@@ -4289,6 +4295,13 @@ class Fiber
             }
         }
     }
+
+    //
+    // If true, exceptions thrown inside the fiber will be caught and assigned
+    // to m_unhandled, otherwise exceptions will cause a termination of the
+    // program
+    //
+    bool catch_exceptions;
 
 private:
     //
