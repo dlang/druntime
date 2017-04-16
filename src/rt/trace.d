@@ -589,7 +589,8 @@ private void trace_pro(char[] id)
 {
     //printf("trace_pro(ptr = %p, length = %lld)\n", id.ptr, id.length);
     //printf("trace_pro(id = '%.*s')\n", id.length, id.ptr);
-
+    if (!tlsReady)
+        return;
     if (!trace_inited)
     {
         trace_inited = true;
@@ -633,6 +634,8 @@ void _c_trace_pro(size_t idlen, char* idptr)
 void _c_trace_epi()
 {
     //printf("_c_trace_epi()\n");
+    if (!tlsReady)
+        return;
     auto tos = trace_tos;
     if (tos)
     {
@@ -814,6 +817,24 @@ private void trace_merge(Symbol** proot)
         }
     L1:
         fclose(fp);
+    }
+}
+
+////////////////////////// TLS /////////////////////
+
+/// true when (emulated) TLS can be used
+@property bool tlsReady()
+{
+    version (OSX)
+    {
+        // don't profile until TLS is initialized
+        import rt.sections : _isRuntimeInitialized;
+        if (!_isRuntimeInitialized)
+            return;
+    }
+    else
+    {
+        return true;
     }
 }
 
