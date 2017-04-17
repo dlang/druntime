@@ -95,7 +95,6 @@ $(DOCDIR)\core_time.html : src\core\time.d
 $(DOCDIR)\core_vararg.html : src\core\vararg.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
-
 $(DOCDIR)\core_stdc_complex.html : src\core\stdc\complex.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
@@ -175,6 +174,9 @@ $(DOCDIR)\core_sync_rwmutex.html : src\core\sync\rwmutex.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 $(DOCDIR)\core_sync_semaphore.html : src\core\sync\semaphore.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
+$(DOCDIR)\etc_linux_memoryerror.html : src\etc\linux\memoryerror.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 changelog.html: changelog.dd

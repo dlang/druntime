@@ -166,6 +166,9 @@ $(DOCDIR)\core_sync_rwmutex.html : src\core\sync\rwmutex.d
 $(DOCDIR)\core_sync_semaphore.html : src\core\sync\semaphore.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
+$(DOCDIR)\etc_linux_memoryerror.html : src\etc\linux\memoryerror.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
 changelog.html: changelog.dd
 	$(DMD) -Dfchangelog.html changelog.dd
 

@@ -45,4 +45,6 @@ DOCS=\
 	$(DOCDIR)\core_sync_exception.html \
 	$(DOCDIR)\core_sync_mutex.html \
 	$(DOCDIR)\core_sync_rwmutex.html \
-	$(DOCDIR)\core_sync_semaphore.html
+	$(DOCDIR)\core_sync_semaphore.html \
+	\
+	$(DOCDIR)\etc_linux_memoryerror.html
