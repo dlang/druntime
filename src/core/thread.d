@@ -431,7 +431,8 @@ else version( Posix )
         extern (C) void thread_suspendHandler( int sig ) nothrow
         in
         {
-            assert( sig == suspendSignalNumber );
+            if( sig != suspendSignalNumber )
+                onThreadError( "Unexpected suspend signal" );
         }
         body
         {
@@ -441,7 +442,8 @@ else version( Posix )
                 //       stack, any other stack data used by this function should
                 //       be gone before the stack cleanup code is called below.
                 Thread obj = Thread.getThis();
-                assert(obj !is null);
+                if( obj is null )
+                    onThreadError( "Cannot suspend null thread" );
 
                 if( !obj.m_lock )
                 {
@@ -449,17 +451,13 @@ else version( Posix )
                 }
 
                 sigset_t    sigres = void;
-                int         status;
 
-                status = sigfillset( &sigres );
-                assert( status == 0 );
-
-                status = sigdelset( &sigres, resumeSignalNumber );
-                assert( status == 0 );
+                sigfillset( &sigres );
+                sigdelset( &sigres, resumeSignalNumber );
 
                 version (FreeBSD) obj.m_suspendagain = false;
-                status = sem_post( &suspendCount );
-                assert( status == 0 );
+                if( sem_post( &suspendCount ) )
+                    onThreadError( "Invalid suspendCount semaphore" );
 
                 sigsuspend( &sigres );
 
@@ -476,7 +474,8 @@ else version( Posix )
                 if (THR_IN_CRITICAL(obj.m_addr))
                 {
                     obj.m_suspendagain = true;
-                    if (sem_post(&suspendCount)) assert(0);
+                    if (sem_post(&suspendCount))
+                        onThreadError( "Invalid suspendCount semaphore" );
                     return;
                 }
             }
@@ -488,7 +487,8 @@ else version( Posix )
         extern (C) void thread_resumeHandler( int sig ) nothrow
         in
         {
-            assert( sig == resumeSignalNumber );
+            if( sig != resumeSignalNumber )
+                onThreadError( "Unexpected resume signal" );
         }
         body
         {
@@ -2356,7 +2356,8 @@ else
     private void callWithStackShell(scope void delegate(void* sp) nothrow fn) nothrow
     in
     {
-        assert(fn);
+        if( !fn )
+            onThreadError( "Cannot call null function" );
     }
     body
     {
@@ -2669,7 +2670,8 @@ extern (C) void thread_suspendAll() nothrow
         else version (Posix)
         {
             // subtract own thread
-            assert(cnt >= 1);
+            if (cnt == 0)
+                onThreadError("Invalid thread count");
             --cnt;
         Lagain:
             // wait for semaphore notifications
