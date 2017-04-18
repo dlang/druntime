@@ -431,7 +431,8 @@ else version( Posix )
         extern (C) void thread_suspendHandler( int sig ) nothrow
         in
         {
-            assert( sig == suspendSignalNumber );
+            if( sig != suspendSignalNumber )
+                onThreadError( "Unexpected suspend signal" );
         }
         body
         {
@@ -441,27 +442,24 @@ else version( Posix )
                 //       stack, any other stack data used by this function should
                 //       be gone before the stack cleanup code is called below.
                 Thread obj = Thread.getThis();
-                assert(obj !is null);
+                if( obj is null )
+                    onThreadError( "Cannot suspend null thread" );
 
                 if( !obj.m_lock )
                 {
                     obj.m_curr.tstack = getStackTop();
                 }
 
-                sigset_t    sigres = void;
-                int         status;
+                sigset_t    resmask = void;
 
-                status = sigfillset( &sigres );
-                assert( status == 0 );
-
-                status = sigdelset( &sigres, resumeSignalNumber );
-                assert( status == 0 );
+                sigemptyset( &resmask );
+                sigaddset( &resmask, resumeSignalNumber );
 
                 version (FreeBSD) obj.m_suspendagain = false;
-                status = sem_post( &suspendCount );
-                assert( status == 0 );
+                if( sem_post( &suspendCount ) )
+                    onThreadError( "Invalid suspendCount semaphore" );
 
-                sigsuspend( &sigres );
+                sigwait( &resmask, &sig );
 
                 if( !obj.m_lock )
                 {
@@ -2015,9 +2013,7 @@ extern (C) void thread_init()
         //       restart.
         sigusr2.sa_flags   = 0;
         sigusr2.sa_handler = &thread_resumeHandler;
-        // NOTE: We want to ignore all signals while in this handler, so fill
-        //       sa_mask to indicate this.
-        status = sigfillset( &sigusr2.sa_mask );
+        status = sigemptyset( &sigusr2.sa_mask );
         assert( status == 0 );
 
         status = sigaction( suspendSignalNumber, &sigusr1, null );
@@ -2356,7 +2352,8 @@ else
     private void callWithStackShell(scope void delegate(void* sp) nothrow fn) nothrow
     in
     {
-        assert(fn);
+        if( !fn )
+            onThreadError( "Cannot call null function" );
     }
     body
     {
