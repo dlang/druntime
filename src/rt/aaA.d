@@ -674,6 +674,7 @@ struct Range
 {
     Impl* impl;
     size_t idx;
+    size_t length;
     alias impl this;
 }
 
@@ -687,14 +688,14 @@ extern (C) pure nothrow @nogc
         foreach (i; aa.firstUsed .. aa.dim)
         {
             if (aa.buckets[i].filled)
-                return Range(aa.impl, i);
+                return Range(aa.impl, i, aa.length);
         }
-        return Range(aa, aa.dim);
+        return Range(aa, aa.dim, aa.length);
     }
 
     bool _aaRangeEmpty(Range r)
     {
-        return r.impl is null || r.idx == r.dim;
+        return r.length == 0;
     }
 
     void* _aaRangeFrontKey(Range r)
@@ -709,6 +710,7 @@ extern (C) pure nothrow @nogc
 
     void _aaRangePopFront(ref Range r)
     {
+        r.length--;
         for (++r.idx; r.idx < r.dim; ++r.idx)
         {
             if (r.buckets[r.idx].filled)
@@ -849,6 +851,9 @@ unittest
     assert(aa.byKey.empty);
     assert(aa.byValue.empty);
     assert(aa.byKeyValue.empty);
+    assert(aa.byKey.length == 0);
+    assert(aa.byValue.length == 0);
+    assert(aa.byKeyValue.length == 0);
 
     size_t n;
     aa = [0 : 3, 1 : 4, 2 : 5];
@@ -883,6 +888,11 @@ unittest
         break;
     }
     assert(n == 1);
+
+    auto aar = aa.byKey;
+    assert(aar.length == 3);
+    aar.popFront;
+    assert(aar.length == 2);
 }
 
 unittest
@@ -898,6 +908,7 @@ unittest
 
     assert(aa.length == 0);
     assert(aa.byKey.empty);
+    assert(aa.byKey.length == 0);
 }
 
 // test zero sized value (hashset)
@@ -910,11 +921,14 @@ unittest
     assert(aa.byValue.front == V.init);
     aa[1] = V.init;
     assert(aa.length == 2);
+    assert(aa.byKey.length == 2);
     aa[0] = V.init;
     assert(aa.length == 2);
+    assert(aa.byKey.length == 2);
     assert(aa.remove(0));
     aa[0] = V.init;
     assert(aa.length == 2);
+    assert(aa.byKey.length == 2);
     assert(aa == [0 : V.init, 1 : V.init]);
 }
 
@@ -991,14 +1005,19 @@ pure nothrow unittest
     foreach (i; 0 .. 100)
         aa[i] = i * 2;
     assert(aa.length == 100);
+    assert(aa.byKey.length == 100);
     auto aa2 = aa;
     assert(aa2.length == 100);
+    assert(aa2.byKey.length == 100);
     aa.clear();
     assert(aa.length == 0);
     assert(aa2.length == 0);
+    assert(aa.byKey.length == 0);
+    assert(aa2.byKey.length == 0);
 
     aa2[5] = 6;
     assert(aa.length == 1);
+    assert(aa.byKey.length == 1);
     assert(aa[5] == 6);
 }
 
