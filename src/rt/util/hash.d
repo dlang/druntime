@@ -30,13 +30,20 @@ size_t hashOf( const(void)[] buf, size_t seed )
     {
         // CTFE doesn't support casting ubyte* -> ushort*, so revert to
         // per-byte access when in CTFE.
-        version( HasUnalignedOps )
-        {
-            if (!__ctfe)
+        if (!__ctfe) {
+            version( HasUnalignedOps )
+            {
                 return *cast(ushort*) x;
+            }
+            else
+            {
+                return ((cast(uint) x[1]) << 8) + (cast(uint) x[0]);
+            }
         }
-
-        return ((cast(uint) x[1]) << 8) + (cast(uint) x[0]);
+        else
+        {
+            return ((cast(uint) x[1]) << 8) + (cast(uint) x[0]);
+        }
     }
 
     // NOTE: SuperFastHash normally starts with a zero hash value.  The seed
