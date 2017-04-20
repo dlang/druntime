@@ -112,13 +112,32 @@ private:
     // lookup a key
     inout(Bucket)* findSlotLookup(size_t hash, in void* pkey, in TypeInfo keyti) inout
     {
-        for (size_t i = hash & mask, j = 1;; ++j)
+        for (size_t j = hash & mask, i = j++;;)
         {
-            if (buckets[i].hash == hash && keyti.equals(pkey, buckets[i].entry))
+            auto bucket = buckets[i];
+            if (bucket.hash == hash)
+            {
+                if (j != dim)
+                {
+                    auto bucket2 = buckets[j]; 
+                    if (bucket2.hash != hash)
+                        return &buckets[i];
+                    else if (keyti.equals(pkey, bucket.entry))
+                        return &buckets[i];
+                    else if (keyti.equals(pkey, bucket2.entry))
+                        return &buckets[j];
+                    else if(j != (hash & mask))
+                        i += 2, j += 2;
+                    else
+                       assert(0, "We overflowd");
+                }
                 return &buckets[i];
-            else if (buckets[i].empty)
+            }
+            else if (bucket.empty)
                 return null;
-            i = (i + j) & mask;
+
+            if (++i == dim)
+               return null;
         }
     }
 
