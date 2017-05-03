@@ -21,7 +21,7 @@ import core.stdc.string;
 
 import core.exception : onOutOfMemoryError;
 
-struct Entry { size_t count, size; }
+struct Entry { ulong count, size; }
 
 char[] buffer;
 Entry[string] newCounts;
@@ -41,12 +41,15 @@ __gshared
 
 extern (C) void profilegc_setlogfilename(string name)
 {
+    import gc.proxy : gc_getProxy;
+    gc_getProxy().enableProfiling();
     logfilename = name;
 }
 
 
 
-public void accumulate(string file, uint line, string funcname, string type, size_t sz)
+public void accumulate(string file, uint line, string funcname, string type,
+    ulong sz)
 {
     char[3 * line.sizeof + 1] buf;
     auto buflen = snprintf(buf.ptr, buf.length, "%u", line);
@@ -85,23 +88,23 @@ public void accumulate(string file, uint line, string funcname, string type, siz
 // Merge thread local newCounts into globalNewCounts
 static ~this()
 {
+    import gc.proxy : gc_getProxy;
+    auto mtx = gc_getProxy().profilerLock();
+
     if (newCounts.length)
     {
-        synchronized
+        mtx.lock();
+        scope(exit) mtx.unlock();
+
+        foreach (name, entry; newCounts)
         {
-            if (globalNewCounts.length)
-            {
-                // Merge
-                foreach (name, entry; newCounts)
-                {
-                    globalNewCounts[name].count += entry.count;
-                    globalNewCounts[name].size += entry.size;
-                }
-            }
-            else
-                // Assign
-                globalNewCounts = newCounts;
+            if (!(name in globalNewCounts))
+                globalNewCounts[name] = Entry.init;
+
+            globalNewCounts[name].count += entry.count;
+            globalNewCounts[name].size += entry.size;
         }
+
         newCounts = null;
     }
     free(buffer.ptr);
@@ -121,10 +124,15 @@ shared static ~this()
         {
             auto result1 = cast(Result*)r1;
             auto result2 = cast(Result*)r2;
-            ptrdiff_t cmp = result2.entry.size - result1.entry.size;
+            auto totalSize1 = result1.entry.size * result1.entry.count;
+            auto totalSize2 = result2.entry.size * result2.entry.count;
+            long cmp = totalSize2 - totalSize1;
+            if (cmp) return cmp < 0 ? -1 : 1;
+            cmp = result2.entry.size - result1.entry.size;
             if (cmp) return cmp < 0 ? -1 : 1;
             cmp = result2.entry.count - result1.entry.count;
-            return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+            if (cmp) return cmp < 0 ? -1 : 1;
+            return result2.name < result1.name;
         }
     }
 

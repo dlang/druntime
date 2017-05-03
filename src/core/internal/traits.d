@@ -187,3 +187,4 @@ template hasElaborateCopyConstructor(T...)
     else
         enum bool hasElaborateCopyConstructor = false;
 }
+

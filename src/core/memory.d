@@ -165,9 +165,12 @@ struct GC
     static struct Stats
     {
         /// number of used bytes on the GC heap (might only get updated after a collection)
-        size_t usedSize;
+        ulong usedSize;
         /// number of free bytes on the GC heap (might only get updated after a collection)
-        size_t freeSize;
+        ulong freeSize;
+        /// number of bytes freed during collections through program lifetime so
+        /// far (will count same memory multiple times if re-used)
+        ulong totalCollected;
     }
 
     /**

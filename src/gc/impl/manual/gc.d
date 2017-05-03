@@ -31,6 +31,7 @@ import gc.gcinterface;
 import rt.util.container.array;
 
 import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
+import core.sync.mutex;
 static import core.memory;
 
 extern (C) void onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure nothrow @nogc; /* dmd @@@BUG11461@@@ */
@@ -270,5 +271,14 @@ class ManualGC : GC
     bool inFinalizer() nothrow
     {
         return false;
+    }
+
+    void enableProfiling() nothrow @nogc
+    {
+    }
+
+    shared(Mutex) profilerLock() nothrow @nogc
+    {
+        return null;
     }
 }
