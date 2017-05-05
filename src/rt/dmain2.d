@@ -622,7 +622,7 @@ bool tryDetectDebugger()
 {
     version(Windows)
     {
-        return IsDebuggerPresent();
+        return cast(bool) IsDebuggerPresent();
     }
     else version(linux)
     {
