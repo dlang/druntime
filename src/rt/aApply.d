@@ -314,7 +314,7 @@ extern (C) int _aApplydc1(in dchar[] aa, dg_t dg)
             {
                 result = dg(cast(void *)&c2);
                 if (result)
-                    return result;
+                    break;
             }
         }
         else
@@ -689,7 +689,7 @@ extern (C) int _aApplywc2(in wchar[] aa, dg2_t dg)
             {
                 result = dg(&i, cast(void *)&c2);
                 if (result)
-                    return result;
+                    break;
             }
         }
         else
@@ -771,7 +771,7 @@ extern (C) int _aApplydc2(in dchar[] aa, dg2_t dg)
             {
                 result = dg(&i, cast(void *)&c2);
                 if (result)
-                    return result;
+                    break;
             }
         }
         else
