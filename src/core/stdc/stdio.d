@@ -1083,6 +1083,14 @@ size_t fread(scope void* ptr, size_t size, size_t nmemb, FILE* stream);
 ///
 size_t fwrite(scope const void* ptr, size_t size, size_t nmemb, FILE* stream);
 
+version(Posix)
+{
+    /// Posix only
+    sizediff_t getdelim(char** lineptr, size_t* n, int delimiter, FILE* stream);
+    /// Posix only
+    sizediff_t getline(char** lineptr, size_t* n, FILE* stream);
+}
+    
 // No unsafe pointer manipulation.
 @trusted
 {
