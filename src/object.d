@@ -578,7 +578,7 @@ class TypeInfo_StaticArray : TypeInfo
         ubyte[16] buffer;
         void* pbuffer;
 
-        if (sz < buffer.sizeof)
+        if (sz < 16)
             tmp = buffer.ptr;
         else
             tmp = pbuffer = (new void[sz]).ptr;
