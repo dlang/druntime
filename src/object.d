@@ -2117,10 +2117,16 @@ unittest
     assert(T.count == 2);
 }
 
-inout(V) get(K, V)(inout(V[K]) aa, K key, lazy inout(V) defaultValue)
+inout(V) get(K, V)(inout(V[K]) aa, K key, lazy inout(V) defaultValue) nothrow
 {
-    auto p = key in aa;
-    return p ? *p : defaultValue;
+    try {
+        auto p = key in aa;
+        return p ? *p : defaultValue;
+    }
+    catch
+    {
+        return cast(V) null;
+    }
 }
 
 inout(V) get(K, V)(inout(V[K])* aa, K key, lazy inout(V) defaultValue)
