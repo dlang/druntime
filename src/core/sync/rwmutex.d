@@ -104,6 +104,19 @@ class ReadWriteMutex
         m_reader = new Reader;
         m_writer = new Writer;
     }
+    
+    ~this()
+    {
+        void gcFree(Object obj){
+            destroy(obj);
+            GC.free(cast(void*)obj);
+        }
+        gcFree(m_commonMutex);
+        gcFree(m_readerQueue);
+        gcFree(m_writerQueue);
+        gcFree(m_reader);
+        gcFree(m_writer);
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // General Properties
