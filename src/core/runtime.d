@@ -496,7 +496,7 @@ extern (C) bool runModuleUnitTests()
 
     if( Runtime.sm_moduleUnitTester is null )
     {
-        size_t failed = 0;
+        size_t total = 0;
         foreach( m; ModuleInfo )
         {
             if( m )
@@ -505,6 +505,7 @@ extern (C) bool runModuleUnitTests()
 
                 if( fp )
                 {
+                    ++total;
                     try
                     {
                         fp();
@@ -512,12 +513,13 @@ extern (C) bool runModuleUnitTests()
                     catch( Throwable e )
                     {
                         _d_print_throwable(e);
-                        failed++;
                     }
                 }
             }
         }
-        return failed == 0;
+        // Run main if and only if there was no unittest run. This is new
+        // behavior; previously, main would run if all unittests passed.
+        return total == 0;
     }
     return Runtime.sm_moduleUnitTester();
 }
