@@ -433,8 +433,15 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
  */
 extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) nothrow
 {
-    if( _assertHandler is null )
-        throw new AssertError( file, line );
+    import core.stdc.string : memcpy;
+    char[1024] buffer;
+    if( _assertHandler is null ) {
+        enum size = __traits(classInstanceSize, AssertError);
+        memcpy(buffer.ptr, typeid(AssertError).initializer().ptr, size);
+        auto obj = cast(AssertError) buffer.ptr;
+        obj.__ctor( file, line );
+        throw obj;
+    }
     _assertHandler( file, line, null);
 }
 
