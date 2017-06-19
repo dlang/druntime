@@ -100,6 +100,10 @@ class ProtoGC : GC
         return 0;
     }
 
+    void resetThreadLocalStats() nothrow @nogc
+    {
+    }
+
     void* malloc(size_t size, uint bits, const TypeInfo ti) nothrow
     {
         .gc_init_nothrow();

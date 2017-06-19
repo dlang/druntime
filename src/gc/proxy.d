@@ -189,6 +189,11 @@ extern (C)
         return instance.stats();
     }
 
+    void gc_resetThreadLocalStats() nothrow @nogc
+    {
+        return instance.resetThreadLocalStats();
+    }
+
     void gc_addRoot( void* p ) nothrow @nogc
     {
         return instance.addRoot( p );

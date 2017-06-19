@@ -187,4 +187,9 @@ interface GC
      *
      */
     bool inFinalizer() nothrow;
+
+    /*
+     *
+     */
+    void resetThreadLocalStats() nothrow @nogc;
 }

@@ -271,4 +271,8 @@ class ManualGC : GC
     {
         return false;
     }
+
+    void resetThreadLocalStats() nothrow @nogc
+    {
+    }
 }
