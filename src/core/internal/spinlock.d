@@ -26,7 +26,7 @@ shared struct SpinLock
         this.contention = contention;
     }
 
-    void lock()
+    void lock() nothrow
     {
         if (cas(&val, size_t(0), size_t(1)))
             return;
@@ -42,7 +42,7 @@ shared struct SpinLock
         }
     }
 
-    void unlock()
+    void unlock() nothrow
     {
         atomicStore!(MemoryOrder.rel)(val, size_t(0));
     }

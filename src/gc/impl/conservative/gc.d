@@ -301,6 +301,21 @@ class ConservativeGC : GC
         cstdlib.free(cast(void*)instance);
     }
 
+    void populateCache(Bins bin, ThreadCache* cache) nothrow
+    {
+        List* start = gcx.bucket[bin];
+        if(!start) return;
+        List* current = start;
+        size_t i = 0;
+        while(current.next && i++ < 100)
+        {
+            current = current.next;
+        }
+        gcx.bucket[bin] = current.next;
+        current.next = null;
+        cache.cache[bin] = start;
+    }
+
 
     this()
     {
@@ -356,7 +371,7 @@ class ConservativeGC : GC
     }
 
 
-    auto runLocked(alias func, Args...)(auto ref Args args)
+    auto runLocked(alias func, Args...)(auto ref Args args) nothrow
     {
         debug(PROFILE_API) immutable tm = (config.profile > 1 ? currTime.ticks : 0);
         lockNR();
@@ -377,7 +392,7 @@ class ConservativeGC : GC
     }
 
 
-    auto runLocked(alias func, alias time, alias count, Args...)(auto ref Args args)
+    auto runLocked(alias func, alias time, alias count, Args...)(auto ref Args args) nothrow
     {
         debug(PROFILE_API) immutable tm = (config.profile > 1 ? currTime.ticks : 0);
         lockNR();
@@ -490,16 +505,7 @@ class ConservativeGC : GC
             return null;
         }
 
-        size_t localAllocSize = void;
-
-        auto p = runLocked!(mallocNoSync, mallocTime, numMallocs)(size, bits, localAllocSize, ti);
-
-        if (!(bits & BlkAttr.NO_SCAN))
-        {
-            memset(p + size, 0, localAllocSize - size);
-        }
-
-        return p;
+        return threadCache.allocate(size, bits, ti, this);
     }
 
 
@@ -539,14 +545,10 @@ class ConservativeGC : GC
         }
 
         BlkInfo retval;
-
-        retval.base = runLocked!(mallocNoSync, mallocTime, numMallocs)(size, bits, retval.size, ti);
-
-        if (!(bits & BlkAttr.NO_SCAN))
-        {
-            memset(retval.base + size, 0, retval.size - size);
-        }
-
+        //printf("requested size = %d\n", cast(int) size);
+        retval.base = threadCache.allocate(size, bits, ti, this);
+        //printf("allocated size = %d\n", cast(int) size);
+        retval.size = size;
         retval.attr = bits;
         return retval;
     }
@@ -559,15 +561,8 @@ class ConservativeGC : GC
             return null;
         }
 
-        size_t localAllocSize = void;
-
-        auto p = runLocked!(mallocNoSync, mallocTime, numMallocs)(size, bits, localAllocSize, ti);
-
+        auto p = threadCache.allocate(size, bits, ti, this);
         memset(p, 0, size);
-        if (!(bits & BlkAttr.NO_SCAN))
-        {
-            memset(p + size, 0, localAllocSize - size);
-        }
 
         return p;
     }
@@ -578,12 +573,7 @@ class ConservativeGC : GC
         size_t localAllocSize = void;
         auto oldp = p;
 
-        p = runLocked!(reallocNoSync, mallocTime, numMallocs)(p, size, bits, localAllocSize, ti);
-
-        if (p !is oldp && !(bits & BlkAttr.NO_SCAN))
-        {
-            memset(p + size, 0, localAllocSize - size);
-        }
+        p = threadCache.reallocate(p, size, bits, ti, this);
 
         return p;
     }
@@ -732,9 +722,8 @@ class ConservativeGC : GC
 
     size_t extend(void* p, size_t minsize, size_t maxsize, const TypeInfo ti) nothrow
     {
-        return runLocked!(extendNoSync, extendTime, numExtends)(p, minsize, maxsize, ti);
+        return threadCache.extend(p, minsize, maxsize, ti, this);
     }
-
 
     //
     //
@@ -1278,6 +1267,76 @@ private void set(ref PageBits bits, size_t i) @nogc pure nothrow
     assert(i < PageBits.sizeof * 8);
     bts(bits.ptr, i);
 }
+
+
+struct ThreadCache
+{
+    List*[B_PAGE] cache;
+
+    void* cachedAlloc(ref size_t size, uint bits, ConservativeGC gcx) nothrow
+    {
+        Gcx* gc = gcx.gcx;
+        Bins bin = gc.binTable[size];
+        auto p = cache[bin];
+        if(!p) gcx.runLocked!(gcx.populateCache, mallocTime, numMallocs)(bin, &this);
+        p = cache[bin];
+        if(p)
+        {
+            auto pool = p.pool;
+            if (bits)
+                pool.setBits((cast(void*)p - pool.baseAddr) >> pool.shiftBy, bits);
+            size = binsize[bin];
+            cache[bin] = p.next;
+            return p;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    void* allocate(ref size_t size, uint bits, const TypeInfo ti, ConservativeGC gcx) nothrow
+    {
+        void* p;
+        if (size <= 2048)
+            p = cachedAlloc(size, bits, gcx);
+        if(p) return p;
+
+        size_t localAllocSize = void;
+
+        p = gcx.runLocked!(gcx.mallocNoSync, mallocTime, numMallocs)(size, bits, localAllocSize, ti);
+
+        if (!(bits & BlkAttr.NO_SCAN))
+        {
+            memset(p + size, 0, localAllocSize - size);
+        }
+        size = localAllocSize;
+
+        return p;
+    }
+
+    void* reallocate(void* p, size_t size, uint bits, const TypeInfo ti, ConservativeGC gcx) nothrow
+    {
+        auto oldp = p;
+        size_t localAllocSize = void;
+
+        p = gcx.runLocked!(gcx.reallocNoSync, mallocTime, numMallocs)(p, size, bits, localAllocSize, ti);
+
+        if (p !is oldp && !(bits & BlkAttr.NO_SCAN))
+        {
+            memset(p + size, 0, localAllocSize - size);
+        }
+
+        return p;
+    }
+
+    size_t extend(void* p, size_t minsize, size_t maxsize, const TypeInfo ti, ConservativeGC gcx) nothrow
+    {
+        return gcx.runLocked!(gcx.extendNoSync, extendTime, numExtends)(p, minsize, maxsize, ti);
+    }
+}
+
+ThreadCache threadCache;
 
 /* ============================ Gcx =============================== */
 

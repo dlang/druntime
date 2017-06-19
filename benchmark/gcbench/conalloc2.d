@@ -33,7 +33,7 @@ void main(string[] args)
     auto threads = new Thread[NT];
     foreach(ref thread; threads)
     {
-        thread = new Thread(&doAppend);
+        thread = new Thread(&doStuff);
         thread.start();
     }
     while (atomicLoad(running))
@@ -46,14 +46,13 @@ void main(string[] args)
         thread.join();
 }
 
-void doAppend()
+void doStuff()
 {
     for (size_t i = 0; i < N; i++)
     {
-        int[] arr;
-        for (int j = 0; j < 200; j++)
-            arr ~= j;
-
+        int[] arr = new int[200];
+        for(int j = 0; j<200; j++)
+            arr[j] = j;
         int sum = 0;
         foreach (a; arr)
             sum += a;

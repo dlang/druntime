@@ -11,7 +11,7 @@ import std.conv;
 import std.file;
 import std.digest.sha;
 
-auto N = 50;
+__gshared N = 50;
 auto NT = 4;
 
 __gshared ubyte[] BYTES;
