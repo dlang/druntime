@@ -117,10 +117,16 @@ shared static ~this()
         {
             auto result1 = cast(Result*)r1;
             auto result2 = cast(Result*)r2;
+
             ptrdiff_t cmp = result2.entry.size - result1.entry.size;
             if (cmp) return cmp < 0 ? -1 : 1;
             cmp = result2.entry.count - result1.entry.count;
-            return cmp < 0 ? -1 : (cmp > 0 ? 1 : 0);
+            if (cmp) return cmp < 0 ? -1 : 1;
+
+            if (result2.name == result1.name)
+                return 0;
+            // ascending order for names reads better
+            return result2.name > result1.name ? -1 : 1;
         }
     }
 
