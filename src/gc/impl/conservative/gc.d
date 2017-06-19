@@ -529,7 +529,7 @@ class ConservativeGC : GC
         }
 
         gcx.log_malloc(p, size);
-        .bytesAllocated += size;
+        .bytesAllocated += alloc_size;
 
         return p;
     }
