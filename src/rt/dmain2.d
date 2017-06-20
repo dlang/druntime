@@ -436,11 +436,9 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
 
     bool trapExceptions = rt_trapExceptions;
 
-    version (Windows)
-    {
-        if (IsDebuggerPresent())
-            trapExceptions = false;
-    }
+    if (tryDetectDebugger())
+        trapExceptions = false;
+
 
     void tryExec(scope void delegate() dg)
     {
@@ -618,4 +616,32 @@ extern (C) void _d_print_throwable(Throwable t)
         fprintf(stderr, "%.*s", cast(int)buf.length, buf.ptr);
     }
     formatThrowable(t, &sink);
+}
+
+bool tryDetectDebugger()
+{
+    version(Windows)
+    {
+        return cast(bool) IsDebuggerPresent();
+    }
+    else version(linux)
+    {
+        // Ported from http://stackoverflow.com/a/24969863/1457000
+        import core.sys.posix.fcntl;
+        import core.sys.posix.unistd;
+
+        immutable status_fd = open("/proc/self/status", O_RDONLY);
+        if (status_fd == -1) return false;
+        scope(exit) close(status_fd);
+
+        char[1024] buf = void;
+        immutable numRead = read(status_fd, buf.ptr, buf.length - 1);
+        if (numRead <= 0) return false;
+        buf[numRead] = 0;
+
+        immutable prefix = "TracerPid:";
+        auto tracerLine = strstr(buf.ptr, prefix.ptr);
+        return tracerLine && !!atoi(tracerLine + prefix.length);
+    }
+    else return false;
 }
