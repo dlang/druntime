@@ -108,6 +108,8 @@ COPY=\
 	$(IMPDIR)\core\sys\linux\sys\time.d \
 	$(IMPDIR)\core\sys\linux\sys\prctl.d \
 	\
+	$(IMPDIR)\core\sys\linux\systemd\daemon.d \
+	\
 	$(IMPDIR)\core\sys\openbsd\dlfcn.d \
 	\
 	$(IMPDIR)\core\sys\osx\execinfo.d \

@@ -517,6 +517,9 @@ $(IMPDIR)\core\sys\linux\sys\xattr.d : src\core\sys\linux\sys\xattr.d
 $(IMPDIR)\core\sys\linux\sys\time.d : src\core\sys\linux\sys\time.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\linux\systemd\daemon.d : src\core\sys\linux\systemd\daemon.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\openbsd\dlfcn.d : src\core\sys\openbsd\dlfcn.d
 	copy $** $@
 
