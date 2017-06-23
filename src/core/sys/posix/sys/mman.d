@@ -85,6 +85,15 @@ else version( FreeBSD )
     enum POSIX_MADV_DONTNEED    = 4;
     int posix_madvise(void *addr, size_t len, int advice);
 }
+else version(NetBSD)
+{
+    enum POSIX_MADV_NORMAL      = 0;
+    enum POSIX_MADV_RANDOM      = 1;
+    enum POSIX_MADV_SEQUENTIAL  = 2;
+    enum POSIX_MADV_WILLNEED    = 3;
+    enum POSIX_MADV_DONTNEED    = 4;
+    int posix_madvise(void *addr, size_t len, int advice);
+}
 else version (Solaris)
 {
 }
@@ -121,6 +130,13 @@ else version( Darwin )
     enum PROT_EXEC      = 0x04;
 }
 else version( FreeBSD )
+{
+    enum PROT_NONE      = 0x00;
+    enum PROT_READ      = 0x01;
+    enum PROT_WRITE     = 0x02;
+    enum PROT_EXEC      = 0x04;
+}
+else version(NetBSD)
 {
     enum PROT_NONE      = 0x00;
     enum PROT_READ      = 0x01;
@@ -169,6 +185,11 @@ else version( Darwin )
     int   munmap(void*, size_t);
 }
 else version( FreeBSD )
+{
+    void* mmap(void*, size_t, int, int, int, off_t);
+    int   munmap(void*, size_t);
+}
+else version(NetBSD)
 {
     void* mmap(void*, size_t, int, int, int, off_t);
     int   munmap(void*, size_t);
@@ -223,8 +244,6 @@ version( CRuntime_Glibc )
         enum MS_INVALIDATE = 4;
     }
     else version (SH)
-        private enum DEFAULTS = true;
-    else version (SH64)
         private enum DEFAULTS = true;
     else version (AArch64)
         private enum DEFAULTS = true;
@@ -326,6 +345,22 @@ else version( FreeBSD )
     enum MS_INVALIDATE  = 0x0002;
 
     int msync(void*, size_t, int);
+}
+else version(NetBSD)
+{
+    enum MAP_SHARED     = 0x0001;
+    enum MAP_PRIVATE    = 0x0002;
+    enum MAP_FIXED      = 0x0010;
+    enum MAP_ANON       = 0x1000;
+
+    enum MAP_FAILED     = cast(void*)-1;
+
+    enum MS_SYNC        = 0x0004;
+    enum MS_ASYNC       = 0x0001;
+    enum MS_INVALIDATE  = 0x0002;
+
+    int __msync13(void*, size_t, int);
+    alias msync = __msync13;
 }
 else version (Solaris)
 {
@@ -438,6 +473,14 @@ else version( FreeBSD )
     int mlockall(int);
     int munlockall();
 }
+else version(NetBSD)
+{
+    enum MCL_CURRENT    = 0x0001;
+    enum MCL_FUTURE     = 0x0002;
+
+    int mlockall(int);
+    int munlockall();
+}
 else version (Solaris)
 {
     enum MCL_CURRENT = 0x0001;
@@ -482,6 +525,11 @@ else version( FreeBSD )
     int mlock(in void*, size_t);
     int munlock(in void*, size_t);
 }
+else version(NetBSD)
+{
+    int mlock(in void*, size_t);
+    int munlock(in void*, size_t);
+}
 else version (Solaris)
 {
     int mlock(in void*, size_t);
@@ -513,6 +561,10 @@ else version( Darwin )
     int mprotect(void*, size_t, int);
 }
 else version( FreeBSD )
+{
+    int mprotect(void*, size_t, int);
+}
+else version(NetBSD)
 {
     int mprotect(void*, size_t, int);
 }
@@ -548,6 +600,11 @@ else version( Darwin )
     int shm_unlink(in char*);
 }
 else version( FreeBSD )
+{
+    int shm_open(in char*, int, mode_t);
+    int shm_unlink(in char*);
+}
+else version(NetBSD)
 {
     int shm_open(in char*, int, mode_t);
     int shm_unlink(in char*);

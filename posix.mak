@@ -21,7 +21,7 @@ ifneq ($(BUILD),release)
     endif
 endif
 
-DMD=../dmd/src/dmd
+DMD=../dmd/generated/$(OS)/release/$(MODEL)/dmd
 INSTALL_DIR=../install
 
 DOCDIR=doc
@@ -197,7 +197,7 @@ $(DRUNTIME): $(OBJS) $(SRCS)
 UT_MODULES:=$(patsubst src/%.d,$(ROOT)/unittest/%,$(SRCS))
 HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
 ifeq ($(HAS_ADDITIONAL_TESTS),1)
-	ADDITIONAL_TESTS:=test/init_fini test/exceptions test/coverage test/profile test/cycles test/allocations
+	ADDITIONAL_TESTS:=test/init_fini test/exceptions test/coverage test/profile test/cycles test/allocations test/typeinfo test/thread
 	ADDITIONAL_TESTS+=$(if $(SHARED),test/shared,)
 endif
 
