@@ -614,18 +614,25 @@ int _d_exception_filter(EXCEPTION_POINTERS *eptrs,
  * Throw a D object.
  */
 
-private void throwImpl(Object h)
+private void throwImpl(Throwable h)
 {
     // @@@ TODO @@@ Signature should change: h will always be a Throwable.
     //printf("_d_throw(h = %p, &h = %p)\n", h, &h);
     //printf("\tvptr = %p\n", *(void **)h);
+
+    /* Increment reference count if `h` is a refcounted Throwable
+     */
+    auto refcount = h.refcount();
+    if (refcount)       // non-zero means it's refcounted
+        h.refcount() = refcount + 1;
+
     _d_createTrace(h, null);
     RaiseException(STATUS_DIGITAL_MARS_D_EXCEPTION,
                    EXCEPTION_NONCONTINUABLE,
                    1, cast(void *)&h);
 }
 
-extern(C) void _d_throwc(Object h)
+extern(C) void _d_throwc(Throwable h)
 {
     // set up a stack frame for trace unwinding
     version (AsmX86)
