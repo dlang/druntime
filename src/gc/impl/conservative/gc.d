@@ -1843,7 +1843,7 @@ struct Gcx
         auto pool = cast(Pool *)cstdlib.calloc(1, isLargeObject ? LargeObjectPool.sizeof : SmallObjectPool.sizeof);
         if (pool)
         {
-            pool.initialize(npages, isLargeObject);
+            npages = pool.initialize(npages, isLargeObject);
             if (!pool.baseAddr || !pooltable.insert(pool))
             {
                 pool.Dtor();
@@ -2621,7 +2621,7 @@ struct Pool
     void* realAddr;
     size_t realSize;
 
-    void initialize(size_t npages, bool isLargeObject) nothrow
+    size_t initialize(size_t npages, bool isLargeObject) nothrow
     {
         this.isLargeObject = isLargeObject;
         size_t poolsize;
@@ -2689,6 +2689,7 @@ struct Pool
         this.freepages = npages;
         this.searchStart = 0;
         this.largestFree = npages;
+        return npages; // may be bigger then requested
     }
 
 
