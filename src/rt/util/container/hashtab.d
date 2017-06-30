@@ -417,9 +417,9 @@ nothrow:
         size_t h = hashFunc(key);
         size_t mask = table.length - 1;
         size_t i = h & mask;
-        return table[i].key == key ? table[i].value : 
+        return table[i].key == key ? table[i].value :
             (table[i].value == nullValue ? nullValue : slowLookup(key, i));
-        
+
     }
 
     inout(V) slowLookup(K key, size_t i) inout
