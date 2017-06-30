@@ -328,3 +328,183 @@ unittest
     assert(thrown);
     assert(tab[3] == 3);
 }
+
+/// An open-addressing hash table with quadratic probing
+/// roughly follows the description of Google's dense_hash_map.
+/// WARNING: supports only POD types and no removal by key for now.
+struct FlatHashTab(K, V, alias nullValue, alias hashFunc=hashOf)
+{
+nothrow:
+    this(size_t capacity)
+    {
+        import core.bitop : bsr;
+        if(!capacity)
+            capacity = 32;
+        else
+            capacity = 1<<bsr(capacity);
+        table.length = capacity;
+    }
+
+    @disable this(this);
+
+    ~this()
+    {
+        if(table.length) common.free(table.ptr);
+    }
+
+    void reset()
+    {
+        table[] = Entry.init;
+        items = 0;
+    }
+
+    @property size_t length() const
+    {
+        return items;
+    }
+
+    @property bool empty() const
+    {
+        return items == 0;
+    }
+
+    void opIndexAssign(V value, K key)
+    in
+    {
+        assert(value != nullValue);
+    }
+    body
+    {
+        if(items * 2 == table.length) rehash();
+        size_t h = hashFunc(key);
+        size_t mask = (table.length-1);
+        size_t i = h & mask;
+        if (table[i].value == nullValue)
+        {
+            table[i] = Entry(key, value);
+            items++;
+            return;
+        }
+        if (table[i].key == key)
+        {
+            table[i].value = value;
+            return;
+        }
+        for (size_t n = 1; ; n++)
+        {
+            size_t j = (i + triangular(n)) & mask;
+            if (table[j].value == nullValue)
+            {
+                table[j] = Entry(key, value);
+                items++;
+                return;
+            }
+            if (table[j].key == key)
+            {
+                table[j].value = value;
+                return;
+            }
+        }
+    }
+
+    inout(V) opIndex(K key) inout
+    in
+    {
+        assert((table.length & (table.length-1)) == 0);
+    }
+    body
+    {
+        size_t h = hashFunc(key);
+        size_t mask = table.length - 1;
+        size_t i = h & mask;
+        return table[i].key == key ? table[i].value : 
+            (table[i].value == nullValue ? nullValue : slowLookup(key, i));
+        
+    }
+
+    inout(V) slowLookup(K key, size_t i) inout
+    {
+        size_t mask = table.length - 1;
+        for (size_t n = 1; ; n++)
+        {
+            size_t j = (i + triangular(n)) & mask;
+            if (table[j].value == nullValue) return nullValue;
+            if (table[j].key == key) return table[j].value;
+        }
+    }
+
+    int opApply(scope int delegate(ref K, ref V) nothrow dg)
+    {
+        foreach (e; table)
+        {
+            if (e.value != nullValue)
+            {
+                if(auto res = dg(e.key, e.value))
+                    return res;
+            }
+        }
+        return 0;
+    }
+
+private:
+    struct Entry
+    {
+        K key;
+        V value = nullValue;
+    }
+
+    Entry[] table;
+    size_t items;
+
+    static size_t triangular(size_t n){ return n * (n + 1) / 2; }
+
+    void rehash()
+    {
+        import core.stdc.stdio;
+        Entry[] old = table;
+        size_t newSize = items == 0 ? 32 : table.length * 2;
+        table = (cast(Entry*)common.xmalloc(Entry.sizeof * newSize))[0..newSize];
+        table[] = Entry.init;
+        items = 0;
+        foreach(e; old)
+        {
+            if(e.value != nullValue) this[e.key] = e.value;
+        }
+        if(old.length) common.free(old.ptr);
+    }
+}
+
+unittest
+{
+    import core.stdc.stdio;
+    FlatHashTab!(ushort, ushort, ushort.max, x => x) htab;
+    // Make collisions
+    htab[1] = 1;
+    htab[33] = 2;
+    htab[65] = 3;
+    htab[97] = 4;
+    int[1024] array;
+    foreach(k,v; htab) {
+        array[k] = v;
+    }
+    assert(array[1] == 1);
+    assert(array[33] == 2);
+    assert(array[65] == 3);
+    assert(array[97] == 4);
+    assert(htab[1] == 1);
+    assert(htab[33] == 2);
+    assert(htab[65] == 3);
+    assert(htab[97] == 4);
+
+    // Trigger rehash
+    for(ushort x = 3; x<ushort.max-31; x+=31)
+    {
+        htab[x] = cast(ushort)(x + 1);
+        assert(htab[x] == x + 1);
+    }
+
+    for(ushort x = 3; x<ushort.max-31; x+=31)
+    {
+        assert(htab[x] == x + 1);
+    }
+}
