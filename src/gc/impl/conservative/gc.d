@@ -42,6 +42,7 @@ import gc.bits;
 import gc.os;
 import gc.config;
 import gc.gcinterface;
+import gc.pooltable;
 
 import rt.util.container.treap;
 
@@ -305,7 +306,6 @@ class ConservativeGC : GC
     this()
     {
         //config is assumed to have already been initialized
-
         gcx = cast(Gcx*)cstdlib.calloc(1, Gcx.sizeof);
         if (!gcx)
             onOutOfMemoryErrorNoGC();
@@ -1233,11 +1233,6 @@ class ConservativeGC : GC
 
 /* ============================ Gcx =============================== */
 
-enum
-{   PAGESIZE =    4096,
-    POOLSIZE =   (4096*256),
-}
-
 
 enum
 {
@@ -1293,7 +1288,6 @@ struct Gcx
     debug(INVARIANT) bool initialized;
     uint disabled; // turn off collections if >0
 
-    import gc.pooltable;
     @property size_t npools() pure const nothrow { return pooltable.length; }
     PoolTable!Pool pooltable;
 
@@ -1521,7 +1515,7 @@ struct Gcx
         ConservativeGC._inFinalizer = false;
     }
 
-    Pool* findPool(void* p) pure nothrow
+    Pool* findPool(void* p) nothrow
     {
         return pooltable.findPool(p);
     }
@@ -1744,7 +1738,7 @@ struct Gcx
 
         bool tryAlloc() nothrow
         {
-            foreach (p; pooltable[0 .. npools])
+            foreach_reverse (p; pooltable[0 .. npools])
             {
                 if (!p.isLargeObject || p.freepages < npages)
                     continue;
@@ -1965,9 +1959,7 @@ struct Gcx
     Lagain:
         size_t pcache = 0;
 
-        // let dmd allocate a register for this.pools
-        auto pools = pooltable.pools;
-        const highpool = pooltable.npools - 1;
+        // let dmd allocate registers
         const minAddr = pooltable.minAddr;
         const maxAddr = pooltable.maxAddr;
 
@@ -1977,27 +1969,13 @@ struct Gcx
             auto p = *p1;
 
             //if (log) debug(PRINTF) printf("\tmark %p\n", p);
-            if (p >= minAddr && p < maxAddr)
+            Pool* pool = void;
+            if(p < minAddr || p >= maxAddr) continue;
+            if ((cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) == pcache)
+                continue;
+            pool = pooltable.findPoolDirect(p);
+            if(pool != null)
             {
-                if ((cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) == pcache)
-                    continue;
-
-                Pool* pool = void;
-                size_t low = 0;
-                size_t high = highpool;
-                while (true)
-                {
-                    size_t mid = (low + high) >> 1;
-                    pool = pools[mid];
-                    if (p < pool.baseAddr)
-                        high = mid - 1;
-                    else if (p >= pool.topAddr)
-                        low = mid + 1;
-                    else break;
-
-                    if (low > high)
-                        continue Lnext;
-                }
                 size_t offset = cast(size_t)(p - pool.baseAddr);
                 size_t biti = void;
                 size_t pn = offset / PAGESIZE;
@@ -2372,6 +2350,12 @@ struct Gcx
         debug(COLLECT_PRINTF) printf("Gcx.fullcollect()\n");
         //printf("\tpool address range = %p .. %p\n", minAddr, maxAddr);
 
+        /*printf("Before Pools = %d\n", pooltable.npools);
+        foreach(p; pooltable.pools[0..npools])
+        {
+            printf("Free %d / %d pages.\n", p.freepages, p.npages);
+        }*/
+
         {
             // lock roots and ranges around suspending threads b/c they're not reentrant safe
             rangesLock.lock();
@@ -2433,6 +2417,12 @@ struct Gcx
         }
 
         updateCollectThresholds();
+
+        /*printf("After Pools = %d\n", pooltable.npools);
+        foreach(p; pooltable.pools[0..npools])
+        {
+            printf("Free %d / %d pages.\n", p.freepages, p.npages);
+        }*/
 
         return freedLargePages + freedSmallPages;
     }
@@ -2628,6 +2618,8 @@ struct Pool
     // are occupied, we can bypass them in O(1).
     size_t searchStart;
     size_t largestFree; // upper limit for largest free chunk in large object pool
+    void* realAddr;
+    size_t realSize;
 
     void initialize(size_t npages, bool isLargeObject) nothrow
     {
@@ -2637,12 +2629,24 @@ struct Pool
         shiftBy = isLargeObject ? 12 : 4;
 
         //debug(PRINTF) printf("Pool::Pool(%u)\n", npages);
-        poolsize = npages * PAGESIZE;
+        // Round up to POOLSIZE
+        poolsize = (npages * PAGESIZE + POOLSIZE-1) & ~(POOLSIZE-1);
         assert(poolsize >= POOLSIZE);
-        baseAddr = cast(byte *)os_mem_map(poolsize);
+        baseAddr = cast(byte *)os_mem_map(poolsize + POOLSIZE);
+        realSize = poolsize + POOLSIZE;
+        realAddr = baseAddr;
+        if (cast(size_t)baseAddr & (POOLSIZE-1))
+        {
+            size_t padding = POOLSIZE - (cast(size_t)baseAddr & (POOLSIZE-1));
+            baseAddr += padding;
+        }
+        else
+            poolsize += POOLSIZE;
 
-        // Some of the code depends on page alignment of memory pools
-        assert((cast(size_t)baseAddr & (PAGESIZE - 1)) == 0);
+        //printf("Alloced %d.\n", poolsize);
+        npages = poolsize / PAGESIZE;
+        // Some of the code depends on pool alignment of memory pools
+        assert((cast(size_t)baseAddr & (POOLSIZE - 1)) == 0);
 
         if (!baseAddr)
         {
@@ -2696,7 +2700,7 @@ struct Pool
 
             if (npages)
             {
-                result = os_mem_unmap(baseAddr, npages * PAGESIZE);
+                result = os_mem_unmap(realAddr, realSize);
                 assert(result == 0);
                 npages = 0;
             }
