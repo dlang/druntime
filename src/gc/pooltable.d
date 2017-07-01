@@ -8,12 +8,25 @@
 module gc.pooltable;
 
 static import cstdlib=core.stdc.stdlib;
+import rt.util.container.hashtab;
+
+enum
+{
+    POOLMAP_START_CAPACITY = 32,
+    PAGESIZE =    4096,
+    POOLSIZE =   (4096*256),
+}
 
 struct PoolTable(Pool)
 {
     import core.stdc.string : memmove;
 
 nothrow:
+    void initialize()
+    {
+        poolMap = PoolMap(POOLMAP_START_CAPACITY);
+    }
+
     void Dtor()
     {
         cstdlib.free(pools);
@@ -44,7 +57,7 @@ nothrow:
 
         _minAddr = pools[0].baseAddr;
         _maxAddr = pools[npools - 1].topAddr;
-
+        addToMap(pool.baseAddr, pool.topAddr, pool);
         return true;
     }
 
@@ -78,35 +91,20 @@ nothrow:
     {
         if (p >= minAddr && p < maxAddr)
         {
-            assert(npools);
-
-            // let dmd allocate a register for this.pools
-            auto pools = this.pools;
-
-            if (npools == 1)
-                return pools[0];
-
-            /* The pooltable[] is sorted by address, so do a binary search
-             */
-            size_t low = 0;
-            size_t high = npools - 1;
-            while (low <= high)
-            {
-                size_t mid = (low + high) >> 1;
-                auto pool = pools[mid];
-                if (p < pool.baseAddr)
-                    high = mid - 1;
-                else if (p >= pool.topAddr)
-                    low = mid + 1;
-                else
-                    return pool;
-            }
+            return findPoolDirect(p);
         }
         return null;
     }
 
+    Pool *findPoolDirect(void *p) nothrow
+    {
+        assert(npools);
+        size_t adjusted = cast(size_t)p & ~(POOLSIZE-1);
+        return poolMap[adjusted];
+    }
+
     // semi-stable partition, returns right half for which pred is false
-    Pool*[] minimize() pure
+    Pool*[] minimize()
     {
         static void swap(ref Pool* a, ref Pool* b)
         {
@@ -140,25 +138,53 @@ nothrow:
 
         immutable len = npools;
         npools = i;
+        // rebuild hash map if there are changes to pools
+        if(len != npools)
+        {
+            poolMap.reset();
+            foreach (p; pools[0..npools])
+            {
+                addToMap(p.baseAddr, p.topAddr, p);
+            }
+        }
         // return freed pools to the caller
         return pools[npools .. len];
-    }
-
-    void Invariant() const
-    {
-        if (!npools) return;
-
-        foreach (i, pool; pools[0 .. npools - 1])
-            assert(pool.baseAddr < pools[i + 1].baseAddr);
-
-        assert(_minAddr == pools[0].baseAddr);
-        assert(_maxAddr == pools[npools - 1].topAddr);
     }
 
     @property const(void)* minAddr() pure const { return _minAddr; }
     @property const(void)* maxAddr() pure const { return _maxAddr; }
 
 package:
+    static if(size_t.sizeof == 4)
+        alias Index = ushort;
+    else
+        alias Index = uint;
+
+    void addToMap(void* start, void* end, Pool* pool)
+    {
+        assert(cast(size_t)start % POOLSIZE == 0);
+        assert(cast(size_t)end % POOLSIZE == 0);
+        for(void* i = start; i < end; i+= POOLSIZE)
+        {
+            poolMap[cast(size_t)i] = pool;
+        }
+    }
+
+    /*void removeFromMap(void* start, void* end)
+    {
+        assert(cast(size_t)start % POOLSIZE == 0);
+        assert(cast(size_t)end % POOLSIZE == 0);
+        Index s = cast(Index)(cast(size_t)start / POOLSIZE);
+        Index e = cast(Index)(cast(size_t)end / POOLSIZE);
+        for(Index i = s; i < e; i++)
+        {
+            poolMap.remove(i);
+        }
+    }*/
+
+    alias PoolMap = FlatHashTab!(size_t, Pool*, null,
+        x => (x >> 20) ^ 0xAAAA_AAAA);
+    PoolMap poolMap;
     Pool** pools;
     size_t npools;
     void* _minAddr, _maxAddr;
@@ -168,7 +194,6 @@ unittest
 {
     enum NPOOLS = 6;
     enum NPAGES = 10;
-    enum PAGESIZE = 4096;
 
     static struct MockPool
     {
@@ -244,8 +269,8 @@ unittest
         size_t i;
         foreach(pool; pooltable[0 .. NPOOLS])
         {
-            pool.baseAddr = cast(byte*)(i++ * NPAGES * PAGESIZE);
-            pool.topAddr = pool.baseAddr + NPAGES * PAGESIZE;
+            pool.baseAddr = cast(byte*)(i++ * NPAGES * POOLSIZE);
+            pool.topAddr = pool.baseAddr + NPAGES * POOLSIZE;
         }
         base = pooltable[0].baseAddr;
         top = pooltable[NPOOLS - 1].topAddr;
