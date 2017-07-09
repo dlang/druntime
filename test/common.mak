@@ -18,7 +18,7 @@ ifneq (default,$(MODEL))
 	MODEL_FLAG:=-m$(MODEL)
 endif
 CFLAGS:=$(MODEL_FLAG) -Wall
-DFLAGS:=$(MODEL_FLAG) -w -I../../src -I../../import -I$(SRC) -defaultlib= -debuglib= \
+DFLAGS:=$(MODEL_FLAG) -dip1000 -w -I../../src -I../../import -I$(SRC) -defaultlib= -debuglib= \
 	$(OPTIONAL_PIC)
 
 # LINK_SHARED may be set by importing makefile
