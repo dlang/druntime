@@ -32,6 +32,8 @@ IMPDIR=import
 OPTIONAL_PIC:=$(if $(PIC),-fPIC,)
 OPTIONAL_COVERAGE:=$(if $(TEST_COVERAGE),-cov,)
 
+export OPTIONAL_PIC
+
 ifeq (osx,$(OS))
 	DOTDLL:=.dylib
 	DOTLIB:=.a
