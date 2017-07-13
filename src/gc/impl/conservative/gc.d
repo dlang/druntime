@@ -1093,7 +1093,7 @@ class ConservativeGC : GC
 
     void removeRange(void *p) nothrow @nogc
     {
-        if (!p)
+        if (!p || _isLocked)
         {
             return;
         }
@@ -2374,12 +2374,14 @@ struct Gcx
 
         {
             // lock roots and ranges around suspending threads b/c they're not reentrant safe
+            ConservativeGC._isLocked = true;
             rangesLock.lock();
             rootsLock.lock();
             scope (exit)
             {
                 rangesLock.unlock();
                 rootsLock.unlock();
+                ConservativeGC._isLocked = false;
             }
             thread_suspendAll();
 
@@ -2395,6 +2397,7 @@ struct Gcx
             markAll(nostack);
 
             thread_processGCMarks(&isMarked);
+            ConservativeGC._isLocked = false;
             thread_resumeAll();
         }
 
