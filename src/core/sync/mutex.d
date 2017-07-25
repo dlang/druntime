@@ -163,13 +163,13 @@ class Mutex :
      *    `Mutex.lock` does not throw, but a class derived from Mutex can throw.
      *    Use `lock_nothrow` in `nothrow @nogc` code.
      */
-    @trusted void lock()
+    @trusted void lock() @nogc
     {
         lock_nothrow();
     }
 
     /// ditto
-    @trusted void lock() shared
+    @trusted void lock() shared @nogc
     {
         lock_nothrow();
     }
@@ -201,13 +201,13 @@ class Mutex :
      *    `Mutex.unlock` does not throw, but a class derived from Mutex can throw.
      *    Use `unlock_nothrow` in `nothrow @nogc` code.
      */
-    @trusted void unlock()
+    @trusted void unlock() @nogc
     {
         unlock_nothrow();
     }
 
     /// ditto
-    @trusted void unlock() shared
+    @trusted void unlock() shared @nogc
     {
         unlock_nothrow();
     }
@@ -243,13 +243,13 @@ class Mutex :
      *    `Mutex.tryLock` does not throw, but a class derived from Mutex can throw.
      *    Use `tryLock_nothrow` in `nothrow @nogc` code.
      */
-    bool tryLock() @trusted
+    bool tryLock() @trusted @nogc
     {
         return tryLock_nothrow();
     }
 
     /// ditto
-    bool tryLock() shared @trusted
+    bool tryLock() shared @trusted @nogc
     {
         return tryLock_nothrow();
     }
