@@ -1,5 +1,6 @@
 COPY=\
 	$(IMPDIR)\object.d \
+	\
 	$(IMPDIR)\core\atomic.d \
 	$(IMPDIR)\core\attribute.d \
 	$(IMPDIR)\core\bitop.d \
@@ -22,6 +23,7 @@ COPY=\
 	$(IMPDIR)\core\internal\string.d \
 	$(IMPDIR)\core\internal\traits.d \
 	\
+	$(IMPDIR)\core\stdc\assert_.d \
 	$(IMPDIR)\core\stdc\complex.d \
 	$(IMPDIR)\core\stdc\config.d \
 	$(IMPDIR)\core\stdc\ctype.d \
@@ -95,6 +97,7 @@ COPY=\
 	$(IMPDIR)\core\sys\linux\unistd.d \
 	\
 	$(IMPDIR)\core\sys\linux\sys\auxv.d \
+	$(IMPDIR)\core\sys\linux\sys\eventfd.d \
 	$(IMPDIR)\core\sys\linux\sys\file.d \
 	$(IMPDIR)\core\sys\linux\sys\inotify.d \
 	$(IMPDIR)\core\sys\linux\sys\mman.d \

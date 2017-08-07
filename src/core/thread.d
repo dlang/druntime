@@ -60,11 +60,11 @@ version = StackGrowsDown;
  */
 version(Posix)
 {
-    alias core.sys.posix.unistd.getpid getpid;
+    alias getpid = core.sys.posix.unistd.getpid;
 }
 else version (Windows)
 {
-    alias core.sys.windows.windows.GetCurrentProcessId getpid;
+    alias getpid = core.sys.windows.windows.GetCurrentProcessId;
 }
 
 
@@ -130,7 +130,7 @@ private
     version (DigitalMars)
     {
         version (Windows)
-            alias _d_eh_swapContext swapContext;
+            alias swapContext = _d_eh_swapContext;
         else
         {
             extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc;
@@ -169,7 +169,7 @@ private
         }
     }
     else
-        alias _d_eh_swapContext swapContext;
+        alias swapContext = _d_eh_swapContext;
 }
 
 
@@ -187,7 +187,7 @@ version( Windows )
         import core.sys.windows.windows;
         import core.sys.windows.threadaux;   // for OpenThreadHandle
 
-        extern (Windows) alias uint function(void*) btex_fptr;
+        extern (Windows) alias btex_fptr = uint function(void*);
         extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow;
 
         //
@@ -936,6 +936,12 @@ class Thread
      */
     __gshared const int PRIORITY_DEFAULT;
 
+     version(NetBSD)
+     {
+        //NetBSD does not support priority for default policy
+        // and it is not possible change policy without root access
+        int fakePriority = int.max;
+     }
 
     /**
      * Gets the scheduling priority for the associated thread.
@@ -951,6 +957,10 @@ class Thread
         version( Windows )
         {
             return GetThreadPriority( m_hndl );
+        }
+        else version(NetBSD)
+        {
+           return fakePriority==int.max? PRIORITY_DEFAULT : fakePriority;
         }
         else version( Posix )
         {
@@ -1015,6 +1025,10 @@ class Thread
 
             if (priocntl(idtype_t.P_LWPID, P_MYID, PC_SETPARMS, &pcparm) == -1)
                 throw new ThreadException( "Unable to set scheduling class" );
+        }
+        else version(NetBSD)
+        {
+           fakePriority = val;
         }
         else version( Posix )
         {
@@ -1429,11 +1443,11 @@ private:
     //
     version( Windows )
     {
-        alias uint TLSKey;
+        alias TLSKey = uint;
     }
     else version( Posix )
     {
-        alias pthread_key_t TLSKey;
+        alias TLSKey = pthread_key_t;
     }
 
 
@@ -1958,6 +1972,10 @@ extern (C) void thread_init()
     //       functions to detect the condition and return immediately.
 
     Thread.initLocks();
+    // The Android VM runtime intercepts SIGUSR1 and apparently doesn't allow
+    // its signal handler to run, so swap the two signals on Android, since
+    // thread_resumeHandler does nothing.
+    version( Android ) thread_setGCSignals(SIGUSR2, SIGUSR1);
 
     version( Darwin )
     {
@@ -2804,8 +2822,8 @@ enum ScanType
     tls, /// TLS data is being scanned.
 }
 
-alias void delegate(void*, void*) nothrow ScanAllThreadsFn; /// The scanning function.
-alias void delegate(ScanType, void*, void*) nothrow ScanAllThreadsTypeFn; /// ditto
+alias ScanAllThreadsFn = void delegate(void*, void*) nothrow; /// The scanning function.
+alias ScanAllThreadsTypeFn = void delegate(ScanType, void*, void*) nothrow; /// ditto
 
 /**
  * The main entry point for garbage collection.  The supplied delegate
@@ -3096,7 +3114,7 @@ enum IsMarked : int
     unknown, /// Address is not managed by the GC.
 }
 
-alias int delegate( void* addr ) nothrow IsMarkedDg; /// The isMarked callback function.
+alias IsMarkedDg = int delegate( void* addr ) nothrow; /// The isMarked callback function.
 
 /**
  * This routine allows the runtime to process any special per-thread handling
@@ -3127,6 +3145,7 @@ extern (C) @nogc nothrow
 {
     version (CRuntime_Glibc) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr);
     version (FreeBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
+    version (NetBSD) int pthread_attr_get_np(pthread_t thread, pthread_attr_t* attr);
     version (Solaris) int thr_stksegment(stack_t* stk);
     version (CRuntime_Bionic) int pthread_getattr_np(pthread_t thid, pthread_attr_t* attr);
 }
@@ -3177,6 +3196,17 @@ private void* getStackBottom() nothrow @nogc
         return addr + size;
     }
     else version (FreeBSD)
+    {
+        pthread_attr_t attr;
+        void* addr; size_t size;
+
+        pthread_attr_init(&attr);
+        pthread_attr_get_np(pthread_self(), &attr);
+        pthread_attr_getstack(&attr, &addr, &size);
+        pthread_attr_destroy(&attr);
+        return addr + size;
+    }
+    else version (NetBSD)
     {
         pthread_attr_t attr;
         void* addr; size_t size;
@@ -3950,18 +3980,21 @@ class Fiber
      * Params:
      *  fn = The fiber function.
      *  sz = The stack size for this fiber.
+     *  guardPageSize = size of the guard page to trap fiber's stack
+     *                    overflows
      *
      * In:
      *  fn must not be null.
      */
-    this( void function() fn, size_t sz = PAGESIZE*4 ) nothrow
+    this( void function() fn, size_t sz = PAGESIZE*4,
+          size_t guardPageSize = PAGESIZE ) nothrow
     in
     {
         assert( fn );
     }
     body
     {
-        allocStack( sz );
+        allocStack( sz, guardPageSize );
         reset( fn );
     }
 
@@ -3973,18 +4006,21 @@ class Fiber
      * Params:
      *  dg = The fiber function.
      *  sz = The stack size for this fiber.
+     *  guardPageSize = size of the guard page to trap fiber's stack
+     *                    overflows
      *
      * In:
      *  dg must not be null.
      */
-    this( void delegate() dg, size_t sz = PAGESIZE*4 ) nothrow
+    this( void delegate() dg, size_t sz = PAGESIZE*4,
+          size_t guardPageSize = PAGESIZE ) nothrow
     in
     {
         assert( dg );
     }
     body
     {
-        allocStack( sz );
+        allocStack( sz, guardPageSize);
         reset( dg );
     }
 
@@ -4329,7 +4365,7 @@ private:
     //
     // Allocate a new stack for this fiber.
     //
-    final void allocStack( size_t sz ) nothrow
+    final void allocStack( size_t sz, size_t guardPageSize ) nothrow
     in
     {
         assert( !m_pmem && !m_ctxt );
@@ -4354,7 +4390,7 @@ private:
         {
             // reserve memory for stack
             m_pmem = VirtualAlloc( null,
-                                   sz + PAGESIZE,
+                                   sz + guardPageSize,
                                    MEM_RESERVE,
                                    PAGE_NOACCESS );
             if( !m_pmem )
@@ -4362,7 +4398,7 @@ private:
 
             version( StackGrowsDown )
             {
-                void* stack = m_pmem + PAGESIZE;
+                void* stack = m_pmem + guardPageSize;
                 void* guard = m_pmem;
                 void* pbase = stack + sz;
             }
@@ -4381,13 +4417,16 @@ private:
             if( !stack )
                 onOutOfMemoryError();
 
-            // allocate reserved guard page
-            guard = VirtualAlloc( guard,
-                                  PAGESIZE,
-                                  MEM_COMMIT,
-                                  PAGE_READWRITE | PAGE_GUARD );
-            if( !guard )
-                onOutOfMemoryError();
+            if (guardPageSize)
+            {
+                // allocate reserved guard page
+                guard = VirtualAlloc( guard,
+                                      guardPageSize,
+                                      MEM_COMMIT,
+                                      PAGE_READWRITE | PAGE_GUARD );
+                if( !guard )
+                    onOutOfMemoryError();
+            }
 
             m_ctxt.bstack = pbase;
             m_ctxt.tstack = pbase;
@@ -4397,11 +4436,15 @@ private:
         {
             version (Posix) import core.sys.posix.sys.mman; // mmap
             version (FreeBSD) import core.sys.freebsd.sys.mman : MAP_ANON;
+            version (NetBSD) import core.sys.netbsd.sys.mman : MAP_ANON;
             version (CRuntime_Glibc) import core.sys.linux.sys.mman : MAP_ANON;
             version (Darwin) import core.sys.darwin.sys.mman : MAP_ANON;
 
             static if( __traits( compiles, mmap ) )
             {
+                // Allocate more for the memory guard
+                sz += guardPageSize;
+
                 m_pmem = mmap( null,
                                sz,
                                PROT_READ | PROT_WRITE,
@@ -4431,13 +4474,30 @@ private:
             {
                 m_ctxt.bstack = m_pmem + sz;
                 m_ctxt.tstack = m_pmem + sz;
+                void* guard = m_pmem;
             }
             else
             {
                 m_ctxt.bstack = m_pmem;
                 m_ctxt.tstack = m_pmem;
+                void* guard = m_pmem + sz - guardPageSize;
             }
             m_size = sz;
+
+            static if( __traits( compiles, mmap ) )
+            {
+                if (guardPageSize)
+                {
+                    // protect end of stack
+                    if ( mprotect(guard, guardPageSize, PROT_NONE) == -1 )
+                        abort();
+                }
+            }
+            else
+            {
+                // Supported only for mmap allocated memory - results are
+                // undefined if applied to memory not obtained by mmap
+            }
         }
 
         Thread.add( m_ctxt );
@@ -4557,7 +4617,7 @@ private:
             // Thus, it should not have any effects on OSes not implementing
             // exception chain verification.
 
-            alias void function() fp_t; // Actual signature not relevant.
+            alias fp_t = void function(); // Actual signature not relevant.
             static struct EXCEPTION_REGISTRATION
             {
                 EXCEPTION_REGISTRATION* next; // sehChainEnd if last one.

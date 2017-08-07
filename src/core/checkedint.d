@@ -151,7 +151,7 @@ unittest
 pragma(inline, true)
 uint addu(uint x, uint y, ref bool overflow)
 {
-    uint r = x + y;
+    immutable uint r = x + y;
     if (r < x || r < y)
         overflow = true;
     return r;
@@ -179,7 +179,7 @@ unittest
 pragma(inline, true)
 ulong addu(ulong x, ulong y, ref bool overflow)
 {
-    ulong r = x + y;
+    immutable ulong r = x + y;
     if (r < x || r < y)
         overflow = true;
     return r;
@@ -209,7 +209,7 @@ static if (is(ucent))
 pragma(inline, true)
 ucent addu(ucent x, ucent y, ref bool overflow)
 {
-    ucent r = x + y;
+    immutable ucent r = x + y;
     if (r < x || r < y)
         overflow = true;
     return r;
@@ -251,7 +251,7 @@ unittest
 pragma(inline, true)
 int subs(int x, int y, ref bool overflow)
 {
-    long r = cast(long)x - cast(long)y;
+    immutable long r = cast(long)x - cast(long)y;
     if (r < int.min || r > int.max)
         overflow = true;
     return cast(int)r;
@@ -279,7 +279,7 @@ unittest
 pragma(inline, true)
 long subs(long x, long y, ref bool overflow)
 {
-    long r = cast(ulong)x - cast(ulong)y;
+    immutable long r = cast(ulong)x - cast(ulong)y;
     if (x <  0 && y >= 0 && r >= 0 ||
         x >= 0 && y <  0 && (r <  0 || y == long.min))
         overflow = true;
@@ -312,7 +312,7 @@ static if (is(cent))
 pragma(inline, true)
 cent subs(cent x, cent y, ref bool overflow)
 {
-    cent r = cast(ucent)x - cast(ucent)y;
+    immutable cent r = cast(ucent)x - cast(ucent)y;
     if (x <  0 && y >= 0 && r >= 0 ||
         x >= 0 && y <  0 && (r <  0 || y == long.min))
         overflow = true;
@@ -570,7 +570,7 @@ unittest
 pragma(inline, true)
 long muls(long x, long y, ref bool overflow)
 {
-    long r = cast(ulong)x * cast(ulong)y;
+    immutable long r = cast(ulong)x * cast(ulong)y;
     enum not0or1 = ~1L;
     if((x & not0or1) && ((r == y)? r : (r / x) != y))
         overflow = true;
@@ -606,7 +606,7 @@ static if (is(cent))
 pragma(inline, true)
 cent muls(cent x, cent y, ref bool overflow)
 {
-    cent r = cast(ucent)x * cast(ucent)y;
+    immutable cent r = cast(ucent)x * cast(ucent)y;
     enum not0or1 = ~1L;
     if((x & not0or1) && ((r == y)? r : (r / x) != y))
         overflow = true;
@@ -654,10 +654,10 @@ unittest
 pragma(inline, true)
 uint mulu(uint x, uint y, ref bool overflow)
 {
-    ulong r = ulong(x) * ulong(y);
-    if (r > uint.max)
+    immutable ulong r = ulong(x) * ulong(y);
+    if (r >> 32)
         overflow = true;
-    return cast(uint)r;
+    return cast(uint) r;
 }
 
 unittest
@@ -682,29 +682,66 @@ unittest
 
 /// ditto
 pragma(inline, true)
-ulong mulu(ulong x, ulong y, ref bool overflow)
+ulong mulu(ulong x, uint y, ref bool overflow)
 {
     ulong r = x * y;
-    if (x && (r / x) != y)
+    if (x >> 32 &&
+            r / x != y)
+        overflow = true;
+    return r;
+}
+
+/// ditto
+pragma(inline, true)
+ulong mulu(ulong x, ulong y, ref bool overflow)
+{
+    immutable ulong r = x * y;
+    if ((x | y) >> 32 &&
+            x &&
+            r / x != y)
         overflow = true;
     return r;
 }
 
 unittest
 {
-    void test(ulong x, ulong y, ulong r, bool overflow) @nogc nothrow
+    void test(T, U)(T x, U y, ulong r, bool overflow) @nogc nothrow
     {
         bool o;
         assert(mulu(x, y, o) == r);
         assert(o == overflow);
     }
+    // One operand is zero
+    test(0, 3, 0, false);
+    test(0UL, 3, 0, false);
+    test(0UL, 3UL, 0, false);
+    test(3, 0, 0, false);
+    test(3UL, 0, 0, false);
+    test(3UL, 0UL, 0, false);
+    // Small numbers
     test(2, 3, 6, false);
+    test(2UL, 3, 6, false);
+    test(2UL, 3UL, 6, false);
+    // At the 32/64 border
+    test(1, ulong(uint.max), uint.max, false);
+    test(1UL, ulong(uint.max), uint.max, false);
+    test(ulong(uint.max), 1, uint.max, false);
+    test(ulong(uint.max), 1UL, uint.max, false);
+    test(1, 1 + ulong(uint.max), 1 + ulong(uint.max), false);
+    test(1UL, 1 + ulong(uint.max), 1 + ulong(uint.max), false);
+    test(1 + ulong(uint.max), 1, 1 + ulong(uint.max), false);
+    test(1 + ulong(uint.max), 1UL, 1 + ulong(uint.max), false);
+    // At the limit
     test(1, ulong.max, ulong.max, false);
+    test(1UL, ulong.max, ulong.max, false);
+    test(ulong.max, 1, ulong.max, false);
+    test(ulong.max, 1UL, ulong.max, false);
+    // Miscellaneous
     test(0, 1, 0, false);
     test(0, ulong.max, 0, false);
     test(ulong.max, 2, 2 * ulong.max, true);
     test(1UL << 32, 1UL << 32, 0, true);
-
+    // Must be sticky
     bool overflow = true;
     assert(mulu(0UL, 0UL, overflow) == 0);
     assert(overflow);                   // sticky
@@ -716,7 +753,7 @@ static if (is(ucent))
 pragma(inline, true)
 ucent mulu(ucent x, ucent y, ref bool overflow)
 {
-    ucent r = x * y;
+    immutable ucent r = x * y;
     if (x && (r / x) != y)
         overflow = true;
     return r;
