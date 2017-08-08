@@ -187,3 +187,18 @@ template hasElaborateCopyConstructor(T...)
     else
         enum bool hasElaborateCopyConstructor = false;
 }
+
+// (from phobos)
+package template ModifyTypePreservingTQ(alias Modifier, T)
+{
+         static if (is(T U ==          immutable U)) alias ModifyTypePreservingTQ =          immutable Modifier!U;
+    else static if (is(T U == shared inout const U)) alias ModifyTypePreservingTQ = shared inout const Modifier!U;
+    else static if (is(T U == shared inout       U)) alias ModifyTypePreservingTQ = shared inout       Modifier!U;
+    else static if (is(T U == shared       const U)) alias ModifyTypePreservingTQ = shared       const Modifier!U;
+    else static if (is(T U == shared             U)) alias ModifyTypePreservingTQ = shared             Modifier!U;
+    else static if (is(T U ==        inout const U)) alias ModifyTypePreservingTQ =        inout const Modifier!U;
+    else static if (is(T U ==        inout       U)) alias ModifyTypePreservingTQ =              inout Modifier!U;
+    else static if (is(T U ==              const U)) alias ModifyTypePreservingTQ =              const Modifier!U;
+    else                                             alias ModifyTypePreservingTQ =                    Modifier!T;
+}
+

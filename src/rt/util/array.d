@@ -10,6 +10,7 @@ module rt.util.array;
 
 
 import core.internal.string;
+import core.internal.array;
 import core.stdc.stdint;
 
 
@@ -20,7 +21,7 @@ void enforceTypedArraysConformable(T)(const char[] action,
 {
     _enforceSameLength(action, a1.length, a2.length);
     if(!allowOverlap)
-        _enforceNoOverlap(action, arrayToPtr(a1), arrayToPtr(a2), T.sizeof * a1.length);
+        _enforceNoOverlap(action, a1.ptrval, a2.ptrval, T.sizeof * a1.length);
 }
 
 void enforceRawArraysConformable(const char[] action, in size_t elementSize,
@@ -28,7 +29,7 @@ void enforceRawArraysConformable(const char[] action, in size_t elementSize,
 {
     _enforceSameLength(action, a1.length, a2.length);
     if(!allowOverlap)
-        _enforceNoOverlap(action, arrayToPtr(a1), arrayToPtr(a2), elementSize * a1.length);
+        _enforceNoOverlap(action, a1.ptrval, a2.ptrval, elementSize * a1.length);
 }
 
 private void _enforceSameLength(const char[] action,
@@ -47,10 +48,10 @@ private void _enforceSameLength(const char[] action,
     throw new Error(msg);
 }
 
-private void _enforceNoOverlap(const char[] action,
-    uintptr_t ptr1, uintptr_t ptr2, in size_t bytes)
+private void _enforceNoOverlap(T)(const char[] action,
+    const PtrVal!(T) ptr1, const PtrVal!(T) ptr2, in size_t bytes)
 {
-    const d = ptr1 > ptr2 ? ptr1 - ptr2 : ptr2 - ptr1;
+    const d = ptr1 > ptr2 ? ptr1.toVoid - ptr2.toVoid : ptr2.toVoid - ptr1.toVoid;
     if(d >= bytes)
         return;
     const overlappedBytes = bytes - d;
@@ -63,10 +64,4 @@ private void _enforceNoOverlap(const char[] action,
     msg ~= " byte(s) overlap of ";
     msg ~= bytes.unsignedToTempString(tmpBuff, 10);
     throw new Error(msg);
-}
-
-private uintptr_t arrayToPtr(const void[] array) @trusted
-{
-    // Ok because the user will never dereference the pointer
-    return cast(uintptr_t)array.ptr;
 }
