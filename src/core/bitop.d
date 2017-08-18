@@ -396,6 +396,32 @@ struct BitRange
         }
     }
 
+    /**
+     * Construct a BitRange.
+     *
+     * Params:
+     *   bitarr - The array of bits to iterate over
+     *   numBits - The total number of valid bits in the given bit array
+     *   startBit - The initial start index to start searching
+     */
+    this(const(size_t)* bitarr, size_t numBits, size_t startBit) @system
+    {
+        assert(startBit <= numBits);
+        bits = bitarr;
+        len = numBits;
+        idx = startBit;
+        if (len)
+        {
+            bits += idx / bitsPerWord;
+            auto curbit = idx % bitsPerWord;
+            // prime the first bit
+            cur = *bits++ ^ (size_t(1) << curbit);
+            if (curbit)
+                cur &= ~((size_t(1) << curbit) - 1); // clear skipped lower bits
+            popFront();
+        }
+    }
+
     /// Range functions
     size_t front()
     {
@@ -453,6 +479,11 @@ struct BitRange
     bts(bitArr, 95);
     bts(bitArr, 78);
 
+    assert(BitRange(bitArr, 100).front() == 24);
+
+    bts(bitArr, 0);
+    assert(BitRange(bitArr, 100).front() == 0);
+
     enum sum = 48 + 24 + 95 + 78;
 
     // iterate
@@ -465,7 +496,10 @@ struct BitRange
     }
 
     assert(testSum == sum);
-    assert(nBits == 4);
+    assert(nBits == 5);
+
+    assert(BitRange(bitArr, 100, 50).front() == 78);
+    assert(BitRange(bitArr, 100, 48).front() == 48);
 }
 
 @system unittest

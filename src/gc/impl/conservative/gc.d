@@ -2080,140 +2080,6 @@ struct Gcx
     ToScanStack!(ScanRange) toscanPrecise;
 
     /**
-     * Finds the offset between an index and the next set bit, up to our max.
-     *
-     * Returns: The offset between index and the next bit,
-     *          or -1 if no bits are set between index and max
-     */
-    int bitScanForwardOffset(size_t* bitArray, size_t index, size_t max) nothrow
-    {
-        static import core.bitop;
-
-        //based on core.bitop.bt
-        static if (size_t.sizeof == 8)
-        {
-            auto bitIndex = index >> 6;
-            int position = index & 63;
-        }
-        else static if (size_t.sizeof == 4)
-        {
-            auto bitIndex = index >> 5;
-            int position = index & 31;
-        }
-        else
-            static assert(0);
-
-        auto bits = bitArray[bitIndex];
-        auto shifted = ( bits >> position) << position;
-
-        int internalOffset;
-
-        for(;;)
-        {
-            //check if the remaining bits == 0
-            if(!shifted)
-            {
-                ++bitIndex;
-                static if(size_t.sizeof == 8)
-                    auto maxBitIndex = (max >> 6);
-                else
-                    auto maxBitIndex = (max >> 5);
-                //if index and max lie in the same bit set
-                if(bitIndex == maxBitIndex)
-                {
-                    //nothing found here
-                    return -1;
-                }
-                else
-                {
-                    static if (size_t.sizeof == 8)
-                        internalOffset += 64-position;
-                    else static if (size_t.sizeof == 4)
-                        internalOffset += 32-position;
-                    position = 0;
-                    shifted = bitArray[bitIndex];
-                    continue;
-                }
-            }
-            else
-            {
-                break;
-            }
-
-        }//for
-
-        int offset = core.bitop.bsf(shifted) - position + internalOffset;
-        if(offset <= (max - index))
-            return offset;
-        else
-            return -1;//nothing found between index and max
-    }
-
-    unittest
-    {
-        Gcx* gcx = cast(Gcx*)cstdlib.calloc(1, Gcx.sizeof);
-
-        static if(size_t.sizeof == 8)
-        {
-            size_t[2] testBits1 = [0b0000_0000_0000_0000_0000_0000_0010_0000_0000_0000_0000_0000_0010_0000_0000_0001,
-                                   0b0100_0000_0000_0000_0000_0000_0010_0000_0000_0000_0000_0000_0000_0000_0000_0010];
-
-            size_t[3] testBits2 = [0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000,
-                                   0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000,
-                                   0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000];
-        }
-        else static if (size_t.sizeof == 4)
-        {
-            size_t[4] testBits1 = [0b0000_0000_0000_0000_0010_0000_0000_0001, 0b0000_0000_0000_0000_0000_0000_0010_0000,
-                                   0b0000_0000_0000_0000_0000_0000_0000_0010, 0b0100_0000_0000_0000_0000_0000_0010_0000];
-
-            size_t[6] testBits2 = [0b0000_0000_0000_0000_0000_0000_0000_0000, 0b0000_0000_0000_0000_0000_0000_0000_0000,
-                                   0b0000_0000_0000_0000_0000_0000_0000_0000, 0b0000_0000_0000_0000_0000_0000_0000_0000,
-                                   0b0000_0000_0000_0000_0000_0000_0000_0000, 0b1000_0000_0000_0000_0000_0000_0000_0000];
-        }
-        else
-            assert(0);
-
-
-        size_t index = 0;
-        //0 based indexing
-        auto offset = gcx.bitScanForwardOffset(testBits1.ptr,index,127);
-        assert(offset == 0);//first set bit is in position 0
-
-        index++;
-        offset = gcx.bitScanForwardOffset(testBits1.ptr,index,127);
-        assert(offset == 12);//started at 1, position of next set bit is 13
-
-        index+=offset+1;
-        offset = gcx.bitScanForwardOffset(testBits1.ptr,index,127);
-        assert(offset == 23);//started at 14, position of next set bit is 37
-
-        index+=offset+1;
-        offset = gcx.bitScanForwardOffset(testBits1.ptr,index,127);
-        assert(offset == 27);//started at 38, position of next set bit is 65
-
-        index+=offset+1;
-        offset = gcx.bitScanForwardOffset(testBits1.ptr,index,127);
-        assert(offset == 35);//started at 66, position of next set bit is 101
-
-        index+=offset+1;
-        offset = gcx.bitScanForwardOffset(testBits1.ptr,index,127);
-        assert(offset == 24);//started at 102, position of next set bit is 126
-
-        offset = gcx.bitScanForwardOffset(testBits1.ptr,15,30);
-        assert(offset == -1);//no bits between positions 15 and 30
-
-        //testBits2
-        offset = gcx.bitScanForwardOffset(testBits2.ptr,0,191);
-        assert(offset == 191);
-
-        gcx.Dtor();
-        cstdlib.free(gcx);
-        gcx = null;
-    }
-
-
-    /**
      * Search a range of memory values and mark any pointers into the GC pool.
      */
     void mark(bool precise)(void *pbot, void *ptop) scope nothrow
@@ -2238,7 +2104,11 @@ struct Gcx
             Range[FANOUT_LIMIT] stack = void;
 
         static if (precise)
+        {
+            import core.bitop;
+            BitRange isptr;
             Pool* p1pool = null; // always starting from a non-heap root
+        }
 
     Lagain:
         size_t pcache = 0;
@@ -2252,18 +2122,25 @@ struct Gcx
         void* base = void;
         void* top = void;
 
+        static if (precise) if (p1pool)
+        {
+            size_t p1bitpos = p1 - cast(void**)p1pool.baseAddr;
+            size_t p2bitpos = p2 - cast(void**)p1pool.baseAddr;
+            isptr = BitRange(p1pool.is_pointer.data, p2bitpos, p1bitpos);
+        }
         //printf("marking range: [%p..%p] (%#zx)\n", p1, p2, cast(size_t)p2 - cast(size_t)p1);
         for (;;)
         {
             static if(precise) if (p1pool)
             {
-                auto offset = bitScanForwardOffset(p1pool.is_pointer.data, p1 - cast(void**)p1pool.baseAddr, p2 - cast(void**)p1pool.baseAddr);
-                if(offset == -1)
+                if (isptr.empty())
                 {
-                    p1=p2;
+                    p1 = p2;
                     break;
                 }
-                p1 += offset;
+                auto bitpos = isptr.front();
+                isptr.popFront();
+                p1 = cast(void**)p1pool.baseAddr + bitpos;
             }
 
             auto p = cast(byte *)(*p1);
