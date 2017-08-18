@@ -2113,6 +2113,7 @@ struct Gcx
             //check if the remaining bits == 0
             if(!shifted)
             {
+                ++bitIndex;
                 static if(size_t.sizeof == 8)
                     auto maxBitIndex = (max >> 6);
                 else
@@ -2130,7 +2131,7 @@ struct Gcx
                     else static if (size_t.sizeof == 4)
                         internalOffset += 32-position;
                     position = 0;
-                    shifted = bitArray[++bitIndex];
+                    shifted = bitArray[bitIndex];
                     continue;
                 }
             }
