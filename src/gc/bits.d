@@ -191,16 +191,24 @@ struct GCBits
             {
                 // precalculate the number of words where a bit pattern of the
                 //  source length repeats on word alignment
+                static size_t gcd(size_t a, size_t b)
+                {
+                    // euclidean algorithm
+                    while (b != 0)
+                    {
+                        auto t = b;
+                        b = a % b;
+                        a = t;
+                    }
+                    return a;
+                }
+                // lowest common multiple (with BITS_PER_WORD)
                 static ubyte lcm(ubyte i)
                 {
                     // calc lcm(i,BITS_PER_WORD)/BITS_PER_WORD
-                    // by just stripping all factors 2 from i
-                    if ((i & (i - 1)) == 0)
-                        return 1;
-                    while((i & 1) == 0)
-                        i >>= 1;
-                    return i;
+                    return cast(ubyte)(BITS_PER_WORD / gcd(i, BITS_PER_WORD));
                 }
+                static struct ut { unittest { assert(lcm(3) == BITS_PER_WORD); } }
                 static calcRepLength()
                 {
                     ubyte[BITS_PER_WORD] rep;
@@ -213,7 +221,7 @@ struct GCBits
                 // make some initial copies until we have a pattern that
                 //  repeats on word boundary
                 size_t rep = repLength[sourcelen & BITS_MASK];
-                size_t repwords = ((sourcelen >> BITS_SHIFT) + 1) * rep;
+                size_t repwords = (sourcelen * rep) >> BITS_SHIFT;
                 size_t alignbits = (target & BITS_MASK ? BITS_PER_WORD - (target & BITS_MASK) : 0);
                 size_t initbits = BITS_PER_WORD * repwords + alignbits;
 
@@ -256,6 +264,26 @@ struct GCBits
             }
             copyRange(target, destlen, source);
         }
+    }
+
+    unittest
+    {
+        // simulate broken array append test case in vibe.d
+        GCBits bits;
+        bits.alloc(10000);
+        auto data = bits.data;
+
+        GCBits src;
+        src.alloc(67);
+        src.data[0] = 0x4;
+
+        bits.copyRangeRepeating(2, 10000, src.data, 67);
+
+        foreach (i; 0 .. 10000)
+            if ((i - 2) % 67 == 2)
+                assert(bits.test(i));
+            else
+                assert(!bits.test(i));
     }
 
     //pragma(inline,true)
