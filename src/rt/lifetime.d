@@ -765,8 +765,14 @@ BlkInfo gc_qalloc_emplace(size_t sz, const TypeInfo ti, const TypeInfo tinext) n
 
 size_t gc_extend_emplace(void* p, size_t mx, size_t sz, size_t oldsz, const TypeInfo ti, const TypeInfo tinext)
 {
-    size_t newsz = GC.extend(p, mx, sz, ti);
-    if(gc_precise && newsz >= PAGESIZE)
+    if (!gc_precise)
+        return GC.extend(p, mx, sz, ti);
+
+    // only called on large pages, so passing a type info to GC.extend will emplace RTInfo at the wrong location.
+    // safer to use "null" to temporarily switch to conservative scanning (if not NOSCAN set) until we have
+    //  a mechanism not to change exisiting pointer info at all.
+    size_t newsz = GC.extend(p, mx, sz, null);
+    if(newsz >= PAGESIZE)
     {
         // an array of classes is in fact an array of pointers
         const(TypeInfo) tielem = typeid(tinext) is typeid(TypeInfo_Class) ? typeid(void*) : tinext;
@@ -893,7 +899,7 @@ Lcontinue:
     if (info.size >= PAGESIZE && curcapacity != 0)
     {
         auto extendsize = reqsize + offset + LARGEPAD - info.size;
-        auto u = GC.extend(info.base, extendsize, extendsize);
+        auto u = gc_extend_emplace(info.base, extendsize, extendsize, info.size, ti, tinext);
         if (u)
         {
             // extend worked, save the new current allocated size
