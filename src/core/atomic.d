@@ -162,6 +162,73 @@ version( CoreDdoc )
      * loads and stores after the call.
      */
     void atomicFence() nothrow @nogc;
+
+    /**
+     * Converts a shared lvalue to a non-shared lvalue.
+     *
+     * This functions allows to treat a shared lvalue as if it was thread-local.
+     * It is useful to avoid overhead of atomic operations when access to shared data
+     * is known to be within one thread (i.e. always under a lock).
+     * ---
+     * shared static int i;
+     *
+     * // i is never used outside of synchronized {} blocks...
+     *
+     * synchronized
+     * {
+     *     ++i;                 // ERROR: cannot directly modify shared lvalue
+     *
+     *     atomicOp!"+="(i, 1); // possible overhead
+     *
+     *     // Directly modify i
+     *     assumeUnshared(i) += 1;
+     *     // or:
+     *     ++assumeUnshared(i);
+     *     // or:
+     *     i.assumeUnshared += 1;
+     * }
+     * ---
+     * Usage of this function is restricted to allowing limited lvalue access to shared instances of
+     * primitive and POD types (e.g. direct use of operators), thus it is not defined for classes.
+     *
+     * Note: this function does not perform any ordering.
+     *
+     * Note: assumeUnshared is a special-purpose primitive and should be used with care. When accessing
+     * shared variables both inside and outside of synchronized blocks, atomic operations should be
+     * used instead.
+     *
+     * Params:
+     *  val = the shared lvalue.
+     *
+     * Returns:
+     *  The non-shared lvalue.
+     */
+    ref T assumeUnshared(T)(ref shared T val) @system @nogc pure nothrow
+        if(!is(T == class) && !is(T == interface))
+    {
+        return *cast(T*) &val;
+    }
+
+    /**
+     * Converts a shared lvalue to a non-shared lvalue.
+     *
+     * This functions allows to treat a shared lvalue as if it was thread-local.
+     * It is useful to avoid overhead of atomic operations when access to shared data
+     * is known to be within one thread (i.e. always under a lock).
+     *
+     * This is a specialization for immutable lvalues. Since immutable is implicitly
+     * unshared, this version accepts any type (even classes and interfaces).
+     *
+     * Params:
+     *  val = the shared lvalue.
+     *
+     * Returns:
+     *  The non-shared lvalue.
+     */
+    ref immutable(T) assumeUnshared(T)(ref immutable(T) val) @safe @nogc pure nothrow
+    {
+        return val;
+    }
 }
 else version( AsmX86_32 )
 {
@@ -1304,6 +1371,19 @@ if(__traits(isFloating, T))
     }
 }
 
+// assumeUnshared is architecture-independent: it is just a cast
+ref auto assumeUnshared(T)(ref shared T val) @system @nogc pure nothrow
+    if(!is(T == class) && !is(T == interface))
+{
+    return *cast(T*) &val;
+}
+
+// immutable is implicitly unshared
+ref auto assumeUnshared(T)(ref immutable(T) val) @safe @nogc pure nothrow
+{
+    return val;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Unit Tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -1561,5 +1641,82 @@ version( unittest )
         ubyte d = 1;
         atomicOp!"-="( c, d );
         assert(c == 1);
+    }
+
+    pure nothrow @nogc @system unittest
+    {
+               int base = 0;
+        shared int atom = 0;
+
+        // only accept shared lvalues
+        static assert(!is(typeof(assumeUnshared(base))));
+        static assert(!is(typeof(assumeUnshared(cast(shared)base))));
+
+        ++assumeUnshared(atom);
+        assert(atomicLoad!(MemoryOrder.raw)(atom) == 1);
+    }
+
+    pure nothrow @nogc @system unittest
+    {
+        shared const     int catom = 0;
+        shared immutable int iatom = 0;
+        // allow const
+        static assert(is(typeof(assumeUnshared(catom))));
+        static assert(is(typeof(assumeUnshared(iatom))));
+        // preserve const
+        static assert(!is(typeof(++assumeUnshared(catom))));
+        static assert(!is(typeof(++assumeUnshared(iatom))));
+    }
+
+    pure nothrow @nogc @system unittest
+    {
+        class Klass {}
+
+               Klass c1;
+        shared Klass c2;
+
+        // don't accept class instances
+        static assert(!is(typeof(assumeUnshared(c1))));
+        static assert(!is(typeof(assumeUnshared(c2))));
+    }
+
+    pure nothrow @nogc @system unittest
+    {
+        interface Interface {}
+               Interface i1;
+        shared Interface i2;
+
+        // don't accept interfaces
+        static assert(!is(typeof(assumeUnshared(i1))));
+        static assert(!is(typeof(assumeUnshared(i2))));
+    }
+
+    pure nothrow @nogc @system unittest
+    {
+        // test assumeShared with inout
+        shared struct S
+        {
+            int atom = 0;
+
+            @property ref get() inout
+            {
+                return atom.assumeUnshared;
+            }
+        }
+
+        shared           S sm;
+        shared const     S sc;
+        shared immutable S si;
+
+        static assert(is(typeof(sm.get) == int));
+        static assert(is(typeof(sc.get) == const(int)));
+        static assert(is(typeof(si.get) == immutable(int)));
+
+        static assert( is(typeof(++sm.get)));
+        static assert(!is(typeof(++sc.get)));
+        static assert(!is(typeof(++si.get)));
+
+        sm.get += 10;
+        assert(atomicLoad!(MemoryOrder.raw)(sm.atom) == 10);
     }
 }
