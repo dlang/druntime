@@ -2790,7 +2790,54 @@ unittest
   +/
 void destroy(T)(T obj) if (is(T == class))
 {
-    rt_finalize(cast(void*)obj);
+    static if (__traits(hasMember, obj, "__dtor"))
+    {
+        static if (contains("@nogc", [__traits(getFunctionAttributes, typeof(__traits(getMember, obj, "__dtor")))]))
+        {
+            auto cleanup = cast(void function(void *, bool) @nogc @system)&rt_finalize;
+            cleanup(cast(void*)obj, true);
+        }
+        else
+        {
+            rt_finalize(cast(void*)obj);
+        }
+    }
+    else
+    {
+            rt_finalize(cast(void*)obj);
+    }
+}
+
+version(unittest) unittest
+{
+    class C {
+        @nogc
+        ~this()
+        {
+        }
+    }
+    class D {
+    }
+
+    @nogc
+    void cleanup(T)(T t) {
+        destroy(t);
+    }
+
+    assert(__traits(compiles, cleanup(new C())));
+    assert(!__traits(compiles, cleanup(new D())));
+}
+
+bool contains(T)(T needle, T[] haystack)
+{
+    foreach (e; haystack)
+    {
+        if (e == needle)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 /// ditto
