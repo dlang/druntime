@@ -2097,6 +2097,7 @@ extern (C) void thread_term()
         free(Thread.pAboutToStart);
         Thread.pAboutToStart = null;
     }
+    free(Thread.sm_main.m_tlsgcdata);
     Thread.termLocks();
 }
 
@@ -2358,7 +2359,7 @@ extern (C) void thread_joinAll()
             Thread.remove(t);
             t = tn;
         }
-        else if (t.isDaemon)
+        else if (t.m_isDaemon)
         {
             t = t.next;
         }
