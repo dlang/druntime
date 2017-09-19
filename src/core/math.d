@@ -1,4 +1,4 @@
-﻿// Written in the D programming language.
+// Written in the D programming language.
 
 /**
  * Builtin mathematical intrinsics
@@ -165,100 +165,71 @@ unittest
 }
 
 /*************************************
- * Round argument to float precision.
+ * Round argument to a specific precision.
  *
- * D language types specify a minimum precision, not
- * a maximum. toFloatPrec() forces float precision.
+ * D language types specify a minimum precision, not a maximum. The
+ * `toPrec()` function forces rounding of the argument `f` to the
+ * precision of the specified floating point type `T`.
+ *
  * Params:
+ *      T = precision type to round to
  *      f = value to convert
  * Returns:
- *      f in float precision
+ *      f in precision of type `T`
  */
-
 @safe pure nothrow
-float toFloatPrec(float f)  { pragma(inline, false); return f; }
-
+T toPrec(T:float)(float f) { pragma(inline, false); return f; }
 /// ditto
 @safe pure nothrow
-float toFloatPrec(double f) { pragma(inline, false); return cast(float)f; }
-
+T toPrec(T:float)(double f) { pragma(inline, false); return cast(T) f; }
 /// ditto
 @safe pure nothrow
-float toFloatPrec(real f)   { pragma(inline, false); return cast(float)f; }
+T toPrec(T:float)(real f)  { pragma(inline, false); return cast(T) f; }
+/// ditto
+@safe pure nothrow
+T toPrec(T:double)(float f) { pragma(inline, false); return f; }
+/// ditto
+@safe pure nothrow
+T toPrec(T:double)(double f) { pragma(inline, false); return f; }
+/// ditto
+@safe pure nothrow
+T toPrec(T:double)(real f)  { pragma(inline, false); return cast(T) f; }
+/// ditto
+@safe pure nothrow
+T toPrec(T:real)(float f) { pragma(inline, false); return f; }
+/// ditto
+@safe pure nothrow
+T toPrec(T:real)(double f) { pragma(inline, false); return f; }
+/// ditto
+@safe pure nothrow
+T toPrec(T:real)(real f)  { pragma(inline, false); return f; }
 
 @safe unittest
 {
     static float f = 1.1f;
     static double d = 1.1;
     static real r = 1.1L;
-    f = toFloatPrec(f + f);
-    f = toFloatPrec(d + d);
-    f = toFloatPrec(r + r);
+    f = toPrec!float(f + f);
+    f = toPrec!float(d + d);
+    f = toPrec!float(r + r);
+    d = toPrec!double(f + f);
+    d = toPrec!double(d + d);
+    d = toPrec!double(r + r);
+    r = toPrec!real(f + f);
+    r = toPrec!real(d + d);
+    r = toPrec!real(r + r);
+
+    enum real PIR = 0xc.90fdaa22168c235p-2;
+    enum double PID = 0x1.921fb54442d18p+1;
+    enum float PIF = 0x1.921fb6p+1;
+
+    assert(toPrec!float(PIR) == PIF);
+    assert(toPrec!double(PIR) == PID);
+    assert(toPrec!real(PIR) == PIR);
+    assert(toPrec!float(PID) == PIF);
+    assert(toPrec!double(PID) == PID);
+    assert(toPrec!real(PID) == PID);
+    assert(toPrec!float(PIF) == PIF);
+    assert(toPrec!double(PIF) == PIF);
+    assert(toPrec!real(PIF) == PIF);
 }
-
-
-/*************************************
- * Round argument to double precision.
- *
- * D language types specify a minimum precision, not
- * a maximum. toDoublePrec() forces double precision.
- * Params:
- *      f = value to convert
- * Returns:
- *      f in double precision
- */
-
-@safe pure nothrow
-double toDoublePrec(float f)  { pragma(inline, false); return f; }
-
-/// ditto
-@safe pure nothrow
-double toDoublePrec(double f) { pragma(inline, false); return f; }
-
-/// ditto
-@safe pure nothrow
-double toDoublePrec(real f)   { pragma(inline, false); return cast(double)f; }
-
-@safe unittest
-{
-    static float f = 1.1f;
-    static double d = 1.1;
-    static real r = 1.1L;
-    d = toDoublePrec(f + f);
-    d = toDoublePrec(d + d);
-    d = toDoublePrec(r + r);
-}
-
-
-/*************************************
- * Round argument to real precision.
- *
- * D language types specify a minimum precision, not
- * a maximum. toRealPrec() forces real precision.
- * Params:
- *      f = value to convert
- * Returns:
- *      f in real precision
- */
-
-@safe pure nothrow
-real toRealPrec(float f)  { pragma(inline, false); return f; }
-
-/// ditto
-@safe pure nothrow
-real toRealPrec(double f) { pragma(inline, false); return f; }
-
-/// ditto
-@safe pure nothrow
-real toRealPrec(real f)   { pragma(inline, false); return f; }
-
-@safe unittest
-{
-    static float f = 1.1f;
-    static double d = 1.1;
-    static real r = 1.1L;
-    r = toRealPrec(f + f);
-    r = toRealPrec(d + d);
-    r = toRealPrec(r + r);
-}
-
