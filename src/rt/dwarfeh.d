@@ -408,7 +408,8 @@ extern (C) _Unwind_Reason_Code __dmd_personality_v0(int ver, _Unwind_Action acti
                 //printf("chain\n");
                 // Append eh's object to ehn's object chain
                 Throwable n = ehn.object;
-                while (n.next)
+                int infini_guard;
+                while (n.next && ++infini_guard < 10_000)
                     n = n.next;
                 n.next = eh.object;
 
