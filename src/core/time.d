@@ -1667,6 +1667,52 @@ public:
         }
     }
 
+    /++
+        Converts `Duration` to a `timeval` structure.
+    +/
+    timeval toTimeVal() const nothrow @nogc
+    {
+        timeval value;
+        split!("seconds", "usecs")(value.tv_sec, value.tv_usec);
+        return value;
+    }
+
+    unittest
+    {
+        timeval value;
+        value.tv_sec = 1;
+        value.tv_usec = 5000;
+        assert(dur!"msecs"(1005).toTimeVal() == value);
+    }
+
+    version(StdDdoc)
+    {
+        private struct timespec {}
+        /++
+            Converts `Duration` to a `timespec` structure.
+
+            $(BLUE This function is Posix-Only.)
+          +/
+        timespec toTimeSpec() const nothrow @nogc;
+    }
+    else version(Posix)
+    {
+        timespec toTimeSpec() const nothrow @nogc
+        {
+            timespec spec;
+            split!("seconds", "nsecs")(spec.tv_sec, spec.tv_nsec);
+            return spec;
+        }
+
+        ///
+        unittest
+        {
+            timespec value;
+            value.tv_sec = 1;
+            value.tv_nsec = 5005000;
+            assert(dur!"usecs"(1005005).toTimeSpec() == value);
+        }
+    }
 
 private:
 
