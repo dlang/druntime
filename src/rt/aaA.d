@@ -474,6 +474,23 @@ extern (C) void _aaClear(AA aa) pure nothrow
     }
 }
 
+/// Reserve AA
+extern (C) void _aaReserve(AA* aa, const TypeInfo_AssociativeArray ti, size_t ndim)
+{
+    ndim = nextpow2(ndim);
+    // lazily alloc implementation
+    if (aa.impl is null)
+        aa.impl = new Impl(ti, ndim);
+    else
+    {
+        if (ndim <= aa.dim) return;
+        if (aa.used * GROW_DEN > ndim * GROW_NUM)
+            ndim = (aa.used * GROW_DEN + GROW_NUM - 1) / GROW_NUM;
+        assert(aa.used * GROW_DEN <= ndim * GROW_NUM);
+        aa.resize(ndim);
+    }
+}
+
 /// Rehash AA
 extern (C) void* _aaRehash(AA* paa, in TypeInfo keyti) pure nothrow
 {
@@ -1012,4 +1029,38 @@ unittest
 
     assert(typeid(a).getHash(&a) == typeid(a).getHash(&a));
     assert(typeid(a).getHash(&a) == typeid(a).getHash(&a2));
+}
+
+// test AA.reserve
+unittest
+{
+    int[int] aa;
+    assert(aa is null);
+
+    aa.reserve(2000);
+    assert(aa !is null);
+
+    auto paa = &aa;
+    paa.reserve(3000);
+
+    foreach(i;0..2000) aa[i] = i;
+    assert(aa[1337] == 1337);
+
+    // stress test
+    aa.clear();
+    aa.reserve(3_000_000);
+
+    auto impl = (cast(AA*)&aa);
+    auto buckets = impl.buckets;
+
+    assert(buckets.length >= 2_000_000);
+
+    foreach(i;0..2_000_000) aa[i] = i;
+    assert(aa[1_999_133] == 1_999_133);
+
+    // pointer should be the same if no rehashing occurs
+    assert((cast(AA*)&aa).buckets == buckets);
+
+    // try to reserve less than current length
+    aa.reserve(10);
 }

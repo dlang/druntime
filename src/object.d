@@ -1931,6 +1931,7 @@ extern (C)
     inout(void)[] _aaKeys(inout void* p, in size_t keysize, const TypeInfo tiKeyArray) pure nothrow;
     void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
     void _aaClear(void* p) pure nothrow;
+    void _aaReserve(void** p, const TypeInfo_AssociativeArray ti, size_t ndim) pure nothrow;
 
     // alias _dg_t = extern(D) int delegate(void*);
     // int _aaApply(void* aa, size_t keysize, _dg_t dg);
@@ -1972,6 +1973,16 @@ void clear(T : Value[Key], Value, Key)(T aa)
 void clear(T : Value[Key], Value, Key)(T* aa)
 {
     _aaClear(*cast(void **) aa);
+}
+
+void reserve(T : Value[Key], Value, Key)(ref T aa, size_t ndim)
+{
+    _aaReserve(cast(void **)&aa, typeid(Value[Key]), ndim);
+}
+
+void reserve(T : Value[Key], Value, Key)(T* aa, size_t ndim)
+{
+    reserve(*aa, ndim);
 }
 
 T rehash(T : Value[Key], Value, Key)(T aa)
