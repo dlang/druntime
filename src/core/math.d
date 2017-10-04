@@ -25,6 +25,8 @@
  */
 module core.math;
 
+import core.stdc.stdint;
+
 public:
 @nogc:
 
@@ -164,3 +166,48 @@ unittest
     }
 }
 
+/**
+Computes the product of two unsigned 64 bit numbers.
+The result is stored into two 64 bit values which represent the lower and upper part.
+
+Params:
+    a, b = the number to be multiplied
+    lo   = the lower 64 bits of the result
+    hi   = the upper 64 bits of the result
+*/
+void mul128(in uint64_t a, in uint64_t b, out uint64_t lo, out uint64_t hi) @safe @nogc pure nothrow
+{
+    immutable uint64_t lowMask = 0xFFFFFFFF;
+    uint64_t aLo = a & lowMask;
+    uint64_t bLo = b & lowMask;
+    uint64_t bHi = b >> 32;
+    uint64_t aHi = a >> 32;
+
+    uint64_t abLo = aLo * bLo;
+    uint64_t abHi = aHi * bHi;
+    uint64_t abMid1 = aLo * bHi;
+    uint64_t abMid2 = aHi * bLo;
+
+    uint64_t tmp = (abMid1 & lowMask) + (abMid2 & lowMask) + (abLo >> 32);
+    lo = (tmp << 32) + (abLo & lowMask);
+    uint64_t carry = tmp >> 32;
+
+    hi = abHi + (abMid1 >> 32) + (abMid2 >> 32) + carry;
+}
+
+///
+@safe @nogc pure nothrow unittest
+{
+    uint64_t lo, hi;
+    mul128(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, lo, hi);
+    assert(hi == 0xFFFFFFFFFFFFFFFE);
+    assert(lo == 1);
+
+    mul128(0x1234567890123456, 0x9876543210987654, lo, hi);
+    assert(hi == 0x0AD77D742CE3C72E);
+    assert(lo == 0x45FD10D81D28D038);
+
+    mul128(0, 0x9876543210987654, lo, hi);
+    assert(lo == 0);
+    assert(hi == 0);
+}
