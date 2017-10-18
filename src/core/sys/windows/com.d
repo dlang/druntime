@@ -56,12 +56,12 @@ alias COINIT_SPEED_OVER_MEMORY   = COINIT.COINIT_SPEED_OVER_MEMORY;
 
 public import core.sys.windows.uuid;
 
-extern (System)
+extern (Windows)
 {
 
 class ComObject : IUnknown
 {
-extern (System):
+extern (Windows):
     HRESULT QueryInterface(const(IID)* riid, void** ppv)
     {
         if (*riid == IID_IUnknown)
