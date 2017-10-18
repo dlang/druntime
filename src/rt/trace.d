@@ -24,10 +24,6 @@ private
         alias core.stdc.stdlib._strtoui64 strtoull;
 }
 
-extern (C):
-
-alias long timer_t;
-
 /////////////////////////////////////
 //
 
@@ -53,9 +49,6 @@ struct Symbol
         const(char)[] Sident;   // name of symbol
 }
 
-enum ubyte SFvisited = 1;      // visited
-
-
 //////////////////////////////////
 // Build a linked list of these.
 
@@ -67,6 +60,12 @@ struct Stack
     timer_t ohd;                // overhead of all the bookkeeping code
     timer_t subtime;            // time used by all subfunctions
 }
+
+extern (C):
+
+alias long timer_t;
+
+enum ubyte SFvisited = 1;      // visited
 
 Symbol* root;               // root of symbol table
 bool trace_inited;

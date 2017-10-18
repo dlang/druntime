@@ -11,6 +11,9 @@ module rt.unwind;
 
 import core.stdc.stdint;
 
+struct _Unwind_Context;
+struct SjLj_Function_Context;
+
 extern (C):
 
 alias uintptr_t _Unwind_Word;
@@ -68,8 +71,6 @@ else
         _Unwind_Word private_2;
     }
 }
-
-struct _Unwind_Context;
 
 _Unwind_Reason_Code _Unwind_RaiseException(_Unwind_Exception *exception_object);
 
@@ -130,7 +131,6 @@ alias _Unwind_Personality_Fn = _Unwind_Reason_Code function(
         _Unwind_Exception* exceptionObject,
         _Unwind_Context* context);
 
-struct SjLj_Function_Context;
 void _Unwind_SjLj_Register(SjLj_Function_Context *);
 void _Unwind_SjLj_Unregister(SjLj_Function_Context *);
 _Unwind_Reason_Code _Unwind_SjLj_RaiseException(_Unwind_Exception*);

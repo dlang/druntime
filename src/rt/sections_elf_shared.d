@@ -767,7 +767,7 @@ version (linux) bool findDSOInfoForAddr(in void* addr, dl_phdr_info* result=null
 {
     static struct DG { const(void)* addr; dl_phdr_info* result; }
 
-    extern(C) int callback(dl_phdr_info* info, size_t sz, void* arg) nothrow @nogc
+    static extern(C) int callback(dl_phdr_info* info, size_t sz, void* arg) nothrow @nogc
     {
         auto p = cast(DG*)arg;
         if (findSegmentForAddr(*info, p.addr))
