@@ -22,8 +22,6 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
-nothrow @nogc:
-
 //
 // XOpen (XSI)
 //
@@ -412,6 +410,8 @@ struct rlimit
     rlim_t rlim_cur;
     rlim_t rlim_max;
 }
+
+nothrow @nogc extern(C):
 
 version (CRuntime_Glibc)
 {
