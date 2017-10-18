@@ -30,7 +30,6 @@ else version (WatchOS)
     version = Darwin;
 
 version (Posix):
-extern (C):
 nothrow:
 @nogc:
 
@@ -770,6 +769,7 @@ else
     static assert(false, "Unsupported platform");
 }
 
+extern (C):
 void         endhostent();
 void         endnetent();
 void         endprotoent();

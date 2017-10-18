@@ -872,17 +872,20 @@ version( CRuntime_Glibc )
         SI_KERNEL  = 0x80
     }
 
-    int kill(pid_t, int);
-    int sigaction(int, in sigaction_t*, sigaction_t*);
-    int sigaddset(sigset_t*, int);
-    int sigdelset(sigset_t*, int);
-    int sigemptyset(sigset_t*);
-    int sigfillset(sigset_t*);
-    int sigismember(in sigset_t*, int);
-    int sigpending(sigset_t*);
-    int sigprocmask(int, in sigset_t*, sigset_t*);
-    int sigsuspend(in sigset_t*);
-    int sigwait(in sigset_t*, int*);
+    extern (C)
+    {
+        int kill(pid_t, int);
+        int sigaction(int, in sigaction_t*, sigaction_t*);
+        int sigaddset(sigset_t*, int);
+        int sigdelset(sigset_t*, int);
+        int sigemptyset(sigset_t*);
+        int sigfillset(sigset_t*);
+        int sigismember(in sigset_t*, int);
+        int sigpending(sigset_t*);
+        int sigprocmask(int, in sigset_t*, sigset_t*);
+        int sigsuspend(in sigset_t*);
+        int sigwait(in sigset_t*, int*);
+    }
 }
 else version( Darwin )
 {

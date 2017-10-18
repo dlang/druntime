@@ -34,7 +34,7 @@ version (CRuntime_Glibc)
 
     extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {
-        extern (C) int cmp(scope const void* p1, scope const void* p2, scope void* ti)
+        static extern (C) int cmp(scope const void* p1, scope const void* p2, scope void* ti)
         {
             return (cast(TypeInfo)ti).compare(p1, p2);
         }
@@ -49,7 +49,7 @@ else version (FreeBSD)
 
     extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {
-        extern (C) int cmp(scope void* ti, scope const void* p1, scope const void* p2)
+        static extern (C) int cmp(scope void* ti, scope const void* p1, scope const void* p2)
         {
             return (cast(TypeInfo)ti).compare(p1, p2);
         }
@@ -64,7 +64,7 @@ else version (Darwin)
 
     extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {
-        extern (C) int cmp(scope void* ti, scope const void* p1, scope const void* p2)
+        static extern (C) int cmp(scope void* ti, scope const void* p1, scope const void* p2)
         {
             return (cast(TypeInfo)ti).compare(p1, p2);
         }
@@ -76,7 +76,7 @@ else
 {
     private TypeInfo tiglobal;
 
-    extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
+    static extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {
         extern (C) int cmp(scope const void* p1, scope const void* p2)
         {
