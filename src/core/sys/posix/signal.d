@@ -26,6 +26,13 @@ else version (WatchOS)
     version = Darwin;
 
 version (Posix):
+
+union sigval
+{
+    int     sival_int;
+    void*   sival_ptr;
+}
+
 extern (C):
 //nothrow:  // this causes Issue 12738
 
@@ -106,12 +113,6 @@ enum
   SIGEV_SIGNAL,
   SIGEV_NONE,
   SIGEV_THREAD
-}
-
-union sigval
-{
-    int     sival_int;
-    void*   sival_ptr;
 }
 
 version( Solaris )

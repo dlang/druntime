@@ -17,15 +17,14 @@ module core.sys.solaris.sys.priocntl;
 version (Solaris):
 nothrow:
 @nogc:
-extern (C):
 
 import core.sys.posix.sys.types : caddr_t, id_t;
 import core.stdc.config : c_long;
 import core.sys.solaris.sys.procset;
 import core.sys.solaris.sys.types : pri_t;
 
-c_long priocntl(idtype_t, id_t, int, ...);
-c_long priocntlset(procset_t*, int, ...);
+extern (C) c_long priocntl(idtype_t, id_t, int, ...);
+extern (C) c_long priocntlset(procset_t*, int, ...);
 
 
 enum PC_GETCID       = 0;       /* Get class ID */
