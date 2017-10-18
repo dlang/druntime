@@ -26,14 +26,7 @@ else version (WatchOS)
     version = Darwin;
 
 version (Posix):
-
-union sigval
-{
-    int     sival_int;
-    void*   sival_ptr;
-}
-
-extern (C):
+//extern (C): structs, classes, unions cannot be extern (C)
 //nothrow:  // this causes Issue 12738
 
 //
@@ -98,11 +91,14 @@ int raise(int sig);                    (defined in core.stdc.signal)
 
 //sig_atomic_t (defined in core.stdc.signal)
 
-private alias void function(int) sigfn_t;
-private alias void function(int, siginfo_t*, void*) sigactfn_t;
+extern (C)
+{
+    private alias void function(int) sigfn_t;
+    private alias void function(int, siginfo_t*, void*) sigactfn_t;
+}
 
 // nothrow versions
-nothrow @nogc
+nothrow @nogc extern (C)
 {
     private alias void function(int) sigfn_t2;
     private alias void function(int, siginfo_t*, void*) sigactfn_t2;
@@ -115,7 +111,13 @@ enum
   SIGEV_THREAD
 }
 
-version( Solaris )
+union sigval
+{
+    int     sival_int;
+    void*   sival_ptr;
+}
+
+version( Solaris ) extern (C)
 {
     import core.sys.posix.unistd;
 
@@ -135,9 +137,9 @@ version( Solaris )
         return sig;
     }
 }
-else version( CRuntime_Glibc )
+else version( CRuntime_Glibc ) extern (C)
 {
-    private extern (C) nothrow @nogc
+    private nothrow @nogc
     {
         int __libc_current_sigrtmin();
         int __libc_current_sigrtmax();
@@ -922,17 +924,20 @@ else version( Darwin )
     enum SI_ASYNCIO = 0x10004;
     enum SI_MESGQ   = 0x10005;
 
-    int kill(pid_t, int);
-    int sigaction(int, in sigaction_t*, sigaction_t*);
-    int sigaddset(sigset_t*, int);
-    int sigdelset(sigset_t*, int);
-    int sigemptyset(sigset_t*);
-    int sigfillset(sigset_t*);
-    int sigismember(in sigset_t*, int);
-    int sigpending(sigset_t*);
-    int sigprocmask(int, in sigset_t*, sigset_t*);
-    int sigsuspend(in sigset_t*);
-    int sigwait(in sigset_t*, int*);
+    extern (C)
+    {
+        int kill(pid_t, int);
+        int sigaction(int, in sigaction_t*, sigaction_t*);
+        int sigaddset(sigset_t*, int);
+        int sigdelset(sigset_t*, int);
+        int sigemptyset(sigset_t*);
+        int sigfillset(sigset_t*);
+        int sigismember(in sigset_t*, int);
+        int sigpending(sigset_t*);
+        int sigprocmask(int, in sigset_t*, sigset_t*);
+        int sigsuspend(in sigset_t*);
+        int sigwait(in sigset_t*, int*);
+    }
 }
 else version( FreeBSD )
 {
@@ -1000,17 +1005,20 @@ else version( FreeBSD )
     enum SI_ASYNCIO = 0x10004;
     enum SI_MESGQ   = 0x10005;
 
-    int kill(pid_t, int);
-    int sigaction(int, in sigaction_t*, sigaction_t*);
-    int sigaddset(sigset_t*, int);
-    int sigdelset(sigset_t*, int);
-    int sigemptyset(sigset_t *);
-    int sigfillset(sigset_t *);
-    int sigismember(in sigset_t *, int);
-    int sigpending(sigset_t *);
-    int sigprocmask(int, in sigset_t*, sigset_t*);
-    int sigsuspend(in sigset_t *);
-    int sigwait(in sigset_t*, int*);
+    extern (C)
+    {
+        int kill(pid_t, int);
+        int sigaction(int, in sigaction_t*, sigaction_t*);
+        int sigaddset(sigset_t*, int);
+        int sigdelset(sigset_t*, int);
+        int sigemptyset(sigset_t *);
+        int sigfillset(sigset_t *);
+        int sigismember(in sigset_t *, int);
+        int sigpending(sigset_t *);
+        int sigprocmask(int, in sigset_t*, sigset_t*);
+        int sigsuspend(in sigset_t *);
+        int sigwait(in sigset_t*, int*);
+    }
 }
 else version(NetBSD)
 {
@@ -1084,27 +1092,30 @@ else version(NetBSD)
     enum SI_ASYNCIO = -3;
     enum SI_MESGQ   = -4;
 
-    int kill(pid_t, int);
-    int __sigaction14(int, in sigaction_t*, sigaction_t*);
-    int __sigaddset14(sigset_t*, int);
-    int __sigdelset14(sigset_t*, int);
-    int __sigemptyset14(sigset_t *);
-    int __sigfillset14(sigset_t *);
-    int __sigismember14(in sigset_t *, int);
-    int __sigpending14(sigset_t *);
-    int __sigprocmask14(int, in sigset_t*, sigset_t*);
-    int __sigsuspend14(in sigset_t *);
-    int sigwait(in sigset_t*, int*);
+    extern (C)
+    {
+        int kill(pid_t, int);
+        int __sigaction14(int, in sigaction_t*, sigaction_t*);
+        int __sigaddset14(sigset_t*, int);
+        int __sigdelset14(sigset_t*, int);
+        int __sigemptyset14(sigset_t *);
+        int __sigfillset14(sigset_t *);
+        int __sigismember14(in sigset_t *, int);
+        int __sigpending14(sigset_t *);
+        int __sigprocmask14(int, in sigset_t*, sigset_t*);
+        int __sigsuspend14(in sigset_t *);
+        int sigwait(in sigset_t*, int*);
 
-    alias __sigaction14 sigaction;
-    alias __sigaddset14 sigaddset;
-    alias __sigdelset14 sigdelset;
-    alias __sigemptyset14 sigemptyset;
-    alias __sigfillset14 sigfillset;
-    alias __sigismember14 sigismember;
-    alias __sigpending14 sigpending;
-    alias __sigprocmask14 sigprocmask;
-    alias __sigsuspend14 sigsuspend;
+        alias __sigaction14 sigaction;
+        alias __sigaddset14 sigaddset;
+        alias __sigdelset14 sigdelset;
+        alias __sigemptyset14 sigemptyset;
+        alias __sigfillset14 sigfillset;
+        alias __sigismember14 sigismember;
+        alias __sigpending14 sigpending;
+        alias __sigprocmask14 sigprocmask;
+        alias __sigsuspend14 sigsuspend;
+    }
 }
 else version( OpenBSD )
 {
@@ -1170,17 +1181,20 @@ else version( OpenBSD )
     enum SI_QUEUE  = -2;
     enum SI_TIMER  = -3;
 
-    int kill(pid_t, int);
-    int sigaction(int, in sigaction_t*, sigaction_t*);
-    int sigaddset(sigset_t*, int);
-    int sigdelset(sigset_t*, int);
-    int sigemptyset(sigset_t *);
-    int sigfillset(sigset_t *);
-    int sigismember(in sigset_t *, int);
-    int sigpending(sigset_t *);
-    int sigprocmask(int, in sigset_t*, sigset_t*);
-    int sigsuspend(in sigset_t *);
-    int sigwait(in sigset_t*, int*);
+    extern (C)
+    {
+        int kill(pid_t, int);
+        int sigaction(int, in sigaction_t*, sigaction_t*);
+        int sigaddset(sigset_t*, int);
+        int sigdelset(sigset_t*, int);
+        int sigemptyset(sigset_t *);
+        int sigfillset(sigset_t *);
+        int sigismember(in sigset_t *, int);
+        int sigpending(sigset_t *);
+        int sigprocmask(int, in sigset_t*, sigset_t*);
+        int sigsuspend(in sigset_t *);
+        int sigwait(in sigset_t*, int*);
+    }
 }
 else version (Solaris)
 {
@@ -1279,17 +1293,20 @@ else version (Solaris)
         ___data __data;
     }
 
-    int kill(pid_t, int);
-    int sigaction(int, in sigaction_t*, sigaction_t*);
-    int sigaddset(sigset_t*, int);
-    int sigdelset(sigset_t*, int);
-    int sigemptyset(sigset_t*);
-    int sigfillset(sigset_t*);
-    int sigismember(in sigset_t*, int);
-    int sigpending(sigset_t*);
-    int sigprocmask(int, in sigset_t*, sigset_t*);
-    int sigsuspend(in sigset_t*);
-    int sigwait(in sigset_t*, int*);
+    extern (C)
+    {
+        int kill(pid_t, int);
+        int sigaction(int, in sigaction_t*, sigaction_t*);
+        int sigaddset(sigset_t*, int);
+        int sigdelset(sigset_t*, int);
+        int sigemptyset(sigset_t*);
+        int sigfillset(sigset_t*);
+        int sigismember(in sigset_t*, int);
+        int sigpending(sigset_t*);
+        int sigprocmask(int, in sigset_t*, sigset_t*);
+        int sigsuspend(in sigset_t*);
+        int sigwait(in sigset_t*, int*);
+    }
 }
 else version( CRuntime_Bionic )
 {
@@ -1383,41 +1400,44 @@ else version( CRuntime_Bionic )
         SI_KERNEL  = 0x80
     }
 
-    int kill(pid_t, int);
-    int sigaction(int, in sigaction_t*, sigaction_t*);
-
-    // These functions are defined inline in bionic.
-    int sigaddset(sigset_t* set, int signum)
+    extern (C)
     {
-        c_ulong* local_set = cast(c_ulong*) set;
-        signum--;
-        local_set[signum/LONG_BIT] |= 1UL << (signum%LONG_BIT);
-        return 0;
+        int kill(pid_t, int);
+        int sigaction(int, in sigaction_t*, sigaction_t*);
+
+        // These functions are defined inline in bionic.
+        int sigaddset(sigset_t* set, int signum)
+        {
+            c_ulong* local_set = cast(c_ulong*) set;
+            signum--;
+            local_set[signum/LONG_BIT] |= 1UL << (signum%LONG_BIT);
+            return 0;
+        }
+
+        int sigdelset(sigset_t* set, int signum)
+        {
+            c_ulong* local_set = cast(c_ulong*) set;
+            signum--;
+            local_set[signum/LONG_BIT] &= ~(1UL << (signum%LONG_BIT));
+            return 0;
+        }
+
+        int sigemptyset(sigset_t* set) { memset(set, 0, (*set).sizeof); return 0; }
+
+        int sigfillset(sigset_t* set) { memset(set, ~0, (*set).sizeof); return 0; }
+
+        int sigismember(sigset_t* set, int signum)
+        {
+            c_ulong* local_set = cast(c_ulong*) set;
+            signum--;
+            return cast(int) ((local_set[signum/LONG_BIT] >> (signum%LONG_BIT)) & 1);
+        }
+
+        int sigpending(sigset_t*);
+        int sigprocmask(int, in sigset_t*, sigset_t*);
+        int sigsuspend(in sigset_t*);
+        int sigwait(in sigset_t*, int*);
     }
-
-    int sigdelset(sigset_t* set, int signum)
-    {
-        c_ulong* local_set = cast(c_ulong*) set;
-        signum--;
-        local_set[signum/LONG_BIT] &= ~(1UL << (signum%LONG_BIT));
-        return 0;
-    }
-
-    int sigemptyset(sigset_t* set) { memset(set, 0, (*set).sizeof); return 0; }
-
-    int sigfillset(sigset_t* set) { memset(set, ~0, (*set).sizeof); return 0; }
-
-    int sigismember(sigset_t* set, int signum)
-    {
-        c_ulong* local_set = cast(c_ulong*) set;
-        signum--;
-        return cast(int) ((local_set[signum/LONG_BIT] >> (signum%LONG_BIT)) & 1);
-    }
-
-    int sigpending(sigset_t*);
-    int sigprocmask(int, in sigset_t*, sigset_t*);
-    int sigsuspend(in sigset_t*);
-    int sigwait(in sigset_t*, int*);
 }
 else
 {
@@ -1713,21 +1733,24 @@ version( CRuntime_Glibc )
         POLL_HUP
     }
 
-    sigfn_t bsd_signal(int sig, sigfn_t func);
-    sigfn_t sigset(int sig, sigfn_t func);
+    extern (C)
+    {
+        sigfn_t bsd_signal(int sig, sigfn_t func);
+        sigfn_t sigset(int sig, sigfn_t func);
 
-  nothrow:
-  @nogc:
-    sigfn_t2 bsd_signal(int sig, sigfn_t2 func);
-    sigfn_t2 sigset(int sig, sigfn_t2 func);
+    nothrow:
+    @nogc:
+        sigfn_t2 bsd_signal(int sig, sigfn_t2 func);
+        sigfn_t2 sigset(int sig, sigfn_t2 func);
 
-    int killpg(pid_t, int);
-    int sigaltstack(in stack_t*, stack_t*);
-    int sighold(int);
-    int sigignore(int);
-    int siginterrupt(int, int);
-    int sigpause(int);
-    int sigrelse(int);
+        int killpg(pid_t, int);
+        int sigaltstack(in stack_t*, stack_t*);
+        int sighold(int);
+        int sigignore(int);
+        int siginterrupt(int, int);
+        int sigpause(int);
+        int sigrelse(int);
+    }
 }
 else version( Darwin )
 {
@@ -1823,21 +1846,24 @@ else version( Darwin )
         POLL_HUP
     }
 
-    sigfn_t bsd_signal(int sig, sigfn_t func);
-    sigfn_t sigset(int sig, sigfn_t func);
+    extern (C)
+    {
+        sigfn_t bsd_signal(int sig, sigfn_t func);
+        sigfn_t sigset(int sig, sigfn_t func);
 
-  nothrow:
-  @nogc:
-    sigfn_t2 bsd_signal(int sig, sigfn_t2 func);
-    sigfn_t2 sigset(int sig, sigfn_t2 func);
+      nothrow:
+      @nogc:
+        sigfn_t2 bsd_signal(int sig, sigfn_t2 func);
+        sigfn_t2 sigset(int sig, sigfn_t2 func);
 
-    int killpg(pid_t, int);
-    int sigaltstack(in stack_t*, stack_t*);
-    int sighold(int);
-    int sigignore(int);
-    int siginterrupt(int, int);
-    int sigpause(int);
-    int sigrelse(int);
+        int killpg(pid_t, int);
+        int sigaltstack(in stack_t*, stack_t*);
+        int sighold(int);
+        int sigignore(int);
+        int siginterrupt(int, int);
+        int sigpause(int);
+        int sigrelse(int);
+    }
 }
 else version( FreeBSD )
 {
@@ -1947,21 +1973,24 @@ else version( FreeBSD )
         POLL_HUP,
     }
 
-    //sigfn_t bsd_signal(int sig, sigfn_t func);
-    sigfn_t sigset(int sig, sigfn_t func);
+    extern (C)
+    {
+        //sigfn_t bsd_signal(int sig, sigfn_t func);
+        sigfn_t sigset(int sig, sigfn_t func);
 
-  nothrow:
-  @nogc:
-    //sigfn_t2 bsd_signal(int sig, sigfn_t2 func);
-    sigfn_t2 sigset(int sig, sigfn_t2 func);
+      nothrow:
+      @nogc:
+        //sigfn_t2 bsd_signal(int sig, sigfn_t2 func);
+        sigfn_t2 sigset(int sig, sigfn_t2 func);
 
-    int killpg(pid_t, int);
-    int sigaltstack(in stack_t*, stack_t*);
-    int sighold(int);
-    int sigignore(int);
-    int siginterrupt(int, int);
-    int sigpause(int);
-    int sigrelse(int);
+        int killpg(pid_t, int);
+        int sigaltstack(in stack_t*, stack_t*);
+        int sighold(int);
+        int sigignore(int);
+        int siginterrupt(int, int);
+        int sigpause(int);
+        int sigrelse(int);
+    }
 }
 else version(NetBSD)
 {
@@ -2071,21 +2100,24 @@ else version(NetBSD)
         POLL_HUP,
     }
 
-    //sigfn_t bsd_signal(int sig, sigfn_t func);
-    sigfn_t sigset(int sig, sigfn_t func);
+    extern (C)
+    {
+        //sigfn_t bsd_signal(int sig, sigfn_t func);
+        sigfn_t sigset(int sig, sigfn_t func);
 
-  nothrow:
-  @nogc:
-    //sigfn_t2 bsd_signal(int sig, sigfn_t2 func);
-    sigfn_t2 sigset(int sig, sigfn_t2 func);
+      nothrow:
+      @nogc:
+        //sigfn_t2 bsd_signal(int sig, sigfn_t2 func);
+        sigfn_t2 sigset(int sig, sigfn_t2 func);
 
-    int killpg(pid_t, int);
-    int sigaltstack(in stack_t*, stack_t*);
-    int sighold(int);
-    int sigignore(int);
-    int siginterrupt(int, int);
-    int sigpause(int);
-    int sigrelse(int);
+        int killpg(pid_t, int);
+        int sigaltstack(in stack_t*, stack_t*);
+        int sighold(int);
+        int sigignore(int);
+        int siginterrupt(int, int);
+        int sigpause(int);
+        int sigrelse(int);
+    }
 }
 else version (OpenBSD)
 {
@@ -2196,12 +2228,15 @@ else version (OpenBSD)
         NSIGPOLL = POLL_HUP,
     }
 
-  nothrow:
-  @nogc:
-    int killpg(pid_t, int);
-    int sigaltstack(in stack_t*, stack_t*);
-    int siginterrupt(int, int);
-    int sigpause(int);
+    extern (C)
+    {
+    nothrow:
+    @nogc:
+        int killpg(pid_t, int);
+        int sigaltstack(in stack_t*, stack_t*);
+        int siginterrupt(int, int);
+        int sigpause(int);
+    }
 }
 else version (Solaris)
 {
@@ -2313,19 +2348,22 @@ else version (Solaris)
         POLL_HUP,
     }
 
-    sigfn_t sigset(int sig, sigfn_t func);
+    extern (C)
+    {
+        sigfn_t sigset(int sig, sigfn_t func);
 
-  nothrow:
-  @nogc:
-    sigfn_t2 sigset(int sig, sigfn_t2 func);
+      nothrow:
+      @nogc:
+        sigfn_t2 sigset(int sig, sigfn_t2 func);
 
-    int killpg(pid_t, int);
-    int sigaltstack(in stack_t*, stack_t*);
-    int sighold(int);
-    int sigignore(int);
-    int siginterrupt(int, int);
-    int sigpause(int);
-    int sigrelse(int);
+        int killpg(pid_t, int);
+        int sigaltstack(in stack_t*, stack_t*);
+        int sighold(int);
+        int sigignore(int);
+        int siginterrupt(int, int);
+        int sigpause(int);
+        int sigrelse(int);
+    }
 }
 else version (CRuntime_Bionic)
 {
@@ -2453,15 +2491,18 @@ else version (CRuntime_Bionic)
         POLL_HUP
     }
 
-    sigfn_t bsd_signal(int, sigfn_t);
+    extern (C)
+    {
+        sigfn_t bsd_signal(int, sigfn_t);
 
-  nothrow:
-  @nogc:
-    sigfn_t2 bsd_signal(int, sigfn_t2);
+      nothrow:
+      @nogc:
+        sigfn_t2 bsd_signal(int, sigfn_t2);
 
-    int killpg(int, int);
-    int sigaltstack(in stack_t*, stack_t*);
-    int siginterrupt(int, int);
+        int killpg(int, int);
+        int sigaltstack(in stack_t*, stack_t*);
+        int siginterrupt(int, int);
+    }
 }
 else
 {
@@ -2590,9 +2631,12 @@ version( CRuntime_Glibc )
         } _sigev_un_t _sigev_un;
     }
 
-    int sigqueue(pid_t, int, in sigval);
-    int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
-    int sigwaitinfo(in sigset_t*, siginfo_t*);
+    extern (C)
+    {
+        int sigqueue(pid_t, int, in sigval);
+        int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
+        int sigwaitinfo(in sigset_t*, siginfo_t*);
+    }
 }
 else version( FreeBSD )
 {
@@ -2613,9 +2657,12 @@ else version( FreeBSD )
         }
     }
 
-    int sigqueue(pid_t, int, in sigval);
-    int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
-    int sigwaitinfo(in sigset_t*, siginfo_t*);
+    extern (C)
+    {
+        int sigqueue(pid_t, int, in sigval);
+        int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
+        int sigwaitinfo(in sigset_t*, siginfo_t*);
+    }
 }
 else version(NetBSD)
 {
@@ -2628,9 +2675,12 @@ else version(NetBSD)
         void /* pthread_attr_t */*sigev_notify_attributes;
     }
 
-    int sigqueue(pid_t, int, in sigval);
-    int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
-    int sigwaitinfo(in sigset_t*, siginfo_t*);
+    extern (C)
+    {
+        int sigqueue(pid_t, int, in sigval);
+        int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
+        int sigwaitinfo(in sigset_t*, siginfo_t*);
+    }
 }
 else version (OpenBSD)
 {
@@ -2650,9 +2700,12 @@ else version (Solaris)
         int __sigev_pad2;
     }
 
-    int sigqueue(pid_t, int, in sigval);
-    int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
-    int sigwaitinfo(in sigset_t*, siginfo_t*);
+    extern (C)
+    {
+        int sigqueue(pid_t, int, in sigval);
+        int sigtimedwait(in sigset_t*, siginfo_t*, in timespec*);
+        int sigwaitinfo(in sigset_t*, siginfo_t*);
+    }
 }
 else version( CRuntime_Bionic )
 {
@@ -2692,7 +2745,7 @@ else
 int pthread_kill(pthread_t, int);
 int pthread_sigmask(int, in sigset_t*, sigset_t*);
 */
-
+extern (C):
 version( CRuntime_Glibc )
 {
     int pthread_kill(pthread_t, int);
