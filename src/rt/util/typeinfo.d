@@ -75,8 +75,8 @@ if (is(T == cfloat) || is(T == cdouble) || is(T == creal))
 
     size_t hashOf(T value) @trusted
     {
-        if (value == 0 + 0i)
-            value = 0 + 0i;
+        if (value == 0.0 + 0.0i)
+            value = T(0.0 + 0.0i);
         import rt.util.hash;
         return rt.util.hash.hashOf((&value)[0 .. 1], 0);
     }
@@ -142,8 +142,8 @@ unittest
     foreach (F; TypeTuple!(float, double, real))
     (){ // workaround #2396
         alias S = SX!F;
-        F f1 = +0.0,
-          f2 = -0.0;
+        F f1 = F(+0.0),
+          f2 = F(-0.0);
 
         assert(f1  == f2);
         assert(f1 !is f2);
@@ -190,8 +190,8 @@ unittest
     foreach (F; TypeTuple!(ifloat, idouble, ireal))
     (){ // workaround #2396
         alias S = SX!F;
-        F f1 = +0.0i,
-          f2 = -0.0i;
+        F f1 = F(+0.0i),
+          f2 = F(-0.0i);
 
         assert(f1  == f2);
         assert(f1 !is f2);
