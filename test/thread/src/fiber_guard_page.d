@@ -6,6 +6,7 @@ import core.sys.posix.sys.mman;
 version = StackGrowsDown;
 
 enum stackSize = 4096;
+enum guardSize = 4096;
 
 // Simple method that causes a stack overflow
 void stackMethod()
@@ -16,7 +17,7 @@ void stackMethod()
 
 void main()
 {
-    auto test_fiber = new Fiber(&stackMethod, stackSize);
+    auto test_fiber = new Fiber(&stackMethod, stackSize, guardSize);
 
     // allocate a page below (above) the fiber's stack to make stack overflows possible (w/o segfaulting)
     version (StackGrowsDown)

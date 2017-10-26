@@ -4015,6 +4015,11 @@ private
  */
 class Fiber
 {
+    /// Default stack guard size. Historically it was PAGESIZE for Windows,
+    /// but for the mmap-enabled systems was 0.
+    version (Windows) alias DefaultGuardPageSize = PAGESIZE;
+    else enum DefaultGuardPageSize = 0;
+
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
     ///////////////////////////////////////////////////////////////////////////
@@ -4028,13 +4033,18 @@ class Fiber
      *  fn = The fiber function.
      *  sz = The stack size for this fiber.
      *  guardPageSize = size of the guard page to trap fiber's stack
-     *                    overflows
+     *                    overflows. On mmap-enabled platforms it's
+     *                    off by default, one page should be
+     *                    preferred, if needed. Beware that using this
+     *                    will increase the number of mmaped regions on
+     *                    platforms using mmap, so an OS-imposed limit
+     *                    may be hit.
      *
      * In:
      *  fn must not be null.
      */
     this( void function() fn, size_t sz = PAGESIZE*4,
-          size_t guardPageSize = PAGESIZE ) nothrow
+          size_t guardPageSize = DefaultGuardPageSize ) nothrow
     in
     {
         assert( fn );
@@ -4060,7 +4070,7 @@ class Fiber
      *  dg must not be null.
      */
     this( void delegate() dg, size_t sz = PAGESIZE*4,
-          size_t guardPageSize = PAGESIZE ) nothrow
+          size_t guardPageSize = DefaultGuardPageSize ) nothrow
     in
     {
         assert( dg );
