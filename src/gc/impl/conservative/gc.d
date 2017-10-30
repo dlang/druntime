@@ -2007,11 +2007,20 @@ struct Gcx
         return null;
     }
 
-    static struct ScanRange
+    static struct ScanRange(bool precise)
     {
+        this(void*bot, void*top, Pool* p)
+        {
+            pbot = bot;
+            ptop = top;
+            static if (precise)
+                pool = p;
+        }
+
         void* pbot;
         void* ptop;
-        Pool* pool;
+        static if (precise)
+            Pool* pool;
     }
 
     static struct ToScanStack(T)
@@ -2076,8 +2085,8 @@ struct Gcx
         size_t _cap;
     }
 
-    ToScanStack!(Range) toscanConservative;
-    ToScanStack!(ScanRange) toscanPrecise;
+    ToScanStack!(ScanRange!false) toscanConservative;
+    ToScanStack!(ScanRange!true) toscanPrecise;
 
     /**
      * Search a range of memory values and mark any pointers into the GC pool.
@@ -2098,19 +2107,15 @@ struct Gcx
         // limit the amount of ranges added to the toscan stack
         enum FANOUT_LIMIT = 32;
         size_t stackPos;
-        static if(precise)
-            ScanRange[FANOUT_LIMIT] stack = void;
-        else
-            Range[FANOUT_LIMIT] stack = void;
+        ScanRange!precise[FANOUT_LIMIT] stack = void;
 
         static if (precise)
         {
             import core.bitop;
-            BitRange isptr;
+            BitRange isptr = void;
             Pool* p1pool = null; // always starting from a non-heap root
         }
 
-    Lagain:
         size_t pcache = 0;
 
         // let dmd allocate a register for this.pools
@@ -2121,35 +2126,28 @@ struct Gcx
 
         void* base = void;
         void* top = void;
+        void* p = void;
+        Pool* pool = void;
 
-        static if (precise) if (p1pool)
-        {
-            size_t p1bitpos = p1 - cast(void**)p1pool.baseAddr;
-            size_t p2bitpos = p2 - cast(void**)p1pool.baseAddr;
-            isptr = BitRange(p1pool.is_pointer.data, p2bitpos, p1bitpos);
-        }
         //printf("marking range: [%p..%p] (%#zx)\n", p1, p2, cast(size_t)p2 - cast(size_t)p1);
         for (;;)
         {
             static if(precise) if (p1pool)
             {
                 if (isptr.empty())
-                {
-                    p1 = p2;
-                    break;
-                }
+                    goto LnextRange;
+
                 auto bitpos = isptr.front();
                 isptr.popFront();
                 p1 = cast(void**)p1pool.baseAddr + bitpos;
             }
 
-            auto p = cast(byte *)(*p1);
+            p = cast(void *)(*p1);
 
             //if (log) debug(PRINTF) printf("\tmark %p\n", p);
             if (cast(size_t)(p - minAddr) < memSize &&
                 (cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) != pcache)
             {
-                Pool* pool = void;
                 size_t low = 0;
                 size_t high = highpool;
                 while (true)
@@ -2234,12 +2232,15 @@ struct Gcx
             if (++p1 < p2)
                 continue;
 
+        LnextRange:
             if (stackPos)
             {
                 // pop range from local stack and recurse
                 auto next = &stack[--stackPos];
                 p1 = cast(void**)next.pbot;
                 p2 = cast(void**)next.ptop;
+                static if(precise)
+                    p1pool = next.pool;
             }
             else if (!toscan.empty)
             {
@@ -2247,6 +2248,8 @@ struct Gcx
                 auto next = toscan.pop();
                 p1 = cast(void**)next.pbot;
                 p2 = cast(void**)next.ptop;
+                static if(precise)
+                    p1pool = next.pool;
             }
             else
             {
@@ -2254,8 +2257,7 @@ struct Gcx
                 break;
             }
             // printf("  pop [%p..%p] (%#zx)\n", p1, p2, cast(size_t)p2 - cast(size_t)p1);
-            pcache = 0;
-            continue;
+            goto LcontRange;
 
         LaddRange:
             if (++p1 < p2)
@@ -2264,10 +2266,12 @@ struct Gcx
                 {
                     stack[stackPos].pbot = base;
                     stack[stackPos].ptop = top;
+                    static if(precise)
+                        stack[stackPos].pool = pool;
                     stackPos++;
                     continue;
                 }
-                toscan.push(ScanRange(p1, p2));
+                toscan.push(ScanRange!precise(p1, p2, pool));
                 // reverse order for depth-first-order traversal
                 foreach_reverse (ref rng; stack)
                     toscan.push(rng);
@@ -2276,6 +2280,16 @@ struct Gcx
             // continue with last found range
             p1 = cast(void**)base;
             p2 = cast(void**)top;
+            static if(precise)
+                p1pool = pool;
+
+        LcontRange:
+            static if(precise) if (p1pool)
+            {
+                size_t p1bitpos = p1 - cast(void**)p1pool.baseAddr;
+                size_t p2bitpos = p2 - cast(void**)p1pool.baseAddr;
+                isptr = BitRange(p1pool.is_pointer.data, p2bitpos, p1bitpos);
+            }
             pcache = 0;
         }
     }
