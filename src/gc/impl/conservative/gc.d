@@ -2119,7 +2119,9 @@ struct Gcx
         static if (precise)
         {
             import core.bitop;
-            BitRange isptr = void;
+            enum useBitRange = false;
+            static if (useBitRange)
+                BitRange isptr = void;
             Pool* p1pool = null; // always starting from a non-heap root
         }
 
@@ -2138,7 +2140,7 @@ struct Gcx
 
         for (;;)
         {
-            static if(precise) if (p1pool)
+            static if(precise && useBitRange) if (p1pool)
             {
                 if (isptr.empty())
                 {
@@ -2160,6 +2162,13 @@ struct Gcx
             if (cast(size_t)(p - minAddr) < memSize &&
                 (cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) != pcache)
             {
+                static if (precise && !useBitRange) if (p1pool)
+                {
+                    size_t bitpos = p1 - cast(void**)p1pool.baseAddr;
+                    if (!p1pool.is_pointer.test(bitpos))
+                        goto LnextPtr;
+                }
+
                 size_t low = 0;
                 size_t high = highpool;
                 while (true)
@@ -2275,7 +2284,7 @@ struct Gcx
         LaddRange:
             if (++p1 < p2)
             {
-                static if(precise) if (p1pool && isptr.empty())
+                static if(precise && useBitRange) if (p1pool && isptr.empty())
                 {
                     debug(MARK_PRINTF) printSkip(p1, p2);
                     goto LendOfRange;
@@ -2307,7 +2316,7 @@ struct Gcx
                 p1pool = pool;
 
         LcontRange:
-            static if(precise) if (p1pool)
+            static if(precise && useBitRange) if (p1pool)
             {
                 size_t p1bitpos = p1 - cast(void**)p1pool.baseAddr;
                 size_t p2bitpos = p2 - cast(void**)p1pool.baseAddr;
