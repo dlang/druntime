@@ -268,6 +268,7 @@ TypeInfo_Struct fakeEntryTI(const TypeInfo keyti, const TypeInfo valti)
 
     auto rtinfoData = cast(size_t[2]*) (extra + 2);
     ti.m_RTInfo = rtinfoEntry(keyti, valti, *rtinfoData);
+    ti.m_flags = ti.m_RTInfo is rtinfoNoPointers ? cast(TypeInfo_Struct.StructFlags)0 : TypeInfo_Struct.StructFlags.hasPointers;
 
     // we don't expect the Entry objects to be used outside of this module, so we have control
     // over the non-usage of the callback methods and other entries and can keep these null
@@ -279,10 +280,8 @@ TypeInfo_Struct fakeEntryTI(const TypeInfo keyti, const TypeInfo valti)
     {
         // xdtor needs to be built from the dtors of key and value for the GC
         ti.xdtorti = &entryDtor;
-        ti.m_flags = TypeInfo_Struct.StructFlags.hasPointers | TypeInfo_Struct.StructFlags.isDynamicType;
+        ti.m_flags |= TypeInfo_Struct.StructFlags.isDynamicType;
     }
-    else
-        ti.m_flags = TypeInfo_Struct.StructFlags.hasPointers;
 
     ti.m_align = cast(uint) max(kti.talign, vti.talign);
 
