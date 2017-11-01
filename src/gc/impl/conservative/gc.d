@@ -2013,14 +2013,6 @@ struct Gcx
 
     static struct ScanRange(bool precise)
     {
-        this(void*bot, void*top, Pool* p)
-        {
-            pbot = bot;
-            ptop = top;
-            static if (precise)
-                pool = p;
-        }
-
         void* pbot;
         void* ptop;
         static if (precise)
@@ -2283,6 +2275,12 @@ struct Gcx
         LaddRange:
             if (++p1 < p2)
             {
+                static if(precise) if (p1pool && isptr.empty())
+                {
+                    debug(MARK_PRINTF) printSkip(p1, p2);
+                    goto LendOfRange;
+                }
+
                 if (stackPos < stack.length)
                 {
                     stack[stackPos].pbot = base;
@@ -2292,12 +2290,16 @@ struct Gcx
                     stackPos++;
                     continue;
                 }
-                toscan.push(ScanRange!precise(p1, p2, pool));
+                static if(precise)
+                    toscan.push(ScanRange!precise(p1, p2, p1pool));
+                else
+                    toscan.push(ScanRange!precise(p1, p2));
                 // reverse order for depth-first-order traversal
                 foreach_reverse (ref rng; stack)
                     toscan.push(rng);
                 stackPos = 0;
             }
+        LendOfRange:
             // continue with last found range
             p1 = cast(void**)base;
             p2 = cast(void**)top;
