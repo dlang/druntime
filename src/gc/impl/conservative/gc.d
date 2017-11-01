@@ -19,6 +19,7 @@ module gc.impl.conservative.gc;
 
 //debug = PRINTF;               // turn on printf's
 //debug = COLLECT_PRINTF;       // turn on printf's
+//debug = MARK_PRINTF;          // turn on printf's
 //debug = PRINTF_TO_FILE;       // redirect printf's ouptut to file "gcx.log"
 //debug = LOGGING;              // log allocations / frees
 //debug = MEMSTOMP;             // stomp on memory
@@ -63,6 +64,7 @@ debug(PRINTF_TO_FILE)
 {
     private __gshared MonoTime gcStartTick;
     private __gshared FILE* gcx_fh;
+    private __gshared bool hadNewline = false;
 
     private int printf(ARGS...)(const char* fmt, ARGS args) nothrow
     {
@@ -76,7 +78,7 @@ debug(PRINTF_TO_FILE)
         {
             len = fprintf(gcx_fh, "before init: ");
         }
-        else
+        else if (hadNewline)
         {
             if (gcStartTick == MonoTime.init)
                 gcStartTick = MonoTime.currTime;
@@ -86,6 +88,8 @@ debug(PRINTF_TO_FILE)
         }
         len += fprintf(gcx_fh, fmt, args);
         fflush(gcx_fh);
+        import core.stdc.string;
+        hadNewline = fmt && fmt[0] && fmt[strlen(fmt) - 1] == '\n';
         return len;
     }
 }
@@ -2098,6 +2102,17 @@ struct Gcx
         else
             alias toscan = toscanConservative;
 
+        debug(MARK_PRINTF)
+        {
+            printf("marking range: [%p..%p] (%#llx)\n", pbot, ptop, cast(long)(ptop - pbot));
+
+            static void printSkip(void**beg, void** end)
+            {
+                for (void**q = beg; q < end; q++)
+                    printf("\tskip %p: %p\n", q, cast(void *)(*q));
+            }
+        }
+
         if (pbot >= ptop)
             return;
 
@@ -2129,22 +2144,27 @@ struct Gcx
         void* p = void;
         Pool* pool = void;
 
-        //printf("marking range: [%p..%p] (%#zx)\n", p1, p2, cast(size_t)p2 - cast(size_t)p1);
         for (;;)
         {
             static if(precise) if (p1pool)
             {
                 if (isptr.empty())
+                {
+                    debug(MARK_PRINTF) printSkip(p1, p2);
                     goto LnextRange;
+                }
 
                 auto bitpos = isptr.front();
+                debug(MARK_PRINTF) printSkip(p1, cast(void**)p1pool.baseAddr + bitpos);
+
                 isptr.popFront();
                 p1 = cast(void**)p1pool.baseAddr + bitpos;
             }
 
             p = cast(void *)(*p1);
 
-            //if (log) debug(PRINTF) printf("\tmark %p\n", p);
+            debug(MARK_PRINTF) printf("\tmark %p: %p\n", p1, p);
+
             if (cast(size_t)(p - minAddr) < memSize &&
                 (cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) != pcache)
             {
@@ -2168,7 +2188,8 @@ struct Gcx
                 size_t pn = offset / PAGESIZE;
                 size_t bin = pool.pagetable[pn]; // not Bins to avoid multiple size extension instructions
 
-                //debug(PRINTF) printf("\t\tfound pool %p, base=%p, pn = %zd, bin = %d, biti = x%x\n", pool, pool.baseAddr, pn, bin, biti);
+                debug(MARK_PRINTF)
+                    printf("\t\tfound pool %p, base=%p, pn = %lld, bin = %d\n", pool, pool.baseAddr, cast(long)pn, bin);
 
                 // Adjust bit to be at start of allocated memory block
                 if (bin < B_PAGE)
