@@ -2318,8 +2318,9 @@ struct Gcx
                     // normalize pointers so we only have to save a single pointer
                     auto nbase = isPtrBase ? cast(void**)(cast(size_t)p1 & p1BaseMask) : null;
                     isPtrBase += (nbase - p1base) / GCBits.BITS_PER_WORD;
-                    toscan.push(ScanRange!precise(p1, p2, isPtrBase));
                 }
+                static if(precise)
+                    toscan.push(ScanRange!precise(p1, p2, isPtrBase));
                 else
                     toscan.push(ScanRange!precise(p1, p2));
                 // reverse order for depth-first-order traversal
