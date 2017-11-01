@@ -2016,7 +2016,7 @@ struct Gcx
         void* pbot;
         void* ptop;
         static if (precise)
-            Pool* pool;
+            size_t* ptrbase;
     }
 
     static struct ToScanStack(T)
@@ -2122,7 +2122,11 @@ struct Gcx
             enum useBitRange = false;
             static if (useBitRange)
                 BitRange isptr = void;
-            Pool* p1pool = null; // always starting from a non-heap root
+            size_t* isPtrBase = null; // always starting from a non-heap root
+            void** p1base = null;
+
+            // align down to address where the pointer bitmap starts a new word
+            enum size_t p1BaseMask = ~(size_t.sizeof * GCBits.BITS_PER_WORD - 1);
         }
 
         size_t pcache = 0;
@@ -2140,7 +2144,7 @@ struct Gcx
 
         for (;;)
         {
-            static if(precise && useBitRange) if (p1pool)
+            static if(precise && useBitRange) if (p1base)
             {
                 if (isptr.empty())
                 {
@@ -2149,10 +2153,10 @@ struct Gcx
                 }
 
                 auto bitpos = isptr.front();
-                debug(MARK_PRINTF) printSkip(p1, cast(void**)p1pool.baseAddr + bitpos);
+                debug(MARK_PRINTF) printSkip(p1, p1base + bitpos);
 
                 isptr.popFront();
-                p1 = cast(void**)p1pool.baseAddr + bitpos;
+                p1 = p1base + bitpos;
             }
 
             p = cast(void *)(*p1);
@@ -2162,10 +2166,10 @@ struct Gcx
             if (cast(size_t)(p - minAddr) < memSize &&
                 (cast(size_t)p & ~cast(size_t)(PAGESIZE-1)) != pcache)
             {
-                static if (precise && !useBitRange) if (p1pool)
+                static if (precise && !useBitRange) if (p1base)
                 {
-                    size_t bitpos = p1 - cast(void**)p1pool.baseAddr;
-                    if (!p1pool.is_pointer.test(bitpos))
+                    size_t bitpos = p1 - p1base;
+                    if (!core.bitop.bt(isPtrBase, bitpos))
                         goto LnextPtr;
                 }
 
@@ -2262,7 +2266,10 @@ struct Gcx
                 p1 = cast(void**)next.pbot;
                 p2 = cast(void**)next.ptop;
                 static if(precise)
-                    p1pool = next.pool;
+                {
+                    isPtrBase = next.ptrbase;
+                    p1base = isPtrBase ? cast(void**)(cast(size_t)p1 & p1BaseMask) : null;
+                }
             }
             else if (!toscan.empty)
             {
@@ -2271,7 +2278,10 @@ struct Gcx
                 p1 = cast(void**)next.pbot;
                 p2 = cast(void**)next.ptop;
                 static if(precise)
-                    p1pool = next.pool;
+                {
+                    isPtrBase = next.ptrbase;
+                    p1base = isPtrBase ? cast(void**)(cast(size_t)p1 & p1BaseMask) : null;
+                }
             }
             else
             {
@@ -2284,7 +2294,7 @@ struct Gcx
         LaddRange:
             if (++p1 < p2)
             {
-                static if(precise && useBitRange) if (p1pool && isptr.empty())
+                static if(precise && useBitRange) if (p1base && isptr.empty())
                 {
                     debug(MARK_PRINTF) printSkip(p1, p2);
                     goto LendOfRange;
@@ -2295,12 +2305,21 @@ struct Gcx
                     stack[stackPos].pbot = base;
                     stack[stackPos].ptop = top;
                     static if(precise)
-                        stack[stackPos].pool = pool;
+                    {
+                        auto nbase = cast(void**)(cast(size_t)base & p1BaseMask);
+                        auto ptroff = (nbase - cast(void**)pool.baseAddr) / GCBits.BITS_PER_WORD;
+                        stack[stackPos].ptrbase = pool.is_pointer.data + ptroff;
+                    }
                     stackPos++;
                     continue;
                 }
-                static if(precise)
-                    toscan.push(ScanRange!precise(p1, p2, p1pool));
+                static if(precise) if (p1base)
+                {
+                    // normalize pointers so we only have to save a single pointer
+                    auto nbase = isPtrBase ? cast(void**)(cast(size_t)p1 & p1BaseMask) : null;
+                    isPtrBase += (nbase - p1base) / GCBits.BITS_PER_WORD;
+                    toscan.push(ScanRange!precise(p1, p2, isPtrBase));
+                }
                 else
                     toscan.push(ScanRange!precise(p1, p2));
                 // reverse order for depth-first-order traversal
@@ -2313,14 +2332,18 @@ struct Gcx
             p1 = cast(void**)base;
             p2 = cast(void**)top;
             static if(precise)
-                p1pool = pool;
+            {
+                assert (pool);
+                p1base = cast(void**)pool.baseAddr;
+                isPtrBase = pool.is_pointer.data;
+            }
 
         LcontRange:
-            static if(precise && useBitRange) if (p1pool)
+            static if(precise && useBitRange) if (p1base)
             {
-                size_t p1bitpos = p1 - cast(void**)p1pool.baseAddr;
-                size_t p2bitpos = p2 - cast(void**)p1pool.baseAddr;
-                isptr = BitRange(p1pool.is_pointer.data, p2bitpos, p1bitpos);
+                size_t p1bitpos = p1 - p1base;
+                size_t p2bitpos = p2 - p1base;
+                isptr = BitRange(isPtrBase, p2bitpos, p1bitpos);
             }
             pcache = 0;
         }
