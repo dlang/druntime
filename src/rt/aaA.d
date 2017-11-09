@@ -38,11 +38,11 @@ struct AA
 {
     Impl* impl;
     alias impl this;
+}
 
-    private @property bool empty() const pure nothrow @nogc
-    {
-        return impl is null || !impl.length;
-    }
+private @property bool empty(in Impl* aa) pure nothrow @nogc
+{
+    return aa is null || !aa.length;
 }
 
 private struct Impl
@@ -347,10 +347,13 @@ private T max(T)(T a, T b) pure nothrow @nogc
 //------------------------------------------------------------------------------
 
 /// Determine number of entries in associative array.
+
 extern (C) size_t _aaLen(in AA aa) pure nothrow @nogc
 {
     return aa ? aa.length : 0;
 }
+
+
 
 /******************************
  * Lookup *pkey in aa.
@@ -477,7 +480,7 @@ extern (C) void _aaClear(AA aa) pure nothrow
 /// Rehash AA
 extern (C) void* _aaRehash(AA* paa, in TypeInfo keyti) pure nothrow
 {
-    if (!paa.empty)
+    if (!(*paa).empty)
         paa.resize(nextpow2(INIT_DEN * paa.length / INIT_NUM));
     return *paa;
 }
@@ -642,10 +645,12 @@ extern (C) int _aaEqual(in TypeInfo tiRaw, in AA aa1, in AA aa2)
     return true;
 }
 
+
+
 /// compute a hash
 extern (C) hash_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow
 {
-    if (aa.empty)
+    if ((*aa).empty)
         return 0;
 
     import rt.lifetime : unqualify;
