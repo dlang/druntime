@@ -1669,7 +1669,7 @@ public:
 
     /++
         Converts `Duration` to a `timeval` structure.
-    +/
+      +/
     timeval toTimeVal() const nothrow @nogc
     {
         timeval value;
@@ -1677,6 +1677,7 @@ public:
         return value;
     }
 
+    ///
     unittest
     {
         timeval value;
@@ -1685,7 +1686,7 @@ public:
         assert(dur!"msecs"(1005).toTimeVal() == value);
     }
 
-    version(StdDdoc)
+    version(CoreDdoc)
     {
         private struct timespec {}
         /++
