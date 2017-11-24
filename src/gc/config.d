@@ -16,7 +16,7 @@ struct Config
 {
     bool disable;            // start disabled
     ubyte profile;           // enable profiling with summary when terminating program
-    string gc = "conservative"; // select gc implementation conservative|manual
+    string gc = "precise"; // select gc implementation conservative|precise|manual
 
     size_t initReserve;      // initial reserve (MB)
     size_t minPoolSize = 1;  // initial and minimum pool size (MB)
