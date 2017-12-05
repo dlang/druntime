@@ -26,7 +26,7 @@ endif
 DMD=$(DMD_DIR)/generated/$(OS)/release/$(MODEL)/dmd
 INSTALL_DIR=../install
 
-DOCDIR=doc
+DOC_OUTPUT_DIR=doc
 IMPDIR=import
 
 OPTIONAL_COVERAGE:=$(if $(TEST_COVERAGE),-cov,)
@@ -87,7 +87,7 @@ DRUNTIMESO=$(ROOT)/libdruntime.so
 DRUNTIMESOOBJ=$(ROOT)/libdruntime.so.o
 DRUNTIMESOLIB=$(ROOT)/libdruntime.so.a
 
-DOCFMT=
+STDDOC=
 
 include mak/COPY
 COPY:=$(subst \,/,$(COPY))
@@ -136,20 +136,20 @@ endif
 
 doc: $(DOCS)
 
-$(DOCDIR)/object.html : src/object.d
-	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+$(DOC_OUTPUT_DIR)/object.html : src/object.d
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(STDDOC) $<
 
-$(DOCDIR)/core_%.html : src/core/%.d
-	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+$(DOC_OUTPUT_DIR)/core_%.html : src/core/%.d
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(STDDOC) $<
 
-$(DOCDIR)/core_stdc_%.html : src/core/stdc/%.d
-	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+$(DOC_OUTPUT_DIR)/core_stdc_%.html : src/core/stdc/%.d
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(STDDOC) $<
 
-$(DOCDIR)/core_stdcpp_%.html : src/core/stdcpp/%.d
-	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+$(DOC_OUTPUT_DIR)/core_stdcpp_%.html : src/core/stdcpp/%.d
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(STDDOC) $<
 
-$(DOCDIR)/core_sync_%.html : src/core/sync/%.d
-	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+$(DOC_OUTPUT_DIR)/core_sync_%.html : src/core/sync/%.d
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(STDDOC) $<
 
 changelog.html: changelog.dd
 	$(DMD) -Df$@ $<
@@ -315,7 +315,7 @@ install: target
 	cp LICENSE $(INSTALL_DIR)/druntime-LICENSE.txt
 
 clean: $(addsuffix /.clean,$(ADDITIONAL_TESTS))
-	rm -rf $(ROOT_OF_THEM_ALL) $(IMPDIR) $(DOCDIR) druntime.zip
+	rm -rf $(ROOT_OF_THEM_ALL) $(IMPDIR) $(DOC_OUTPUT_DIR) druntime.zip
 
 test/%/.clean: test/%/Makefile
 	$(MAKE) -C test/$* clean
