@@ -1,5 +1,6 @@
 SRCS=\
 	src\object.d \
+	src\assoc_array.d \
 	\
 	src\core\atomic.d \
 	src\core\attribute.d \

@@ -689,7 +689,7 @@ extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) /+nothrow+/
     }
 }
 
-package bool hasPostblit(in TypeInfo ti)
+public bool hasPostblit(in TypeInfo ti)
 {
     return (&ti.postblit).funcptr !is &TypeInfo.postblit;
 }
@@ -2583,7 +2583,7 @@ unittest
     }
 
     // associative arrays
-    import rt.aaA : entryDtor;
+    import assoc_array : entryDtor;
     // throw away all existing AA entries with dtor
     GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
 

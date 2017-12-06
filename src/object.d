@@ -1919,11 +1919,16 @@ class __cpp_type_info_ptr
 extern (C)
 {
     // from druntime/src/rt/aaA.d
+
     size_t _aaLen(in void* aa) pure nothrow @nogc;
     private void* _aaGetY(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey) pure nothrow;
     // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
     inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize, const TypeInfo tiValArray) pure nothrow;
+    
+
     inout(void)[] _aaKeys(inout void* p, in size_t keysize, const TypeInfo tiKeyArray) pure nothrow;
+    
+
     void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
     void _aaClear(void* p) pure nothrow;
 
@@ -1958,12 +1963,34 @@ void* aaLiteral(Key, Value)(Key[] keys, Value[] values) @trusted pure
 }
 
 alias AssociativeArray(Key, Value) = Value[Key];
+/*
+public template AssocArray(K, V)
+{
+    import assoc_array;
+    alias AssocArray = assoc_array.AssocArray!(K, V);
+}
+
+size_t __aaLength(T, K)(const T[K] aa)
+{
+    return (cast(AssocArray!(void, void)*)aa).length;
+}
 
 
 /*
  * Calls to aa.length will be lowered to this function
+ *
+size_t __aaLength(K, V)(const K[V] aa)
+{
+    return (() @trusted => (cast(AssocArray!(K, V)*)aa).length) ();
+}
+*/
+ 
+ /*
+/*
+ * Calls to aa.length will be lowered to this function
  */
-size_t __aaLength(T, K)(const T[K] aa)
+
+size_t __aaLength(K, V)(const K[V] aa)
 {
     return (() @trusted => _aaLen(cast(void*)aa)) ();
 }

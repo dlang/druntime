@@ -1,5 +1,6 @@
 DOCS=\
 	$(DOCDIR)\object.html \
+	$(DOCDIR)\assoc_array.html \
 	$(DOCDIR)\core_atomic.html \
 	$(DOCDIR)\core_attribute.html \
 	$(DOCDIR)\core_bitop.html \

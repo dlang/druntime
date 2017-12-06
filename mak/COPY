@@ -1,5 +1,6 @@
 COPY=\
 	$(IMPDIR)\object.d \
+	$(IMPDIR)\assoc_array.d \
 	\
 	$(IMPDIR)\core\atomic.d \
 	$(IMPDIR)\core\attribute.d \
