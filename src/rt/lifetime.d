@@ -2583,7 +2583,23 @@ unittest
     }
 
     // associative arrays
-    import assoc_array : entryDtor;
+
+    static size_t talign(size_t tsize, size_t algn) @safe pure nothrow @nogc
+    {
+        immutable mask = algn - 1;
+        assert(!(mask & algn));
+        return (tsize + mask) & ~mask;
+    }
+
+    static void entryDtor(void* p, const TypeInfo_Struct sti)
+    {
+        // key and value type info stored after the TypeInfo_Struct by tiEntry()
+        auto sizeti = __traits(classInstanceSize, TypeInfo_Struct);
+        auto extra = cast(const(TypeInfo)*)(cast(void*) sti + sizeti);
+        extra[0].destroy(p);
+        extra[1].destroy(p + talign(extra[0].tsize, extra[1].talign));
+    }
+
     // throw away all existing AA entries with dtor
     GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
 

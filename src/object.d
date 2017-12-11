@@ -1920,7 +1920,7 @@ extern (C)
 {
     // from druntime/src/rt/aaA.d
 
-    size_t _aaLen(in void* aa) pure nothrow @nogc;
+    //size_t _aaLen(in void* aa) pure nothrow @nogc;
     private void* _aaGetY(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey) pure nothrow;
     // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
     inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize, const TypeInfo tiValArray) pure nothrow;
@@ -1974,25 +1974,15 @@ size_t __aaLength(T, K)(const T[K] aa)
 {
     return (cast(AssocArray!(void, void)*)aa).length;
 }
-
-
-/*
- * Calls to aa.length will be lowered to this function
- *
-size_t __aaLength(K, V)(const K[V] aa)
-{
-    return (() @trusted => (cast(AssocArray!(K, V)*)aa).length) ();
-}
 */
- 
- /*
+
 /*
  * Calls to aa.length will be lowered to this function
  */
-
 size_t __aaLength(K, V)(const K[V] aa)
 {
-    return (() @trusted => _aaLen(cast(void*)aa)) ();
+    import core.assoc_array;
+    return (() @trusted => (_aaLen(cast(AssocArray!(void, void)*)aa))) ();
 }
 
 void clear(T : Value[Key], Value, Key)(T aa)

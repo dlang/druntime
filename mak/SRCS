@@ -1,6 +1,5 @@
 SRCS=\
 	src\object.d \
-	src\assoc_array.d \
 	\
 	src\core\atomic.d \
 	src\core\attribute.d \
@@ -16,6 +15,7 @@ SRCS=\
 	src\core\thread.d \
 	src\core\time.d \
 	src\core\vararg.d \
+	src\core\assoc_array.d \
 	\
 	src\core\internal\abort.d \
 	src\core\internal\arrayop.d \

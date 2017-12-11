@@ -6,7 +6,7 @@
  * Authors:   Martin Nowak
  */
 
-module assoc_array;
+module core.assoc_array;
 
 /// AssocArray!(void, void)* version for debuggers, bump whenever changing the layout
 extern (C) immutable int _aaVersion = 1;
@@ -179,11 +179,6 @@ struct AssocArray(K, V)
         memset(&buckets[firstUsed], 0, (buckets.length - firstUsed) * Bucket.sizeof);
         deleted = used = 0;
         firstUsed = cast(uint) dim;
-    }
-
-    static struct Entry
-    {
-
     }
 
     private struct Bucket
@@ -369,7 +364,7 @@ private T max(T)(T a, T b) pure nothrow @nogc
 
 /// Determine number of entries in associative array.
 
-extern (C) size_t _aaLen(in AssocArray!(void, void)* aa) pure nothrow @nogc
+size_t _aaLen(in AssocArray!(void, void)* aa) pure nothrow @nogc
 {
     return aa ? aa.length : 0;
 }

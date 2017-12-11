@@ -1,6 +1,5 @@
 COPY=\
 	$(IMPDIR)\object.d \
-	$(IMPDIR)\assoc_array.d \
 	\
 	$(IMPDIR)\core\atomic.d \
 	$(IMPDIR)\core\attribute.d \
@@ -16,6 +15,7 @@ COPY=\
 	$(IMPDIR)\core\thread.d \
 	$(IMPDIR)\core\time.d \
 	$(IMPDIR)\core\vararg.d \
+	$(IMPDIR)\core\assoc_array.d \
 	\
 	$(IMPDIR)\core\internal\abort.d \
 	$(IMPDIR)\core\internal\arrayop.d \

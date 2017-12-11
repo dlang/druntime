@@ -130,9 +130,6 @@ doc: $(DOCS)
 $(DOCDIR)/object.html : src/object.d
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
-$(DOCDIR)/assoc_array.html : src/assoc_array.d
-	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
-
 $(DOCDIR)/core_%.html : src/core/%.d
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
@@ -163,11 +160,6 @@ copy: $(COPY)
 $(IMPDIR)/object.d : src/object.d
 	@mkdir -p $(dir $@)
 	@rm -f $(IMPDIR)/object.di
-	cp $< $@
-
-$(IMPDIR)/assoc_array.d : src/assoc_array.d
-	@mkdir -p $(dir $@)
-	@rm -f $(IMPDIR)/assoc_array.di
 	cp $< $@
 
 $(IMPDIR)/%.di : src/%.di
