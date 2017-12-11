@@ -709,8 +709,11 @@ class Thread
         }
         else version (Posix)
         {
-            pthread_detach( m_addr );
-            m_addr = m_addr.init;
+            if (m_isOwned)
+            {
+                pthread_detach( m_addr );
+                m_addr = m_addr.init;
+            }
         }
         version (Darwin)
         {
@@ -822,6 +825,8 @@ class Thread
                 }
                 if ( pthread_attr_destroy( &attr ) != 0 )
                     onThreadError( "Error destroying thread attributes" );
+
+                m_isOwned = true;
             }
             version (Darwin)
             {
@@ -1631,6 +1636,7 @@ private:
     version (Posix)
     {
         shared bool     m_isRunning;
+        bool            m_isOwned;
     }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
@@ -2239,8 +2245,10 @@ extern (C) bool thread_isMainThread() nothrow @nogc
 
 
 /**
- * Registers the calling thread for use with the D Runtime.  If this routine
- * is called for a thread which is already registered, no action is performed.
+ * Registers the calling thread for use with the D Runtime.  If this routine is
+ * called for a thread which is already registered, no action is performed.  On
+ * Posix systems, the D Runtime does not take ownership of the thread;
+ * specifically, it does not call $(D pthread_detach) during cleanup.
  *
  * NOTE: This routine does not run thread-local static constructors when called.
  *       If full functionality as a D thread is desired, the following function
@@ -2275,6 +2283,7 @@ private Thread attachThread(Thread thisThread) @nogc
         thisContext.tstack = thisContext.bstack;
 
         atomicStore!(MemoryOrder.raw)(thisThread.m_isRunning, true);
+        thisThread.m_isOwned = false;
     }
     thisThread.m_isDaemon = true;
     thisThread.m_tlsgcdata = rt_tlsgc_init();
