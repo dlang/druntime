@@ -2121,6 +2121,12 @@ extern (C) bool thread_isMainThread() nothrow @nogc
  * Posix systems, the D Runtime does not take ownership of the thread;
  * specifically, it does not call $(D pthread_detach) during cleanup.
  *
+ * Threads registered by this routine should normally be deregistered by $(D
+ * thread_detachThis).  Although $(D thread_detachByAddr) and $(D
+ * thread_detachInstance) can be used as well, such threads cannot be registered
+ * again by $(D thread_attachThis) unless $(D thread_setThis) is called with the
+ * $(D null) value first.
+ *
  * NOTE: This routine does not run thread-local static constructors when called.
  *       If full functionality as a D thread is desired, the following function
  *       must be called after thread_attachThis:
@@ -2251,7 +2257,10 @@ extern (C) void thread_detachThis() nothrow @nogc
     scope(exit) Thread.slock.unlock_nothrow();
 
     if (auto t = Thread.getThis())
+    {
         Thread.remove(t);
+        t.setThis(null);
+    }
 }
 
 
@@ -2347,6 +2356,18 @@ extern (C) void thread_setThis(Thread t) nothrow @nogc
     Thread.setThis(t);
 }
 
+unittest
+{
+    auto t = new Thread(
+    {
+        auto old = Thread.getThis();
+        assert(old !is null);
+        thread_setThis(null);
+        assert(Thread.getThis() is null);
+        thread_setThis(old);
+    }).start;
+    t.join();
+}
 
 /**
  * Joins all non-daemon threads that are currently running.  This is done by
