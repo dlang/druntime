@@ -2239,6 +2239,9 @@ version( Windows )
  */
 extern (C) void thread_detachThis() nothrow @nogc
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     if (auto t = Thread.getThis())
         Thread.remove(t);
 }
@@ -2257,6 +2260,9 @@ extern (C) void thread_detachThis() nothrow @nogc
  */
 extern (C) void thread_detachByAddr( ThreadID addr )
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     if( auto t = thread_findByAddr( addr ) )
         Thread.remove( t );
 }
@@ -2265,6 +2271,9 @@ extern (C) void thread_detachByAddr( ThreadID addr )
 /// ditto
 extern (C) void thread_detachInstance( Thread t ) nothrow @nogc
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     Thread.remove( t );
 }
 
