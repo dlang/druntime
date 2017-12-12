@@ -2119,19 +2119,19 @@ extern (C) bool thread_isMainThread() nothrow @nogc
  * Registers the calling thread for use with the D Runtime.  If this routine is
  * called for a thread which is already registered, no action is performed.  On
  * Posix systems, the D Runtime does not take ownership of the thread;
- * specifically, it does not call $(D pthread_detach) during cleanup.
+ * specifically, it does not call `pthread_detach` during cleanup.
  *
- * Threads registered by this routine should normally be deregistered by $(D
- * thread_detachThis).  Although $(D thread_detachByAddr) and $(D
- * thread_detachInstance) can be used as well, such threads cannot be registered
- * again by $(D thread_attachThis) unless $(D thread_setThis) is called with the
- * $(D null) value first.
+ * Threads registered by this routine should normally be deregistered by
+ * `thread_detachThis`.  Although `thread_detachByAddr` and
+ * `thread_detachInstance` can be used as well, such threads cannot be registered
+ * again by `thread_attachThis` unless `thread_setThis` is called with the
+ * `null` reference first.
  *
  * NOTE: This routine does not run thread-local static constructors when called.
  *       If full functionality as a D thread is desired, the following function
  *       must be called after thread_attachThis:
  *
- *       extern (C) void rt_moduleTlsCtor();
+ *       `extern (C) void rt_moduleTlsCtor();`
  */
 extern (C) Thread thread_attachThis()
 {
