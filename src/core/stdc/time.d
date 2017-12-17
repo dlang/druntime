@@ -194,6 +194,13 @@ else version( CRuntime_Bionic )
     ///
     extern __gshared const(char)*[2] tzname;
 }
+else version( CRuntime_Musl )
+{
+    ///
+    void tzset();                            // non-standard
+    ///
+    extern __gshared const(char)*[2] tzname; // non-standard
+}
 else
 {
     static assert(false, "Unsupported platform");

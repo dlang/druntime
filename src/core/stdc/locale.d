@@ -218,6 +218,9 @@ else version(Solaris)
     ///
     enum LC_ALL         = 6;
 }
+else version(CRuntime_Musl)
+{
+}
 else
 {
     static assert(false, "Unsupported platform");

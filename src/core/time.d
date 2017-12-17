@@ -292,7 +292,7 @@ else version(Darwin) enum ClockType
     precise = 3,
     second = 6,
 }
-else version(linux) enum ClockType
+else version(CRuntime_Glibc) enum ClockType
 {
     normal = 0,
     bootTime = 1,
@@ -302,6 +302,15 @@ else version(linux) enum ClockType
     raw = 5,
     second = 6,
     threadCPUTime = 7,
+}
+else version(CRuntime_Musl) enum ClockType
+{
+    normal = 0,
+    bootTime = 1,
+    coarse = 2,
+    precise = 3,
+    raw = 5,
+    second = 6,
 }
 else version(FreeBSD) enum ClockType
 {
@@ -355,9 +364,11 @@ version(Posix)
             case coarse: return CLOCK_MONOTONIC_COARSE;
             case normal: return CLOCK_MONOTONIC;
             case precise: return CLOCK_MONOTONIC;
-            case processCPUTime: return CLOCK_PROCESS_CPUTIME_ID;
             case raw: return CLOCK_MONOTONIC_RAW;
-            case threadCPUTime: return CLOCK_THREAD_CPUTIME_ID;
+            version(CRuntime_Glibc) {
+                case processCPUTime: return CLOCK_PROCESS_CPUTIME_ID;
+                case threadCPUTime: return CLOCK_THREAD_CPUTIME_ID;
+            }
             case second: assert(0);
             }
         }

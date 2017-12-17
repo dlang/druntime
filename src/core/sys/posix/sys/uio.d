@@ -112,6 +112,14 @@ else version( CRuntime_Bionic )
     int readv(int, in iovec*, int);
     int writev(int, in iovec*, int);
 }
+else version( CRuntime_Musl )
+{
+    struct iovec
+    {
+        void* iov_base;
+        uint  iov_len;
+    }
+}
 else
 {
     static assert(false, "Unsupported platform");
