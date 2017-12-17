@@ -73,6 +73,10 @@ else version (CRuntime_Bionic)
 {
     // Not supported.
 }
+else version (CRuntime_Musl)
+{
+
+}
 else
 {
     static assert(false, "Unsupported platform");
@@ -344,6 +348,16 @@ else version( CRuntime_Bionic )
     int timer_getoverrun(timer_t);
     int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 }
+else version( CRuntime_Musl )
+{
+    alias int clockid_t;
+
+    enum CLOCK_REALTIME    = 0;
+    int clock_getres(clockid_t, timespec*);
+    int clock_gettime(clockid_t, timespec*);
+    int clock_settime(clockid_t, in timespec*);
+    int clock_nanosleep(clockid_t, int, in timespec*, timespec*);
+}
 else
 {
     static assert(false, "Unsupported platform");
@@ -400,6 +414,10 @@ else version (CRuntime_Bionic)
     char* ctime_r(in time_t*, char*);
     tm* gmtime_r(in time_t*, tm*);
     tm* localtime_r(in time_t*, tm*);
+}
+else version (CRuntime_Musl)
+{
+
 }
 else
 {
@@ -460,6 +478,10 @@ else version( CRuntime_Bionic )
     extern __gshared c_long timezone;
 
     char* strptime(in char*, in char*, tm*);
+}
+else version( CRuntime_Musl )
+{
+    int nanosleep(in timespec*, timespec*);
 }
 else
 {
