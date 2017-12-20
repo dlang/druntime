@@ -5,63 +5,14 @@
 
 QUIET:=
 
-DMD_DIR=../dmd
-
-include $(DMD_DIR)/src/osmodel.mak
-
-# Default to a release built, override with BUILD=debug
-ifeq (,$(BUILD))
-BUILD_WAS_SPECIFIED=0
-BUILD=release
-else
-BUILD_WAS_SPECIFIED=1
-endif
-
-ifneq ($(BUILD),release)
-    ifneq ($(BUILD),debug)
-        $(error Unrecognized BUILD=$(BUILD), must be 'debug' or 'release')
-    endif
-endif
-
-DMD=$(DMD_DIR)/generated/$(OS)/$(BUILD)/$(MODEL)/dmd
-INSTALL_DIR=../install
+D_HOME=../
+# Load common variables, see https://github.com/dlang/dmd/blob/master/src/posix.mak
+include $(D_HOME)/dmd/src/common.mak
 
 DOCDIR=doc
-IMPDIR=import
+IMPDIR=$(DRUNTIME_IMPORT_DIR)
 
 OPTIONAL_COVERAGE:=$(if $(TEST_COVERAGE),-cov,)
-
-# default to PIC on x86_64, use PIC=1/0 to en-/disable PIC.
-# Note that shared libraries and C files are always compiled with PIC.
-ifeq ($(PIC),)
-    ifeq ($(MODEL),64) # x86_64
-        PIC:=1
-    else
-        PIC:=0
-    endif
-endif
-ifeq ($(PIC),1)
-    override PIC:=-fPIC
-else
-    override PIC:=
-endif
-
-ifeq (osx,$(OS))
-	DOTDLL:=.dylib
-	DOTLIB:=.a
-	export MACOSX_DEPLOYMENT_TARGET=10.7
-else
-	DOTDLL:=.so
-	DOTLIB:=.a
-endif
-
-# build with shared library support
-# (defaults to true on supported platforms, can be overridden w/ make SHARED=0)
-SHARED=$(if $(findstring $(OS),linux freebsd),1,)
-
-LINKDL=$(if $(findstring $(OS),linux),-L-ldl,)
-
-MAKEFILE = $(firstword $(MAKEFILE_LIST))
 
 DDOCFLAGS=-conf= -c -w -o- -Isrc -Iimport -version=CoreDdoc
 
@@ -86,21 +37,10 @@ else
 	DFLAGS:=$(UDFLAGS) -inline # unittests don't compile with -inline
 endif
 
-# Set PHOBOS_DFLAGS (for linking against Phobos)
-PHOBOS_PATH=../phobos
-SHARED=$(if $(findstring $(OS),linux freebsd),1,)
-ROOT_DIR := $(shell pwd)
-PHOBOS_DFLAGS=-conf= $(MODEL_FLAG) -I$(ROOT_DIR)/import -I$(PHOBOS_PATH) -L-L$(PHOBOS_PATH)/generated/$(OS)/$(BUILD)/$(MODEL) $(PIC)
-ifeq (1,$(SHARED))
-PHOBOS_DFLAGS+=-defaultlib=libphobos2.so -L-rpath=$(PHOBOS_PATH)/generated/$(OS)/$(BUILD)/$(MODEL)
-endif
-
-ROOT_OF_THEM_ALL = generated
-ROOT = $(ROOT_OF_THEM_ALL)/$(OS)/$(BUILD)/$(MODEL)
+ROOT = $(DRUNTIME_BUILD_DIR)
 OBJDIR=obj/$(OS)/$(BUILD)/$(MODEL)
-DRUNTIME_BASE=druntime-$(OS)$(MODEL)
-DRUNTIME=$(ROOT)/libdruntime.a
-DRUNTIMESO=$(ROOT)/libdruntime.so
+DRUNTIME=$(LIB_DRUNTIME)
+DRUNTIMESO=$(LIB_DRUNTIME_SO)
 DRUNTIMESOOBJ=$(ROOT)/libdruntime.so.o
 DRUNTIMESOLIB=$(ROOT)/libdruntime.so.a
 
@@ -135,6 +75,8 @@ endif
 TIMELIMIT:=$(if $(shell which timelimit 2>/dev/null || true),timelimit -t 10 ,)
 
 ######################## All of'em ##############################
+
+all: target
 
 ifneq (,$(SHARED))
 target : import copy dll $(DRUNTIME)
@@ -344,7 +286,7 @@ install: target
 	cp LICENSE $(INSTALL_DIR)/druntime-LICENSE.txt
 
 clean: $(addsuffix /.clean,$(ADDITIONAL_TESTS))
-	rm -rf $(ROOT_OF_THEM_ALL) $(IMPDIR) $(DOCDIR) druntime.zip
+	rm -rf $(DRUNTIME_GENERATED) $(IMPDIR) $(DOCDIR) druntime.zip
 
 test/%/.clean: test/%/Makefile
 	$(MAKE) -C test/$* clean
