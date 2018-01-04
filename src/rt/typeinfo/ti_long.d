@@ -28,7 +28,7 @@ class TypeInfo_l : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return rt.util.hash.hashOf(p, long.sizeof);
+        return rt.util.hash.hashOf(p[0 .. long.sizeof], 0);
     }
 
     override bool equals(in void* p1, in void* p2)
@@ -48,6 +48,11 @@ class TypeInfo_l : TypeInfo
     override @property size_t tsize() nothrow pure
     {
         return long.sizeof;
+    }
+
+    override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. long.sizeof];
     }
 
     override void swap(void *p1, void *p2)

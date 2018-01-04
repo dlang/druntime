@@ -16,7 +16,7 @@ version (Posix):
 extern (C) :
 
 version(CRuntime_Glibc) {
-    static if(__WORDSIZE == 32) 
+    static if(__WORDSIZE == 32)
     {
         version=_STATVFSBUF_F_UNUSED;
     }
@@ -31,7 +31,7 @@ version(CRuntime_Glibc) {
         fsfilcnt_t f_ffree;
         fsfilcnt_t f_favail;
         c_ulong f_fsid;
-        version(_STATVFSBUF_F_UNUSED) 
+        version(_STATVFSBUF_F_UNUSED)
         {
             int __f_unused;
         }
@@ -41,7 +41,7 @@ version(CRuntime_Glibc) {
     }
     /* Definitions for the flag in `f_flag'.  These definitions should be
       kept in sync with the definitions in <sys/mount.h>.  */
-    static if(__USE_GNU) 
+    static if(__USE_GNU)
     {
         enum FFlag
         {
@@ -60,7 +60,7 @@ version(CRuntime_Glibc) {
 
         }
     }  /* Use GNU.  */
-    else 
+    else
     { // Posix defined:
         enum FFlag
         {
@@ -83,6 +83,53 @@ version(CRuntime_Glibc) {
         int fstatvfs (int fildes, statvfs_t *buf);
     }
 
+}
+else version(NetBSD)
+{
+    enum  _VFS_MNAMELEN = 1024;
+    enum  _VFS_NAMELEN = 32;
+
+    struct fsid_t
+    {
+       int[2] __fsid_val;
+    }
+
+    struct statvfs_t
+    {
+        c_ulong f_flag;
+        c_ulong f_bsize;
+        c_ulong f_frsize;
+        c_ulong f_iosize;
+        fsblkcnt_t f_blocks;
+        fsblkcnt_t f_bfree;
+        fsblkcnt_t f_bavail;
+        fsblkcnt_t f_bresvd;
+        fsfilcnt_t f_files;
+        fsfilcnt_t f_ffree;
+        fsfilcnt_t f_favail;
+        fsfilcnt_t f_fresvd;
+        ulong f_syncreads;
+        ulong f_syncwrites;
+        ulong f_asyncreads;
+        ulong f_asyncwrites;
+        fsid_t f_fsidx;
+        c_ulong f_fsid;
+        c_ulong f_namemax;
+        int f_owner;
+        int[4] f_spare;
+        char[_VFS_NAMELEN] f_fstypename;
+        char[_VFS_MNAMELEN] f_mntonname;
+        char[_VFS_MNAMELEN] f_mntfromname;
+    }
+
+    enum FFlag
+    {
+        ST_RDONLY = 1,        /* Mount read-only.  */
+        ST_NOSUID = 2
+    }
+
+    int statvfs (const char * file, statvfs_t* buf);
+    int fstatvfs (int fildes, statvfs_t *buf) @trusted;
 }
 else
 {

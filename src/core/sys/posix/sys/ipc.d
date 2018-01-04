@@ -17,6 +17,15 @@ module core.sys.posix.sys.ipc;
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for uid_t, gid_t, mode_t, key_t
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C) nothrow @nogc:
 
@@ -75,7 +84,7 @@ version( CRuntime_Glibc )
 
     key_t ftok(in char*, int);
 }
-else version( OSX )
+else version( Darwin )
 {
 
 }
@@ -106,6 +115,31 @@ else version( FreeBSD )
     enum IPC_CREAT      = 0x0200; // 01000
     enum IPC_EXCL       = 0x0400; // 02000
     enum IPC_NOWAIT     = 0x0800; // 04000
+
+    enum key_t IPC_PRIVATE = 0;
+
+    enum IPC_RMID       = 0;
+    enum IPC_SET        = 1;
+    enum IPC_STAT       = 2;
+
+    key_t ftok(in char*, int);
+}
+else version(NetBSD)
+{
+    struct ipc_perm
+    {
+        uid_t   cuid;
+        gid_t   cgid;
+        uid_t   uid;
+        gid_t   gid;
+        mode_t  mode;
+        ushort  seq;
+        key_t   key;
+    }
+
+    enum IPC_CREAT      = 0x0100; // 01000
+    enum IPC_EXCL       = 0x0200; // 02000
+    enum IPC_NOWAIT     = 0x0400; // 04000
 
     enum key_t IPC_PRIVATE = 0;
 

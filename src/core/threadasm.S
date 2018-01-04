@@ -2,7 +2,7 @@
  * Support code for mutithreading.
  *
  * Copyright: Copyright Mikola Lysenko 2005 - 2012.
- * License:   $(WEB http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Mikola Lysenko, Martin Nowak, Kai Nacke
  */
 
@@ -13,7 +13,7 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
-#if (defined(__linux__) || defined(__FreeBSD__)) && defined(__ELF__)
+#if (defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)) && defined(__ELF__)
 /*
  * Mark the resulting object file as not requiring execution permissions on
  * stack memory. The absence of this section would mark the whole resulting
@@ -391,7 +391,7 @@ fiber_switchContext:
  * r13 =sp : stack pointer
  * r14 =lr : link register, it contains the return address (belonging to the function which called us)
  * r15 =pc : program counter
- * 
+ *
  * For floating point registers:
  * According to AAPCS (version 2.09, section 5.1.2) only the d8-d15 registers need to be preserved
  * across method calls. This applies to all ARM FPU variants, whether they have 16 or 32 double registers
@@ -408,6 +408,9 @@ fiber_switchContext:
 .text
 .align  2
 .global fiber_switchContext
+#if defined(__ARM_PCS_VFP) || (defined(__ARM_PCS) && !defined(__SOFTFP__)) // ARM_HardFloat  || ARM_SoftFP
+  .fpu vfp
+#endif
 .type   fiber_switchContext, %function
 fiber_switchContext:
     .fnstart

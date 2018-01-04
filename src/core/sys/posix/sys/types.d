@@ -19,6 +19,15 @@ private import core.sys.posix.config;
 private import core.stdc.stdint;
 public import core.stdc.stddef;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
 
@@ -101,17 +110,13 @@ version( CRuntime_Glibc )
     alias slong_t   time_t;
     alias uint      uid_t;
 }
-else version( OSX )
+else version( Darwin )
 {
     alias long      blkcnt_t;
     alias int       blksize_t;
     alias int       dev_t;
     alias uint      gid_t;
-    version( DARWIN_USE_64_BIT_INODE ) {
-        alias ulong ino_t;
-    } else {
-        alias uint  ino_t;
-    }
+    alias ulong     ino_t;
     alias ushort    mode_t;
     alias ushort    nlink_t;
     alias long      off_t;
@@ -137,6 +142,22 @@ else version( FreeBSD )
     alias c_long    time_t;
     alias uint      uid_t;
     alias uint      fflags_t;
+}
+else version(NetBSD)
+{
+    alias long      blkcnt_t;
+    alias int       blksize_t;
+    alias ulong     dev_t;
+    alias uint      gid_t;
+    alias ulong     ino_t;
+    alias uint      mode_t;
+    alias uint      nlink_t;
+    alias ulong     off_t;
+    alias int       pid_t;
+    //size_t (defined in core.stdc.stddef)
+    alias c_long      ssize_t;
+    alias c_long      time_t;
+    alias uint        uid_t;
 }
 else version (Solaris)
 {
@@ -249,7 +270,7 @@ version( CRuntime_Glibc )
     alias slong_t   suseconds_t;
     alias uint      useconds_t;
 }
-else version( OSX )
+else version( Darwin )
 {
     alias uint   fsblkcnt_t;
     alias uint   fsfilcnt_t;
@@ -260,6 +281,16 @@ else version( OSX )
     alias uint   useconds_t;
 }
 else version( FreeBSD )
+{
+    alias ulong     fsblkcnt_t;
+    alias ulong     fsfilcnt_t;
+    alias c_long    clock_t;
+    alias long      id_t;
+    alias c_long    key_t;
+    alias c_long    suseconds_t;
+    alias uint      useconds_t;
+}
+else version(NetBSD)
 {
     alias ulong     fsblkcnt_t;
     alias ulong     fsfilcnt_t;
@@ -450,6 +481,42 @@ version (CRuntime_Glibc)
         enum __SIZEOF_PTHREAD_BARRIER_T = 32;
         enum __SIZEOF_PTHREAD_BARRIERATTR_T = 4;
     }
+    else version (RISCV32)
+    {
+        enum __SIZEOF_PTHREAD_ATTR_T = 36;
+        enum __SIZEOF_PTHREAD_MUTEX_T = 24;
+        enum __SIZEOF_PTHREAD_MUTEXATTR_T = 4;
+        enum __SIZEOF_PTHREAD_COND_T = 48;
+        enum __SIZEOF_PTHREAD_CONDATTR_T = 4;
+        enum __SIZEOF_PTHREAD_RWLOCK_T = 32;
+        enum __SIZEOF_PTHREAD_RWLOCKATTR_T = 8;
+        enum __SIZEOF_PTHREAD_BARRIER_T = 20;
+        enum __SIZEOF_PTHREAD_BARRIERATTR_T = 4;
+    }
+    else version (RISCV64)
+    {
+        enum __SIZEOF_PTHREAD_ATTR_T = 56;
+        enum __SIZEOF_PTHREAD_MUTEX_T = 40;
+        enum __SIZEOF_PTHREAD_MUTEXATTR_T = 4;
+        enum __SIZEOF_PTHREAD_COND_T = 48;
+        enum __SIZEOF_PTHREAD_CONDATTR_T = 4;
+        enum __SIZEOF_PTHREAD_RWLOCK_T = 56;
+        enum __SIZEOF_PTHREAD_RWLOCKATTR_T = 8;
+        enum __SIZEOF_PTHREAD_BARRIER_T = 32;
+        enum __SIZEOF_PTHREAD_BARRIERATTR_T = 4;
+    }
+    else version (SPARC64)
+    {
+        enum __SIZEOF_PTHREAD_ATTR_T = 56;
+        enum __SIZEOF_PTHREAD_MUTEX_T = 40;
+        enum __SIZEOF_PTHREAD_MUTEXATTR_T = 4;
+        enum __SIZEOF_PTHREAD_COND_T = 48;
+        enum __SIZEOF_PTHREAD_CONDATTR_T = 4;
+        enum __SIZEOF_PTHREAD_RWLOCK_T = 56;
+        enum __SIZEOF_PTHREAD_RWLOCKATTR_T = 8;
+        enum __SIZEOF_PTHREAD_BARRIER_T = 32;
+        enum __SIZEOF_PTHREAD_BARRIERATTR_T = 4;
+    }
     else version (S390)
     {
         enum __SIZEOF_PTHREAD_ATTR_T = 36;
@@ -462,7 +529,7 @@ version (CRuntime_Glibc)
         enum __SIZEOF_PTHREAD_BARRIER_T = 20;
         enum __SIZEOF_PTHREAD_BARRIERATTR_T = 4;
     }
-    else version (S390X)
+    else version (SystemZ)
     {
         enum __SIZEOF_PTHREAD_ATTR_T = 56;
         enum __SIZEOF_PTHREAD_MUTEX_T = 40;
@@ -537,7 +604,7 @@ version (CRuntime_Glibc)
 
     alias c_ulong pthread_t;
 }
-else version( OSX )
+else version( Darwin )
 {
     version( D_LP64 )
     {
@@ -645,6 +712,74 @@ else version( FreeBSD )
     alias void* pthread_rwlockattr_t;
     alias void* pthread_t;
 }
+else version(NetBSD)
+{
+   struct pthread_queue_t {
+         void*  ptqh_first;
+         void** ptqh_last;
+   }
+
+    alias lwpid_t = int;
+    alias pthread_spin_t = ubyte;
+    struct pthread_attr_t {
+        uint    pta_magic;
+        int     pta_flags;
+        void*   pta_private;
+    }
+    struct  pthread_spinlock_t {
+        uint    pts_magic;
+        pthread_spin_t  pts_spin;
+        int             pts_flags;
+    }
+    struct pthread_cond_t {
+        uint    ptc_magic;
+        pthread_spin_t  ptc_lock;
+        pthread_queue_t ptc_waiters;
+        pthread_mutex_t *ptc_mutex;
+        void*   ptc_private;
+    }
+    struct pthread_condattr_t {
+        uint    ptca_magic;
+        void    *ptca_private;
+    }
+    struct pthread_mutex_t {
+        uint ptm_magic;
+        pthread_spin_t  ptm_errorcheck;
+        ubyte[3]         ptm_pad1;
+        pthread_spin_t  ptm_interlock;
+        ubyte[3] ptm_pad2;
+        pthread_t ptm_owner;
+        void* ptm_waiters;
+        uint  ptm_recursed;
+        void* ptm_spare2;
+    }
+    struct pthread_mutexattr_t{
+        uint    ptma_magic;
+        void*   ptma_private;
+    }
+    struct pthread_once_t{
+        pthread_mutex_t pto_mutex;
+        int     pto_done;
+    }
+    struct pthread_rwlock_t{
+        uint    ptr_magic;
+
+        pthread_spin_t  ptr_interlock;
+
+        pthread_queue_t ptr_rblocked;
+        pthread_queue_t ptr_wblocked;
+        uint    ptr_nreaders;
+        pthread_t ptr_owner;
+        void    *ptr_private;
+    }
+    struct pthread_rwlockattr_t{
+        uint    ptra_magic;
+        void*   ptra_private;
+    }
+
+    alias uint pthread_key_t;
+    alias void* pthread_t;
+}
 else version (Solaris)
 {
     alias uint pthread_t;
@@ -695,7 +830,7 @@ else version (Solaris)
             ubyte __pthread_mutex_flag2;
             ubyte __pthread_mutex_ceiling;
             ushort __pthread_mutex_type;
-            ushort __pthread_mutex_magic; 
+            ushort __pthread_mutex_magic;
         }
 
         ___pthread_mutex_flags __pthread_mutex_flags;
@@ -809,7 +944,12 @@ else version( FreeBSD )
     alias void* pthread_barrier_t;
     alias void* pthread_barrierattr_t;
 }
-else version( OSX )
+else version(NetBSD)
+{
+    alias void* pthread_barrier_t;
+    alias void* pthread_barrierattr_t;
+}
+else version( Darwin )
 {
 }
 else version (Solaris)
@@ -821,7 +961,7 @@ else version (Solaris)
         ulong __pthread_barrier_cycle;
         ulong __pthread_barrier_reserved;
         pthread_mutex_t __pthread_barrier_lock;
-        pthread_cond_t __pthread_barrier_cond; 
+        pthread_cond_t __pthread_barrier_cond;
     }
 
     struct pthread_barrierattr_t
@@ -851,6 +991,10 @@ version( CRuntime_Glibc )
 else version( FreeBSD )
 {
     alias void* pthread_spinlock_t;
+}
+else version(NetBSD)
+{
+    //already defined
 }
 else version (Solaris)
 {

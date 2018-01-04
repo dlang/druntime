@@ -18,6 +18,8 @@ struct inotify_event
     uint cookie;
     uint len;
     char[0] name;
+
+    @disable this(this);
 }
 
 enum: uint
@@ -34,7 +36,7 @@ enum: uint
     IN_DELETE        = 0x00000200,
     IN_DELETE_SELF   = 0x00000400,
     IN_MOVE_SELF     = 0x00000800,
-    IN_UMOUNT        = 0x00002000,
+    IN_UNMOUNT       = 0x00002000,
     IN_Q_OVERFLOW    = 0x00004000,
     IN_IGNORED       = 0x00008000,
     IN_CLOSE         = 0x00000018,
@@ -47,6 +49,9 @@ enum: uint
     IN_ONESHOT       = 0x80000000,
     IN_ALL_EVENTS    = 0x80000FFF,
 }
+
+// Old typo, preserved for compatibility
+enum IN_UMOUNT = IN_UNMOUNT;
 
 version (X86)
 {
@@ -84,6 +89,11 @@ else version (ARM)
     enum IN_NONBLOCK = 0x800; // octal!4000
 }
 else version (AArch64)
+{
+    enum IN_CLOEXEC = 0x80000; // octal!2000000
+    enum IN_NONBLOCK = 0x800; // octal!4000
+}
+else version (SystemZ)
 {
     enum IN_CLOEXEC = 0x80000; // octal!2000000
     enum IN_NONBLOCK = 0x800; // octal!4000

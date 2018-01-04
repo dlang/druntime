@@ -2,16 +2,13 @@
  * Contains SSE/MMX versions of certain operations for dchar, int, and uint ('w',
  * 'i' and 'k' suffixes).
  *
- * Copyright: Copyright Digital Mars 2008 - 2010.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * Copyright: Copyright Digital Mars 2008 - 2016.
+ * License:   Distributed under the
+ *            $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  * Authors:   Walter Bright, based on code originally written by Burton Radons
+ * Source:    $(DRUNTIMESRC src/rt/_arrayint.d)
  */
 
-/*          Copyright Digital Mars 2008 - 2010.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module rt.arrayint;
 
 // debug=PRINTF
@@ -1255,8 +1252,8 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
                     align 4;
                   startaddsse2u:
                     add RSI, 32;
-                    movdqu XMM0, [EAX];
-                    movdqu XMM1, [EAX+16];
+                    movdqu XMM0, [RAX];
+                    movdqu XMM1, [RAX+16];
                     add RAX, 32;
                     psubd XMM0, XMM2;
                     psubd XMM1, XMM2;
@@ -1282,8 +1279,8 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
                     align 4;
                   startaddsse2a:
                     add RSI, 32;
-                    movdqa XMM0, [EAX];
-                    movdqa XMM1, [EAX+16];
+                    movdqa XMM0, [RAX];
+                    movdqa XMM1, [RAX+16];
                     add RAX, 32;
                     psubd XMM0, XMM2;
                     psubd XMM1, XMM2;
@@ -1313,8 +1310,8 @@ T[] _arraySliceExpMinSliceAssign_i(T[] a, T value, T[] b)
                 align 4;
               startmmx:
                 add RSI, 16;
-                movq MM0, [EAX];
-                movq MM1, [EAX+8];
+                movq MM0, [RAX];
+                movq MM1, [RAX+8];
                 add RAX, 16;
                 psubd MM0, MM2;
                 psubd MM1, MM2;
@@ -1549,8 +1546,8 @@ T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
                     align 4;
                   startaddsse2a:
                     add RSI, 32;
-                    movdqa XMM2, [EAX];
-                    movdqa XMM3, [EAX+16];
+                    movdqa XMM2, [RAX];
+                    movdqa XMM3, [RAX+16];
                     movdqa XMM0, XMM4;
                     movdqa XMM1, XMM4;
                     add RAX, 32;
@@ -1582,8 +1579,8 @@ T[] _arrayExpSliceMinSliceAssign_i(T[] a, T[] b, T value)
                 align 4;
               startmmx:
                 add RSI, 16;
-                movq MM2, [EAX];
-                movq MM3, [EAX+8];
+                movq MM2, [RAX];
+                movq MM3, [RAX+8];
                 movq MM0, MM4;
                 movq MM1, MM4;
                 add RAX, 16;

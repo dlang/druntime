@@ -79,7 +79,7 @@ extern (C) Object _d_newclass(const ClassInfo ci)
          * function called by Release() when Release()'s reference count goes
          * to zero.
      */
-        p = malloc(ci.init.length);
+        p = malloc(ci.initializer.length);
         if (!p)
             onOutOfMemoryError();
     }
@@ -93,26 +93,26 @@ extern (C) Object _d_newclass(const ClassInfo ci)
             attr |= BlkAttr.FINALIZE;
         if (ci.m_flags & TypeInfo_Class.ClassFlags.noPointers)
             attr |= BlkAttr.NO_SCAN;
-        p = GC.malloc(ci.init.length, attr, ci);
+        p = GC.malloc(ci.initializer.length, attr, ci);
         debug(PRINTF) printf(" p = %p\n", p);
     }
 
     debug(PRINTF)
     {
         printf("p = %p\n", p);
-        printf("ci = %p, ci.init.ptr = %p, len = %llu\n", ci, ci.init.ptr, cast(ulong)ci.init.length);
-        printf("vptr = %p\n", *cast(void**) ci.init);
-        printf("vtbl[0] = %p\n", (*cast(void***) ci.init)[0]);
-        printf("vtbl[1] = %p\n", (*cast(void***) ci.init)[1]);
-        printf("init[0] = %x\n", (cast(uint*) ci.init)[0]);
-        printf("init[1] = %x\n", (cast(uint*) ci.init)[1]);
-        printf("init[2] = %x\n", (cast(uint*) ci.init)[2]);
-        printf("init[3] = %x\n", (cast(uint*) ci.init)[3]);
-        printf("init[4] = %x\n", (cast(uint*) ci.init)[4]);
+        printf("ci = %p, ci.init.ptr = %p, len = %llu\n", ci, ci.initializer.ptr, cast(ulong)ci.initializer.length);
+        printf("vptr = %p\n", *cast(void**) ci.initializer);
+        printf("vtbl[0] = %p\n", (*cast(void***) ci.initializer)[0]);
+        printf("vtbl[1] = %p\n", (*cast(void***) ci.initializer)[1]);
+        printf("init[0] = %x\n", (cast(uint*) ci.initializer)[0]);
+        printf("init[1] = %x\n", (cast(uint*) ci.initializer)[1]);
+        printf("init[2] = %x\n", (cast(uint*) ci.initializer)[2]);
+        printf("init[3] = %x\n", (cast(uint*) ci.initializer)[3]);
+        printf("init[4] = %x\n", (cast(uint*) ci.initializer)[4]);
     }
 
     // initialize it
-    p[0 .. ci.init.length] = ci.init[];
+    p[0 .. ci.initializer.length] = ci.initializer[];
 
     debug(PRINTF) printf("initialization done\n");
     return cast(Object) p;
@@ -274,9 +274,17 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, co
 
     if(info.size <= 256)
     {
-        if(newlength + SMALLPAD + typeInfoSize > info.size)
+        import core.checkedint;
+
+        bool overflow;
+        auto newlength_padded = addu(newlength,
+                                     addu(SMALLPAD, typeInfoSize, overflow),
+                                     overflow);
+
+        if(newlength_padded > info.size || overflow)
             // new size does not fit inside block
             return false;
+
         auto length = cast(ubyte *)(info.base + info.size - typeInfoSize - SMALLPAD);
         if(oldlength != ~0)
         {
@@ -406,24 +414,38 @@ size_t __arrayPad(size_t size, const TypeInfo tinext) nothrow pure @trusted
   */
 BlkInfo __arrayAlloc(size_t arrsize, const TypeInfo ti, const TypeInfo tinext) nothrow pure
 {
+    import core.checkedint;
+
     size_t typeInfoSize = structTypeInfoSize(tinext);
     size_t padsize = arrsize > MAXMEDSIZE ? LARGEPAD : ((arrsize > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + typeInfoSize);
 
-    if (arrsize + padsize < arrsize)
+    bool overflow;
+    auto padded_size = addu(arrsize, padsize, overflow);
+
+    if (overflow)
         return BlkInfo();
 
     uint attr = (!(tinext.flags & 1) ? BlkAttr.NO_SCAN : 0) | BlkAttr.APPENDABLE;
     if (typeInfoSize)
         attr |= BlkAttr.STRUCTFINAL | BlkAttr.FINALIZE;
-    return GC.qalloc(arrsize + padsize, attr, ti);
+    return GC.qalloc(padded_size, attr, ti);
 }
 
 BlkInfo __arrayAlloc(size_t arrsize, ref BlkInfo info, const TypeInfo ti, const TypeInfo tinext)
 {
+    import core.checkedint;
+
     if (!info.base)
         return __arrayAlloc(arrsize, ti, tinext);
 
-    return GC.qalloc(arrsize + __arrayPad(arrsize, tinext), info.attr, ti);
+    bool overflow;
+    auto padded_size = addu(arrsize, __arrayPad(arrsize, tinext), overflow);
+    if (overflow)
+    {
+        return BlkInfo();
+    }
+
+    return GC.qalloc(padded_size, info.attr, ti);
 }
 
 /**
@@ -749,9 +771,11 @@ body
     }
     else
     {
-        size_t reqsize = size * newcapacity;
+        import core.checkedint : mulu;
 
-        if (newcapacity == 0 || reqsize / newcapacity == size)
+        bool overflow = false;
+        size_t reqsize = mulu(size, newcapacity, overflow);
+        if (!overflow)
             goto Lcontinue;
     }
 Loverflow:
@@ -908,12 +932,12 @@ extern (C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow
     }
     else
     {
-        auto newsize = size * length;
-        if (newsize / length == size)
-        {
-            size = newsize;
+        import core.checkedint : mulu;
+
+        bool overflow = false;
+        size = mulu(size, length, overflow);
+        if (!overflow)
             goto Lcontinue;
-        }
     }
 Loverflow:
     onOutOfMemoryError();
@@ -957,7 +981,7 @@ extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
     auto tinext = unqualify(ti.next);
     auto size = tinext.tsize;
 
-    auto init = tinext.init();
+    auto init = tinext.initializer();
 
     switch (init.length)
     {
@@ -1085,7 +1109,7 @@ extern (C) void* _d_newitemT(in TypeInfo _ti)
 extern (C) void* _d_newitemiT(in TypeInfo _ti)
 {
     auto p = _d_newitemU(_ti);
-    auto init = _ti.init();
+    auto init = _ti.initializer();
     assert(init.length <= _ti.tsize);
     memcpy(p, init.ptr, init.length);
     return p;
@@ -1374,7 +1398,7 @@ extern (C) void rt_finalize2(void* p, bool det = true, bool resetMemory = true) 
 
         if (resetMemory)
         {
-            auto w = (*pc).init;
+            auto w = (*pc).initializer;
             p[0 .. w.length] = w[];
         }
     }
@@ -1460,9 +1484,11 @@ body
         }
         else
         {
-            size_t newsize = sizeelem * newlength;
+            import core.checkedint : mulu;
 
-            if (newsize / newlength != sizeelem)
+            bool overflow = false;
+            size_t newsize = mulu(sizeelem, newlength, overflow);
+            if (overflow)
                 goto Loverflow;
         }
 
@@ -1544,6 +1570,10 @@ body
                     {
                         info = __arrayAlloc(newsize, ti, tinext);
                     }
+
+                    if (info.base is null)
+                        goto Loverflow;
+
                     __setArrayAllocLength(info, newsize, isshared, tinext);
                     if(!isshared)
                         __insertBlkInfoCache(info, bic);
@@ -1561,6 +1591,8 @@ body
         {
             // pointer was null, need to allocate
             auto info = __arrayAlloc(newsize, ti, tinext);
+            if (info.base is null)
+                goto Loverflow;
             __setArrayAllocLength(info, newsize, isshared, tinext);
             if(!isshared)
                 __insertBlkInfoCache(info, null);
@@ -1600,7 +1632,7 @@ body
     void* newdata;
     auto tinext = unqualify(ti.next);
     auto sizeelem = tinext.tsize;
-    auto initializer = tinext.init();
+    auto initializer = tinext.initializer();
     auto initsize = initializer.length;
 
     assert(sizeelem);
@@ -1643,9 +1675,11 @@ body
         }
         else
         {
-            size_t newsize = sizeelem * newlength;
+            import core.checkedint : mulu;
 
-            if (newsize / newlength != sizeelem)
+            bool overflow = false;
+            size_t newsize = mulu(sizeelem, newlength, overflow);
+            if (overflow)
                 goto Loverflow;
         }
         debug(PRINTF) printf("newsize = %x, newlength = %x\n", newsize, newlength);
@@ -1902,7 +1936,7 @@ byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
     size_t newcap = void; // for scratch space
 
     // calculate the extent of the array given the base.
-    size_t offset = px.ptr - __arrayStart(info);
+    size_t offset = cast(void*)px.ptr - __arrayStart(info);
     if(info.base && (info.attr & BlkAttr.APPENDABLE))
     {
         if(info.size >= PAGESIZE)
@@ -2020,7 +2054,10 @@ extern (C) void[] _d_arrayappendcd(ref byte[] x, dchar c)
         appendthis = (cast(byte *)buf.ptr)[0..4];
     }
     else
-        assert(0);      // invalid utf character - should we throw an exception instead?
+    {
+        import core.exception : onUnicodeError;
+        onUnicodeError("Invalid UTF-8 sequence", 0);      // invalid utf character
+    }
 
     //
     // TODO: This always assumes the array type is shared, because we do not
@@ -2028,6 +2065,34 @@ extern (C) void[] _d_arrayappendcd(ref byte[] x, dchar c)
     // Once the compiler is fixed, the proper typeinfo should be forwarded.
     //
     return _d_arrayappendT(typeid(shared char[]), x, appendthis);
+}
+
+unittest
+{
+    import core.exception : UnicodeException;
+
+    /* Using inline try {} catch {} blocks fails to catch the UnicodeException
+     * thrown.
+     * https://issues.dlang.org/show_bug.cgi?id=16799
+     */
+    static void assertThrown(T : Throwable = Exception, E)(lazy E expr, string msg)
+    {
+        try
+            expr;
+        catch (T e) {
+            assert(e.msg == msg);
+            return;
+        }
+    }
+
+    static void f()
+    {
+        string ret;
+        int i = -1;
+        ret ~= i;
+    }
+
+    assertThrown!UnicodeException(f(), "Invalid UTF-8 sequence");
 }
 
 
@@ -2565,16 +2630,13 @@ unittest
         import core.exception;
         static class C1
         {
-            // preallocate to not call new in destructor
-            __gshared E exc = new E("test onFinalizeError");
-            ~this()
-            {
-                throw exc;
-            }
+            E exc;
+            this(E exc) { this.exc = exc; }
+            ~this() { throw exc; }
         }
 
         bool caught = false;
-        C1 c = new C1;
+        C1 c = new C1(new E("test onFinalizeError"));
         try
         {
             GC.runFinalizers((cast(uint*)&C1.__dtor)[0..1]);
@@ -2607,16 +2669,12 @@ unittest
         import core.exception;
         static struct S1
         {
-            // preallocate to not call new in destructor
-            __gshared E exc = new E("test onFinalizeError");
-            ~this()
-            {
-                throw exc;
-            }
+            E exc;
+            ~this() { throw exc; }
         }
 
         bool caught = false;
-        S1* s = new S1;
+        S1* s = new S1(new E("test onFinalizeError"));
         try
         {
             GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);

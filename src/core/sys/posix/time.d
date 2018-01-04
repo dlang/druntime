@@ -20,6 +20,15 @@ public import core.stdc.time;
 public import core.sys.posix.sys.types;
 public import core.sys.posix.signal; // for sigevent
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
 nothrow:
@@ -44,11 +53,15 @@ version( CRuntime_Glibc )
 {
     time_t timegm(tm*); // non-standard
 }
-else version( OSX )
+else version( Darwin )
 {
     time_t timegm(tm*); // non-standard
 }
 else version( FreeBSD )
+{
+    time_t timegm(tm*); // non-standard
+}
+else version(NetBSD)
 {
     time_t timegm(tm*); // non-standard
 }
@@ -115,7 +128,12 @@ else version (FreeBSD)
     deprecated("Please import it from core.sys.freebsd.time instead.")
         alias CLOCK_MONOTONIC_FAST = core.sys.freebsd.time.CLOCK_MONOTONIC_FAST;
 }
-else version (OSX)
+else version (NetBSD)
+{
+    // time.h
+    enum CLOCK_MONOTONIC         = 3;
+}
+else version (Darwin)
 {
     // No CLOCK_MONOTONIC defined
 }
@@ -194,7 +212,7 @@ version( CRuntime_Glibc )
     enum TIMER_ABSTIME          = 0x01;
 
     alias int clockid_t;
-    alias int timer_t;
+    alias void* timer_t;
 
     int clock_getres(clockid_t, timespec*);
     int clock_gettime(clockid_t, timespec*);
@@ -206,7 +224,7 @@ version( CRuntime_Glibc )
     int timer_getoverrun(timer_t);
     int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 }
-else version( OSX )
+else version( Darwin )
 {
     int nanosleep(in timespec*, timespec*);
 }
@@ -245,7 +263,7 @@ else version( FreeBSD )
     int timer_getoverrun(timer_t);
     int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
 }
-else version (Solaris)
+else version(NetBSD)
 {
     struct itimerspec
     {
@@ -253,7 +271,34 @@ else version (Solaris)
         timespec it_value;
     }
 
-    enum CLOCK_REALTIME = 0; // <sys/time_impl.h>
+    enum CLOCK_REALTIME      = 0;
+    enum TIMER_ABSTIME       = 0x01;
+
+    alias int clockid_t; // <sys/_types.h>
+    alias int timer_t;
+
+    int clock_getres(clockid_t, timespec*);
+    int clock_gettime(clockid_t, timespec*);
+    int clock_settime(clockid_t, in timespec*);
+    int nanosleep(in timespec*, timespec*);
+    int timer_create(clockid_t, sigevent*, timer_t*);
+    int timer_delete(timer_t);
+    int timer_gettime(timer_t, itimerspec*);
+    int timer_getoverrun(timer_t);
+    int timer_settime(timer_t, int, in itimerspec*, itimerspec*);
+}
+else version (Solaris)
+{
+    enum CLOCK_PROCESS_CPUTIME_ID = 5; // <sys/time_impl.h>
+    enum CLOCK_THREAD_CPUTIME_ID  = 2; // <sys/time_impl.h>
+
+    struct itimerspec
+    {
+        timespec it_interval;
+        timespec it_value;
+    }
+
+    enum CLOCK_REALTIME = 3; // <sys/time_impl.h>
     enum TIMER_ABSOLUTE = 0x1;
 
     alias int clockid_t;
@@ -314,14 +359,14 @@ tm*   gmtime_r(in time_t*, tm*);
 tm*   localtime_r(in time_t*, tm*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);
     tm*   gmtime_r(in time_t*, tm*);
     tm*   localtime_r(in time_t*, tm*);
 }
-else version( OSX )
+else version( Darwin )
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);
@@ -335,6 +380,13 @@ else version( FreeBSD )
     tm*   gmtime_r(in time_t*, tm*);
     tm*   localtime_r(in time_t*, tm*);
 }
+else version(NetBSD)
+{
+    char* asctime_r(in tm*, char*);
+    char* ctime_r(in time_t*, char*);
+    tm*   gmtime_r(in time_t*, tm*);
+    tm*   localtime_r(in time_t*, tm*);
+}
 else version (Solaris)
 {
     char* asctime_r(in tm*, char*);
@@ -342,7 +394,7 @@ else version (Solaris)
     tm* gmtime_r(in time_t*, tm*);
     tm* localtime_r(in time_t*, tm*);
 }
-else version (Android)
+else version (CRuntime_Bionic)
 {
     char* asctime_r(in tm*, char*);
     char* ctime_r(in time_t*, char*);
@@ -375,7 +427,7 @@ version( CRuntime_Glibc )
     tm*   getdate(in char*);
     char* strptime(in char*, in char*, tm*);
 }
-else version( OSX )
+else version( Darwin )
 {
     extern __gshared c_long timezone;
     extern __gshared int    daylight;
@@ -386,6 +438,11 @@ else version( OSX )
 else version( FreeBSD )
 {
     //tm*   getdate(in char*);
+    char* strptime(in char*, in char*, tm*);
+}
+else version(NetBSD)
+{
+    tm*   getdate(in char*);
     char* strptime(in char*, in char*, tm*);
 }
 else version (Solaris)

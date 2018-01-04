@@ -30,7 +30,7 @@ class TypeInfo_zk : TypeInfo
 
     override size_t getHash(in void* p)
     {
-        return rt.util.hash.hashOf(p, ucent.sizeof);
+        return rt.util.hash.hashOf(p[0 .. ucent.sizeof], 0);
     }
 
     override bool equals(in void* p1, in void* p2)
@@ -50,6 +50,11 @@ class TypeInfo_zk : TypeInfo
     override @property size_t tsize() nothrow pure
     {
         return ucent.sizeof;
+    }
+
+    override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. ucent.sizeof];
     }
 
     override void swap(void *p1, void *p2)

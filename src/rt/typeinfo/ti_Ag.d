@@ -15,7 +15,7 @@ module rt.typeinfo.ti_Ag;
 
 private import core.stdc.string;
 private import rt.util.hash;
-private import rt.util.string;
+private import core.internal.string;
 
 // byte[]
 
@@ -27,8 +27,8 @@ class TypeInfo_Ag : TypeInfo_Array
 
     override size_t getHash(in void* p) @trusted const
     {
-        byte[] s = *cast(byte[]*)p;
-        return rt.util.hash.hashOf(s.ptr, s.length * byte.sizeof);
+        const s = *cast(const void[]*)p;
+        return rt.util.hash.hashOf(s, 0);
     }
 
     override bool equals(in void* p1, in void* p2) const

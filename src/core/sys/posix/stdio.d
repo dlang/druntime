@@ -18,6 +18,15 @@ private import core.sys.posix.config;
 public import core.stdc.stdio;
 public import core.sys.posix.sys.types; // for off_t
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
 
@@ -237,6 +246,16 @@ version( CRuntime_Glibc )
     int    putc_unlocked(int, FILE*);
     int    putchar_unlocked(int);
 }
+else version( OpenBSD )
+{
+    void   flockfile(FILE*);
+    int    ftrylockfile(FILE*);
+    void   funlockfile(FILE*);
+    int    getc_unlocked(FILE*);
+    int    getchar_unlocked();
+    int    putc_unlocked(int, FILE*);
+    int    putchar_unlocked(int);
+}
 else version( Solaris )
 {
     void   flockfile(FILE*);
@@ -264,13 +283,21 @@ version( CRuntime_Glibc )
 {
     enum P_tmpdir  = "/tmp";
 }
-version( OSX )
+version( Darwin )
 {
     enum P_tmpdir  = "/var/tmp";
 }
 version( FreeBSD )
 {
     enum P_tmpdir  = "/var/tmp/";
+}
+version(NetBSD)
+{
+    enum P_tmpdir  = "/var/tmp/";
+}
+version( OpenBSD )
+{
+    enum P_tmpdir  = "/tmp/";
 }
 version( Solaris )
 {
@@ -321,3 +348,7 @@ unittest
     assert(memcmp(ptr, testdata.ptr, testdata.length*wchar_t.sizeof) == 0);
     assert(fclose(f) == 0);
 }
+
+
+ssize_t getdelim (char** lineptr, size_t* n, int delimiter, FILE* stream);
+ssize_t getline (char** lineptr, size_t* n, FILE* stream);

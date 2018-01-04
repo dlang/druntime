@@ -1,6 +1,7 @@
 DOCS=\
 	$(DOCDIR)\object.html \
 	$(DOCDIR)\core_atomic.html \
+	$(DOCDIR)\core_attribute.html \
 	$(DOCDIR)\core_bitop.html \
 	$(DOCDIR)\core_checkedint.html \
 	$(DOCDIR)\core_cpuid.html \
@@ -14,6 +15,7 @@ DOCS=\
 	$(DOCDIR)\core_time.html \
 	$(DOCDIR)\core_vararg.html \
 	\
+	$(DOCDIR)\core_stdc_assert_.html \
 	$(DOCDIR)\core_stdc_complex.html \
 	$(DOCDIR)\core_stdc_ctype.html \
 	$(DOCDIR)\core_stdc_errno.html \
@@ -34,6 +36,9 @@ DOCS=\
 	$(DOCDIR)\core_stdc_time.html \
 	$(DOCDIR)\core_stdc_wchar_.html \
 	$(DOCDIR)\core_stdc_wctype.html \
+	\
+	$(DOCDIR)\core_stdcpp_exception.html \
+	$(DOCDIR)\core_stdcpp_typeinfo.html \
 	\
 	$(DOCDIR)\core_sync_barrier.html \
 	$(DOCDIR)\core_sync_condition.html \

@@ -7,8 +7,6 @@
  */
 module rt.util.typeinfo;
 
-public import rt.util.hash;
-
 template Floating(T)
 if (is(T == float) || is(T == double) || is(T == real))
 {
@@ -42,7 +40,10 @@ if (is(T == float) || is(T == double) || is(T == real))
         static if (is(T == float))  // special case?
             return *cast(uint*)&value;
         else
-            return rt.util.hash.hashOf(&value, T.sizeof);
+        {
+            import rt.util.hash;
+            return rt.util.hash.hashOf((&value)[0 .. 1], 0);
+        }
     }
 }
 template Floating(T)
@@ -76,7 +77,8 @@ if (is(T == cfloat) || is(T == cdouble) || is(T == creal))
     {
         if (value == 0 + 0i)
             value = 0 + 0i;
-        return rt.util.hash.hashOf(&value, T.sizeof);
+        import rt.util.hash;
+        return rt.util.hash.hashOf((&value)[0 .. 1], 0);
     }
 }
 
@@ -138,7 +140,7 @@ unittest
 
     // real types
     foreach (F; TypeTuple!(float, double, real))
-    {
+    (){ // workaround #2396
         alias S = SX!F;
         F f1 = +0.0,
           f2 = -0.0;
@@ -179,14 +181,14 @@ unittest
         S[3] sa1 = {f1},
              sa2 = {f2};
         assert(sa1  == sa2);
-        assert(sa1 !is sa2);
+        assert(sa1[] !is sa2[]);
         ti = typeid(S[3]);
         assert(ti.getHash(&sa1) == ti.getHash(&sa2));
-    }
+    }();
 
     // imaginary types
     foreach (F; TypeTuple!(ifloat, idouble, ireal))
-    {
+    (){ // workaround #2396
         alias S = SX!F;
         F f1 = +0.0i,
           f2 = -0.0i;
@@ -227,14 +229,14 @@ unittest
         S[3] sa1 = {f1},
              sa2 = {f2};
         assert(sa1  == sa2);
-        assert(sa1 !is sa2);
+        assert(sa1[] !is sa2[]);
         ti = typeid(S[3]);
         assert(ti.getHash(&sa1) == ti.getHash(&sa2));
-    }
+    }();
 
     // complex types
     foreach (F; TypeTuple!(cfloat, cdouble, creal))
-    {
+    (){ // workaround #2396
         alias S = SX!F;
         F[4] f = [+0.0 + 0.0i,
                   +0.0 - 0.0i,
@@ -281,9 +283,9 @@ unittest
             S[3] sa1 = {f1},
                  sa2 = {f2};
             assert(sa1  == sa2);
-            assert(sa1 !is sa2);
+            assert(sa1[] !is sa2[]);
             ti = typeid(S[3]);
             assert(ti.getHash(&sa1) == ti.getHash(&sa2));
         }
-    }
+    }();
 }

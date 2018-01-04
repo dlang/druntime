@@ -16,6 +16,15 @@ module core.sys.posix.netinet.tcp;
 
 private import core.sys.posix.config;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
 
@@ -26,11 +35,11 @@ extern (C):
 TCP_NODELAY
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum TCP_NODELAY = 1;
 }
-else version( OSX )
+else version( Darwin )
 {
     enum TCP_NODELAY = 1;
 }
@@ -38,11 +47,15 @@ else version( FreeBSD )
 {
     enum TCP_NODELAY = 1;
 }
+else version(NetBSD)
+{
+    enum TCP_NODELAY = 1;
+}
 else version( Solaris )
 {
     enum TCP_NODELAY = 1;
 }
-else version( Android )
+else version( linux )
 {
     enum TCP_NODELAY = 1;
 }

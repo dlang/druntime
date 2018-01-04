@@ -17,6 +17,15 @@ module core.sys.posix.utime;
 private import core.sys.posix.config;
 public import core.sys.posix.sys.types; // for time_t
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C):
 nothrow:
@@ -35,7 +44,7 @@ struct utimbuf
 int utime(in char*, in utimbuf*);
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     struct utimbuf
     {
@@ -45,7 +54,7 @@ version( linux )
 
     int utime(in char*, in utimbuf*);
 }
-else version( OSX )
+else version( Darwin )
 {
     struct utimbuf
     {
@@ -65,6 +74,16 @@ else version( FreeBSD )
 
     int utime(in char*, in utimbuf*);
 }
+else version(NetBSD)
+{
+    struct utimbuf
+    {
+        time_t  actime;
+        time_t  modtime;
+    }
+
+    int utime(in char*, in utimbuf*);
+}
 else version( Solaris )
 {
     struct utimbuf
@@ -75,7 +94,7 @@ else version( Solaris )
 
     int utime(in char*, in utimbuf*);
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     struct utimbuf
     {
