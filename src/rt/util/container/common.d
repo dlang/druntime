@@ -12,13 +12,13 @@ public import core.stdc.stdlib : free;
 import core.internal.traits : dtorIsNothrow;
 nothrow:
 
-void* xrealloc(void* ptr, size_t sz)
+void* xrealloc(void* ptr, size_t sz) nothrow @nogc
 {
     import core.exception;
 
     if (!sz) { .free(ptr); return null; }
     if (auto nptr = .realloc(ptr, sz)) return nptr;
-    .free(ptr); onOutOfMemoryError();
+    .free(ptr); onOutOfMemoryErrorNoGC();
     assert(0);
 }
 
@@ -27,7 +27,7 @@ void* xmalloc(size_t sz) nothrow @nogc
     import core.exception;
     if (auto nptr = .malloc(sz))
         return nptr;
-    onOutOfMemoryError();
+    onOutOfMemoryErrorNoGC();
     assert(0);
 }
 
@@ -45,7 +45,7 @@ void destroy(T)(ref T t) if (!is(T == struct))
 void initialize(T)(ref T t) if (is(T == struct))
 {
     import core.stdc.string;
-    if(auto p = typeid(T).init().ptr)
+    if(auto p = typeid(T).initializer().ptr)
         memcpy(&t, p, T.sizeof);
     else
         memset(&t, 0, T.sizeof);

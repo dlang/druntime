@@ -14,6 +14,15 @@
  */
 module core.sys.posix.sys.un;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern(C):
 
@@ -42,7 +51,7 @@ version( linux )
         byte[UNIX_PATH_MAX] sun_path;
     }
 }
-else version( OSX )
+else version( Darwin )
 {
     struct sockaddr_un
     {
@@ -52,6 +61,15 @@ else version( OSX )
     }
 }
 else version( FreeBSD )
+{
+    struct sockaddr_un
+    {
+        ubyte       sun_len;
+        sa_family_t sun_family;
+        byte[104]   sun_path;
+    }
+}
+else version(NetBSD)
 {
     struct sockaddr_un
     {

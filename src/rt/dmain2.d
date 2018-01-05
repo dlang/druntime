@@ -15,7 +15,6 @@ private
 {
     import rt.memory;
     import rt.sections;
-    import rt.util.string;
     import core.atomic;
     import core.stdc.stddef;
     import core.stdc.stdlib;
@@ -33,6 +32,10 @@ version (Windows)
 }
 
 version (FreeBSD)
+{
+    import core.stdc.fenv;
+}
+version (NetBSD)
 {
     import core.stdc.fenv;
 }
@@ -56,6 +59,11 @@ version (OSX)
 {
     // The bottom of the stack
     extern (C) __gshared void* __osx_stack_end = cast(void*)0xC0000000;
+}
+
+version(CRuntime_Microsoft)
+{
+    extern(C) void init_msvc();
 }
 
 /***********************************
@@ -160,6 +168,9 @@ extern (C) int rt_init()
        rt_init. */
     if (atomicOp!"+="(_initCount, 1) > 1) return 1;
 
+    version (CRuntime_Microsoft)
+        init_msvc();
+
     _d_monitor_staticctor();
     _d_critical_init();
 
@@ -200,7 +211,6 @@ extern (C) int rt_term()
         thread_joinAll();
         rt_moduleDtor();
         gc_term();
-        finiSections();
         return 1;
     }
     catch (Throwable t)
@@ -209,6 +219,7 @@ extern (C) int rt_term()
     }
     finally
     {
+        finiSections();
         _d_critical_term();
         _d_monitor_staticdtor();
     }
@@ -275,7 +286,7 @@ struct CArgs
 
 __gshared CArgs _cArgs;
 
-extern (C) CArgs rt_cArgs()
+extern (C) CArgs rt_cArgs() @nogc
 {
     return _cArgs;
 }
@@ -321,14 +332,6 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     }
     version (CRuntime_Microsoft)
     {
-        auto fp = __iob_func();
-        stdin = &fp[0];
-        stdout = &fp[1];
-        stderr = &fp[2];
-
-        // ensure that sprintf generates only 2 digit exponent when writing floating point values
-        _set_output_format(_TWO_DIGIT_EXPONENT);
-
         // enable full precision for reals
         version(Win64)
             asm
@@ -493,7 +496,7 @@ extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc)
     return result;
 }
 
-private void formatThrowable(Throwable t, void delegate(in char[] s) nothrow sink)
+private void formatThrowable(Throwable t, scope void delegate(in char[] s) nothrow sink)
 {
     for (; t; t = t.next)
     {
@@ -514,36 +517,52 @@ private void formatThrowable(Throwable t, void delegate(in char[] s) nothrow sin
 extern (C) void _d_print_throwable(Throwable t)
 {
     // On Windows, a console may not be present to print the output to.
-    // Show a message box instead.
+    // Show a message box instead. If the console is present, convert to
+    // the correct encoding.
     version (Windows)
     {
-        if (!GetConsoleWindow())
+        static struct WSink
         {
-            static struct WSink
+            wchar_t* ptr; size_t len;
+
+            void sink(in char[] s) scope nothrow
             {
-                wchar_t* ptr; size_t len;
-
-                void sink(in char[] s) nothrow
-                {
-                    if (!s.length) return;
-                    int swlen = MultiByteToWideChar(
+                if (!s.length) return;
+                int swlen = MultiByteToWideChar(
                         CP_UTF8, 0, s.ptr, cast(int)s.length, null, 0);
-                    if (!swlen) return;
+                if (!swlen) return;
 
-                    auto newPtr = cast(wchar_t*)realloc(ptr,
-                            (this.len + swlen + 1) * wchar_t.sizeof);
-                    if (!newPtr) return;
-                    ptr = newPtr;
-                    auto written = MultiByteToWideChar(
-                            CP_UTF8, 0, s.ptr, cast(int)s.length, ptr+len, swlen);
-                    len += written;
-                }
-
-                wchar_t* get() { if (ptr) ptr[len] = 0; return ptr; }
-
-                void free() { .free(ptr); }
+                auto newPtr = cast(wchar_t*)realloc(ptr,
+                        (this.len + swlen + 1) * wchar_t.sizeof);
+                if (!newPtr) return;
+                ptr = newPtr;
+                auto written = MultiByteToWideChar(
+                        CP_UTF8, 0, s.ptr, cast(int)s.length, ptr+len, swlen);
+                len += written;
             }
 
+            wchar_t* get() { if (ptr) ptr[len] = 0; return ptr; }
+
+            void free() { .free(ptr); }
+        }
+
+        HANDLE windowsHandle(int fd)
+        {
+            version (CRuntime_Microsoft)
+                return cast(HANDLE)_get_osfhandle(fd);
+            else
+                return _fdToHandle(fd);
+        }
+
+        auto hStdErr = windowsHandle(fileno(stderr));
+        CONSOLE_SCREEN_BUFFER_INFO sbi;
+        bool isConsole = GetConsoleScreenBufferInfo(hStdErr, &sbi) != 0;
+
+        // ensure the exception is shown at the beginning of the line, while also
+        // checking whether stderr is a valid file
+        int written = fprintf(stderr, "\n");
+        if (written <= 0)
+        {
             WSink buf;
             formatThrowable(t, &buf.sink);
 
@@ -570,9 +589,31 @@ extern (C) void _d_print_throwable(Throwable t)
             }
             return;
         }
+        else if (isConsole)
+        {
+            WSink buf;
+            formatThrowable(t, &buf.sink);
+
+            if (buf.ptr)
+            {
+                uint codepage = GetConsoleOutputCP();
+                int slen = WideCharToMultiByte(codepage, 0,
+                        buf.ptr, cast(int)buf.len, null, 0, null, null);
+                auto sptr = cast(char*)malloc(slen * char.sizeof);
+                if (sptr)
+                {
+                    WideCharToMultiByte(codepage, 0,
+                        buf.ptr, cast(int)buf.len, sptr, slen, null, null);
+                    WriteFile(hStdErr, sptr, slen, null, null);
+                    free(sptr);
+                }
+                buf.free();
+            }
+            return;
+        }
     }
 
-    void sink(in char[] buf) nothrow
+    void sink(in char[] buf) scope nothrow
     {
         fprintf(stderr, "%.*s", cast(int)buf.length, buf.ptr);
     }

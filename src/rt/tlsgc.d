@@ -29,9 +29,11 @@ struct Data
  * Initialization hook, called FROM each thread. No assumptions about
  * module initialization state should be made.
  */
-void* init()
+void* init() nothrow @nogc
 {
     auto data = cast(Data*).malloc(Data.sizeof);
+    import core.exception;
+    if( data is null ) core.exception.onOutOfMemoryError();
     *data = Data.init;
 
     // do module specific initialization
@@ -45,7 +47,7 @@ void* init()
  * Finalization hook, called FOR each thread. No assumptions about
  * module initialization state should be made.
  */
-void destroy(void* data)
+void destroy(void* data) nothrow @nogc
 {
     // do module specific finalization
     rt.sections.finiTLSRanges((cast(Data*)data).tlsRanges);

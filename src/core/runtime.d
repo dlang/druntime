@@ -16,6 +16,14 @@ module core.runtime;
 
 version (Windows) import core.stdc.wchar_ : wchar_t;
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
 
 /// C interface for Runtime.loadLibrary
 extern (C) void* rt_loadLibrary(const char* name);
@@ -47,7 +55,7 @@ private
     extern (C) void* thread_stackBottom();
 
     extern (C) string[] rt_args();
-    extern (C) CArgs rt_cArgs();
+    extern (C) CArgs rt_cArgs() @nogc;
 }
 
 
@@ -156,7 +164,7 @@ struct Runtime
      * }
      * ---
      */
-    static @property CArgs cArgs()
+    static @property CArgs cArgs() @nogc
     {
         return rt_cArgs();
     }
@@ -294,6 +302,47 @@ struct Runtime
      *
      * Params:
      *  h = The new unit tester.  Set to null to use the default unit tester.
+     *
+     * Example:
+     * ---------
+     * version (unittest) shared static this()
+     * {
+     *     import core.runtime;
+     *
+     *     Runtime.moduleUnitTester = &customModuleUnitTester;
+     * }
+     *
+     * bool customModuleUnitTester()
+     * {
+     *     import std.stdio;
+     *
+     *     writeln("Using customModuleUnitTester");
+     *
+     *     // Do the same thing as the default moduleUnitTester:
+     *     size_t failed = 0;
+     *     foreach (m; ModuleInfo)
+     *     {
+     *         if (m)
+     *         {
+     *             auto fp = m.unitTest;
+     *
+     *             if (fp)
+     *             {
+     *                 try
+     *                 {
+     *                     fp();
+     *                 }
+     *                 catch (Throwable e)
+     *                 {
+     *                     writeln(e);
+     *                     failed++;
+     *                 }
+     *             }
+     *         }
+     *     }
+     *     return failed == 0;
+     * }
+     * ---------
      */
     static @property void moduleUnitTester( ModuleUnitTester h )
     {
@@ -403,10 +452,12 @@ extern (C) bool runModuleUnitTests()
     // backtrace
     version( CRuntime_Glibc )
         import core.sys.linux.execinfo;
-    else version( OSX )
-        import core.sys.osx.execinfo;
+    else version( Darwin )
+        import core.sys.darwin.execinfo;
     else version( FreeBSD )
         import core.sys.freebsd.execinfo;
+    else version( NetBSD )
+        import core.sys.netbsd.execinfo;
     else version( Windows )
         import core.sys.windows.stacktrace;
     else version( Solaris )
@@ -485,14 +536,21 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
     // backtrace
     version( CRuntime_Glibc )
         import core.sys.linux.execinfo;
-    else version( OSX )
-        import core.sys.osx.execinfo;
+    else version( Darwin )
+        import core.sys.darwin.execinfo;
     else version( FreeBSD )
         import core.sys.freebsd.execinfo;
+    else version( NetBSD )
+        import core.sys.netbsd.execinfo;
     else version( Windows )
         import core.sys.windows.stacktrace;
     else version( Solaris )
         import core.sys.solaris.execinfo;
+
+    // avoid recursive GC calls in finalizer, trace handlers should be made @nogc instead
+    import core.memory : gc_inFinalizer;
+    if (gc_inFinalizer)
+        return null;
 
     //printf("runtime.defaultTraceHandler()\n");
     static if( __traits( compiles, backtrace ) )
@@ -531,7 +589,9 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                                             stackPtr < stackBottom &&
                                             numframes < MAXFRAMES; )
                         {
-                            callstack[numframes++] = *(stackPtr + 1);
+                            enum CALL_INSTRUCTION_SIZE = 1; // it may not be 1 but it is good enough to get
+                                                            // in CALL instruction address range for backtrace
+                            callstack[numframes++] = *(stackPtr + 1) - CALL_INSTRUCTION_SIZE;
                             stackPtr = cast(void**) *stackPtr;
                         }
                     }
@@ -548,39 +608,68 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
 
             override int opApply( scope int delegate(ref size_t, ref const(char[])) dg ) const
             {
-                version( Posix )
+                version(Posix)
                 {
-                    // NOTE: The first 5 frames with the current implementation are
+                    // NOTE: The first 4 frames with the current implementation are
                     //       inside core.runtime and the object code, so eliminate
                     //       these for readability.  The alternative would be to
                     //       exclude the first N frames that are in a list of
                     //       mangled function names.
-                    static enum FIRSTFRAME = 5;
+                    enum FIRSTFRAME = 4;
                 }
-                else version( Windows )
+                else version(Windows)
                 {
                     // NOTE: On Windows, the number of frames to exclude is based on
                     //       whether the exception is user or system-generated, so
                     //       it may be necessary to exclude a list of function names
                     //       instead.
-                    static enum FIRSTFRAME = 0;
+                    enum FIRSTFRAME = 0;
                 }
-                int ret = 0;
 
-                const framelist = backtrace_symbols( callstack.ptr, numframes );
-                scope(exit) free(cast(void*) framelist);
+                version(linux) enum enableDwarf = true;
+                else version(FreeBSD) enum enableDwarf = true;
+                else enum enableDwarf = false;
 
-                for( int i = FIRSTFRAME; i < numframes; ++i )
+                static if (enableDwarf)
                 {
-                    char[4096] fixbuf;
-                    auto buf = framelist[i][0 .. strlen(framelist[i])];
-                    auto pos = cast(size_t)(i - FIRSTFRAME);
-                    buf = fixline( buf, fixbuf );
-                    ret = dg( pos, buf );
-                    if( ret )
-                        break;
+                    import core.internal.traits : externDFunc;
+
+                    alias traceHandlerOpApplyImpl = externDFunc!(
+                        "rt.backtrace.dwarf.traceHandlerOpApplyImpl",
+                        int function(const void*[], scope int delegate(ref size_t, ref const(char[])))
+                    );
+
+                    if (numframes >= FIRSTFRAME)
+                    {
+                        return traceHandlerOpApplyImpl(
+                            callstack[FIRSTFRAME .. numframes],
+                            dg
+                        );
+                    }
+                    else
+                    {
+                        return 0;
+                    }
                 }
-                return ret;
+                else
+                {
+                    const framelist = backtrace_symbols( callstack.ptr, numframes );
+                    scope(exit) free(cast(void*) framelist);
+
+                    int ret = 0;
+                    for( int i = FIRSTFRAME; i < numframes; ++i )
+                    {
+                        char[4096] fixbuf;
+                        auto buf = framelist[i][0 .. strlen(framelist[i])];
+                        auto pos = cast(size_t)(i - FIRSTFRAME);
+                        buf = fixline( buf, fixbuf );
+                        ret = dg( pos, buf );
+                        if( ret )
+                            break;
+                    }
+                    return ret;
+                }
+
             }
 
             override string toString() const
@@ -600,7 +689,7 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
             const(char)[] fixline( const(char)[] buf, return ref char[4096] fixbuf ) const
             {
                 size_t symBeg, symEnd;
-                version( OSX )
+                version( Darwin )
                 {
                     // format is:
                     //  1  module    0x00000000 D6module4funcAFZv + 0
@@ -639,6 +728,18 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                     }
                 }
                 else version( FreeBSD )
+                {
+                    // format is: 0x00000000 <_D6module4funcAFZv+0x78> at module
+                    auto bptr = cast(char*) memchr( buf.ptr, '<', buf.length );
+                    auto eptr = cast(char*) memchr( buf.ptr, '+', buf.length );
+
+                    if( bptr++ && eptr )
+                    {
+                        symBeg = bptr - buf.ptr;
+                        symEnd = eptr - buf.ptr;
+                    }
+                }
+                else version( NetBSD )
                 {
                     // format is: 0x00000000 <_D6module4funcAFZv+0x78> at module
                     auto bptr = cast(char*) memchr( buf.ptr, '<', buf.length );

@@ -5,7 +5,7 @@
  *
  * Source: $(DRUNTIMESRC core/_math.d)
  * Macros:
- *      TABLE_SV = <table border=1 cellpadding=4 cellspacing=0>
+ *      TABLE_SV = <table border="1" cellpadding="4" cellspacing="0">
  *              <caption>Special Values</caption>
  *              $0</table>
  *
@@ -100,7 +100,18 @@ extern (C) real rndtonl(real x);
 real ldexp(real n, int exp) @safe pure nothrow;    /* intrinsic */
 
 unittest {
-    static if (real.mant_dig == 64)
+    static if (real.mant_dig == 113)
+    {
+        assert(ldexp(1, -16384) == 0x1p-16384L);
+        assert(ldexp(1, -16382) == 0x1p-16382L);
+    }
+    else static if (real.mant_dig == 106)
+    {
+        assert(ldexp(1,  1023) == 0x1p1023L);
+        assert(ldexp(1, -1022) == 0x1p-1022L);
+        assert(ldexp(1, -1021) == 0x1p-1021L);
+    }
+    else static if (real.mant_dig == 64)
     {
         assert(ldexp(1, -16384) == 0x1p-16384L);
         assert(ldexp(1, -16382) == 0x1p-16382L);
@@ -112,7 +123,7 @@ unittest {
         assert(ldexp(1, -1021) == 0x1p-1021L);
     }
     else
-        assert(false, "Only 80bit and 64bit reals expected here");
+        assert(false, "Only 128bit, 80bit and 64bit reals expected here");
 }
 
 /*******************************

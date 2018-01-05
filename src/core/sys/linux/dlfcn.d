@@ -8,6 +8,7 @@ module core.sys.linux.dlfcn;
 version (linux):
 extern (C):
 nothrow:
+@nogc:
 
 public import core.sys.posix.dlfcn;
 import core.sys.linux.config;
@@ -205,6 +206,30 @@ else version (AArch64)
         void _dl_mcount_wrapper_check(void* __selfpc);
     }
 }
+else version (SystemZ)
+{
+    // http://sourceware.org/git/?p=glibc.git;a=blob;f=bits/dlfcn.h
+    // enum RTLD_LAZY = 0x0001; // POSIX
+    // enum RTLD_NOW = 0x0002; // POSIX
+    enum RTLD_BINDING_MASK = 0x3;
+    enum RTLD_NOLOAD = 0x00004;
+    enum RTLD_DEEPBIND = 0x00008;
+
+    // enum RTLD_GLOBAL = 0x00100; // POSIX
+    // enum RTLD_LOCAL = 0; // POSIX
+    enum RTLD_NODELETE = 0x01000;
+
+    static if (__USE_GNU)
+    {
+        RT DL_CALL_FCT(RT, Args...)(RT function(Args) fctp, auto ref Args args)
+        {
+            _dl_mcount_wrapper_check(cast(void*)fctp);
+            return fctp(args);
+        }
+
+        void _dl_mcount_wrapper_check(void* __selfpc);
+    }
+}
 else
     static assert(0, "unimplemented");
 
@@ -241,7 +266,7 @@ static if (__USE_GNU)
         void* dli_saddr;
     }
 
-    int dladdr(void* __address, Dl_info* __info);
+    int dladdr(in void* __address, Dl_info* __info);
     int dladdr1(void* __address, Dl_info* __info, void** __extra_info, int __flags);
 
     enum

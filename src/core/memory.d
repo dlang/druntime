@@ -7,6 +7,35 @@
  * Using this module is not necessary in typical D code. It is mostly
  * useful when doing low-level _memory management.
  *
+ * Notes_to_users:
+ *
+   $(OL
+   $(LI The GC is a conservative mark-and-sweep collector. It only runs a
+        collection cycle when an allocation is requested of it, never
+        otherwise. Hence, if the program is not doing allocations,
+        there will be no GC collection pauses. The pauses occur because
+        all threads the GC knows about are halted so the threads' stacks
+        and registers can be scanned for references to GC allocated data.
+   )
+
+   $(LI The GC does not know about threads that were created by directly calling
+        the OS/C runtime thread creation APIs and D threads that were detached
+        from the D runtime after creation.
+        Such threads will not be paused for a GC collection, and the GC might not detect
+        references to GC allocated data held by them. This can cause memory corruption.
+        There are several ways to resolve this issue:
+        $(OL
+        $(LI Do not hold references to GC allocated data in such threads.)
+        $(LI Register/unregister such data with calls to $(LREF addRoot)/$(LREF removeRoot) and
+        $(LREF addRange)/$(LREF removeRange).)
+        $(LI Maintain another reference to that same data in another thread that the
+        GC does know about.)
+        $(LI Disable GC collection cycles while that thread is active with $(LREF disable)/$(LREF enable).)
+        $(LI Register the thread with the GC using $(REF thread_attachThis, core,thread)/$(REF thread_detachThis, core,thread).)
+        )
+   )
+   )
+ *
  * Notes_to_implementors:
  * $(UL
  * $(LI On POSIX systems, the signals SIGUSR1 and SIGUSR2 are reserved
@@ -67,17 +96,12 @@
  *   happens and there is insufficient _memory available.)
  * )
  *
- * Copyright: Copyright Sean Kelly 2005 - 2009.
+ * Copyright: Copyright Sean Kelly 2005 - 2015.
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Source:    $(DRUNTIMESRC core/_memory.d)
  */
 
-/*          Copyright Sean Kelly 2005 - 2009.
- * Distributed under the Boost Software License, Version 1.0.
- *    (See accompanying file LICENSE or copy at
- *          http://www.boost.org/LICENSE_1_0.txt)
- */
 module core.memory;
 
 
@@ -114,13 +138,16 @@ private
     }
 
     extern (C) BlkInfo_ gc_query( void* p ) pure nothrow;
+    extern (C) GC.Stats gc_stats ( ) nothrow @nogc;
 
-    extern (C) void gc_addRoot( in void* p ) nothrow;
+    extern (C) void gc_addRoot( in void* p ) nothrow @nogc;
     extern (C) void gc_addRange( in void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc;
 
-    extern (C) void gc_removeRoot( in void* p ) nothrow;
+    extern (C) void gc_removeRoot( in void* p ) nothrow @nogc;
     extern (C) void gc_removeRange( in void* p ) nothrow @nogc;
     extern (C) void gc_runFinalizers( in void[] segment );
+
+    package extern (C) bool gc_inFinalizer();
 }
 
 
@@ -131,6 +158,17 @@ private
 struct GC
 {
     @disable this();
+
+    /**
+     * Aggregation of GC stats to be exposed via public API
+     */
+    static struct Stats
+    {
+        /// number of used bytes on the GC heap (might only get updated after a collection)
+        size_t usedSize;
+        /// number of free bytes on the GC heap (might only get updated after a collection)
+        size_t freeSize;
+    }
 
     /**
      * Enables automatic garbage collection behavior if collections have
@@ -195,8 +233,8 @@ struct GC
 
         This can be used to manually allocate arrays. Initial slice size is 0.
 
-        Note: The slice's useable size will not match the block size. Use
-        $(LREF capacity) to retrieve actual useable capacity.
+        Note: The slice's usable size will not match the block size. Use
+        $(LREF capacity) to retrieve actual usable capacity.
 
         Example:
         ----
@@ -234,7 +272,7 @@ struct GC
      * size = The size of the block, calculated from base.
      * attr = Attribute bits set on the memory block.
      */
-    alias BlkInfo_ BlkInfo;
+    alias BlkInfo = BlkInfo_;
 
 
     /**
@@ -472,7 +510,7 @@ struct GC
      *  Extend may also be used to extend slices (or memory blocks with
      *  $(LREF APPENDABLE) info). However, use the return value only
      *  as an indicator of success. $(LREF capacity) should be used to
-     *  retrieve actual useable slice capacity.
+     *  retrieve actual usable slice capacity.
      */
     static size_t extend( void* p, size_t mx, size_t sz, const TypeInfo ti = null ) pure nothrow
     {
@@ -526,12 +564,12 @@ struct GC
 
 
     /**
-     * Deallocates the memory referenced by p.  If p is null, no action
-     * occurs.  If p references memory not originally allocated by this
-     * garbage collector, or if it points to the interior of a memory block,
-     * no action will be taken.  The block will not be finalized regardless
-     * of whether the FINALIZE attribute is set.  If finalization is desired,
-     * use delete instead.
+     * Deallocates the memory referenced by p.  If p is null, no action occurs.
+     * If p references memory not originally allocated by this garbage
+     * collector, if p points to the interior of a memory block, or if this
+     * method is called from a finalizer, no action will be taken.  The block
+     * will not be finalized regardless of whether the FINALIZE attribute is
+     * set.  If finalization is desired, use delete instead.
      *
      * Params:
      *  p = A pointer to the root of a valid memory block or to null.
@@ -633,6 +671,14 @@ struct GC
         return gc_query( p );
     }
 
+    /**
+     * Returns runtime stats for currently active GC implementation
+     * See `core.memory.GC.Stats` for list of available metrics.
+     */
+    static Stats stats() nothrow
+    {
+        return gc_stats();
+    }
 
     /**
      * Adds an internal root pointing to the GC memory block referenced by p.
@@ -679,7 +725,7 @@ struct GC
      * }
      * ---
      */
-    static void addRoot( in void* p ) nothrow /* FIXME pure */
+    static void addRoot( in void* p ) nothrow @nogc /* FIXME pure */
     {
         gc_addRoot( p );
     }
@@ -693,7 +739,7 @@ struct GC
      * Params:
      *  p = A pointer into a GC-managed memory block or null.
      */
-    static void removeRoot( in void* p ) nothrow /* FIXME pure */
+    static void removeRoot( in void* p ) nothrow @nogc /* FIXME pure */
     {
         gc_removeRoot( p );
     }
@@ -762,4 +808,113 @@ struct GC
     {
         gc_runFinalizers( segment );
     }
+}
+
+/**
+ * Pure variants of C's memory allocation functions `malloc`, `calloc`, and
+ * `realloc` and deallocation function `free`.
+ *
+ * Purity is achieved by saving and restoring the value of `errno`, thus
+ * behaving as if it were never changed.
+ *
+ * See_Also:
+ *     $(LINK2 https://dlang.org/spec/function.html#pure-functions, D's rules for purity),
+ *     which allow for memory allocation under specific circumstances.
+ */
+void* pureMalloc(size_t size) @trusted pure @nogc nothrow
+{
+    const errno = fakePureGetErrno();
+    void* ret = fakePureMalloc(size);
+    if (!ret || errno != 0)
+    {
+        cast(void)fakePureSetErrno(errno);
+    }
+    return ret;
+}
+/// ditto
+void* pureCalloc(size_t nmemb, size_t size) @trusted pure @nogc nothrow
+{
+    const errno = fakePureGetErrno();
+    void* ret = fakePureCalloc(nmemb, size);
+    if (!ret || errno != 0)
+    {
+        cast(void)fakePureSetErrno(errno);
+    }
+    return ret;
+}
+/// ditto
+void* pureRealloc(void* ptr, size_t size) @system pure @nogc nothrow
+{
+    const errno = fakePureGetErrno();
+    void* ret = fakePureRealloc(ptr, size);
+    if (!ret || errno != 0)
+    {
+        cast(void)fakePureSetErrno(errno);
+    }
+    return ret;
+}
+/// ditto
+void pureFree(void* ptr) @system pure @nogc nothrow
+{
+    const errno = fakePureGetErrno();
+    fakePureFree(ptr);
+    cast(void)fakePureSetErrno(errno);
+}
+
+///
+@system pure nothrow @nogc unittest
+{
+    ubyte[] fun(size_t n) pure
+    {
+        void* p = pureMalloc(n);
+        p !is null || n == 0 || assert(0);
+        scope(failure) p = pureRealloc(p, 0);
+        p = pureRealloc(p, n *= 2);
+        p !is null || n == 0 || assert(0);
+        return cast(ubyte[]) p[0 .. n];
+    }
+
+    auto buf = fun(100);
+    assert(buf.length == 200);
+    pureFree(buf.ptr);
+}
+
+@system pure nothrow @nogc unittest
+{
+    const int errno = fakePureGetErrno();
+
+    void* x = pureMalloc(10);            // normal allocation
+    assert(errno == fakePureGetErrno()); // errno shouldn't change
+    assert(x !is null);                   // allocation should succeed
+
+    x = pureRealloc(x, 10);              // normal reallocation
+    assert(errno == fakePureGetErrno()); // errno shouldn't change
+    assert(x !is null);                   // allocation should succeed
+
+    fakePureFree(x);
+
+    void* y = pureCalloc(10, 1);         // normal zeroed allocation
+    assert(errno == fakePureGetErrno()); // errno shouldn't change
+    assert(y !is null);                   // allocation should succeed
+
+    fakePureFree(y);
+
+    // subtract 2 because snn.lib adds 2 unconditionally before passing
+    //  the size to the Windows API
+    void* z = pureMalloc(size_t.max - 2); // won't affect `errno`
+    assert(errno == fakePureGetErrno()); // errno shouldn't change
+    assert(z is null);
+}
+
+// locally purified for internal use here only
+extern (C) private pure @system @nogc nothrow
+{
+    pragma(mangle, "getErrno") int fakePureGetErrno();
+    pragma(mangle, "setErrno") int fakePureSetErrno(int);
+
+    pragma(mangle, "malloc") void* fakePureMalloc(size_t);
+    pragma(mangle, "calloc") void* fakePureCalloc(size_t nmemb, size_t size);
+    pragma(mangle, "realloc") void* fakePureRealloc(void* ptr, size_t size);
+
+    pragma(mangle, "free") void fakePureFree(void* ptr);
 }

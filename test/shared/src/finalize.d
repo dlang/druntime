@@ -1,4 +1,8 @@
-import core.runtime, core.stdc.stdio, core.thread, core.sys.posix.dlfcn;
+import core.runtime;
+import core.stdc.stdio;
+import core.stdc.string;
+import core.thread;
+import core.sys.posix.dlfcn;
 
 void runTest()
 {
@@ -28,9 +32,9 @@ extern (C) alias SetFinalizeCounter = void function(shared(size_t*));
 
 void main(string[] args)
 {
-    auto name = args[0];
-    assert(name[$-9 .. $] == "/finalize");
-    name = name[0 .. $-8] ~ "lib.so";
+    auto name = args[0] ~ '\0';
+    const pathlen = strrchr(name.ptr, '/') - name.ptr + 1;
+    name = name[0 .. pathlen] ~ "lib.so";
 
     auto h = Runtime.loadLibrary(name);
     assert(h !is null);
@@ -47,8 +51,13 @@ void main(string[] args)
     thr.start();
     thr.join();
 
-    assert(Runtime.unloadLibrary(h));
-    assert(finalizeCounter == 4);
-    assert(nf1._finalizeCounter == 0);
-    assert(nf2._finalizeCounter == 0);
+    auto r = Runtime.unloadLibrary(h);
+    if (!r)
+        assert(0);
+    if (finalizeCounter != 4)
+        assert(0);
+    if (nf1._finalizeCounter)
+        assert(0);
+    if (nf2._finalizeCounter)
+        assert(0);
 }

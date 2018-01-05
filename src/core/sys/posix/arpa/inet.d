@@ -18,6 +18,15 @@ private import core.sys.posix.config;
 public import core.stdc.inttypes; // for uint32_t, uint16_t
 public import core.sys.posix.sys.socket; // for socklen_t
 
+version (OSX)
+    version = Darwin;
+else version (iOS)
+    version = Darwin;
+else version (TVOS)
+    version = Darwin;
+else version (WatchOS)
+    version = Darwin;
+
 version (Posix):
 extern (C) nothrow @nogc:
 
@@ -74,7 +83,7 @@ version( CRuntime_Glibc )
     const(char)*    inet_ntop(int, in void*, char*, socklen_t);
     int             inet_pton(int, in char*, void*);
 }
-else version( OSX )
+else version( Darwin )
 {
     alias uint16_t in_port_t;
     alias uint32_t in_addr_t;
@@ -100,6 +109,31 @@ else version( OSX )
     int             inet_pton(int, in char*, void*);
 }
 else version( FreeBSD )
+{
+    alias uint16_t in_port_t;
+    alias uint32_t in_addr_t;
+
+    struct in_addr
+    {
+        in_addr_t s_addr;
+    }
+
+    enum INET_ADDRSTRLEN = 16;
+
+    @trusted pure
+    {
+    uint32_t htonl(uint32_t);
+    uint16_t htons(uint16_t);
+    uint32_t ntohl(uint32_t);
+    uint16_t ntohs(uint16_t);
+    }
+
+    in_addr_t       inet_addr(in char*);
+    char*           inet_ntoa(in_addr);
+    const(char)*    inet_ntop(int, in void*, char*, socklen_t);
+    int             inet_pton(int, in char*, void*);
+}
+else version(NetBSD)
 {
     alias uint16_t in_port_t;
     alias uint32_t in_addr_t;
@@ -199,11 +233,11 @@ NOTE: The following must must be defined in core.sys.posix.arpa.inet to break
 INET6_ADDRSTRLEN // from core.sys.posix.netinet.in_
 */
 
-version( linux )
+version( CRuntime_Glibc )
 {
     enum INET6_ADDRSTRLEN = 46;
 }
-else version( OSX )
+else version( Darwin )
 {
     enum INET6_ADDRSTRLEN = 46;
 }
@@ -211,11 +245,15 @@ else version( FreeBSD )
 {
     enum INET6_ADDRSTRLEN = 46;
 }
+else version(NetBSD)
+{
+    enum INET6_ADDRSTRLEN = 46;
+}
 else version( Solaris )
 {
     enum INET6_ADDRSTRLEN = 46;
 }
-else version( Android )
+else version( CRuntime_Bionic )
 {
     enum INET6_ADDRSTRLEN = 46;
 }

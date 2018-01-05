@@ -143,7 +143,7 @@ private:
         auto obuckets = buckets;
         buckets = allocBuckets(ndim);
 
-        foreach (ref b; obuckets)
+        foreach (ref b; obuckets[firstUsed .. $])
             if (b.filled)
                 *findSlotInsert(b.hash) = b;
 
@@ -151,6 +151,15 @@ private:
         used -= deleted;
         deleted = 0;
         GC.free(obuckets.ptr); // safe to free b/c impossible to reference
+    }
+
+    void clear() pure nothrow
+    {
+        import core.stdc.string : memset;
+        // clear all data, but don't change bucket array length
+        memset(&buckets[firstUsed], 0, (buckets.length - firstUsed) * Bucket.sizeof);
+        deleted = used = 0;
+        firstUsed = cast(uint) dim;
     }
 }
 
@@ -249,7 +258,7 @@ TypeInfo_Struct fakeEntryTI(const TypeInfo keyti, const TypeInfo valti)
     void* p = GC.malloc(sizeti + 2 * (void*).sizeof);
     import core.stdc.string : memcpy;
 
-    memcpy(p, typeid(TypeInfo_Struct).init().ptr, sizeti);
+    memcpy(p, typeid(TypeInfo_Struct).initializer().ptr, sizeti);
 
     auto ti = cast(TypeInfo_Struct) p;
     auto extra = cast(TypeInfo*)(p + sizeti);
@@ -343,7 +352,19 @@ extern (C) size_t _aaLen(in AA aa) pure nothrow @nogc
     return aa ? aa.length : 0;
 }
 
-/// Get LValue for key
+/******************************
+ * Lookup *pkey in aa.
+ * Called only from implementation of (aa[key]) expressions when value is mutable.
+ * Params:
+ *      aa = associative array opaque pointer
+ *      ti = TypeInfo for the associative array
+ *      valsz = ignored
+ *      pkey = pointer to the key value
+ * Returns:
+ *      if key was in the aa, a mutable pointer to the existing value.
+ *      If key was not in the aa, a mutable pointer to newly inserted value which
+ *      is set to all zeros
+ */
 extern (C) void* _aaGetY(AA* aa, const TypeInfo_AssociativeArray ti, in size_t valsz,
     in void* pkey)
 {
@@ -384,14 +405,33 @@ extern (C) void* _aaGetY(AA* aa, const TypeInfo_AssociativeArray ti, in size_t v
     return p.entry + aa.valoff;
 }
 
-/// Get RValue for key, returns null if not present
+/******************************
+ * Lookup *pkey in aa.
+ * Called only from implementation of (aa[key]) expressions when value is not mutable.
+ * Params:
+ *      aa = associative array opaque pointer
+ *      keyti = TypeInfo for the key
+ *      valsz = ignored
+ *      pkey = pointer to the key value
+ * Returns:
+ *      pointer to value if present, null otherwise
+ */
 extern (C) inout(void)* _aaGetRvalueX(inout AA aa, in TypeInfo keyti, in size_t valsz,
     in void* pkey)
 {
     return _aaInX(aa, keyti, pkey);
 }
 
-/// Return pointer to value if present, null otherwise
+/******************************
+ * Lookup *pkey in aa.
+ * Called only from implementation of (key in aa) expressions.
+ * Params:
+ *      aa = associative array opaque pointer
+ *      keyti = TypeInfo for the key
+ *      pkey = pointer to the key value
+ * Returns:
+ *      pointer to value if present, null otherwise
+ */
 extern (C) inout(void)* _aaInX(inout AA aa, in TypeInfo keyti, in void* pkey)
 {
     if (aa.empty)
@@ -423,6 +463,15 @@ extern (C) bool _aaDelX(AA aa, in TypeInfo keyti, in void* pkey)
         return true;
     }
     return false;
+}
+
+/// Remove all elements from AA.
+extern (C) void _aaClear(AA aa) pure nothrow
+{
+    if (!aa.empty)
+    {
+        aa.impl.clear();
+    }
 }
 
 /// Rehash AA
@@ -613,7 +662,7 @@ extern (C) hash_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow
             continue;
         size_t[2] h2 = [b.hash, valHash(b.entry + off)];
         // use XOR here, so that hash is independent of element order
-        h ^= hashOf(h2.ptr, h2.length * h2[0].sizeof);
+        h ^= hashOf(h2);
     }
     return h;
 }
@@ -851,17 +900,22 @@ unittest
     assert(aa.byKey.empty);
 }
 
+// test zero sized value (hashset)
 unittest
 {
-    alias E = void[0];
-    auto aa = [E.init : E.init];
+    alias V = void[0];
+    auto aa = [0 : V.init];
     assert(aa.length == 1);
-    assert(aa.byKey.front == E.init);
-    assert(aa.byValue.front == E.init);
-    aa[E.init] = E.init;
-    assert(aa.length == 1);
-    assert(aa.remove(E.init));
-    assert(aa.length == 0);
+    assert(aa.byKey.front == 0);
+    assert(aa.byValue.front == V.init);
+    aa[1] = V.init;
+    assert(aa.length == 2);
+    aa[0] = V.init;
+    assert(aa.length == 2);
+    assert(aa.remove(0));
+    aa[0] = V.init;
+    assert(aa.length == 2);
+    assert(aa == [0 : V.init, 1 : V.init]);
 }
 
 // test tombstone purging
@@ -884,6 +938,7 @@ unittest
 {
     static struct T
     {
+        ubyte field;
         static size_t postblit, dtor;
         this(this)
         {
@@ -926,4 +981,35 @@ unittest
     aa3 = null;
     GC.runFinalizers((cast(char*)(&entryDtor))[0 .. 1]);
     assert(T.dtor == 6 && T.postblit == 2);
+}
+
+// for aa.clear
+pure nothrow unittest
+{
+    int[int] aa;
+    assert(aa.length == 0);
+    foreach (i; 0 .. 100)
+        aa[i] = i * 2;
+    assert(aa.length == 100);
+    auto aa2 = aa;
+    assert(aa2.length == 100);
+    aa.clear();
+    assert(aa.length == 0);
+    assert(aa2.length == 0);
+
+    aa2[5] = 6;
+    assert(aa.length == 1);
+    assert(aa[5] == 6);
+}
+
+// test AA as key (Issue 16974)
+unittest
+{
+    int[int] a = [1 : 2], a2 = [1 : 2];
+
+    assert([a : 3] == [a : 3]);
+    assert([a : 3] == [a2 : 3]);
+
+    assert(typeid(a).getHash(&a) == typeid(a).getHash(&a));
+    assert(typeid(a).getHash(&a) == typeid(a).getHash(&a2));
 }
