@@ -8,6 +8,7 @@ module core.sys.linux.sys.mman;
 version (linux):
 extern (C):
 nothrow:
+@nogc:
 
 public import core.sys.posix.sys.mman;
 import core.sys.linux.config;

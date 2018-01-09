@@ -72,6 +72,9 @@ $(DOCDIR)\core_math.html : src\core\math.d
 $(DOCDIR)\core_memory.html : src\core\memory.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
+$(DOCDIR)\core_vmm.html : src\core\vmm.d
+	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
+
 $(DOCDIR)\core_runtime.html : src\core\runtime.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
@@ -284,6 +287,9 @@ $(IMPDIR)\core\internal\spinlock.d : src\core\internal\spinlock.d
 	copy $** $@
 
 $(IMPDIR)\core\internal\string.d : src\core\internal\string.d
+	copy $** $@
+
+$(IMPDIR)\core\vmm.d : src\core\vmm.d
 	copy $** $@
 
 $(IMPDIR)\core\internal\traits.d : src\core\internal\traits.d
