@@ -3,7 +3,7 @@
  *
  * Copyright: Copyright Digital Mars 2005 - 2016.
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
- * Authors:   Walter Bright, David Friedman, Sean Kelly, Rainer Schütze
+ * Authors:   Walter Bright, David Friedman, Sean Kelly, Rainer Schuetze
  */
 
 /*          Copyright Digital Mars 2005 - 2016.
@@ -66,7 +66,7 @@ struct GCBits
         return core.bitop.bt(data, i);
     }
 
-    //pragma(inline,true)
+    pragma(inline,true)
     int set(size_t i) nothrow
     in
     {
