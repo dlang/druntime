@@ -259,12 +259,12 @@ class ConservativeGC : GC
 
     import core.internal.spinlock;
     static gcLock = shared(AlignedSpinLock)(SpinLock.Contention.lengthy);
-    static bool _inFinalizer;
+    static bool _isLocked;
 
     // lock GC, throw InvalidMemoryOperationError on recursive locking during finalization
     static void lockNR() @nogc nothrow
     {
-        if (_inFinalizer)
+        if (_isLocked)
             onInvalidMemoryOperationError();
         gcLock.lock();
     }
@@ -817,7 +817,7 @@ class ConservativeGC : GC
 
     void free(void *p) nothrow @nogc
     {
-        if (!p || _inFinalizer)
+        if (!p || _isLocked)
         {
             return;
         }
@@ -1093,7 +1093,7 @@ class ConservativeGC : GC
 
     void removeRange(void *p) nothrow @nogc
     {
-        if (!p)
+        if (!p || _isLocked)
         {
             return;
         }
@@ -1120,7 +1120,7 @@ class ConservativeGC : GC
 
     bool inFinalizer() nothrow
     {
-        return _inFinalizer;
+        return _isLocked;
     }
 
 
@@ -1500,8 +1500,8 @@ struct Gcx
      */
     void runFinalizers(in void[] segment) nothrow
     {
-        ConservativeGC._inFinalizer = true;
-        scope (failure) ConservativeGC._inFinalizer = false;
+        ConservativeGC._isLocked = true;
+        scope (failure) ConservativeGC._isLocked = false;
 
         foreach (pool; pooltable[0 .. npools])
         {
@@ -1518,7 +1518,7 @@ struct Gcx
                 spool.runFinalizers(segment);
             }
         }
-        ConservativeGC._inFinalizer = false;
+        ConservativeGC._isLocked = false;
     }
 
     Pool* findPool(void* p) pure nothrow @nogc
@@ -2396,12 +2396,14 @@ struct Gcx
 
         {
             // lock roots and ranges around suspending threads b/c they're not reentrant safe
+            ConservativeGC._isLocked = true;
             rangesLock.lock();
             rootsLock.lock();
             scope (exit)
             {
                 rangesLock.unlock();
                 rootsLock.unlock();
+                ConservativeGC._isLocked = false;
             }
             thread_suspendAll();
 
@@ -2417,6 +2419,7 @@ struct Gcx
             markAll(nostack);
 
             thread_processGCMarks(&isMarked);
+            ConservativeGC._isLocked = false;
             thread_resumeAll();
         }
 
@@ -2430,12 +2433,12 @@ struct Gcx
             start = stop;
         }
 
-        ConservativeGC._inFinalizer = true;
+        ConservativeGC._isLocked = true;
         size_t freedLargePages=void;
         {
-            scope (failure) ConservativeGC._inFinalizer = false;
+            scope (failure) ConservativeGC._isLocked = false;
             freedLargePages = sweep();
-            ConservativeGC._inFinalizer = false;
+            ConservativeGC._isLocked = false;
         }
 
         if (config.profile)

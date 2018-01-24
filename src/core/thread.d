@@ -2133,9 +2133,9 @@ extern (C) bool thread_isMainThread() nothrow @nogc
  *
  *       extern (C) void rt_moduleTlsCtor();
  */
-extern (C) Thread thread_attachThis()
+extern (C) Thread thread_attachThis() nothrow
 {
-    GC.disable(); scope(exit) GC.enable();
+    GC.disable(); scope(success) GC.enable();
 
     if (auto t = Thread.getThis())
         return t;
