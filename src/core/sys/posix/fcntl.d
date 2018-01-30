@@ -18,6 +18,7 @@ private import core.sys.posix.config;
 private import core.stdc.stdint;
 public import core.sys.posix.sys.types; // for off_t, mode_t
 public import core.sys.posix.sys.stat;  // for S_IFMT, etc.
+public import core.sys.posix.fcntl_c;
 
 version (OSX)
     version = Darwin;
@@ -86,178 +87,6 @@ int open(in char*, int, ...);
 */
 version( CRuntime_Glibc )
 {
-    enum F_DUPFD        = 0;
-    enum F_GETFD        = 1;
-    enum F_SETFD        = 2;
-    enum F_GETFL        = 3;
-    enum F_SETFL        = 4;
-  version(X86_64)
-  {
-    static assert(off_t.sizeof == 8);
-    enum F_GETLK        = 5;
-    enum F_SETLK        = 6;
-    enum F_SETLKW       = 7;
-  }
-  else
-  static if( __USE_FILE_OFFSET64 )
-  {
-    enum F_GETLK        = 12;
-    enum F_SETLK        = 13;
-    enum F_SETLKW       = 14;
-  }
-  else
-  {
-    enum F_GETLK        = 5;
-    enum F_SETLK        = 6;
-    enum F_SETLKW       = 7;
-  }
-    enum F_GETOWN       = 9;
-    enum F_SETOWN       = 8;
-
-    enum FD_CLOEXEC     = 1;
-
-    enum F_RDLCK        = 0;
-    enum F_UNLCK        = 2;
-    enum F_WRLCK        = 1;
-
-    version (X86)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x101000; // octal 04010000
-        enum O_DSYNC        = 0x1000;   // octal   010000
-        enum O_RSYNC        = O_SYNC;
-    }
-    else version (X86_64)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x101000; // octal 04010000
-        enum O_DSYNC        = 0x1000;   // octal   010000
-        enum O_RSYNC        = O_SYNC;
-    }
-    else version (MIPS32)
-    {
-        enum O_CREAT        = 0x0100;
-        enum O_EXCL         = 0x0400;
-        enum O_NOCTTY       = 0x0800;
-        enum O_TRUNC        = 0x0200;
-
-        enum O_APPEND       = 0x0008;
-        enum O_DSYNC        = O_SYNC;
-        enum O_NONBLOCK     = 0x0080;
-        enum O_RSYNC        = O_SYNC;
-        enum O_SYNC         = 0x0010;
-    }
-    else version (MIPS64)
-    {
-        enum O_CREAT        = 0x0100;
-        enum O_EXCL         = 0x0400;
-        enum O_NOCTTY       = 0x0800;
-        enum O_TRUNC        = 0x0200;
-
-        enum O_APPEND       = 0x0008;
-        enum O_DSYNC        = 0x0010;
-        enum O_NONBLOCK     = 0x0080;
-        enum O_RSYNC        = O_SYNC;
-        enum O_SYNC         = 0x4010;
-    }
-    else version (PPC)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x101000; // octal 04010000
-        enum O_DSYNC        = 0x1000;   // octal   010000
-        enum O_RSYNC        = O_SYNC;
-    }
-    else version (PPC64)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x101000; // octal 04010000
-        enum O_DSYNC        = 0x1000;   // octal   010000
-        enum O_RSYNC        = O_SYNC;
-    }
-    else version (ARM)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x101000; // octal 04010000
-        enum O_DSYNC        = 0x1000;   // octal   010000
-        enum O_RSYNC        = O_SYNC;
-    }
-    else version (AArch64)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x101000; // octal 04010000
-        enum O_DSYNC        = 0x1000;   // octal   010000
-        enum O_RSYNC        = O_SYNC;
-    }
-    else version (SPARC64)
-    {
-        enum O_CREAT        = 0x200;
-        enum O_EXCL         = 0x800;
-        enum O_NOCTTY       = 0x8000;
-        enum O_TRUNC        = 0x400;
-
-        enum O_APPEND       = 0x8;
-        enum O_NONBLOCK     = 0x4000;
-        enum O_SYNC         = 0x802000;
-        enum O_DSYNC        = 0x2000;
-        enum O_RSYNC        = O_SYNC;
-    }
-    else version (SystemZ)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x101000; // octal 04010000
-        enum O_DSYNC        = 0x1000;   // octal   010000
-        enum O_RSYNC        = O_SYNC;
-    }
-    else
-        static assert(0, "unimplemented");
-
-    enum O_ACCMODE      = 0x3;
-    enum O_RDONLY       = 0x0;
-    enum O_WRONLY       = 0x1;
-    enum O_RDWR         = 0x2;
-
     struct flock
     {
         short   l_type;
@@ -280,45 +109,9 @@ version( CRuntime_Glibc )
         int   creat(in char*, mode_t);
         int   open(in char*, int, ...);
     }
-
-    enum AT_SYMLINK_NOFOLLOW = 0x100;
-    enum AT_FDCWD = -100;
 }
 else version( Darwin )
 {
-    enum F_DUPFD        = 0;
-    enum F_GETFD        = 1;
-    enum F_SETFD        = 2;
-    enum F_GETFL        = 3;
-    enum F_SETFL        = 4;
-    enum F_GETOWN       = 5;
-    enum F_SETOWN       = 6;
-    enum F_GETLK        = 7;
-    enum F_SETLK        = 8;
-    enum F_SETLKW       = 9;
-
-    enum FD_CLOEXEC     = 1;
-
-    enum F_RDLCK        = 1;
-    enum F_UNLCK        = 2;
-    enum F_WRLCK        = 3;
-
-    enum O_CREAT        = 0x0200;
-    enum O_EXCL         = 0x0800;
-    enum O_NOCTTY       = 0;
-    enum O_TRUNC        = 0x0400;
-
-    enum O_RDONLY       = 0x0000;
-    enum O_WRONLY       = 0x0001;
-    enum O_RDWR         = 0x0002;
-    enum O_ACCMODE      = 0x0003;
-
-    enum O_NONBLOCK     = 0x0004;
-    enum O_APPEND       = 0x0008;
-    enum O_SYNC         = 0x0080;
-    //enum O_DSYNC
-    //enum O_RSYNC
-
     struct flock
     {
         off_t   l_start;
@@ -333,43 +126,6 @@ else version( Darwin )
 }
 else version( FreeBSD )
 {
-    enum F_DUPFD        = 0;
-    enum F_GETFD        = 1;
-    enum F_SETFD        = 2;
-    enum F_GETFL        = 3;
-    enum F_SETFL        = 4;
-    enum F_GETOWN       = 5;
-    enum F_SETOWN       = 6;
-    enum F_GETLK        = 11;
-    enum F_SETLK        = 12;
-    enum F_SETLKW       = 13;
-    enum F_OGETLK       = 7;
-    enum F_OSETLK       = 8;
-    enum F_OSETLKW      = 9;
-    enum F_DUP2FD       = 10;
-
-    enum FD_CLOEXEC     = 1;
-
-    enum F_RDLCK        = 1;
-    enum F_UNLCK        = 2;
-    enum F_WRLCK        = 3;
-
-    enum O_CREAT        = 0x0200;
-    enum O_EXCL         = 0x0800;
-    enum O_NOCTTY       = 0x8000;
-    enum O_TRUNC        = 0x0400;
-
-    enum O_RDONLY       = 0x0000;
-    enum O_WRONLY       = 0x0001;
-    enum O_RDWR         = 0x0002;
-    enum O_ACCMODE      = 0x0003;
-
-    enum O_NONBLOCK     = 0x0004;
-    enum O_APPEND       = 0x0008;
-    enum O_SYNC         = 0x0080;
-    //enum O_DSYNC
-    //enum O_RSYNC
-
     struct flock
     {
         off_t   l_start;
@@ -391,60 +147,9 @@ else version( FreeBSD )
 
     int creat(in char*, mode_t);
     int open(in char*, int, ...);
-
-    enum AT_SYMLINK_NOFOLLOW = 0x200;
-    enum AT_FDCWD = -100;
 }
 else version( OpenBSD )
 {
-    enum F_DUPFD        = 0;
-    enum F_GETFD        = 1;
-    enum F_SETFD        = 2;
-    enum F_GETFL        = 3;
-    enum F_SETFL        = 4;
-    enum F_GETOWN       = 5;
-    enum F_SETOWN       = 6;
-    enum F_GETLK        = 7;
-    enum F_SETLK        = 8;
-    enum F_SETLKW       = 9;
-    enum F_DUPFD_CLOEXEC= 10;
-    enum F_ISATTY       = 11;
-
-    enum FD_CLOEXEC     = 1;
-
-    enum F_RDLCK        = 1;
-    enum F_UNLCK        = 2;
-    enum F_WRLCK        = 3;
-
-    enum O_CREAT        = 0x0200;
-    enum O_EXCL         = 0x0800;
-    enum O_NOCTTY       = 0x8000;
-    enum O_TRUNC        = 0x0400;
-
-    enum O_RDONLY       = 0x0000;
-    enum O_WRONLY       = 0x0001;
-    enum O_RDWR         = 0x0002;
-    enum O_ACCMODE      = 0x0003;
-    enum O_SHLOCK       = 0x0010;
-    enum O_EXLOCK       = 0x0020;
-    enum O_ASYNC        = 0x0040;
-    enum O_FSYNC        = 0x0080;
-    enum O_NOFOLLOW     = 0x0100;
-
-    enum O_NONBLOCK     = 0x0004;
-    enum O_APPEND       = 0x0008;
-    enum O_SYNC         = 0x0080;
-    enum O_DSYNC        = O_SYNC;
-    enum O_RSYNC        = O_SYNC;
-
-    enum O_CLOEXEC      = 0x10000;
-    enum O_DIRECTORY    = 0x20000;
-
-    enum LOCK_SH        = 0x01;
-    enum LOCK_EX        = 0x02;
-    enum LOCK_NB        = 0x04;
-    enum LOCK_UN        = 0x08;
-
     struct flock
     {
         off_t   l_start;
@@ -456,54 +161,9 @@ else version( OpenBSD )
 
     int creat(in char*, mode_t);
     int open(in char*, int, ...);
-
-    enum AT_FDCWD            = -100;
-
-    enum AT_EACCESS          = 0x01;
-    enum AT_SYMLINK_NOFOLLOW = 0x02;
-    enum AT_SYMLINK_FOLLOW   = 0x04;
-    enum AT_REMOVEDIR        = 0x08;
 }
 else version(NetBSD)
 {
-    enum F_DUPFD        = 0;
-    enum F_GETFD        = 1;
-    enum F_SETFD        = 2;
-    enum F_GETFL        = 3;
-    enum F_SETFL        = 4;
-    enum F_GETOWN       = 5;
-    enum F_SETOWN       = 6;
-    enum F_GETLK        = 7;
-    enum F_SETLK        = 8;
-    enum F_SETLKW       = 9;
-    enum F_CLOSEM       = 10;
-    enum F_MAXFD        = 11;
-    enum F_DUPFD_CLOEXEC= 12;
-    enum F_GETNOSIGPIPE = 13;
-    enum F_SETNOSIGPIPE = 14;
-
-    enum FD_CLOEXEC     = 1;
-
-    enum F_RDLCK        = 1;
-    enum F_UNLCK        = 2;
-    enum F_WRLCK        = 3;
-
-    enum O_CREAT        = 0x0200;
-    enum O_EXCL         = 0x0800;
-    enum O_NOCTTY       = 0x8000;
-    enum O_TRUNC        = 0x0400;
-
-    enum O_RDONLY       = 0x0000;
-    enum O_WRONLY       = 0x0001;
-    enum O_RDWR         = 0x0002;
-    enum O_ACCMODE      = 0x0003;
-
-    enum O_NONBLOCK     = 0x0004;
-    enum O_APPEND       = 0x0008;
-    enum O_SYNC         = 0x0080;
-    //enum O_DSYNC
-    //enum O_RSYNC
-
     struct flock
     {
         off_t   l_start;
@@ -519,77 +179,8 @@ else version(NetBSD)
 }
 else version( DragonFlyBSD )
 {
-    enum O_RDONLY       = 0x0000;
-    enum O_WRONLY       = 0x0001;
-    enum O_RDWR         = 0x0002;
-    enum O_ACCMODE      = 0x0003;
-
-    enum FREAD          = 0x0001;
-    enum FWRITE         = 0x0002;
-    enum O_NONBLOCK     = 0x0000004;
-    enum O_APPEND       = 0x0000008;
-    enum O_SHLOCK       = 0x0000010;
-    enum O_EXLOCK       = 0x0000020;
-    enum O_ASYNC        = 0x0000040;
-    enum O_FSYNC        = 0x0000080;
-    enum O_SYNC         = 0x0000080;
-    enum O_NOFOLLOW     = 0x0000100;
-    enum O_CREAT        = 0x0000200;
-    enum O_TRUNC        = 0x0000400;
-    enum O_EXCL         = 0x0000800;
-    enum O_NOCTTY       = 0x0008000;
-    enum O_DIRECT       = 0x0010000;
-    enum O_CLOEXEC      = 0x0020000;
-    enum O_FBLOCKING    = 0x0040000;
-    enum O_FNONBLOCKING = 0x0080000;
-    enum O_FAPPEND      = 0x0100000;
-    enum O_FOFFSET      = 0x0200000;
-    enum O_FSYNCWRITE   = 0x0400000;
-    enum O_FASYNCWRITE  = 0x0800000;
-    enum O_DIRECTORY    = 0x8000000;
-
-    enum FAPPEND        = O_APPEND;
-    enum FASYNC         = O_ASYNC;
-    enum FFSYNC         = O_FSYNC;
-    enum FNONBLOCK      = O_NONBLOCK;
-    enum FNDELAY        = O_NONBLOCK;
-    enum O_NDELAY       = O_NONBLOCK;
-    enum FPOSIXSHM      = O_NOFOLLOW;
 
     enum FCNTLFLAGS = (FAPPEND|FASYNC|FFSYNC|FNONBLOCK|FPOSIXSHM|O_DIRECT);
-
-    enum F_DUPFD        = 0;
-    enum F_GETFD        = 1;
-    enum F_SETFD        = 2;
-    enum F_GETFL        = 3;
-    enum F_SETFL        = 4;
-    enum F_GETOWN       = 5;
-    enum F_SETOWN       = 6;
-    enum F_GETLK        = 7;
-//    enum F_SETLK        = 8;
-    enum F_SETLK        = 8;
-    enum F_SETLKW       = 9;
-    enum F_OGETLK       = F_GETLK;
-    enum F_OSETLK       = F_SETLK;
-    enum F_OSETLKW      = F_SETLKW;
-    enum F_DUP2FD       = 10;
-    //enum F_GETLK        = 11;
-    //enum F_SETLK        = 12;
-    //enum F_SETLKW       = 13;
-    enum F_DUPFD_CLOEXEC = 17;
-    enum F_DUP2FD_CLOEXEC = 18;
-
-    enum FD_CLOEXEC     = 1;
-
-    enum F_RDLCK        = 1;
-    enum F_UNLCK        = 2;
-    enum F_WRLCK        = 3;
-
-    enum LOCK_SH        = 0x01;
-    enum LOCK_EX        = 0x02;
-    enum LOCK_NB        = 0x04;
-    enum LOCK_UN        = 0x08;
-
     struct flock
     {
         off_t   l_start;
@@ -608,62 +199,6 @@ else version( DragonFlyBSD )
 }
 else version (Solaris)
 {
-    enum F_DUPFD = 0;
-    enum F_GETFD = 1;
-    enum F_SETFD = 2;
-    enum F_GETFL = 3;
-    enum F_SETFL = 4;
-
-    version (D_LP64)
-    {
-        enum F_GETLK = 14;
-        enum F_SETLK = 6;
-        enum F_SETLKW = 7;
-    }
-    else
-    {
-        static if (__USE_FILE_OFFSET64)
-        {
-            enum F_GETLK = 14;
-            enum F_SETLK = 6;
-            enum F_SETLKW = 7;
-        }
-        else
-        {
-            enum F_GETLK = 33;
-            enum F_SETLK = 34;
-            enum F_SETLKW = 35;
-        }
-    }
-
-    enum F_GETOWN = 23;
-    enum F_SETOWN = 24;
-
-    enum FD_CLOEXEC = 1;
-
-    enum F_RDLCK = 1;
-    enum F_UNLCK = 3;
-    enum F_WRLCK = 2;
-    enum F_UNCKSYS = 4;
-
-    enum O_CREAT = 0x0100;
-    enum O_EXCL = 0x0400;
-    enum O_NOCTTY = 0x0800;
-    enum O_TRUNC = 0x0200;
-
-    enum O_APPEND = 0x0008;
-    enum O_NONBLOCK = 0x0080;
-    enum O_SYNC = 0x0010;
-    enum O_DSYNC = 0x0040;
-    enum O_RSYNC = 0x8000;
-
-    enum O_ACCMODE = (O_SEARCH | O_EXEC | 0x3);
-    enum O_RDONLY = 0;
-    enum O_WRONLY = 1;
-    enum O_RDWR = 2;
-    enum O_SEARCH = 0x200000;
-    enum O_EXEC = 0x400000;
-
     struct flock
     {
         short l_type;
@@ -719,57 +254,6 @@ else version (Solaris)
 }
 else version( CRuntime_Bionic )
 {
-    // All these except for the two functions open and creat really come from
-    // the linux kernel and can probably be merged.
-    enum F_DUPFD        = 0;
-    enum F_GETFD        = 1;
-    enum F_SETFD        = 2;
-    enum F_GETFL        = 3;
-    enum F_SETFL        = 4;
-    enum F_GETLK        = 5;
-    enum F_SETLK        = 6;
-    enum F_SETLKW       = 7;
-    enum F_SETOWN       = 8;
-    enum F_GETOWN       = 9;
-
-    enum FD_CLOEXEC     = 1;
-
-    enum F_RDLCK        = 0;
-    enum F_WRLCK        = 1;
-    enum F_UNLCK        = 2;
-
-    version (X86)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x1000;   // octal   010000
-    }
-    else version (ARM)
-    {
-        enum O_CREAT        = 0x40;     // octal     0100
-        enum O_EXCL         = 0x80;     // octal     0200
-        enum O_NOCTTY       = 0x100;    // octal     0400
-        enum O_TRUNC        = 0x200;    // octal    01000
-
-        enum O_APPEND       = 0x400;    // octal    02000
-        enum O_NONBLOCK     = 0x800;    // octal    04000
-        enum O_SYNC         = 0x1000;   // octal   010000
-    }
-    else
-    {
-        static assert(false, "Architecture not supported.");
-    }
-
-    enum O_ACCMODE      = 0x3;
-    enum O_RDONLY       = 0x0;
-    enum O_WRONLY       = 0x1;
-    enum O_RDWR         = 0x2;
-
     struct flock
     {
         short   l_type;
@@ -781,8 +265,6 @@ else version( CRuntime_Bionic )
 
     int   creat(in char*, mode_t);
     int   open(in char*, int, ...);
-
-    enum AT_FDCWD = -100;
 }
 else
 {

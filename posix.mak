@@ -4,6 +4,7 @@
 # and then run as gmake rather than make.
 
 QUIET:=
+CXX:=g++
 
 DMD_DIR=../dmd
 
@@ -104,10 +105,13 @@ DRUNTIMESO=$(ROOT)/libdruntime.so
 DRUNTIMESOOBJ=$(ROOT)/libdruntime.so.o
 DRUNTIMESOLIB=$(ROOT)/libdruntime.so.a
 
+GEN_SRCS= src/core/sys/posix/fcntl_c.d \
+	  src/core/sys/posix/poll_c.d
+
 DOCFMT=
 
 include mak/COPY
-COPY:=$(subst \,/,$(COPY))
+COPY:=$(subst src,import,$(GEN_SRCS)) $(subst \,/,$(COPY))
 
 include mak/DOCS
 DOCS:=$(subst \,/,$(DOCS))
@@ -116,7 +120,7 @@ include mak/IMPORTS
 IMPORTS:=$(subst \,/,$(IMPORTS))
 
 include mak/SRCS
-SRCS:=$(subst \,/,$(SRCS))
+SRCS:=$(GEN_SRCS) $(subst \,/,$(SRCS))
 
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
@@ -145,6 +149,14 @@ endif
 ######################## Doc .html file generation ##############################
 
 doc: $(DOCS)
+
+gen_cdef: src/gen_gen_cdef.cc
+	$(CXX) -std=c++11 $< -o gen_gen_cdef
+	./gen_gen_cdef
+	$(CXX) -std=c++11 src/gen_cdef.cc -o gen_cdef
+	./gen_cdef
+
+$(GEN_SRCS): gen_cdef
 
 $(DOCDIR)/object.html : src/object.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
@@ -354,7 +366,7 @@ install: target
 	cp LICENSE.txt $(INSTALL_DIR)/druntime-LICENSE.txt
 
 clean: $(addsuffix /.clean,$(ADDITIONAL_TESTS))
-	rm -rf $(ROOT_OF_THEM_ALL) $(IMPDIR) $(DOCDIR) druntime.zip
+	rm -rf $(ROOT_OF_THEM_ALL) $(IMPDIR) $(GEN_SRCS) $(DOCDIR) src/gen_cdef.cc gen_cdef gen_gen_cdef druntime.zip
 
 test/%/.clean: test/%/Makefile
 	$(MAKE) -C test/$* clean
