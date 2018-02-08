@@ -220,3 +220,8 @@ int dstrcmp( scope const char[] s1, scope const char[] s2 ) @trusted
     }
     return s1.length < s2.length ? -1 : (s1.length > s2.length);
 }
+
+bool startsWith(T)(T a, T b)
+{
+    return a.length >= b.length && a[0 .. b.length] == b;
+}

@@ -21,6 +21,8 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
+public import core.demangle_cxx : demangleCXX, DemangleCXXStatus;
+
 debug(trace) import core.stdc.stdio : printf;
 debug(info) import core.stdc.stdio : printf;
 
@@ -2009,7 +2011,7 @@ pure @safe:
 
 
 /**
- * Demangles D mangled names.  If it is not a D mangled name, it returns its
+ * Demangles D mangled names.  If it is not a recognized mangled name (D, C++), it returns its
  * argument name.
  *
  * Params:
@@ -2017,12 +2019,16 @@ pure @safe:
  *  dst = An optional destination buffer.
  *
  * Returns:
- *  The demangled name or the original string if the name is not a mangled D
- *  name.
+ *  The demangled name or the original string if the name is not a recognized mangled name.
  */
 char[] demangle( const(char)[] buf, char[] dst = null ) nothrow pure @safe
 {
-    //return Demangle(buf, dst)();
+    // TODO: also report which type: cpp,D,unrecognized
+    // TODO: use same technique as used in demangleCXX for `dst`
+    DemangleCXXStatus status;
+    auto ret=demangleCXX(status, buf);
+    if(status==DemangleCXXStatus.success) return ret;
+
     auto d = Demangle!()(buf, dst);
     return d.demangleName();
 }
@@ -2560,6 +2566,7 @@ version(unittest)
     foreach( i; staticIota!(table.length) )
     {
         enum r = demangle( table[i][0] );
+        // NOTE: can't be run at compile time anymore
         static assert( r == table[i][1],
                 "demangled \"" ~ table[i][0] ~ "\" as \"" ~ r ~ "\" but expected \"" ~ table[i][1] ~ "\"");
     }

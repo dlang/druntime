@@ -216,6 +216,7 @@ copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\stdc
 	mkdir $(IMPDIR)\core\stdcpp
 	mkdir $(IMPDIR)\core\internal
+	mkdir $(IMPDIR)\core\internal\adapted
 	mkdir $(IMPDIR)\core\sys\darwin\mach
 	mkdir $(IMPDIR)\core\sys\freebsd\sys
 	mkdir $(IMPDIR)\core\sys\linux\sys
@@ -252,6 +253,9 @@ $(IMPDIR)\core\cpuid.d : src\core\cpuid.d
 $(IMPDIR)\core\demangle.d : src\core\demangle.d
 	copy $** $@
 
+$(IMPDIR)\core\demangle_cxx.d : src\core\demangle_cxx.d
+	copy $** $@
+
 $(IMPDIR)\core\exception.d : src\core\exception.d
 	copy $** $@
 
@@ -276,6 +280,12 @@ $(IMPDIR)\core\time.d : src\core\time.d
 $(IMPDIR)\core\vararg.d : src\core\vararg.d
 	copy $** $@
 
+$(IMPDIR)\core\internal\adapted\pacakge.d : src\core\internal\adapted\pacakge.d
+	copy $** $@
+
+$(IMPDIR)\core\internal\adapted\string.d : src\core\internal\adapted\string.d
+	copy $** $@
+
 $(IMPDIR)\core\internal\abort.d : src\core\internal\abort.d
 	copy $** $@
 
@@ -291,6 +301,12 @@ $(IMPDIR)\core\internal\hash.d : src\core\internal\hash.d
 $(IMPDIR)\core\internal\parseoptions.d : src\core\internal\parseoptions.d
 	copy $** $@
 
+$(IMPDIR)\core\internal\package.d : src\core\internal\package.d
+	copy $** $@
+
+$(IMPDIR)\core\internal\sharedlib.d : src\core\internal\sharedlib.d
+	copy $** $@
+
 $(IMPDIR)\core\internal\spinlock.d : src\core\internal\spinlock.d
 	copy $** $@
 
@@ -298,6 +314,9 @@ $(IMPDIR)\core\internal\string.d : src\core\internal\string.d
 	copy $** $@
 
 $(IMPDIR)\core\internal\traits.d : src\core\internal\traits.d
+	copy $** $@
+
+$(IMPDIR)\core\internal\util.d : src\core\internal\util.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\assert_.d : src\core\stdc\assert_.d

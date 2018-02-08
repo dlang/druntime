@@ -7,6 +7,7 @@ COPY=\
 	$(IMPDIR)\core\checkedint.d \
 	$(IMPDIR)\core\cpuid.d \
 	$(IMPDIR)\core\demangle.d \
+	$(IMPDIR)\core\demangle_cxx.d \
 	$(IMPDIR)\core\exception.d \
 	$(IMPDIR)\core\math.d \
 	$(IMPDIR)\core\memory.d \
@@ -16,14 +17,20 @@ COPY=\
 	$(IMPDIR)\core\time.d \
 	$(IMPDIR)\core\vararg.d \
 	\
+	$(IMPDIR)\core\internal\adapted\package.d \
+	$(IMPDIR)\core\internal\adapted\string.d \
+	\
 	$(IMPDIR)\core\internal\abort.d \
 	$(IMPDIR)\core\internal\arrayop.d \
 	$(IMPDIR)\core\internal\convert.d \
 	$(IMPDIR)\core\internal\hash.d \
 	$(IMPDIR)\core\internal\parseoptions.d \
+	$(IMPDIR)\core\internal\package.d \
+	$(IMPDIR)\core\internal\sharedlib.d \
 	$(IMPDIR)\core\internal\spinlock.d \
 	$(IMPDIR)\core\internal\string.d \
 	$(IMPDIR)\core\internal\traits.d \
+	$(IMPDIR)\core\internal\util.d \
 	\
 	$(IMPDIR)\core\stdc\assert_.d \
 	$(IMPDIR)\core\stdc\complex.d \
