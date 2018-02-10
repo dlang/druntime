@@ -1,0 +1,3 @@
+# common vars to all OS
+DMD_VERSION=2.078.1
+GENERATED_VARS_BASE_F=VARS.txt
