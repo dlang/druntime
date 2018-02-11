@@ -2566,7 +2566,6 @@ version(unittest)
     foreach( i; staticIota!(table.length) )
     {
         enum r = demangle( table[i][0] );
-        // NOTE: can't be run at compile time anymore
         static assert( r == table[i][1],
                 "demangled \"" ~ table[i][0] ~ "\" as \"" ~ r ~ "\" but expected \"" ~ table[i][1] ~ "\"");
     }
