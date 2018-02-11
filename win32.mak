@@ -25,10 +25,9 @@ DOCFMT=
 
 target : import copydir copy $(DRUNTIME)
 
-$(mak\COPY)
-$(mak\DOCS)
-$(mak\IMPORTS)
-$(mak\SRCS)
+include mak\VARS
+# TODO: convert dbuild/bootstrap.sh to windows batch
+$(generated\$(GENERATED_VARS_BASE_F))
 
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)

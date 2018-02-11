@@ -26,9 +26,6 @@ endif
 DMD=$(DMD_DIR)/generated/$(OS)/$(BUILD)/$(MODEL)/dmd
 INSTALL_DIR=../install
 
-DOCDIR=doc
-IMPDIR=import
-
 OPTIONAL_COVERAGE:=$(if $(TEST_COVERAGE),-cov,)
 
 # default to PIC on x86_64, use PIC=1/0 to en-/disable PIC.
@@ -106,17 +103,18 @@ DRUNTIMESOLIB=$(ROOT)/libdruntime.so.a
 
 DOCFMT=
 
-include mak/COPY
-COPY:=$(subst \,/,$(COPY))
+include mak/VARS
+GENERATED_VARS_F=$(ROOT_OF_THEM_ALL)/$(GENERATED_VARS_BASE_F)
 
-include mak/DOCS
-DOCS:=$(subst \,/,$(DOCS))
-
-include mak/IMPORTS
-IMPORTS:=$(subst \,/,$(IMPORTS))
-
-include mak/SRCS
-SRCS:=$(subst \,/,$(SRCS))
+#TODO: how to exit on error?
+$(info $(shell \
+	OS=$(OS) \
+	MODEL=$(MODEL) \
+	ROOT_OF_THEM_ALL=$(ROOT_OF_THEM_ALL) \
+	GENERATED_VARS_F=$(GENERATED_VARS_F) \
+	bash -c "source dbuild/bootstrap.sh && get_dmd" \
+))
+include $(GENERATED_VARS_F)
 
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
@@ -134,8 +132,9 @@ endif
 # use timelimit to avoid deadlocks if available
 TIMELIMIT:=$(if $(shell which timelimit 2>/dev/null || true),timelimit -t 10 ,)
 
-######################## All of'em ##############################
 
+
+######################## All of'em ##############################
 ifneq (,$(SHARED))
 target : import copy dll $(DRUNTIME)
 else
@@ -333,6 +332,10 @@ ifeq (linux,$(OS))
 	$(GREP) -n -U -P "([ \t]$$|\r)" $(CWS_MAKEFILES) ; test "$$?" -ne 0
 	$(GREP) -n -U -P "( $$|\r|\t)" $(NOT_MAKEFILES) ; test "$$?" -ne 0
 endif
+
+# for debugging
+debugvars:
+	echo ${AUTOGEN_ENVS_FILE}
 
 detab:
 	detab $(MANIFEST)
