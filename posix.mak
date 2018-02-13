@@ -6,6 +6,8 @@
 QUIET:=
 
 DMD_DIR=../dmd
+TOOLS_DIR=../tools
+DUB=dub
 
 include $(DMD_DIR)/src/osmodel.mak
 
@@ -90,7 +92,7 @@ endif
 PHOBOS_PATH=../phobos
 SHARED=$(if $(findstring $(OS),linux freebsd),1,)
 ROOT_DIR := $(shell pwd)
-PHOBOS_DFLAGS=-conf= $(MODEL_FLAG) -I$(ROOT_DIR)/import -I$(PHOBOS_PATH) -L-L$(PHOBOS_PATH)/generated/$(OS)/$(BUILD)/$(MODEL) $(PIC)
+PHOBOS_DFLAGS=-conf= $(MODEL_FLAG) -I$(ROOT_DIR)/import -I$(PHOBOS_PATH) -L-L$(PHOBOS_PATH)/generated/$(OS)/$(BUILD)/$(MODEL) $(PIC) -defaultlib= -debuglib=
 ifeq (1,$(SHARED))
 PHOBOS_DFLAGS+=-defaultlib=libphobos2.so -L-rpath=$(PHOBOS_PATH)/generated/$(OS)/$(BUILD)/$(MODEL)
 endif
@@ -362,11 +364,34 @@ test/%/.clean: test/%/Makefile
 # Submission to Druntime are required to conform to the DStyle
 # The tests below automate some, but not all parts of the DStyle guidelines.
 # See: http://dlang.org/dstyle.html
-style: checkwhitespace style_lint
+style: checkwhitespace style_lint publictests
 
 style_lint:
 	@echo "Check for trailing whitespace"
 	$(GREP) -nr '[[:blank:]]$$' $(MANIFEST) ; test $$? -eq 1
+
+################################################################################
+# Check for missing imports in public unittest examples.
+################################################################################
+TESTS_EXTRACTOR=$(ROOT)/tests_extractor
+PUBLICTESTS_DIR=$(ROOT)/publictests
+
+publictests: $(addsuffix .publictests, $(basename $(SRCS)))
+
+$(TESTS_EXTRACTOR): $(TOOLS_DIR)/tests_extractor.d | $(LIB)
+	DFLAGS="$(PHOBOS_DFLAGS)" $(DUB) build --force --compiler=$${PWD}/$(DMD) --single $<
+	mv $(TOOLS_DIR)/tests_extractor $@
+
+################################################################################
+# Extract public tests of a module and test them in an separate file (i.e. without its module)
+# This is done to check for potentially missing imports in the examples, e.g.
+# make -f posix.mak std/format.publictests
+################################################################################
+%.publictests: %.d $(TESTS_EXTRACTOR) #| $(PUBLICTESTS_DIR)/.directory
+	@$(TESTS_EXTRACTOR) --inputdir  $< --outputdir $(PUBLICTESTS_DIR)
+	@$(DMD) $(PHOBOS_DFLAGS) -main $(UDFLAGS) -run $(PUBLICTESTS_DIR)/$(subst /,_,$<)
+
+################################################################################
 
 .PHONY : auto-tester-build
 auto-tester-build: target checkwhitespace

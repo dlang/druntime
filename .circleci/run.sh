@@ -90,7 +90,15 @@ setup_repos() {
 }
 
 style() {
-    make -f posix.mak style
+    source "$(CURL_USER_AGENT=\"$CURL_USER_AGENT\" bash ~/dlang/install.sh dmd-$HOST_DMD_VER --activate)"
+
+    # checkout a specific version of https://github.com/dlang/tools
+    if [ ! -d ../tools ] ; then
+        clone https://github.com/dlang/tools.git ../tools master
+    fi
+    git -C ../tools checkout 6ad91215253b52e6ecfc39fe1854815867c66f23
+
+    make -f posix.mak -j$N style DUB=$DUB BUILD=$BUILD
 }
 
 coverage() {
@@ -114,7 +122,7 @@ codecov()
 case $1 in
     install-deps) install_deps ;;
     setup-repos) setup_repos ;;
-    style) style ;;
+    style) style;;
     coverage) coverage ;;
     codecov) codecov ;;
 esac
