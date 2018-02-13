@@ -364,7 +364,7 @@ test/%/.clean: test/%/Makefile
 # Submission to Druntime are required to conform to the DStyle
 # The tests below automate some, but not all parts of the DStyle guidelines.
 # See: http://dlang.org/dstyle.html
-style: checkwhitespace style_lint publictests
+style: style_lint publictests
 
 style_lint:
 	@echo "Check for trailing whitespace"

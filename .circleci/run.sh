@@ -98,7 +98,7 @@ style() {
     fi
     git -C ../tools checkout 6ad91215253b52e6ecfc39fe1854815867c66f23
 
-    make -f posix.mak -j$N style DUB=$DUB BUILD=$BUILD
+    make -f posix.mak -j$N style MODEL="$MODEL"
 }
 
 coverage() {

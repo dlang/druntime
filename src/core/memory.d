@@ -1138,7 +1138,6 @@ unittest
 // Deleting raw memory
 unittest
 {
-    import core.memory : GC;
     auto a = GC.malloc(5);
     assert(GC.addrOf(cast(void*) a) != null);
     __delete(a);
