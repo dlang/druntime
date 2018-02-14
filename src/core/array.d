@@ -3,7 +3,7 @@ module core.array;
 /++
     Returns a static array constructed from `a`
 +/
-CommonType!T[T.length] StaticArray(T...)(T a)
+CommonType!T[T.length] staticArray(T...)(T a)
 {
     return [a];
 }
@@ -11,17 +11,18 @@ CommonType!T[T.length] StaticArray(T...)(T a)
 unittest
 {
     {
-        auto a = StaticArray(1, 2, 3);
+        auto a = staticArray(1, 2, 3);
         assert(is(typeof(a) == int[3]));
         assert(a == [1, 2, 3]);
     }
     {
-        auto a = StaticArray(1, 2.0);
+        auto a = staticArray(1, 2.0);
         assert(is(typeof(a) == double[2]));
         assert(a == [1, 2.0]);
     }
-    assert(!__traits(compiles, StaticArray(1, "")));
-    assert(is(typeof(StaticArray()) == void[0]));
+    assert(!__traits(compiles, staticArray(1, "")));
+    assert(is(typeof(staticArray()) == void[0]));
+    // NOTE: `int[] temp=staticArray(1,2)` correctly issues a deprecation
 }
 
 package:
