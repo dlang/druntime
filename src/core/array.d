@@ -1,9 +1,11 @@
 module core.array;
 
 /++
-    Returns a static array constructed from `a`
+    Returns a static array constructed from `a`. The type of elements can be
+    specified implicitly (`int[2] a = staticArray(1,2)`) or explicitly
+    (`float[2] a = staticArray!float(1,2)`).
 +/
-CommonType!T[T.length] staticArray(T...)(T a)
+pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a)
 {
     return [a];
 }
@@ -23,6 +25,12 @@ unittest
     assert(!__traits(compiles, staticArray(1, "")));
     assert(is(typeof(staticArray()) == void[0]));
     // NOTE: `int[] temp=staticArray(1,2)` correctly issues a deprecation
+
+    {
+        auto a = staticArray!float(1, 2);
+        assert(is(typeof(a) == float[2]));
+        assert(a == [1, 2]);
+    }
 }
 
 package:
