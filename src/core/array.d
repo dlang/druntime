@@ -6,13 +6,13 @@ debug import std.stdio;
 
 // @nogc: https://issues.dlang.org/show_bug.cgi?id=18439
 nothrow @safe pure:
-/++
-    Returns a static array constructed from `a`. The type of elements can be
-    specified implicitly (`int[2] a = staticArray(1,2);`) or explicitly
-    (`float[2] a = staticArray!float(1,2)`).
 
-    D20180214T203015: The result is an rvalue, therefore uses like
-    `foo(staticArray(1, 2, 3)` may be inefficient because of the copies.
+/++
+Returns a static array constructed from `a`. The type of elements can be
+specified implicitly (`int[2] a = staticArray(1,2);`) or explicitly
+(`float[2] a = staticArray!float(1,2)`).
+D20180214T203015: The result is an rvalue, therefore uses like
+`foo(staticArray(1, 2, 3)` may be inefficient because of the copies.
 +/
 pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a) @nogc
 {
@@ -70,11 +70,10 @@ unittest
 }
 
 /++
-    Returns a static array constructed from `arr`. The type of elements can be
-    specified implicitly (`int[2] a = [1,2].asStatic;`) or explicitly
-    (`float[2] a = [1,2].asStatic!float`).
-
-    See also D20180214T203015.
+Returns a static array constructed from `arr`. The type of elements can be
+specified implicitly (`int[2] a = [1,2].asStatic;`) or explicitly
+(`float[2] a = [1,2].asStatic!float`).
+See also D20180214T203015.
 +/
 pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
 {
