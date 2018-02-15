@@ -1,5 +1,7 @@
 module core.array;
 
+import core.internal.traits : Unqual, CommonType;
+
 @safe nothrow pure:
 /++
     Returns a static array constructed from `a`. The type of elements can be
@@ -8,8 +10,7 @@ module core.array;
 
     The result is an rvalue, therefore uses like staticArray(1, 2, 3).find(x) may be inefficient.
 +/
-pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a)
-@nogc
+pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a) @nogc
 {
     return [a];
 }
@@ -32,7 +33,7 @@ unittest
     {
         auto a = staticArray!float(1, 2);
         assert(is(typeof(a) == float[2]));
-        assert(a == [1,2]);
+        assert(a == [1, 2]);
     }
 
     assert(is(typeof(staticArray([1])) == int[][1]));
@@ -48,15 +49,12 @@ unittest
 
     The result is an rvalue, therefore uses like [1, 2, 3].asStatic.find(x) may be inefficient.
 +/
-pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr)
-@nogc
+pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
 {
     return arr;
 }
 
-U[n] asStatic(U, T, size_t n)(auto ref T[n] arr)
-@nogc
-if (!is(U == T) && is(T : U))
+U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T) && is(T : U))
 {
     U[n] ret = void;
     static foreach (i; 0 .. n)
@@ -65,8 +63,7 @@ if (!is(U == T) && is(T : U))
 }
 
 /// ditto
-auto asStatic(U = typeof(arr[0]), alias arr)()
-@nogc
+auto asStatic(U = typeof(arr[0]), alias arr)() @nogc
 {
     enum n = arr.length;
     U[n] ret = void;
@@ -76,8 +73,7 @@ auto asStatic(U = typeof(arr[0]), alias arr)()
 }
 
 /// ditto
-auto asStatic(alias arr)()
-@nogc
+auto asStatic(alias arr)() @nogc
 {
     enum n = arr.length;
     alias U = typeof(arr[0]);
@@ -131,71 +127,4 @@ unittest
 
     // NOTE: correctly issues a deprecation
     //int[] a2 = [1,2].asStatic;
-}
-
-package:
-// TODO: move to core.internal.adapted?
-// copied from std.traits.CommonType
-template CommonType(T...)
-{
-    static if (!T.length)
-    {
-        alias CommonType = void;
-    }
-    else static if (T.length == 1)
-    {
-        static if (is(typeof(T[0])))
-        {
-            alias CommonType = typeof(T[0]);
-        }
-        else
-        {
-            alias CommonType = T[0];
-        }
-    }
-    else static if (is(typeof(true ? T[0].init : T[1].init) U))
-    {
-        alias CommonType = CommonType!(U, T[2 .. $]);
-    }
-    else
-        alias CommonType = void;
-}
-
-// Copied from std.traits.Unqual
-template Unqual(T)
-{
-    version (none) // Error: recursive alias declaration @@@BUG1308@@@
-    {
-        static if (is(T U == const U))
-            alias Unqual = Unqual!U;
-        else static if (is(T U == immutable U))
-            alias Unqual = Unqual!U;
-        else static if (is(T U == inout U))
-            alias Unqual = Unqual!U;
-        else static if (is(T U == shared U))
-            alias Unqual = Unqual!U;
-        else
-            alias Unqual = T;
-    }
-    else // workaround
-    {
-        static if (is(T U == immutable U))
-            alias Unqual = U;
-        else static if (is(T U == shared inout const U))
-            alias Unqual = U;
-        else static if (is(T U == shared inout U))
-            alias Unqual = U;
-        else static if (is(T U == shared const U))
-            alias Unqual = U;
-        else static if (is(T U == shared U))
-            alias Unqual = U;
-        else static if (is(T U == inout const U))
-            alias Unqual = U;
-        else static if (is(T U == inout U))
-            alias Unqual = U;
-        else static if (is(T U == const U))
-            alias Unqual = U;
-        else
-            alias Unqual = T;
-    }
 }
