@@ -1,5 +1,12 @@
 module core.array;
 
+/++
+    Returns a static array constructed from `a`. The type of elements can be
+    specified implicitly (`int[2] a = staticArray(1,2);`) or explicitly
+    (`float[2] a = staticArray!float(1,2)`).
+
+    The result is an rvalue, therefore uses like staticArray(1, 2, 3).find(x) may be inefficient.
++/
 pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a)
 {
     return [a];
@@ -52,6 +59,7 @@ U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T) && is(T :
     return ret;
 }
 
+/// ditto
 auto asStatic(U = typeof(arr[0]), alias arr)() @nogc
 {
     enum n = arr.length;
@@ -61,6 +69,7 @@ auto asStatic(U = typeof(arr[0]), alias arr)() @nogc
     return ret;
 }
 
+/// ditto
 auto asStatic(alias arr)() @nogc
 {
     enum n = arr.length;
