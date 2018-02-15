@@ -1,10 +1,5 @@
 module core.array;
 
-/++
-    Returns a static array constructed from `a`. The type of elements can be
-    specified implicitly (`int[2] a = staticArray(1,2)`) or explicitly
-    (`float[2] a = staticArray!float(1,2)`).
-+/
 pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a)
 {
     return [a];
@@ -37,6 +32,14 @@ unittest
     //int[] a2 = staticArray(1,2);
 }
 
+/++
+    Returns a static array constructed from `arr`. The type of elements can be
+    specified implicitly (`int[2] a = [1,2].asStatic;`) or explicitly
+    (`float[2] a = [1,2].asStatic!float`).
+
+    // PRTMEP: staticArray with a range (including an array) seems to be sufficient. 
+    The result is an rvalue, therefore uses like [1, 2, 3].asStatic.find(x) may be inefficient.
++/
 pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
 {
     return arr;
@@ -44,6 +47,25 @@ pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
 
 U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T))
 {
+    U[n] ret = void;
+    static foreach (i; 0 .. n)
+        cast(Unqual!U)(ret[i]) = arr[i];
+    return ret;
+}
+
+auto asStatic(U = typeof(arr[0]), alias arr)() @nogc
+{
+    enum n = arr.length;
+    U[n] ret = void;
+    static foreach (i; 0 .. n)
+        cast(Unqual!U)(ret[i]) = arr[i];
+    return ret;
+}
+
+auto asStatic(alias arr)() @nogc
+{
+    enum n = arr.length;
+    alias U = typeof(arr[0]);
     U[n] ret = void;
     static foreach (i; 0 .. n)
         cast(Unqual!U)(ret[i]) = arr[i];
@@ -78,6 +100,21 @@ unittest
     }
     // NOTE: correctly issues a deprecation
     //int[] a2 = [1,2].asStatic;
+
+    {
+        import std.range;
+
+        auto a = asStatic!(double, 2.iota);
+        assert(is(typeof(a) == double[2]));
+        assert(a == [0, 1]);
+    }
+    {
+        import std.range;
+
+        auto a = asStatic!(2.iota);
+        assert(is(typeof(a) == int[2]));
+        assert(a == [0, 1]);
+    }
 }
 
 package:
