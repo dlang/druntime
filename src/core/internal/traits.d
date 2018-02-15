@@ -230,3 +230,30 @@ template staticMap(alias F, T...)
                 staticMap!(F, T[$/2 ..  $ ]));
     }
 }
+
+// std.traits.CommonType
+template CommonType(T...)
+{
+    static if (!T.length)
+    {
+        alias CommonType = void;
+    }
+    else static if (T.length == 1)
+    {
+        static if (is(typeof(T[0])))
+        {
+            alias CommonType = typeof(T[0]);
+        }
+        else
+        {
+            alias CommonType = T[0];
+        }
+    }
+    else static if (is(typeof(true ? T[0].init : T[1].init) U))
+    {
+        alias CommonType = CommonType!(U, T[2 .. $]);
+    }
+    else
+        alias CommonType = void;
+}
+
