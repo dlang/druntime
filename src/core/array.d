@@ -1,5 +1,6 @@
 module core.array;
 
+@safe nothrow pure:
 /++
     Returns a static array constructed from `a`. The type of elements can be
     specified implicitly (`int[2] a = staticArray(1,2);`) or explicitly
@@ -8,6 +9,7 @@ module core.array;
     The result is an rvalue, therefore uses like staticArray(1, 2, 3).find(x) may be inefficient.
 +/
 pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a)
+@nogc
 {
     return [a];
 }
@@ -30,7 +32,7 @@ unittest
     {
         auto a = staticArray!float(1, 2);
         assert(is(typeof(a) == float[2]));
-        assert(a == [1, 2]);
+        assert(a == [1,2]);
     }
 
     assert(is(typeof(staticArray([1])) == int[][1]));
@@ -46,12 +48,15 @@ unittest
 
     The result is an rvalue, therefore uses like [1, 2, 3].asStatic.find(x) may be inefficient.
 +/
-pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
+pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr)
+@nogc
 {
     return arr;
 }
 
-U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T) && is(T : U))
+U[n] asStatic(U, T, size_t n)(auto ref T[n] arr)
+@nogc
+if (!is(U == T) && is(T : U))
 {
     U[n] ret = void;
     static foreach (i; 0 .. n)
@@ -60,7 +65,8 @@ U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T) && is(T :
 }
 
 /// ditto
-auto asStatic(U = typeof(arr[0]), alias arr)() @nogc
+auto asStatic(U = typeof(arr[0]), alias arr)()
+@nogc
 {
     enum n = arr.length;
     U[n] ret = void;
@@ -70,7 +76,8 @@ auto asStatic(U = typeof(arr[0]), alias arr)() @nogc
 }
 
 /// ditto
-auto asStatic(alias arr)() @nogc
+auto asStatic(alias arr)()
+@nogc
 {
     enum n = arr.length;
     alias U = typeof(arr[0]);
