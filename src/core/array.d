@@ -37,7 +37,6 @@ unittest
     specified implicitly (`int[2] a = [1,2].asStatic;`) or explicitly
     (`float[2] a = [1,2].asStatic!float`).
 
-    // PRTMEP: staticArray with a range (including an array) seems to be sufficient. 
     The result is an rvalue, therefore uses like [1, 2, 3].asStatic.find(x) may be inefficient.
 +/
 pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
@@ -45,7 +44,7 @@ pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
     return arr;
 }
 
-U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T))
+U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T) && is(T : U))
 {
     U[n] ret = void;
     static foreach (i; 0 .. n)
@@ -98,23 +97,24 @@ unittest
         const(int)[3] a2 = [1, 2, 3].asStatic;
         auto a3 = [1, 2, 3].asStatic!(const(double));
     }
-    // NOTE: correctly issues a deprecation
-    //int[] a2 = [1,2].asStatic;
 
     {
         import std.range;
 
-        auto a = asStatic!(double, 2.iota);
+        enum a = asStatic!(double, 2.iota);
         assert(is(typeof(a) == double[2]));
         assert(a == [0, 1]);
     }
     {
         import std.range;
 
-        auto a = asStatic!(2.iota);
+        enum a = asStatic!(2.iota);
         assert(is(typeof(a) == int[2]));
         assert(a == [0, 1]);
     }
+
+    // NOTE: correctly issues a deprecation
+    //int[] a2 = [1,2].asStatic;
 }
 
 package:
