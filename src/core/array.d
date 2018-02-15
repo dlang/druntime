@@ -2,7 +2,10 @@ module core.array;
 
 import core.internal.traits : Unqual, CommonType;
 
-@safe nothrow pure:
+debug import std.stdio;
+
+// @nogc: https://issues.dlang.org/show_bug.cgi?id=18439
+nothrow @safe pure:
 /++
     Returns a static array constructed from `a`. The type of elements can be
     specified implicitly (`int[2] a = staticArray(1,2);`) or explicitly
@@ -15,6 +18,17 @@ pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a) @nogc
     return [a];
 }
 
+// D20180214T185602: Workaround https://issues.dlang.org/show_bug.cgi?id=16779 (make alias to staticArray once fixed)
+pragma(inline, true) U[T.length] staticArrayCast(U = CommonType!T, T...)(T a) @nogc
+{
+    enum n = T.length;
+    U[n] ret = void;
+    static foreach (i; 0 .. n)
+        cast(Unqual!U)(ret[i]) = cast(U)(a[i]);
+    return ret;
+}
+
+///
 unittest
 {
     {
@@ -34,6 +48,18 @@ unittest
         auto a = staticArray!float(1, 2);
         assert(is(typeof(a) == float[2]));
         assert(a == [1, 2]);
+
+    }
+    {
+        // see D20180214T185602
+        // auto a = staticArray!byte(1, 2);
+        auto a = staticArrayCast!byte(1, 2);
+        assert(is(typeof(a) == byte[2]));
+        assert(a == [1, 2]);
+    }
+    {
+        auto a = staticArrayCast!byte(1, 129);
+        assert(a == [1, -127]);
     }
 
     assert(is(typeof(staticArray([1])) == int[][1]));
@@ -54,7 +80,8 @@ pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
     return arr;
 }
 
-U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T) && is(T : U))
+//U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T) && is(T : U))
+U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T))
 {
     U[n] ret = void;
     static foreach (i; 0 .. n)
@@ -83,6 +110,7 @@ auto asStatic(alias arr)() @nogc
     return ret;
 }
 
+///
 unittest
 {
     {
@@ -103,6 +131,9 @@ unittest
 
     {
         auto a = [1, 2, 3].asStatic!int;
+        // https://issues.dlang.org/show_bug.cgi?id=16779
+        //auto a2 = [1, 2, 3].asStatic!byte;
+        //auto a3 = [1, 2, 3].asStatic!ubyte;
     }
     {
         auto a1 = [1, 2, 3].asStatic!(const(int));
