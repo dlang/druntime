@@ -20,7 +20,7 @@ pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a) @nogc
 }
 
 // D20180214T185602: Workaround https://issues.dlang.org/show_bug.cgi?id=16779 (make alias to staticArray once fixed)
-pragma(inline, true) U[T.length] staticArrayCast(U = CommonType!T, T...)(T a) @nogc
+pragma(inline, true) U[T.length] staticArrayCast(U, T...)(T a) @nogc
 {
     enum n = T.length;
     U[n] ret = void;
@@ -66,7 +66,7 @@ unittest
     assert(is(typeof(staticArray([1])) == int[][1]));
 
     // NOTE: correctly issues a deprecation
-    //int[] a2 = staticArray(1,2);
+    // int[] a2 = staticArray(1,2);
 }
 
 /++
