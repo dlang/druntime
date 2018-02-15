@@ -3879,6 +3879,13 @@ template _arrayOp(Args...)
  * Returns:
  *      index of match in caseLabels, -1 if not found
 */
+
+// Hack to see tests passing before merging => remove me asap
+int __switch(T, caseLabels...)(/*in*/ const scope T[] condition) pure nothrow @safe @nogc
+{
+    return __switch!(T, 0, caseLabels)(condition);
+}
+
 int __switch(T, int base, caseLabels...)(/*in*/ const scope T[] condition) pure nothrow @safe @nogc
 {
     // This closes recursion for other cases.
