@@ -11,7 +11,8 @@ nothrow @safe pure:
     specified implicitly (`int[2] a = staticArray(1,2);`) or explicitly
     (`float[2] a = staticArray!float(1,2)`).
 
-    The result is an rvalue, therefore uses like staticArray(1, 2, 3).find(x) may be inefficient.
+    D20180214T203015: The result is an rvalue, therefore uses like
+    `foo(staticArray(1, 2, 3)` may be inefficient because of the copies.
 +/
 pragma(inline, true) U[T.length] staticArray(U = CommonType!T, T...)(T a) @nogc
 {
@@ -73,7 +74,7 @@ unittest
     specified implicitly (`int[2] a = [1,2].asStatic;`) or explicitly
     (`float[2] a = [1,2].asStatic!float`).
 
-    The result is an rvalue, therefore uses like [1, 2, 3].asStatic.find(x) may be inefficient.
+    See also D20180214T203015.
 +/
 pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
 {
