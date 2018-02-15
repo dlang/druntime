@@ -24,17 +24,65 @@ unittest
     }
     assert(!__traits(compiles, staticArray(1, "")));
     assert(is(typeof(staticArray()) == void[0]));
-    // NOTE: `int[] temp=staticArray(1,2)` correctly issues a deprecation
 
     {
         auto a = staticArray!float(1, 2);
         assert(is(typeof(a) == float[2]));
         assert(a == [1, 2]);
     }
+
+    assert(is(typeof(staticArray([1])) == int[][1]));
+
+    // NOTE: correctly issues a deprecation
+    //int[] a2 = staticArray(1,2);
+}
+
+pragma(inline, true) T[n] asStatic(T, size_t n)(auto ref T[n] arr) @nogc
+{
+    return arr;
+}
+
+U[n] asStatic(U, T, size_t n)(auto ref T[n] arr) @nogc if (!is(U == T))
+{
+    U[n] ret = void;
+    static foreach (i; 0 .. n)
+        cast(Unqual!U)(ret[i]) = arr[i];
+    return ret;
+}
+
+unittest
+{
+    {
+        auto a = [1, 2, 3].asStatic;
+        assert(is(typeof(a) == int[3]));
+        assert(a == [1, 2, 3]);
+    }
+
+    @nogc void checkNogc()
+    {
+        auto a = [1, 2, 3].asStatic;
+        assert(a == [1, 2, 3]);
+    }
+
+    {
+        auto a = [1, 2, 3].asStatic!double;
+    }
+
+    {
+        auto a = [1, 2, 3].asStatic!int;
+    }
+    {
+        auto a1 = [1, 2, 3].asStatic!(const(int));
+        const(int)[3] a2 = [1, 2, 3].asStatic;
+        auto a3 = [1, 2, 3].asStatic!(const(double));
+    }
+    // NOTE: correctly issues a deprecation
+    //int[] a2 = [1,2].asStatic;
 }
 
 package:
-// copied from std.traits ; TODO: move to core.internal.adapted?
+// TODO: move to core.internal.adapted?
+// copied from std.traits.CommonType
 template CommonType(T...)
 {
     static if (!T.length)
@@ -58,4 +106,43 @@ template CommonType(T...)
     }
     else
         alias CommonType = void;
+}
+
+// Copied from std.traits.Unqual
+template Unqual(T)
+{
+    version (none) // Error: recursive alias declaration @@@BUG1308@@@
+    {
+        static if (is(T U == const U))
+            alias Unqual = Unqual!U;
+        else static if (is(T U == immutable U))
+            alias Unqual = Unqual!U;
+        else static if (is(T U == inout U))
+            alias Unqual = Unqual!U;
+        else static if (is(T U == shared U))
+            alias Unqual = Unqual!U;
+        else
+            alias Unqual = T;
+    }
+    else // workaround
+    {
+        static if (is(T U == immutable U))
+            alias Unqual = U;
+        else static if (is(T U == shared inout const U))
+            alias Unqual = U;
+        else static if (is(T U == shared inout U))
+            alias Unqual = U;
+        else static if (is(T U == shared const U))
+            alias Unqual = U;
+        else static if (is(T U == shared U))
+            alias Unqual = U;
+        else static if (is(T U == inout const U))
+            alias Unqual = U;
+        else static if (is(T U == inout U))
+            alias Unqual = U;
+        else static if (is(T U == const U))
+            alias Unqual = U;
+        else
+            alias Unqual = T;
+    }
 }
