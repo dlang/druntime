@@ -3923,7 +3923,14 @@ template _arrayOp(Args...)
  * Returns:
  *      index of match in caseLabels, -1 if not found
 */
+
+// Hack to see tests passing before merging => remove me asap
 int __switch(T, caseLabels...)(/*in*/ const scope T[] condition) pure nothrow @safe @nogc
+{
+    return __switch!(T, 0, caseLabels)(condition);
+}
+
+int __switch(T, int base, caseLabels...)(/*in*/ const scope T[] condition) pure nothrow @safe @nogc
 {
     // This closes recursion for other cases.
     static if (caseLabels.length == 0)
@@ -3932,7 +3939,7 @@ int __switch(T, caseLabels...)(/*in*/ const scope T[] condition) pure nothrow @s
     }
     else static if (caseLabels.length == 1)
     {
-        return __cmp(condition, caseLabels[0]) == 0 ? 0 : -1;
+        return __cmp(condition, caseLabels[0]) == 0 ? base : -1;
     }
     // To be adjusted after measurements
     // Compile-time inlined binary search.
@@ -3942,7 +3949,7 @@ int __switch(T, caseLabels...)(/*in*/ const scope T[] condition) pure nothrow @s
         if (condition.length == caseLabels[$ / 2].length)
         {
             r = __cmp(condition, caseLabels[$ / 2]);
-            if (r == 0) return cast(int) caseLabels.length / 2;
+            if (r == 0) return cast(int) base + caseLabels.length / 2;
         }
         else
         {
@@ -3953,13 +3960,12 @@ int __switch(T, caseLabels...)(/*in*/ const scope T[] condition) pure nothrow @s
         if (r < 0)
         {
             // Search the left side
-            return __switch!(T, caseLabels[0 .. $ / 2])(condition);
+            return __switch!(T, base, caseLabels[0 .. $ / 2])(condition);
         }
         else
         {
             // Search the right side
-            r = __switch!(T, caseLabels[$ / 2 + 1 .. $])(condition);
-            return r != -1 ? cast(int) (caseLabels.length / 2 + 1 + r) : -1;
+            return __switch!(T, base + caseLabels.length / 2 + 1, caseLabels[$ / 2 + 1 .. $])(condition);
         }
     }
     else
