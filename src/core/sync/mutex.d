@@ -290,7 +290,7 @@ private:
 package:
     version (Posix)
     {
-        pthread_mutex_t* handleAddr()
+        pthread_mutex_t* handleAddr() nothrow
         {
             return &m_hndl;
         }

@@ -76,7 +76,7 @@ extern (C) void _d_monitordelete_nogc(Object h) @nogc
     }
 }
 
-extern (C) void _d_monitorenter(Object h)
+extern (C) void _d_monitorenter(Object h) nothrow
 in
 {
     assert(h !is null, "Synchronized object must not be null.");
@@ -91,7 +91,7 @@ do
         i.lock();
 }
 
-extern (C) void _d_monitorexit(Object h)
+extern (C) void _d_monitorexit(Object h) nothrow
 {
     auto m = cast(Monitor*) getMonitor(h);
     auto i = m.impl;
