@@ -2621,7 +2621,7 @@ unittest
 }
 
 private void _destructRecurse(S)(ref S s)
-    if (is(S == struct))
+    if (is(S == struct) || is(S == union))
 {
     static if (__traits(hasMember, S, "__xdtor") &&
                // Bugzilla 14746: Check that it's the exact member of S.
@@ -3027,7 +3027,7 @@ unittest
 }
 
 /// ditto
-void destroy(T)(ref T obj) if (is(T == struct))
+void destroy(T)(ref T obj) if (is(T == struct) || is(T == union))
 {
     _destructRecurse(obj);
     () @trusted {
@@ -3080,7 +3080,7 @@ nothrow @safe @nogc unittest
 }
 
 /// ditto
-void destroy(T : U[n], U, size_t n)(ref T obj) if (!is(T == struct))
+void destroy(T : U[n], U, size_t n)(ref T obj) if (!is(T == struct) && !is(T == union))
 {
     foreach_reverse (ref e; obj[])
         destroy(e);
@@ -3103,7 +3103,21 @@ unittest
     }
 
     vec2f v;
-    destroy!vec2f(v);
+    destroy(v);
+}
+
+unittest
+{
+    static union uni {
+        bool b;
+        ulong ul;
+    }
+
+    uni u;
+    u.ul = 3;
+    destroy(u);
+    assert(u.b == false);
+    assert(u.ul == 0);
 }
 
 unittest
@@ -3145,20 +3159,16 @@ unittest
 
 /// ditto
 void destroy(T)(ref T obj)
-    if (!is(T == struct) && !is(T == interface) && !is(T == class) && !_isStaticArray!T)
+    if (!isAggregateType!T && !isStaticArray!T && !isPointer!T)
 {
     obj = T.init;
 }
 
-template _isStaticArray(T : U[N], U, size_t N)
-{
-    enum bool _isStaticArray = true;
-}
+private enum bool isPointer(T) = is(T == U*, U) && !isAggregateType!T;
 
-template _isStaticArray(T)
-{
-    enum bool _isStaticArray = false;
-}
+private enum bool isAggregateType(T) = is(T == struct) || is(T == union) || is(T == class) || is(T == interface);
+
+private enum isStaticArray(T) = is(T : U[N], U, size_t N);
 
 unittest
 {
@@ -3172,6 +3182,43 @@ unittest
        destroy(a);
        assert(isnan(a));
    }
+}
+
+/// ditto
+void destroy(T)(ref T* ptr)
+{
+    destroy(*ptr);     // destroy entity referenced by `ptr`
+    ptr = (T*).init;   // destroy `ptr` itself
+}
+
+/// Pointer demonstration
+nothrow @safe unittest
+{
+    static struct S
+    {
+        static int dtorCount;
+        ~this() { dtorCount++; }
+    }
+
+    S* s = new S();
+    destroy(s);
+    assert(s is null);
+    assert(S.dtorCount == 1);
+}
+
+// Ensures pointers are not recursively followed
+nothrow @system unittest
+{
+    static struct S
+    {
+        int* x;
+    }
+
+    S* s = new S();
+    int x = 5;
+    s.x = &x;
+    destroy(s);
+    assert(x == 5);
 }
 
 version (unittest)
