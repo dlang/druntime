@@ -227,7 +227,12 @@ pure @safe:
             assert( !contains( dst[0 .. len], val ) );
             debug(info) printf( "appending (%.*s)\n", cast(int) val.length, val.ptr );
 
-            if( &dst[len] == &val[0] &&
+            @trusted getPtr()
+            {
+                return dst.ptr + len;
+            }
+
+            if( getPtr() == &val[0] &&
                 dst.length - len >= val.length )
             {
                 // data is already in place
@@ -2536,6 +2541,8 @@ version(unittest)
          `nothrow @trusted ulong std.algorithm.iteration.FilterResult!(std.typecons.Tuple!(int, "a", int, "b", int, "c").`
         ~`Tuple.rename!([0:"c", 2:"a"]).rename().__lambda1, int[]).FilterResult.__xtoHash(ref const(std.algorithm.iteration.`
         ~`FilterResult!(std.typecons.Tuple!(int, "a", int, "b", int, "c").Tuple.rename!([0:"c", 2:"a"]).rename().__lambda1, int[]).FilterResult))`],
+        ["_D4vibe4data4bson14BsonSerializer__T18endWriteArrayEntryTSQCeQCc13serialization__T9SubTraitsTSQDoQDmQBk__T6TraitsTAfSQElQEjQCh13DefaultPolicyVS6dproto10attributes6PackedS0VSQBeQBa10ProtoFieldS2a5_666c6f6174i6ZQDzTfZQFdZQHbMFNaNbNiNfmZv",
+        `pure nothrow @nogc @safe void vibe.data.bson.BsonSerializer.endWriteArrayEntry!(vibe.data.serialization.SubTraits!(vibe.data.serialization.Traits!(float[], vibe.data.serialization.DefaultPolicy, dproto.attributes.Packed(), dproto.attributes.ProtoField("float", 6)).Traits, float).SubTraits).endWriteArrayEntry(ulong)`],
     ];
 
 
@@ -2562,6 +2569,13 @@ version(unittest)
         enum r = demangle( table[i][0] );
         static assert( r == table[i][1],
                 "demangled \"" ~ table[i][0] ~ "\" as \"" ~ r ~ "\" but expected \"" ~ table[i][1] ~ "\"");
+    }
+
+    {
+        auto dst = new char[50];
+        auto example = table[$-1];
+        auto ret = demangle( example[0], dst);
+        assert( ret == example[1] );
     }
 }
 
