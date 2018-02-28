@@ -2971,6 +2971,30 @@ unittest
     assert(i == 0);           // `i` is back to its initial state `0`
 }
 
+/********
+To destroy a value type through a pointer, the pointer must be dereferenced.
+Otherwise `destroy` will only destroy the pointer itself, not the entity being
+referenced.
+*/
+nothrow @safe unittest
+{
+    static struct S
+    {
+        static int dtorCount;
+        ~this() { dtorCount++; }
+    }
+
+    S* s1 = new S();
+    destroy(s1);         // destroys only the pointer `s1`, not what it references,
+    assert(s1 is null);  // and sets the pointer to `null`
+    assert(S.dtorCount == 0);
+
+    S* s2 = new S();
+    destroy(*s2);        // destroys the struct referenced by `s2`
+    assert(s2 !is null); // the pointer itself is not affected
+    assert(S.dtorCount == 1);
+}
+
 unittest
 {
    interface I { }
