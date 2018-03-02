@@ -2623,9 +2623,7 @@ unittest
 private void _destructRecurse(S)(ref S s)
     if (is(S == struct))
 {
-    static if (__traits(hasMember, S, "__xdtor") &&
-               // Bugzilla 14746: Check that it's the exact member of S.
-               __traits(isSame, S, __traits(parent, s.__xdtor)))
+    static if (__traits(hasMember, S, "__xdtor"))
         s.__xdtor();
 }
 
@@ -2644,9 +2642,7 @@ private void _destructRecurse(E, size_t n)(ref E[n] arr)
 void _postblitRecurse(S)(ref S s)
     if (is(S == struct))
 {
-    static if (__traits(hasMember, S, "__xpostblit") &&
-               // Bugzilla 14746: Check that it's the exact member of S.
-               __traits(isSame, S, __traits(parent, s.__xpostblit)))
+    static if (__traits(hasMember, S, "__xpostblit"))
         s.__xpostblit();
 }
 
