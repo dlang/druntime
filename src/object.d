@@ -2620,6 +2620,12 @@ unittest
     static assert(is(typeof(caa.byValue().front) == const int));
 }
 
+void _destructRecurse(T)(ref T obj)
+    if (!is(T == struct) && !is(T == interface) && !is(T == class) && !__traits(isStaticArray, T))
+{
+    obj = T.init;
+}
+
 private void _destructRecurse(S)(ref S s)
     if (is(S == struct))
 {
@@ -2923,10 +2929,16 @@ unittest
 }
 
 /********
-Destroys the given object and sets it back to its initial state. It's used to
-_destroy an object, calling its destructor or finalizer so it no longer
-references any other objects. It does $(I not) initiate a GC cycle or free
-any GC memory.
+Destroys the given instance by calling its destructor and, if necessary, reinitializing
+it to leave it in a destructible state such that its destructor can be called with
+well-defined behavior.  It does $(I not) initiate a GC cycle or free any GC memory.
+
+Value types with a defined destructor and reference types are reinitialzed.
+Value types without a defined destructor and intrinsic types are not reinitialized.
+
+To destroy an instance through a pointer, the pointer must be dereferenced.
+Otherwise, `destroy` will only destroy the pointer itself (a no-op), not the entity being
+referenced.
 */
 void destroy(T)(T obj) if (is(T == class))
 {
@@ -2953,22 +2965,10 @@ unittest
     C c = new C();
     assert(c.dtorCount == 0); // destructor not yet called
     assert(c.s == "S");       // initial state `c.s` is `"S"`
-    c.s = "T";
-    assert(c.s == "T");       // `c.s` is `"T"`
+    c.s = "T";                // `c.s` is `"T"`
     destroy(c);
     assert(c.dtorCount == 1); // `c`'s destructor was called
     assert(c.s == "S");       // `c.s` is back to its inital state, `"S"`
-}
-
-/// Value type demonstration
-unittest
-{
-    int i;
-    assert(i == 0);           // `i`'s initial state is `0`
-    i = 1;
-    assert(i == 1);           // `i` changed to `1`
-    destroy(i);
-    assert(i == 0);           // `i` is back to its initial state `0`
 }
 
 unittest
@@ -3027,7 +3027,7 @@ unittest
 }
 
 /// ditto
-void destroy(T)(ref T obj) if (is(T == struct))
+void destroy(T)(ref T obj) if ((is(T == struct) && __traits(hasMember, T, "__xdtor"))) // struct with defined destructor
 {
     _destructRecurse(obj);
     () @trusted {
@@ -3040,6 +3040,38 @@ void destroy(T)(ref T obj) if (is(T == struct))
     } ();
 }
 
+/// Value type demonstration
+unittest
+{
+    {
+        static struct S1
+        {
+            string s = "S";
+        }
+
+        S1* s = new S1();
+        assert(s.s == "S");    // `s`'s initial state is ``"S"`
+        s.s = "T";             // `s.s` changed to `"T"`
+        destroy(*s);
+        assert(s.s == "T");    // `s.s` is still `"T"` because types without a defined destructor are
+                               // not reinitialized
+    }
+    {
+        static struct S2
+        {
+            string s = "S";
+            ~this() { }
+        }
+
+        S2* s = new S2();
+        assert(s.s == "S");    // `s`'s initial state is ``"S"`
+        s.s = "T";             // `s.s` changed to `"T"`
+        destroy(*s);
+        assert(s.s == "S");    // `s.s` is back to `"S"` because types with a defined destructor are
+                               // reinitialized
+    }
+}
+
 nothrow @safe @nogc unittest
 {
    {
@@ -3047,7 +3079,7 @@ nothrow @safe @nogc unittest
        A a;
        a.s = "asd";
        destroy(a);
-       assert(a.s == "A");
+       assert(a.s == "asd");   // struct does not have defined destructor, so it is not reinitialized
    }
    {
        static int destroyed = 0;
@@ -3083,7 +3115,7 @@ nothrow @safe @nogc unittest
 void destroy(T : U[n], U, size_t n)(ref T obj) if (!is(T == struct))
 {
     foreach_reverse (ref e; obj[])
-        destroy(e);
+        _destructRecurse(e);
 }
 
 unittest
@@ -3145,40 +3177,38 @@ unittest
 
 /// ditto
 void destroy(T)(ref T obj)
-    if (!is(T == struct) && !is(T == interface) && !is(T == class) && !_isStaticArray!T)
+    if (!(is(T == struct) && __traits(hasMember, T, "__xdtor"))   // If not a struct with a defined destructor
+        && !is(T == interface) && !is(T == class) && !__traits(isStaticArray, T))
 {
-    obj = T.init;
+    // no-op.  Intrinsic types and value types without a defined destructor do not reinitialize
 }
 
-template _isStaticArray(T : U[N], U, size_t N)
+/// Intrinsic type demonstration
+unittest
 {
-    enum bool _isStaticArray = true;
-}
-
-template _isStaticArray(T)
-{
-    enum bool _isStaticArray = false;
+    int i;
+    assert(i == 0);           // `i`'s initial state is `0`
+    i = 1;                    // `i` changed to `1`
+    destroy(i);
+    assert(i == 1);           // `i` is still `1` because types without a defined destructor are
+                              // not reinitialized
 }
 
 unittest
 {
-   {
-       int a = 42;
-       destroy(a);
-       assert(a == 0);
-   }
-   {
-       float a = 42;
-       destroy(a);
-       assert(isnan(a));
-   }
-}
-
-version (unittest)
-{
-    private bool isnan(float x)
+    template AliasSeq(TList...)
     {
-        return x != x;
+        alias AliasSeq = TList;
+    }
+
+    static foreach (T; AliasSeq!(bool, ubyte, byte, ushort, short, uint, int, ulong, long, float, double, real))
+    {
+        {
+            T t;
+            t = cast(T)1;
+            destroy(t);
+            assert(t == 1);  // intrinsic types don't have defined destructors, so they are not reinitialized
+        }
     }
 }
 
