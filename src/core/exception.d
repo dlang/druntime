@@ -680,13 +680,13 @@ extern (C)
     }
 }
 
-// TLS storage shared for all errors, chaining might create circular reference
-private void[128] _store;
-
 // only Errors for now as those are rarely chained
 private T staticError(T, Args...)(auto ref Args args)
     if (is(T : Error))
 {
+    // TLS storage shared for all errors, chaining might create circular reference
+    static void[128] _store;
+
     // pure hack, what we actually need is @noreturn and allow to call that in pure functions
     static T get()
     {
