@@ -11,6 +11,7 @@ SRCS=\
 	src\core\math.d \
 	src\core\memory.d \
 	src\core\runtime.d \
+	src\core\sentinel.d \
 	src\core\simd.d \
 	src\core\thread.d \
 	src\core\time.d \

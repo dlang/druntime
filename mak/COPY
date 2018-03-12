@@ -11,6 +11,7 @@ COPY=\
 	$(IMPDIR)\core\math.d \
 	$(IMPDIR)\core\memory.d \
 	$(IMPDIR)\core\runtime.d \
+	$(IMPDIR)\core\sentinel.d \
 	$(IMPDIR)\core\simd.d \
 	$(IMPDIR)\core\thread.d \
 	$(IMPDIR)\core\time.d \
