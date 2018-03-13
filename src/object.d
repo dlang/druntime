@@ -137,6 +137,34 @@ class Object
     }
 }
 
+/**
+ * @safe version of Object
+ */
+class SafeObject
+{
+  @safe pure nothrow @nogc:
+    override string toString() const return scope
+    {
+        return typeid(this).name;
+    }
+
+    override size_t toHash() const scope nothrow @trusted
+    {
+        // BUG: this prevents a compacting GC from working, needs to be fixed
+        return cast(size_t)cast(void*)this;
+    }
+
+    override int opCmp(scope const Object o) const scope
+    {
+        assert(0);
+    }
+
+    override bool opEquals(scope const Object o) const scope
+    {
+        return this is o;
+    }
+}
+
 auto opEquals(Object lhs, Object rhs)
 {
     // If aliased to the same object or both null => equal
