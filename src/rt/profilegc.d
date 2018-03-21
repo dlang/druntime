@@ -48,6 +48,9 @@ extern (C) void profilegc_setlogfilename(string name)
 public void accumulate(string file, uint line, string funcname, string type,
     size_t sz) @nogc
 {
+    if (sz == 0)
+        return;
+
     char[3 * line.sizeof + 1] buf;
     auto buflen = snprintf(buf.ptr, buf.length, "%u", line);
 
