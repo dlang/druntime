@@ -36,7 +36,7 @@ do
     ownee.__monitor = owner.__monitor;
 }
 
-extern (C) void _d_monitordelete(Object h, bool det)
+extern (C) void _d_monitordelete(Object h) @nogc
 {
     auto m = getMonitor(h);
     if (m is null)
@@ -51,26 +51,6 @@ extern (C) void _d_monitordelete(Object h, bool det)
     {
         // refcount == 0 means unshared => no synchronization required
         disposeEvent(cast(Monitor*) m, h);
-        deleteMonitor(cast(Monitor*) m);
-        setMonitor(h, null);
-    }
-}
-
-// does not call dispose events, for internal use only
-extern (C) void _d_monitordelete_nogc(Object h) @nogc
-{
-    auto m = getMonitor(h);
-    if (m is null)
-        return;
-
-    if (m.impl)
-    {
-        // let the GC collect the monitor
-        setMonitor(h, null);
-    }
-    else if (!atomicOp!("-=")(m.refs, cast(size_t) 1))
-    {
-        // refcount == 0 means unshared => no synchronization required
         deleteMonitor(cast(Monitor*) m);
         setMonitor(h, null);
     }
@@ -172,7 +152,7 @@ package:
 
 // This is what the monitor reference in Object points to
 alias IMonitor = Object.Monitor;
-alias DEvent = void delegate(Object);
+alias DEvent = void delegate(Object) @nogc;
 
 version (Windows)
 {
@@ -290,7 +270,7 @@ void deleteMonitor(Monitor* m) @nogc
     free(m);
 }
 
-void disposeEvent(Monitor* m, Object h)
+void disposeEvent(Monitor* m, Object h) @nogc
 {
     foreach (v; m.devt)
     {

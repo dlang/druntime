@@ -21,10 +21,10 @@ alias BlkAttr = GC.BlkAttr;
 
 private
 {
-    alias bool function(Object) CollectHandler;
+    alias bool function(Object) @nogc CollectHandler;
     __gshared CollectHandler collectHandler = null;
 
-    extern (C) void _d_monitordelete(Object h, bool det);
+    extern (C) void _d_monitordelete(Object h) @nogc;
 
     enum : size_t
     {
@@ -133,7 +133,7 @@ extern (C) void _d_delinterface(void** p)
 
 
 // used for deletion
-private extern (D) alias void function (Object) fp_t;
+private extern (D) alias void function (Object) @nogc fp_t;
 
 
 /**
@@ -1377,7 +1377,7 @@ void finalize_struct(void* p, size_t size) nothrow
 /**
  *
  */
-extern (C) void rt_finalize2(void* p, bool det = true, bool resetMemory = true) nothrow
+extern (C) void rt_finalize2(void* p, bool det = true, bool resetMemory = true) nothrow @nogc
 {
     debug(PRINTF) printf("rt_finalize2(p = %p)\n", p);
 
@@ -1400,7 +1400,7 @@ extern (C) void rt_finalize2(void* p, bool det = true, bool resetMemory = true) 
         }
 
         if (ppv[1]) // if monitor is not null
-            _d_monitordelete(cast(Object) p, det);
+            _d_monitordelete(cast(Object) p);
 
         if (resetMemory)
         {
@@ -1419,7 +1419,7 @@ extern (C) void rt_finalize2(void* p, bool det = true, bool resetMemory = true) 
     }
 }
 
-extern (C) void rt_finalize(void* p, bool det = true)
+extern (C) void rt_finalize(void* p, bool det = true) @nogc
 {
     rt_finalize2(p, det, true);
 }

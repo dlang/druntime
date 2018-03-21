@@ -2078,7 +2078,7 @@ extern (C) void thread_init() @nogc
 
 private __gshared align(Thread.alignof) void[__traits(classInstanceSize, Thread)] _mainThreadStore;
 
-extern (C) void _d_monitordelete_nogc(Object h) @nogc;
+extern (C) void _d_monitordelete(Object h) @nogc;
 
 /**
  * Terminates the thread module. No other thread routine may be called
@@ -2088,9 +2088,7 @@ extern (C) void thread_term() @nogc
 {
     assert(_mainThreadStore.ptr is cast(void*) Thread.sm_main);
 
-    // destruct manually as object.destroy is not @nogc
-    Thread.sm_main.__dtor();
-    _d_monitordelete_nogc(Thread.sm_main);
+    Thread.sm_main.destroy();
     if (typeid(Thread).initializer.ptr)
         _mainThreadStore[] = typeid(Thread).initializer[];
     Thread.sm_main = null;
