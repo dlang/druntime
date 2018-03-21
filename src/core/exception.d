@@ -503,7 +503,7 @@ extern (C) void onRangeError( string file = __FILE__, size_t line = __LINE__ ) @
  * Throws:
  *  $(LREF FinalizeError).
  */
-extern (C) void onFinalizeError( TypeInfo info, Throwable e, string file = __FILE__, size_t line = __LINE__ ) @trusted nothrow
+extern (C) void onFinalizeError( TypeInfo info, Throwable e, string file = __FILE__, size_t line = __LINE__ ) @trusted nothrow @nogc
 {
     // This error is thrown during a garbage collection, so no allocation must occur while
     //  generating this object. So we use a preallocated instance
@@ -684,7 +684,7 @@ extern (C)
 private void[128] _store;
 
 // only Errors for now as those are rarely chained
-private T staticError(T, Args...)(auto ref Args args)
+private T staticError(T, Args...)(auto ref Args args) @nogc
     if (is(T : Error))
 {
     // pure hack, what we actually need is @noreturn and allow to call that in pure functions

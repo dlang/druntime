@@ -13,7 +13,7 @@ module object;
 private
 {
     extern (C) Object _d_newclass(const TypeInfo_Class ci);
-    extern (C) void rt_finalize(void *data, bool det=true);
+    extern (C) void rt_finalize(void *data, bool det=true) @nogc;
 }
 
 public @trusted @nogc nothrow pure extern (C) void _d_delThrowable(scope Throwable);
