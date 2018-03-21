@@ -20,15 +20,16 @@ import core.stdc.stdlib;
 import core.stdc.string;
 
 import core.exception : onOutOfMemoryError;
+import rt.util.container.hashtab;
 
 struct Entry { size_t count, size; }
 
 char[] buffer;
-Entry[string] newCounts;
+HashTab!(const(char)[], Entry) newCounts;
 
 __gshared
 {
-    Entry[string] globalNewCounts;
+    HashTab!(const(char)[], Entry) globalNewCounts;
     string logfilename = "profilegc.log";
 }
 
@@ -41,12 +42,11 @@ __gshared
 
 extern (C) void profilegc_setlogfilename(string name)
 {
-    logfilename = name;
+    logfilename = name ~ "\0";
 }
 
-
-
-public void accumulate(string file, uint line, string funcname, string type, size_t sz)
+public void accumulate(string file, uint line, string funcname, string type,
+    size_t sz) @nogc
 {
     char[3 * line.sizeof + 1] buf;
     auto buflen = snprintf(buf.ptr, buf.length, "%u", line);
@@ -55,10 +55,11 @@ public void accumulate(string file, uint line, string funcname, string type, siz
     if (length > buffer.length)
     {
         // Enlarge buffer[] so it is big enough
-        auto p = cast(char*)realloc(buffer.ptr, length);
+        assert(buffer.length > 0 || buffer.ptr is null);
+        auto p = cast(char*)realloc(buffer.ptr, length + 1);
         if (!p)
             onOutOfMemoryError();
-        buffer = p[0 .. length];
+        buffer = p[0 .. length + 1];
     }
 
     // "type funcname file:line"
@@ -72,6 +73,7 @@ public void accumulate(string file, uint line, string funcname, string type, siz
     buffer[type.length + 1 + funcname.length + 1 + file.length] = ':';
     buffer[type.length + 1 + funcname.length + 1 + file.length + 1 ..
            type.length + 1 + funcname.length + 1 + file.length + 1 + buflen] = buf[0 .. buflen];
+    buffer[length] = 0;
 
     if (auto pcount = cast(string)buffer[0 .. length] in newCounts)
     { // existing entry
@@ -79,7 +81,11 @@ public void accumulate(string file, uint line, string funcname, string type, siz
         pcount.size += sz;
     }
     else
-        newCounts[buffer[0..length].idup] = Entry(1, sz); // new entry
+    {
+        auto key = (cast(char*) malloc(char.sizeof * length))[0 .. length];
+        key[] = buffer[0..length];
+        newCounts[key] = Entry(1, sz); // new entry
+    }
 }
 
 // Merge thread local newCounts into globalNewCounts
@@ -98,7 +104,7 @@ static ~this()
                 globalNewCounts[name].size += entry.size;
             }
         }
-        newCounts = null;
+        newCounts.reset();
     }
     free(buffer.ptr);
     buffer = null;
@@ -109,7 +115,7 @@ shared static ~this()
 {
     static struct Result
     {
-        string name;
+        const(char)[] name;
         Entry entry;
 
         // qsort() comparator to sort by count field
@@ -130,7 +136,10 @@ shared static ~this()
         }
     }
 
-    Result[] counts = new Result[globalNewCounts.length];
+    size_t size = globalNewCounts.length;
+    Result[] counts = (cast(Result*) malloc(size * Result.sizeof))[0 .. size];
+    scope(exit)
+        free(counts.ptr);
 
     size_t i;
     foreach (name, entry; globalNewCounts)
@@ -143,8 +152,7 @@ shared static ~this()
     if (counts.length)
     {
         qsort(counts.ptr, counts.length, Result.sizeof, &Result.qsort_cmp);
-
-        FILE* fp = logfilename.length == 0 ? stdout : fopen((logfilename ~ '\0').ptr, "w");
+        FILE* fp = logfilename.length == 0 ? stdout : fopen((logfilename).ptr, "w");
         if (fp)
         {
             fprintf(fp, "bytes allocated, allocations, type, function, file:line\n");
