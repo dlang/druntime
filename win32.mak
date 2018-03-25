@@ -14,7 +14,7 @@ IMPDIR=import
 
 DFLAGS=-m$(MODEL) -conf= -O -release -dip1000 -inline -w -Isrc -Iimport
 UDFLAGS=-m$(MODEL) -conf= -O -release -dip1000 -w -Isrc -Iimport
-DDOCFLAGS=-conf= -c -w -o- -Isrc -Iimport -version=CoreDdoc
+DDOCFLAGS=-conf= -c -w -o- -Isrc -Iimport -version=CoreDdoc -transition=markdown
 
 CFLAGS=
 
@@ -172,7 +172,7 @@ $(DOCDIR)\core_sync_semaphore.html : src\core\sync\semaphore.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 changelog.html: changelog.dd
-	$(DMD) -Dfchangelog.html changelog.dd
+	$(DMD) -Dfchangelog.html -transition=markdown changelog.dd
 
 ######################## Header .di file generation ##############################
 
