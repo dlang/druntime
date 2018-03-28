@@ -139,6 +139,7 @@ private
 
     extern (C) BlkInfo_ gc_query( void* p ) pure nothrow;
     extern (C) GC.Stats gc_stats ( ) nothrow @nogc;
+    extern (C) GC.ProfileStats gc_profileStats ( ) nothrow @nogc;
 
     extern (C) void gc_addRoot( in void* p ) nothrow @nogc;
     extern (C) void gc_addRange( in void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc;
@@ -168,6 +169,18 @@ struct GC
         size_t usedSize;
         /// number of free bytes on the GC heap (might only get updated after a collection)
         size_t freeSize;
+    }
+
+    /**
+      * Aggregation of current profile information, requires profiling to be on
+     */
+    static struct ProfileStats {
+        /// total number of GC cycles
+        size_t numCollections;
+        /// total time spent doing GC in hnsecs
+        long totalCollectionTime;
+        // largest time spent doing one GC cycle in hnsecs
+        long maxCollectionTime;
     }
 
     /**
@@ -678,6 +691,16 @@ struct GC
     static Stats stats() nothrow
     {
         return gc_stats();
+    }
+
+    /**
+     * Returns runtime profile stats for currently active GC implementation
+     * See `core.memory.GC.ProfileStats` for list of available metrics.
+     * Requires GC profiling to be on
+     */
+    static ProfileStats profileStats() nothrow
+    {
+        return gc_profileStats();
     }
 
     /**

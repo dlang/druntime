@@ -1201,6 +1201,17 @@ class ConservativeGC : GC
     }
 
 
+    core.memory.GC.ProfileStats profileStats() nothrow
+    {
+        typeof(return) ret;
+
+        ret.numCollections = numCollections;
+        ret.totalCollectionTime = (prepTime + markTime + sweepTime + recoverTime).total!"hnsecs";
+        ret.maxCollectionTime = maxPauseTime.total!"hnsecs";
+
+        return ret;
+    }
+
     //
     //
     //
