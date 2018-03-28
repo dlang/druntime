@@ -1,0 +1,5 @@
+Added `GC.profileStats()` to `core.memory`
+
+Allows access to current GC profiling information.
+Requires GC profiling to be active. See $(LINK2 $(ROOT_DIR)spec/garbage.html#gc_config)
+See $(REF GC.ProfileStats, core,memory) for a list of profile stats.
