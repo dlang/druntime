@@ -63,7 +63,7 @@ LINKDL=$(if $(findstring $(OS),linux),-L-ldl,)
 
 MAKEFILE = $(firstword $(MAKEFILE_LIST))
 
-DDOCFLAGS=-conf= -c -w -o- -Isrc -Iimport -version=CoreDdoc
+DDOCFLAGS=-conf= -c -w -o- -Isrc -Iimport -version=CoreDdoc -transition=markdown
 
 # Set CFLAGS
 CFLAGS=$(MODEL_FLAG) -fPIC -DHAVE_UNISTD_H
