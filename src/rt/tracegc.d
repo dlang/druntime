@@ -44,8 +44,7 @@ extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]
 extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p);
 extern (C) void* _d_allocmemory(size_t sz);
 
-// Used as wrapper function body to get actual stats. Calling `original_func()`
-// will call wrapped function with all required arguments.
+// Used as wrapper function body to get actual stats.
 //
 // Placed here as a separate string constant to simplify maintenance as it is
 // much more likely to be modified than rest of generation code.
@@ -87,8 +86,6 @@ enum accumulator = q{
         if (size > 0)
             accumulate(file, line, funcname, name, size);
     }
-
-    return original_func();
 };
 
 mixin(generateTraceWrappers());
@@ -139,12 +136,12 @@ private string generateWrapper(alias Declaration)()
     auto new_declaration = type_string[0 .. param_idx] ~ " " ~ name
         ~ "Trace(string file, int line, string funcname, "
         ~ type_string[param_idx+1 .. $];
-    auto call_original = "    scope original_func = { return "
-        ~ __traits(identifier, Declaration) ~ "(" ~ Arguments!Declaration() ~ "); };";
+    auto call_original = "return "
+        ~ __traits(identifier, Declaration) ~ "(" ~ Arguments!Declaration() ~ ");";
 
     return new_declaration ~ "\n{\n" ~
-           call_original ~ "\n" ~
            accumulator ~ "\n" ~
+           call_original ~ "\n" ~
            "}\n";
 }
 
