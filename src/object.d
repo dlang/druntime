@@ -2311,6 +2311,30 @@ inout(V) get(K, V)(inout(V[K])* aa, K key, lazy inout(V) defaultValue)
 
 unittest
 {
+    static class T
+    {
+        static size_t count;
+        this() { ++count; }
+    }
+
+    T[string] aa;
+
+    auto a = new T;
+    aa["foo"] = a;
+    assert(T.count == 1);
+    auto b = aa.get("foo", new T);
+    assert(T.count == 1);
+    assert(b is a);
+    auto c = aa.get("bar", new T);
+    assert(T.count == 2);
+    assert(c !is a);
+
+    //Obviously get doesn't add.
+    assert("bar" !in aa);
+}
+
+unittest
+{
     static assert(!__traits(compiles,
         () @safe {
             struct BadValue
