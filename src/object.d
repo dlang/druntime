@@ -2010,6 +2010,7 @@ extern (C)
 
     // size_t _aaLen(in void* p) pure nothrow @nogc;
     private void* _aaGetY(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey) pure nothrow;
+    private void* _aaGetX(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey, out bool found) pure nothrow;
     // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
     inout(void)[] _aaValues(inout void* p, in size_t keysize, in size_t valuesize, const TypeInfo tiValArray) pure nothrow;
     inout(void)[] _aaKeys(inout void* p, in size_t keysize, const TypeInfo tiKeyArray) pure nothrow;
@@ -2408,6 +2409,86 @@ unittest
 
     //Obviously get doesn't add.
     assert("bar" !in aa);
+}
+
+ref V require(K, V)(ref V[K] aa, K key, lazy V value = V.init) pure
+{
+    bool found;
+    auto p = cast(V*) _aaGetX(cast(void**)&aa, typeid(V[K]), V.sizeof, &key, found);
+    return found ? *p : (*p = value);
+}
+
+ref V require(K, V, F)(ref V[K] aa, K key, F value)
+if(!is(F == typeof(null)) && (is(F : V delegate()) || is(F: V function())))
+{
+    return require(aa, key, value());
+}
+
+
+unittest
+{
+    static class T
+    {
+        static size_t count;
+        this() { ++count; }
+    }
+
+    T[string] aa;
+
+    auto a = new T;
+    aa["foo"] = a;
+    assert(T.count == 1);
+    auto b = aa.require("foo", new T);
+    assert(T.count == 1);
+    assert(b is a);
+    auto c = aa.require("bar", null);
+    assert(T.count == 1);
+    assert(c is null);
+    assert("bar" in aa);
+    auto d = aa.require("bar", new T);
+    assert(d is null);
+    auto e = aa.require("baz", new T);
+    assert(T.count == 2);
+    assert(e !is a);
+
+    assert("baz" in aa);
+
+    bool created = false;
+    auto f = aa.require("qux", { created = true; return new T; });
+    assert(created == true);
+
+    T g;
+    auto h = aa.require("qux", { g = new T; return g; });
+    assert(g !is h);
+}
+
+unittest
+{
+    static struct S
+    {
+        int value;
+    }
+
+    S[string] aa;
+
+    aa.require("foo").value = 1;
+    assert(aa == ["foo" : S(1)]);
+
+    aa["bar"] = S(2);
+    auto a = aa.require("bar", S(3));
+    assert(a == S(2));
+
+    auto b = aa["bar"];
+    assert(b == S(2));
+
+    S* c = &aa.require("baz", S(4));
+    assert(c is &aa["baz"]);
+    assert(*c == S(4));
+
+    assert("baz" in aa);
+
+    auto d = aa["baz"];
+    assert(d == S(4));
 }
 
 unittest
