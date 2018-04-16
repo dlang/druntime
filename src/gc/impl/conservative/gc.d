@@ -42,6 +42,7 @@ import gc.bits;
 import gc.os;
 import gc.config;
 import gc.gcinterface;
+import gc.stats;
 
 import rt.util.container.treap;
 
@@ -109,6 +110,8 @@ __gshared Duration recoverTime;
 __gshared Duration maxPauseTime;
 __gshared size_t numCollections;
 __gshared size_t maxPoolMemory;
+
+__gshared GCStatsTracker statsTracker;
 
 __gshared long numMallocs;
 __gshared long numFrees;
@@ -596,7 +599,8 @@ class ConservativeGC : GC
     {
         if (!size)
         {   if (p)
-            {   freeNoSync(p);
+            {
+                freeNoSync(p);
                 p = null;
             }
             alloc_size = 0;
@@ -693,6 +697,8 @@ class ConservativeGC : GC
                         pool.setBits(biti, bits);
                     }
                     alloc_size = newsz * PAGESIZE;
+                    statsTracker.freed(psize);
+                    statsTracker.allocated(alloc_size);
                     return p;
                 }
 
@@ -721,6 +727,9 @@ class ConservativeGC : GC
                     //debug(PRINTF) printf("\tcopying %d bytes\n",size);
                     memcpy(p2, p, size);
                     p = p2;
+
+                    statsTracker.freed(psize);
+                    statsTracker.allocated(size);
                 }
                 else
                     alloc_size = psize;
@@ -787,6 +796,7 @@ class ConservativeGC : GC
             lpool.updateOffsets(pagenum);
             lpool.freepages -= sz;
             gcx.usedLargePages += sz;
+            statsTracker.allocated(sz * PAGESIZE);
             return (psz + sz) * PAGESIZE;
         }
     }
@@ -873,6 +883,7 @@ class ConservativeGC : GC
             size_t npages = lpool.bPageOffsets[pagenum];
             debug (MEMSTOMP) memset(p, 0xF2, npages * PAGESIZE);
             lpool.freePages(pagenum, npages);
+            statsTracker.freed(npages * PAGESIZE);
         }
         else
         {   // Add to free list
@@ -1200,33 +1211,9 @@ class ConservativeGC : GC
         return ret;
     }
 
-
-    //
-    //
-    //
     private void getStatsNoSync(out core.memory.GC.Stats stats) nothrow
     {
-        foreach (pool; gcx.pooltable[0 .. gcx.npools])
-        {
-            foreach (bin; pool.pagetable[0 .. pool.npages])
-            {
-                if (bin == B_FREE)
-                    stats.freeSize += PAGESIZE;
-                else
-                    stats.usedSize += PAGESIZE;
-            }
-        }
-
-        size_t freeListSize;
-        foreach (n; 0 .. B_PAGE)
-        {
-            immutable sz = binsize[n];
-            for (List *list = gcx.bucket[n]; list; list = list.next)
-                freeListSize += sz;
-        }
-
-        stats.usedSize -= freeListSize;
-        stats.freeSize += freeListSize;
+        stats = statsTracker.stats;
     }
 }
 
@@ -1380,6 +1367,7 @@ struct Gcx
         roots.removeAll();
         ranges.removeAll();
         toscan.reset();
+        statsTracker.reset();
     }
 
 
@@ -1659,6 +1647,7 @@ struct Gcx
         {
             debug(PRINTF) printFreeInfo(pool);
             mappedPages -= pool.npages;
+            statsTracker.removed(pool.npages * PAGESIZE);
             pool.Dtor();
             cstdlib.free(pool);
         }
@@ -1673,8 +1662,12 @@ struct Gcx
 
     void* alloc(size_t size, ref size_t alloc_size, uint bits) nothrow
     {
-        return size <= 2048 ? smallAlloc(binTable[size], alloc_size, bits)
+        auto p = size <= 2048 ? smallAlloc(binTable[size], alloc_size, bits)
                             : bigAlloc(size, alloc_size, bits);
+
+        statsTracker.allocated(alloc_size);
+
+        return p;
     }
 
     void* smallAlloc(Bins bin, ref size_t alloc_size, uint bits) nothrow
@@ -1859,6 +1852,7 @@ struct Gcx
         }
 
         mappedPages += npages;
+        statsTracker.added(npages * PAGESIZE);
 
         if (config.profile)
         {
@@ -2306,6 +2300,10 @@ struct Gcx
         assert(freedLargePages <= usedLargePages);
         usedLargePages -= freedLargePages;
         debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u pages from %u pools\n", freed, freedLargePages, npools);
+
+        statsTracker.freed(freed);
+        statsTracker.freed(freedLargePages);
+
         return freedLargePages;
     }
 
@@ -2456,7 +2454,8 @@ struct Gcx
 
         updateCollectThresholds();
 
-        return freedLargePages + freedSmallPages;
+        size_t freed = freedLargePages + freedSmallPages;
+        return freed;
     }
 
     /**
@@ -3107,6 +3106,7 @@ struct LargeObjectPool
                     break;
             debug (MEMSTOMP) memset(baseAddr + pn * PAGESIZE, 0xF3, n * PAGESIZE);
             freePages(pn, n);
+            statsTracker.freed(n * PAGESIZE);
         }
     }
 }
