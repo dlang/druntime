@@ -37,6 +37,10 @@ struct Range
 
 interface GC
 {
+    /// Provided for implementation's convenience, not intended for public usage
+    protected alias CollectionStartHook = void delegate() nothrow @nogc;
+    /// Ditto
+    protected alias CollectionEndHook = void delegate(size_t, size_t) nothrow @nogc;
 
     /*
      *
@@ -147,6 +151,13 @@ interface GC
      * Useful for debugging and tuning.
      */
     core.memory.GC.Stats stats() nothrow;
+
+    /**
+     * Track beginning and end of allocation
+     * Useful for debugging and tuning.
+     */
+    void monitor (CollectionStartHook on_start, CollectionEndHook on_end)
+        nothrow @nogc;
 
     /**
      * add p to list of roots

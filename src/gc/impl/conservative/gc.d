@@ -255,6 +255,10 @@ class ConservativeGC : GC
     __gshared size_t line;
     __gshared char*  file;
 
+    /// Hook used for debugging application-side
+    __gshared CollectionStartHook on_collect_start;
+    __gshared CollectionEndHook on_collect_end;
+
     Gcx *gcx;                   // implementation
 
     import core.internal.spinlock;
@@ -1200,6 +1204,16 @@ class ConservativeGC : GC
         return ret;
     }
 
+    override void monitor (CollectionStartHook on_start, CollectionEndHook on_end)
+        nothrow @nogc
+    {
+        static void store (CollectionStartHook start, CollectionEndHook end)
+        {
+            on_collect_start = start;
+            on_collect_end = end;
+        }
+        runLocked!(store)(on_start, on_end);
+    }
 
     //
     //
@@ -2392,6 +2406,8 @@ struct Gcx
         }
 
         debug(COLLECT_PRINTF) printf("Gcx.fullcollect()\n");
+        if (ConservativeGC.on_collect_start !is null)
+            ConservativeGC.on_collect_start();
         //printf("\tpool address range = %p .. %p\n", minAddr, maxAddr);
 
         {
@@ -2456,6 +2472,8 @@ struct Gcx
 
         updateCollectThresholds();
 
+        if (ConservativeGC.on_collect_end !is null)
+            ConservativeGC.on_collect_end(freedLargePages, freedSmallPages);
         return freedLargePages + freedSmallPages;
     }
 
@@ -3443,4 +3461,3 @@ unittest
     GC.free(z);
     GC.minimize(); // release huge pool
 }
-

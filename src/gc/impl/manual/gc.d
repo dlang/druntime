@@ -195,6 +195,11 @@ class ManualGC : GC
         return typeof(return).init;
     }
 
+    /// This implementation is a no-op as there is no collection to monitor
+    override void monitor (CollectionStartHook, CollectionEndHook) nothrow @nogc
+    {
+    }
+
     void addRoot(void* p) nothrow @nogc
     {
         roots.insertBack(Root(p));

@@ -140,6 +140,12 @@ private
     extern (C) BlkInfo_ gc_query( void* p ) pure nothrow;
     extern (C) GC.Stats gc_stats ( ) nothrow @nogc;
 
+    // Alias used because DMD thinks the delegate are extern(C) as well otherwise
+    alias CollectionStartHook = void delegate() nothrow @nogc;
+    alias CollectionEndHook = void delegate(size_t, size_t) nothrow @nogc;
+    extern (C) void gc_monitor ( CollectionStartHook on_start,
+        CollectionEndHook on_end) nothrow @nogc;
+
     extern (C) void gc_addRoot( in void* p ) nothrow @nogc;
     extern (C) void gc_addRange( in void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc;
 
@@ -678,6 +684,23 @@ struct GC
     static Stats stats() nothrow
     {
         return gc_stats();
+    }
+
+    /**
+     * Provides a mean to hook the GC on the beggining and end of a collection
+     *
+     * If one of the event is of no interest, `null` can be provided.
+     *
+     * Params:
+     *   on_start = A delegate to call whenever a collection starts
+     *   on_end   = A delegate to call whenever a collection ends.
+     *              The first argument is the number of bytes freed overall,
+     *              the second the number of bytes freed within full pages.
+     */
+    static void monitor(CollectionStartHook on_start, CollectionEndHook on_end)
+        nothrow @nogc
+    {
+        gc_monitor(on_start, on_end);
     }
 
     /**
