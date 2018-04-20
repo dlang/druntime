@@ -7,6 +7,7 @@ SRCS=\
 	src\core\checkedint.d \
 	src\core\cpuid.d \
 	src\core\demangle.d \
+	src\core\demangle_cxx.d \
 	src\core\exception.d \
 	src\core\math.d \
 	src\core\memory.d \
@@ -16,14 +17,20 @@ SRCS=\
 	src\core\time.d \
 	src\core\vararg.d \
 	\
+	src\core\internal\adapted\string.d \
+	src\core\internal\adapted\package.d \
+	\
 	src\core\internal\abort.d \
 	src\core\internal\arrayop.d \
 	src\core\internal\convert.d \
 	src\core\internal\hash.d \
+	src\core\internal\package.d \
 	src\core\internal\parseoptions.d \
+	src\core\internal\sharedlib.d \
 	src\core\internal\spinlock.d \
 	src\core\internal\string.d \
 	src\core\internal\traits.d \
+	src\core\internal\util.d \
 	\
 	src\core\stdc\assert_.d \
 	src\core\stdc\complex.d \
