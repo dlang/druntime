@@ -2418,13 +2418,6 @@ ref V require(K, V)(ref V[K] aa, K key, lazy V value = V.init) pure
     return found ? *p : (*p = value);
 }
 
-ref V require(K, V, F)(ref V[K] aa, K key, F value)
-if(!is(F == typeof(null)) && (is(F : V delegate()) || is(F: V function())))
-{
-    return require(aa, key, value());
-}
-
-
 unittest
 {
     static class T
@@ -2454,11 +2447,11 @@ unittest
     assert("baz" in aa);
 
     bool created = false;
-    auto f = aa.require("qux", { created = true; return new T; });
+    auto f = aa.require("qux", { created = true; return new T; }());
     assert(created == true);
 
     T g;
-    auto h = aa.require("qux", { g = new T; return g; });
+    auto h = aa.require("qux", { g = new T; return g; }());
     assert(g !is h);
 }
 
@@ -2489,6 +2482,48 @@ unittest
 
     auto d = aa["baz"];
     assert(d == S(4));
+}
+
+void update(K, V, C, U)(ref V[K] aa, K key, C create, U update)
+if ((is(C : V delegate()) || is(C : V function())) && (is(U : V delegate(ref V)) || is(U : V function(ref V))))
+{
+    bool found;
+    auto p = cast(V*) _aaGetX(cast(void**)&aa, typeid(V[K]), V.sizeof, &key, found);
+    if (!found)
+        *p = create();
+    else
+        *p = update(*p);
+}
+
+unittest
+{
+    static class C{}
+    C[string] aa;
+
+    C orig = new C;
+    aa["foo"] = orig;
+
+    C newer;
+    C older;
+
+    void test(string key)
+    {
+        aa.update(key, {
+            newer = new C;
+            return newer;
+        }, (ref C c) {
+            older = c;
+            newer = new C;
+            return newer;
+        });
+    }
+
+    test("foo");
+    assert(older is orig);
+    assert(newer is aa["foo"]);
+
+    test("bar");
+    assert(newer is aa["bar"]);
 }
 
 unittest
