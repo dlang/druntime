@@ -219,7 +219,6 @@ class TypeInfo
 
     override int opCmp(Object o)
     {
-        import core.internal.traits : externDFunc;
         import core.internal.string : dstrcmp;
 
         if (this is o)
