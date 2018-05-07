@@ -204,6 +204,7 @@ void resolveAddresses(const(ubyte)[] debugLineSectionData, Location[] locations,
             {
                 // adjust to ASLR offset
                 address += baseAddress;
+                debug(DwarfDebugMachine) printf("-- offsetting 0x%x to 0x%x\n", address - baseAddress, address);
                 // If loc.line != -1, then it has been set previously.
                 // Some implementations (eg. dmd) write an address to
                 // the debug data multiple times, but so far I have found
