@@ -2621,9 +2621,7 @@ unittest
 private void _destructRecurse(S)(ref S s)
     if (is(S == struct))
 {
-    static if (__traits(hasMember, S, "__xdtor") &&
-               // Bugzilla 14746: Check that it's the exact member of S.
-               __traits(isSame, S, __traits(parent, s.__xdtor)))
+    static if (__traits(hasMember, S, "__xdtor"))
         s.__xdtor();
 }
 
@@ -2642,9 +2640,7 @@ private void _destructRecurse(E, size_t n)(ref E[n] arr)
 void _postblitRecurse(S)(ref S s)
     if (is(S == struct))
 {
-    static if (__traits(hasMember, S, "__xpostblit") &&
-               // Bugzilla 14746: Check that it's the exact member of S.
-               __traits(isSame, S, __traits(parent, s.__xpostblit)))
+    static if (__traits(hasMember, S, "__xpostblit"))
         s.__xpostblit();
 }
 
@@ -2920,21 +2916,53 @@ unittest
     assert(postblitRecurseOrder == order);
 }
 
+// destroy
 /********
-Destroys the given object and sets it back to its initial state. It's used to
-_destroy an object, calling its destructor or finalizer so it no longer
-references any other objects. It does $(I not) initiate a GC cycle or free
-any GC memory.
-*/
-void destroy(T)(T obj) if (is(T == class))
-{
-    rt_finalize(cast(void*)obj);
-}
+Destroys an object by means of calling its destructor, if present. For
+types `T` that define a destructor, `destroy` then also fills the
+object with `T.init` to ensure the object's destructor can be called
+again (e.g. when the object goes out of scope). Unlike $(LREF
+__delete), `destroy` does not release memory or other resources by
+itself (though it is possible that destructors it calls do so).
 
-/// ditto
-void destroy(T)(T obj) if (is(T == interface))
+Note: A `struct` type may have a destructor even if it does not
+directly define `~this()`, if at least one field has a destructor
+(transitively). A `class` type may have a destructor even if it does
+not directly define `~this()`, if at least one field has a destructor
+(transitively), or if the destructor is inherited.
+
+Detailed behavior of `destroy(obj)` depends on the type `T` as
+follows:
+
+$(UL $(LI If `T` is a primitive type, a `struct` types that does not
+have a destructor, or a `class` type that does not have a destructor,
+the call to has no effect.)
+
+$(LI For `class` and `interface` types, the call `destroy(obj)` has no
+effect if `obj` is `null`.)
+
+$(LI For `struct` and `class` types that have a destructor (either
+defined explicitly or synthesized by the compiler), the destructor is
+called. Then the object is initialized using
+`T.init`. Reinitialization occurs even if the type disables default
+construction with `@disable this()`.)
+
+$(LI For `interface` types, the dynamic `class` object is fetched from
+the interface object, and then `destroy` is applied to it.)
+
+$(LI For static and dynamic arrays, `destroy` is applied right-to-left
+to all elements. This means multidimensional arrays are destroyed in
+depth, transitively (behavior different from $(LREF __delete), which
+is by necessity shallow). If one or more destructors throw an
+exception, the calls are completed and then the first exception
+encountered is rethrown.))
+*/
+void destroy(T)(T obj) if (is(T == class) || (is(T == interface)))
 {
-    destroy(cast(Object)obj);
+    static if (is(T == interface))
+        destroy(cast(Object) obj);
+    else
+        rt_finalize(cast(void*) obj);
 }
 
 /// Reference type demonstration
@@ -2966,7 +2994,7 @@ unittest
     i = 1;
     assert(i == 1);           // `i` changed to `1`
     destroy(i);
-    assert(i == 0);           // `i` is back to its initial state `0`
+    assert(i == 1);           // `i` stays unchanged
 }
 
 unittest
@@ -3024,18 +3052,35 @@ unittest
    }
 }
 
+// Does calling destroy against an object of type T do anything?
+private template hasElaborateDestroy(T)
+{
+    // Note: __xdtor includes fields, __dtor doesn't.
+    static if (__traits(hasMember, T, "__xdtor"))
+        enum bool hasElaborateDestroy = true;
+    else static if (is(T : U[], U))
+        enum bool hasElaborateDestroy = hasElaborateDestroy!U;
+    else static if (is(T : U[n], U, size_t n))
+        enum bool hasElaborateDestroy = hasElaborateDestroy!U && n > 0;
+    else
+        enum bool hasElaborateDestroy = false;
+}
+
 /// ditto
 void destroy(T)(ref T obj) if (is(T == struct))
 {
-    _destructRecurse(obj);
-    () @trusted {
-        auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
-        auto init = cast(ubyte[])typeid(T).initializer();
-        if (init.ptr is null) // null ptr means initialize to 0s
-            buf[] = 0;
-        else
-            buf[] = init[];
-    } ();
+    static if (hasElaborateDestroy!T)
+    {
+        obj.__xdtor();
+        () @trusted {
+            auto buf = (cast(ubyte*) &obj)[0 .. T.sizeof];
+            auto init = cast(ubyte[])typeid(T).initializer();
+            if (init.ptr is null) // null ptr means initialize to 0s
+                buf[] = 0;
+            else
+                buf[] = init[];
+        } ();
+    }
 }
 
 nothrow @safe @nogc unittest
@@ -3045,7 +3090,7 @@ nothrow @safe @nogc unittest
        A a;
        a.s = "asd";
        destroy(a);
-       assert(a.s == "A");
+       assert(a.s == "asd");
    }
    {
        static int destroyed = 0;
@@ -3078,10 +3123,51 @@ nothrow @safe @nogc unittest
 }
 
 /// ditto
-void destroy(T : U[n], U, size_t n)(ref T obj) if (!is(T == struct))
+void destroy(T : U[n], U, size_t n)(ref T obj)
 {
-    foreach_reverse (ref e; obj[])
-        destroy(e);
+    destroy(obj[]);
+}
+
+/// ditto
+void destroy(T : U[], U)(T obj)
+{
+    static if (hasElaborateDestroy!T)
+    {
+        enum isNothrow = is(typeof(() nothrow { obj[0].__xdtor; }));
+        static if (isNothrow)
+        {
+            foreach_reverse (ref e; obj[])
+                destroy(e);
+        }
+        else
+        {
+            if (!obj.length)
+                return;
+
+            Exception response;
+            // Double-loop so we don't inefficiently use try in a loop.
+        bigloop:
+            for (size_t i = obj.length; ; )
+            {
+                try
+                {
+                    for (;;)
+                    {
+                        if (i == 0) break bigloop;
+                        destroy(obj[--i]);
+                    }
+                }
+                catch (Exception e)
+                {
+                    if (!response) response = e;
+                    if (i == 0) break;
+                    --i; // skip the failed object
+                }
+            }
+            // Only exit point from the function
+            if (response) throw response;
+        }
+    }
 }
 
 unittest
@@ -3090,7 +3176,7 @@ unittest
     a[0] = 1;
     a[1] = 2;
     destroy(a);
-    assert(a == [ 0, 0 ]);
+    assert(a == [ 1, 2 ]);
 }
 
 unittest
@@ -3143,9 +3229,8 @@ unittest
 
 /// ditto
 void destroy(T)(ref T obj)
-    if (!is(T == struct) && !is(T == interface) && !is(T == class) && !_isStaticArray!T)
+if (!is(T == struct) && !is(T == interface) && !is(T == class) && !_isStaticArray!T)
 {
-    obj = T.init;
 }
 
 template _isStaticArray(T : U[N], U, size_t N)
@@ -3163,12 +3248,12 @@ unittest
    {
        int a = 42;
        destroy(a);
-       assert(a == 0);
+       assert(a == 42);
    }
    {
        float a = 42;
        destroy(a);
-       assert(isnan(a));
+       assert(a == 42);
    }
 }
 
