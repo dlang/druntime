@@ -31,7 +31,7 @@ version (CRuntime_DigitalMars)
 {
     extern (C)
     {
-        ref int _errno();
+        ref int _errno() @nogc nothrow @trusted;
         alias errno = _errno;
     }
 }
@@ -39,7 +39,7 @@ else version (CRuntime_Microsoft)
 {
     extern (C)
     {
-        ref int _errno();
+        ref int _errno() @nogc nothrow @trusted;
         alias errno = _errno;
     }
 }
@@ -47,7 +47,7 @@ else version (CRuntime_Glibc)
 {
     extern (C)
     {
-        ref int __errno_location();
+        ref int __errno_location() @nogc nothrow @trusted;
         alias errno = __errno_location;
     }
 }
@@ -55,7 +55,7 @@ else version (CRuntime_Musl)
 {
     extern (C)
     {
-        ref int __errno_location();
+        ref int __errno_location() @nogc nothrow @trusted;
         alias errno = __errno_location;
     }
 }
@@ -63,20 +63,20 @@ else version (FreeBSD)
 {
     extern (C)
     {
-        ref int __error();
+        ref int __error() @nogc nothrow @trusted;
         alias errno = __error;
     }
 }
 else version (DragonFlyBSD)
 {
     pragma(mangle, "errno") extern int __errno;
-    ref int errno() { return __errno;}
+    ref int errno() @nogc nothrow @safe { return __errno;}
 }
 else version (CRuntime_Bionic)
 {
     extern (C)
     {
-        ref int __errno();
+        ref int __errno() @nogc nothrow @trusted;
         alias errno = __errno;
     }
 }
@@ -84,7 +84,7 @@ else version (CRuntime_UClibc)
 {
     extern (C)
     {
-        ref int __errno_location();
+        ref int __errno_location() @nogc nothrow @trusted;
         alias errno = __errno_location;
     }
 }
@@ -92,7 +92,7 @@ else version (Darwin)
 {
     extern (C)
     {
-        ref int __error();
+        ref int __error() @nogc nothrow @trusted;
         alias errno = __error;
     }
 }
@@ -100,7 +100,7 @@ else version (Solaris)
 {
     extern (C)
     {
-        ref int ___errno();
+        ref int ___errno() @nogc nothrow @trusted;
         alias errno = ___errno;
     }
 }
