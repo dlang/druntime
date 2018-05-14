@@ -4461,3 +4461,21 @@ unittest
     scope S[1] arr = [S(&p)];
     auto a = arr.dup; // dup does escape
 }
+
+private extern (C) void* _d_arrayliteralTX(const TypeInfo ti, size_t length);
+public T[] __arrayLiteral(T)(size_t length)
+{
+    // FIXME: This function template needs refactoring so it only relies on information
+    // known at compile time.  i.e. It should not rely on runtime calls to `typeid`
+    // for `TypeInfo`.  It may be possible to completely eliminate `_d_arrayLiteralTX`
+    // and any compiler-generated calls to it.
+    T[] result;
+    struct Arr
+    {
+        size_t l;
+        void* p;
+    }
+    Arr* a = cast(Arr*)(&result);
+    a.p = _d_arrayliteralTX(typeid(T[]), length);
+    return result;
+}
