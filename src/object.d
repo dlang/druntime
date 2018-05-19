@@ -2048,40 +2048,63 @@ void* aaLiteral(Key, Value)(Key[] keys, Value[] values) @trusted pure
 
 alias AssociativeArray(Key, Value) = Value[Key];
 
+/***********************************
+ * Removes all remaining keys and values from an associative array.
+ * Params:
+ *      aa =     The associative array.
+ */
 void clear(T : Value[Key], Value, Key)(T aa)
 {
     _aaClear(*cast(void **) &aa);
 }
 
+/* ditto */
 void clear(T : Value[Key], Value, Key)(T* aa)
 {
     _aaClear(*cast(void **) aa);
 }
 
+/***********************************
+ * Reorganizes the associative array in place so that lookups are more
+ * efficient.
+ * Params:
+ *      aa =     The associative array.
+ * Returns:
+ *      The rehashed associative array.
+ */
 T rehash(T : Value[Key], Value, Key)(T aa)
 {
     _aaRehash(cast(void**)&aa, typeid(Value[Key]));
     return aa;
 }
 
+/* ditto */
 T rehash(T : Value[Key], Value, Key)(T* aa)
 {
     _aaRehash(cast(void**)aa, typeid(Value[Key]));
     return *aa;
 }
 
+/* ditto */
 T rehash(T : shared Value[Key], Value, Key)(T aa)
 {
     _aaRehash(cast(void**)&aa, typeid(Value[Key]));
     return aa;
 }
 
+/* ditto */
 T rehash(T : shared Value[Key], Value, Key)(T* aa)
 {
     _aaRehash(cast(void**)aa, typeid(Value[Key]));
     return *aa;
 }
 
+/***********************************
+ * Create a new associative array of the same size and copy the contents of the
+ * associative array into it.
+ * Params:
+ *      aa =     The associative array.
+ */
 V[K] dup(T : V[K], K, V)(T aa)
 {
     //pragma(msg, "K = ", K, ", V = ", V);
@@ -2118,6 +2141,7 @@ V[K] dup(T : V[K], K, V)(T aa)
     return result;
 }
 
+/* ditto */
 V[K] dup(T : V[K], K, V)(T* aa)
 {
     return (*aa).dup;
@@ -2134,6 +2158,13 @@ private AARange _aaToRange(T: V[K], K, V)(ref T aa) pure nothrow @nogc @safe
     return _aaRange(() @trusted { return cast(void*)realAA; } ());
 }
 
+/***********************************
+ * Returns a forward range over the keys of the associative array.
+ * Params:
+ *      aa =     The associative array.
+ * Returns:
+ *      A forward range.
+ */
 auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 {
     import core.internal.traits : substInout;
@@ -2156,11 +2187,19 @@ auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
     return Result(_aaToRange(aa));
 }
 
+/* ditto */
 auto byKey(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byKey();
 }
 
+/***********************************
+ * Returns a forward range over the values of the associative array.
+ * Params:
+ *      aa =     The associative array.
+ * Returns:
+ *      A forward range.
+ */
 auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 {
     import core.internal.traits : substInout;
@@ -2183,11 +2222,19 @@ auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
     return Result(_aaToRange(aa));
 }
 
+/* ditto */
 auto byValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byValue();
 }
 
+/***********************************
+ * Returns a forward range over the key value pairs of the associative array.
+ * Params:
+ *      aa =     The associative array.
+ * Returns:
+ *      A forward range.
+ */
 auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 {
     import core.internal.traits : substInout;
@@ -2228,11 +2275,20 @@ auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
     return Result(_aaToRange(aa));
 }
 
+/* ditto */
 auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byKeyValue();
 }
 
+/***********************************
+ * Returns a dynamic array, the elements of which are the keys in the
+ * associative array.
+ * Params:
+ *      aa =     The associative array.
+ * Returns:
+ *      A dynamic array.
+ */
 Key[] keys(T : Value[Key], Value, Key)(T aa) @property
 {
     auto a = cast(void[])_aaKeys(cast(inout(void)*)aa, Key.sizeof, typeid(Key[]));
@@ -2241,11 +2297,20 @@ Key[] keys(T : Value[Key], Value, Key)(T aa) @property
     return res;
 }
 
+/* ditto */
 Key[] keys(T : Value[Key], Value, Key)(T *aa) @property
 {
     return (*aa).keys;
 }
 
+/***********************************
+ * Returns a dynamic array, the elements of which are the values in the
+ * associative array.
+ * Params:
+ *      aa =     The associative array.
+ * Returns:
+ *      A dynamic array.
+ */
 Value[] values(T : Value[Key], Value, Key)(T aa) @property
 {
     auto a = cast(void[])_aaValues(cast(inout(void)*)aa, Key.sizeof, Value.sizeof, typeid(Value[]));
@@ -2254,6 +2319,7 @@ Value[] values(T : Value[Key], Value, Key)(T aa) @property
     return res;
 }
 
+/* ditto */
 Value[] values(T : Value[Key], Value, Key)(T *aa) @property
 {
     return (*aa).values;
@@ -2287,12 +2353,23 @@ unittest
     assert(T.count == 2);
 }
 
+/***********************************
+ * Looks up key; if it exists returns corresponding value else evaluates and
+ * returns defaultValue.
+ * Params:
+ *      aa =     The associative array.
+ *      key =    The key.
+ *      defaultValue = The default value.
+ * Returns:
+ *      The value.
+ */
 inout(V) get(K, V)(inout(V[K]) aa, K key, lazy inout(V) defaultValue)
 {
     auto p = key in aa;
     return p ? *p : defaultValue;
 }
 
+/* ditto */
 inout(V) get(K, V)(inout(V[K])* aa, K key, lazy inout(V) defaultValue)
 {
     return (*aa).get(key, defaultValue);
