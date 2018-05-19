@@ -2411,6 +2411,16 @@ unittest
     assert("bar" !in aa);
 }
 
+/***********************************
+ * Looks up key; if it exists returns corresponding value else evaluates
+ * value, adds it to the associative array and returns it.
+ * Params:
+ *      aa =     The associative array.
+ *      key =    The key.
+ *      value =  The required value.
+ * Returns:
+ *      The value.
+ */
 ref V require(K, V)(ref V[K] aa, K key, lazy V value = V.init) pure
 {
     bool found;
@@ -2484,6 +2494,15 @@ unittest
     assert(d == S(4));
 }
 
+/***********************************
+ * Looks up key; if it exists applies the update delegate else evaluates the
+ * create delegate and adds it to the associative array
+ * Params:
+ *      aa =     The associative array.
+ *      key =    The key.
+ *      create = The delegate to apply on create.
+ *      update = The delegate to apply on update.
+ */
 void update(K, V, C, U)(ref V[K] aa, K key, C create, U update)
 if ((is(C : V delegate()) || is(C : V function())) && (is(U : V delegate(ref V)) || is(U : V function(ref V))))
 {
