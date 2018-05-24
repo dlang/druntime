@@ -176,7 +176,7 @@ class ReadWriteMutex
         /**
          * Acquires a read lock on the enclosing mutex.
          */
-        @trusted void lock()
+        @trusted void lock() nothrow
         {
             synchronized( m_commonMutex )
             {
@@ -193,7 +193,7 @@ class ReadWriteMutex
         /**
          * Releases a read lock on the enclosing mutex.
          */
-        @trusted void unlock()
+        @trusted void unlock() nothrow
         {
             synchronized( m_commonMutex )
             {
@@ -227,7 +227,7 @@ class ReadWriteMutex
 
 
     private:
-        @property bool shouldQueueReader()
+        @property bool shouldQueueReader() nothrow
         {
             if( m_numActiveWriters > 0 )
                 return true;
@@ -343,7 +343,7 @@ class ReadWriteMutex
 
 
     private:
-        @property bool shouldQueueWriter()
+        @property bool shouldQueueWriter() nothrow
         {
             if( m_numActiveWriters > 0 ||
                 m_numActiveReaders > 0 )

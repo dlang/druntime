@@ -148,7 +148,7 @@ class Condition
      * Throws:
      *  SyncError on error.
      */
-    void wait()
+    void wait() nothrow
     {
         version( Windows )
         {
@@ -179,7 +179,7 @@ class Condition
      * Returns:
      *  true if notified before the timeout and false if not.
      */
-    bool wait( Duration val )
+    bool wait( Duration val ) nothrow
     in
     {
         assert( !val.isNegative );
@@ -222,7 +222,7 @@ class Condition
      * Throws:
      *  SyncError on error.
      */
-    void notify()
+    void notify() nothrow
     {
         version( Windows )
         {
@@ -243,7 +243,7 @@ class Condition
      * Throws:
      *  SyncError on error.
      */
-    void notifyAll()
+    void notifyAll() nothrow
     {
         version( Windows )
         {
@@ -355,7 +355,7 @@ private:
         }
 
 
-        void notify( bool all )
+        void notify( bool all ) nothrow
         {
             DWORD rc;
 
