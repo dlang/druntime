@@ -700,7 +700,21 @@ struct hostent
 }
 
 // Note: These are Winsock2!!
-struct WSAOVERLAPPED;
+struct WSAOVERLAPPED
+{
+    ulong Internal;
+    ulong InternalHigh;
+    union
+    {
+        struct
+        {
+            uint Offset;
+            uint OffsetHigh;
+        }
+        void* Pointer;
+    }
+    void* hEvent;
+}
 alias LPWSAOVERLAPPED = WSAOVERLAPPED*;
 alias LPWSAOVERLAPPED_COMPLETION_ROUTINE = void function(uint, uint, LPWSAOVERLAPPED, uint);
 int WSAIoctl(SOCKET s, uint dwIoControlCode,
