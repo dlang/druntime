@@ -44,6 +44,12 @@ alias dstring = immutable(dchar)[];
 
 version (D_ObjectiveC) public import core.attribute : selector;
 
+/*======================= Attribute-inferred code ==============================
+  The following code consists primarily of templates whose attributes (e.g.
+  `nothrow`, `@nogc`, `@safe`, etc.) are determined by their caller.  This code
+  is common to both -betterC and non-betterC builds.
+*/
+
 int __cmp(T)(const T[] lhs, const T[] rhs) @trusted
     if (__traits(isScalar, T))
 {
@@ -515,15 +521,6 @@ void destroy(T)(ref T obj) if (is(T == struct))
     } ();
 }
 
-private void _destructRecurse(S)(ref S s)
-    if (is(S == struct))
-{
-    static if (__traits(hasMember, S, "__xdtor") &&
-            // Bugzilla 14746: Check that it's the exact member of S.
-            __traits(isSame, S, __traits(parent, s.__xdtor)))
-        s.__xdtor();
-}
-
 nothrow @safe @nogc unittest
 {
     {
@@ -851,6 +848,39 @@ version(Not_BetterC)
             assert(isnan(a));
         }
     }
+}
+/*===================== End of Attribute-inferred code =========================*/
+
+/*
+ This code is common to both -betterC and non-betterC builds.  However, garbage
+ collection and exceptions are not supported in -betterC, so users should always
+ be attributing their code with `nothrow` and `@nogc` when building with -betterC.
+ Since this code is also used in -betterC builds, it should be attributed with
+ `nothrow` and `@nogc` in -betterC builds to receive D's compile-time correctness
+ guarantees. This code is mixed into the appropriate version block later.
+*/
+private mixin template conditionallyAttributedCode()
+{
+    private void _destructRecurse(S)(ref S s)
+        if (is(S == struct))
+    {
+        static if (__traits(hasMember, S, "__xdtor") &&
+                // Bugzilla 14746: Check that it's the exact member of S.
+                __traits(isSame, S, __traits(parent, s.__xdtor)))
+            s.__xdtor();
+    }
+}
+
+version(D_BetterC)
+{
+    nothrow:
+    @nogc:
+    mixin conditionallyAttributedCode;
+}
+else
+{
+    version = Not_BetterC;
+    mixin conditionallyAttributedCode;
 }
 
 /*============================ NOT -betterC ====================================
