@@ -58,13 +58,19 @@ if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStati
     //ubyteble array (arithmetic types and structs without toHash) CTFE ready for arithmetic types and structs without reference fields
     {
         auto bytes = toUbyte(val);
-        return bytesHash(bytes.ptr, bytes.length, seed);
+        return (() @trusted => bytesHash(bytes.ptr, bytes.length, seed))();
     }
     else //Other types. CTFE unsupported
     {
         assert(!__ctfe, "unable to compute hash of "~T.stringof);
         return bytesHash(val.ptr, ElementType.sizeof*val.length, seed);
     }
+}
+
+@nogc nothrow pure @safe unittest // issue 18918
+{
+    // Check hashOf dynamic array of scalars is usable in @safe code.
+    const _ = hashOf("abc");
 }
 
 //arithmetic type hash
@@ -88,7 +94,7 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && __traits
 @trusted nothrow pure
 size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && is(T : typeof(null)))
 {
-    return hashOf(cast(void*)null);
+    return hashOf(cast(void*)null, seed);
 }
 
 //Pointers hash. CTFE unsupported if not null
@@ -101,7 +107,7 @@ if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null))
     {
         if(val is null)
         {
-            return hashOf(cast(size_t)0);
+            return hashOf(cast(size_t)0, seed);
         }
         else
         {
@@ -109,7 +115,7 @@ if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null))
         }
 
     }
-    return hashOf(cast(size_t)val);
+    return hashOf(cast(size_t)val, seed);
 }
 
 //struct or union hash
@@ -167,7 +173,7 @@ size_t hashOf(T)(auto ref T aa, size_t seed = 0) if (!is(T == enum) && __traits(
         size_t[2] hpair;
         hpair[0] = key.hashOf();
         hpair[1] = val.hashOf();
-        h ^= hpair.hashOf();
+        h += hpair.hashOf();
     }
     return h.hashOf(seed);
 }
@@ -388,6 +394,8 @@ unittest
     assert(h28 == rth28);
     assert(h29 == rth29);*/
     assert(h30 == rth30);
+
+    assert(hashOf(null, 0) != hashOf(null, 123456789)); // issue 18932
 }
 
 
