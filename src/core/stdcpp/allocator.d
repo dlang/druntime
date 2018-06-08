@@ -6,6 +6,7 @@
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
  * Authors:   Guillaume Chatelet
+ *            Manu Evans
  * Source:    $(DRUNTIMESRC core/stdcpp/allocator.d)
  */
 
@@ -17,4 +18,4 @@ extern(C++, std):
  * Allocators are classes that define memory models to be used by some parts of
  * the C++ Standard Library, and most specifically, by STL containers.
  */
-struct allocator(T) { }
+extern(C++, class) struct allocator(T) { }
