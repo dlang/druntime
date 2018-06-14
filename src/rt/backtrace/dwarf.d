@@ -65,6 +65,10 @@ int traceHandlerOpApplyImpl(const void*[] callstack, scope int delegate(ref size
     {
         auto debugLineSectionData = image.getDebugLineSectionData();
 
+        size_t baseAddr = 0;
+        if (image.isPIE)
+            baseAddr = getSelfBase();
+
         if (debugLineSectionData)
         {
             // resolve addresses
@@ -72,7 +76,7 @@ int traceHandlerOpApplyImpl(const void*[] callstack, scope int delegate(ref size
             foreach(size_t i; 0 .. callstack.length)
                 locations[i].address = cast(size_t) callstack[i];
 
-            resolveAddresses(debugLineSectionData, locations[]);
+            resolveAddresses(debugLineSectionData, baseAddr, locations[]);
         }
     }
 
@@ -107,8 +111,35 @@ int traceHandlerOpApplyImpl(const void*[] callstack, scope int delegate(ref size
 
 private:
 
+size_t getSelfBase()
+{
+    version (linux) {
+        import core.sys.linux.link;
+        // use dl_iterate_phdr to get base address
+        size_t base;
+
+        extern(C) static int callback(dl_phdr_info *i, size_t, void *data) {
+            size_t* base = cast(size_t*)data;
+
+            // The first phdr info is the main exe, and it should
+            // have an empty dlpi_name
+            if (i.dlpi_name == null || i.dlpi_name[0] == '\0') {
+                *base = i.dlpi_addr;
+                return 1;
+            }
+            return -1;
+        }
+
+        if (dl_iterate_phdr(&callback, &base) > 0)
+            return base;
+        return 0;
+    }
+    else
+        return 0;
+}
+
 // the lifetime of the Location data is the lifetime of the mmapped ElfSection
-void resolveAddresses(const(ubyte)[] debugLineSectionData, Location[] locations) @nogc nothrow
+void resolveAddresses(const(ubyte)[] debugLineSectionData, size_t baseAddr, Location[] locations) @nogc nothrow
 {
     debug(DwarfDebugMachine) import core.stdc.stdio;
 
@@ -117,7 +148,7 @@ void resolveAddresses(const(ubyte)[] debugLineSectionData, Location[] locations)
     const(ubyte)[] dbg = debugLineSectionData;
     while (dbg.length > 0)
     {
-        debug(DwarfDebugMachine) printf("new debug program\n");
+        debug(DwarfDebugMachine) printf("new debug program, %p\n", baseAddr);
         const(LPHeader)* lph = cast(const(LPHeader)*) dbg.ptr;
 
         if (lph.unitLength == 0xffff_ffff) // is 64-bit dwarf?
@@ -206,6 +237,7 @@ void resolveAddresses(const(ubyte)[] debugLineSectionData, Location[] locations)
                 // Some implementations (eg. dmd) write an address to
                 // the debug data multiple times, but so far I have found
                 // that the first occurrence to be the correct one.
+                address += baseAddr;
                 foreach (ref loc; locations) if (loc.line == -1)
                 {
                     if (loc.address == address)

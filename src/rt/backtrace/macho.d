@@ -61,6 +61,13 @@ struct Image
         return self !is null;
     }
 
+    @property bool isPIE()
+    {
+        // see http://www.opensource.apple.com/source/xnu/xnu-2050.18.24/EXTERNAL_HEADERS/mach-o/loader.h
+        enum MH_PIE = 0x200000;
+        return (self.flags & MH_PIE) != 0;
+    }
+
     const(ubyte)[] getDebugLineSectionData()
     {
         c_ulong size;
