@@ -42,6 +42,10 @@ struct Image
     {
         return file != ElfFile.init;
     }
+    @property bool isPIE()
+    {
+        return file.ehdr.e_type == ET_DYN;
+    }
 
     const(ubyte)[] getDebugLineSectionData()
     {
