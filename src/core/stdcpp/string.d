@@ -63,49 +63,49 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     this(const(T)* ptr, ref const(allocator_type) al = defaultAlloc);
     extern(D) this(const(T)[] dstr)                                                 { this(dstr.ptr, dstr.length); }
     extern(D) this(const(T)[] dstr, ref const(allocator_type) al = defaultAlloc)    { this(dstr.ptr, dstr.length); }
-    ~this();
+    ~this() nothrow;
 
     ref basic_string opAssign(ref const(basic_string) s);
 
     // Iterators
-    iterator begin() nothrow;
-    const_iterator begin() const nothrow;
-    const_iterator cbegin() const nothrow;
+    iterator begin() nothrow @trusted @nogc;
+    const_iterator begin() const nothrow @trusted @nogc;
+    const_iterator cbegin() const nothrow @trusted @nogc;
 
-    iterator end() nothrow;
-    const_iterator end() const nothrow;
-    const_iterator cend() const nothrow;
+    iterator end() nothrow @trusted @nogc;
+    const_iterator end() const nothrow @trusted @nogc;
+    const_iterator cend() const nothrow @trusted @nogc;
 
     // no reverse iterator for now.
 
     // Capacity
-    size_type size() const nothrow;
-    size_type length() const nothrow;
-    size_type max_size() const nothrow;
-    size_type capacity() const nothrow;
+    size_type size() const nothrow @trusted @nogc;
+    size_type length() const nothrow @trusted @nogc;
+    size_type max_size() const nothrow @trusted @nogc;
+    size_type capacity() const nothrow @trusted @nogc;
 
-    bool empty() const nothrow;
+    bool empty() const nothrow @trusted @nogc;
 
     void clear() nothrow;
     void resize(size_type n);
     void resize(size_type n, T c);
-    void reserve(size_type n = 0);
+    void reserve(size_type n = 0) @trusted @nogc;
     void shrink_to_fit();
 
     // Element access
-    ref T opIndex(size_type i);
-    ref const(T) opIndex(size_type i) const;
-    ref T at(size_type i);
-    ref const(T) at(size_type i) const;
+    ref T opIndex(size_type i) @trusted @nogc;
+    ref const(T) opIndex(size_type i) const @trusted @nogc;
+    ref T at(size_type i) @trusted @nogc;
+    ref const(T) at(size_type i) const @trusted @nogc;
 
-    ref T back();
-    ref const(T) back() const;
-    ref T front();
-    ref const(T) front() const;
+    ref T back() @trusted @nogc;
+    ref const(T) back() const @trusted @nogc;
+    ref T front() @trusted @nogc;
+    ref const(T) front() const @trusted @nogc;
 
-    const(T)* c_str() const nothrow;
-    T* data() nothrow;
-    const(T)* data() const nothrow;
+    const(T)* c_str() const nothrow @trusted @nogc;
+    T* data() nothrow @trusted @nogc;
+    const(T)* data() const nothrow @trusted @nogc;
 
     // Modifiers
     ref basic_string opOpAssign(string op : "+")(ref const(basic_string) s);
@@ -189,8 +189,22 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
 
     // D helpers
     alias as_array this;
-    extern(D)        T[] as_array()         { return data()[0 .. size()]; }
-    extern(D) const(T)[] as_array() const   { return data()[0 .. size()]; }
+    extern(D)        T[] as_array() nothrow @safe @nogc                                             { return this[]; }
+    extern(D) const(T)[] as_array() const nothrow @safe @nogc                                       { return this[]; }
+
+    extern(D)        T[] opSlice() nothrow @safe @nogc                                              { return data()[0 .. size()]; }
+    extern(D) const(T)[] opSlice() const nothrow @safe @nogc                                        { return data()[0 .. size()]; }
+    extern(D)        T[] opSlice(size_type start, size_type end) @safe                              { assert(start <= end && end <= size(), "Index out of bounds"); return data()[start .. end]; }
+    extern(D) const(T)[] opSlice(size_type start, size_type end) const @safe                        { assert(start <= end && end <= size(), "Index out of bounds"); return data()[start .. end]; }
+    extern(D) size_type opDollar(size_t pos)() const nothrow @safe @nogc                            { static assert(pos == 0, "std::vector is one-dimensional"); return size(); }
+
+    // support all the assignment variants
+    extern(D) void opSliceAssign(T value)                                                           { opSlice()[] = value; }
+    extern(D) void opSliceAssign(T value, size_type i, size_type j)                                 { opSlice(i, j)[] = value; }
+    extern(D) void opSliceUnary(string op)()                         if (op == "++" || op == "--")  { mixin(op ~ "opSlice()[];"); }
+    extern(D) void opSliceUnary(string op)(size_type i, size_type j) if (op == "++" || op == "--")  { mixin(op ~ "opSlice(i, j)[];"); }
+    extern(D) void opSliceOpAssign(string op)(T value)                                              { mixin("opSlice()[] " ~ op ~ "= value;"); }
+    extern(D) void opSliceOpAssign(string op)(T value, size_type i, size_type j)                    { mixin("opSlice(i, j)[] " ~ op ~ "= value;"); }
 
 private:
     void[8] _ = void; // to match sizeof(std::string) and pad the object correctly.
