@@ -160,6 +160,15 @@ struct GC
     @disable this();
 
     /**
+     * The Gc is initialized lazily when the first allocation happens.
+     * This function allows to initialize the GC whenever this is wished.
+     */
+    static void initialize()
+    {
+        gc_init();
+    }
+
+    /**
      * Aggregation of GC stats to be exposed via public API
      */
     static struct Stats
