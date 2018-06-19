@@ -3329,7 +3329,7 @@ pure unittest
  *      create = The delegate to apply on create.
  *      update = The delegate to apply on update.
  */
-void update(K, V, C, U)(ref V[K] aa, K key, C create, U update)
+void update(K, V, C, U)(ref V[K] aa, K key, scope C create, scope U update)
 if ((is(C : V delegate()) || is(C : V function())) && (is(U : V delegate(ref V)) || is(U : V function(ref V))))
 {
     bool found;
@@ -3342,7 +3342,7 @@ if ((is(C : V delegate()) || is(C : V function())) && (is(U : V delegate(ref V))
 
 unittest
 {
-    static class C{}
+    static class C {}
     C[string] aa;
 
     C orig = new C;
