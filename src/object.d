@@ -3239,7 +3239,7 @@ unittest
  * Returns:
  *      The value.
  */
-ref V require(K, V)(ref V[K] aa, K key, lazy V value = V.init) pure
+ref V require(K, V)(ref V[K] aa, K key, lazy V value = V.init)
 {
     bool found;
     auto p = cast(V*) _aaGetX(cast(void**)&aa, typeid(V[K]), V.sizeof, &key, found);
@@ -3310,6 +3310,14 @@ unittest
 
     auto d = aa["baz"];
     assert(d == S(4));
+}
+
+pure unittest
+{
+    string[string] aa;
+
+    auto a = aa.require("foo", "bar");
+    assert("foo" in aa);
 }
 
 /***********************************
