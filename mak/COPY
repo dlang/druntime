@@ -1,5 +1,6 @@
 COPY=\
 	$(IMPDIR)\object.d \
+	$(IMPDIR)\lifetime.d \
 	\
 	$(IMPDIR)\core\atomic.d \
 	$(IMPDIR)\core\attribute.d \
