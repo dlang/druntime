@@ -3320,6 +3320,31 @@ pure unittest
     assert("foo" in aa);
 }
 
+// Constraints for aa update. Delegates, Functions or Functors (classes that
+// provide opCall) are allowed. See unittest for an example.
+private
+{
+    template isCreateOperation(C, V)
+    {
+        static if (is(C : V delegate()) || is(C : V function()))
+            enum bool isCreateOperation = true;
+        else static if (isCreateOperation!(typeof(&C.opCall), V))
+            enum bool isCreateOperation = true;
+        else
+            enum bool isCreateOperation = false;
+    }
+
+    template isUpdateOperation(U, V)
+    {
+        static if (is(U : V delegate(ref V)) || is(U : V function(ref V)))
+            enum bool isUpdateOperation = true;
+        else static if (isUpdateOperation!(typeof(&U.opCall), V))
+            enum bool isUpdateOperation = true;
+        else
+            enum bool isUpdateOperation = false;
+    }
+}
+
 /***********************************
  * Looks up key; if it exists applies the update delegate else evaluates the
  * create delegate and adds it to the associative array
@@ -3330,7 +3355,7 @@ pure unittest
  *      update = The delegate to apply on update.
  */
 void update(K, V, C, U)(ref V[K] aa, K key, scope C create, scope U update)
-if ((is(C : V delegate()) || is(C : V function())) && (is(U : V delegate(ref V)) || is(U : V function(ref V))))
+if (isCreateOperation!(C, V) && isUpdateOperation!(U, V))
 {
     bool found;
     auto p = cast(V*) _aaGetX(cast(void**)&aa, typeid(V[K]), V.sizeof, &key, found);
@@ -3369,6 +3394,38 @@ unittest
 
     test("bar");
     assert(newer is aa["bar"]);
+}
+
+unittest
+{
+    static class C {}
+    C[string] aa;
+
+    auto created = false;
+    auto updated = false;
+
+    class Creator
+    {
+        C opCall()
+        {
+            created = true;
+            return new C();
+        }
+    }
+
+    class Updater
+    {
+        C opCall(ref C)
+        {
+            updated = true;
+            return new C();
+        }
+    }
+
+    aa.update("foo", new Creator, new Updater);
+    assert(created);
+    aa.update("foo", new Creator, new Updater);
+    assert(updated);
 }
 
 unittest
