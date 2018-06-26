@@ -4,6 +4,9 @@ TESTS:=stderr_msg unittest_assert invalid_memory_operation unknown_gc static_dto
 
 ifeq ($(OS)-$(BUILD),linux-debug)
 	TESTS:=$(TESTS) line_trace rt_trap_exceptions
+ifeq ($(MODEL), 64)
+	TESTS+=line_trace_shared
+endif
 	LINE_TRACE_DFLAGS:=-L--export-dynamic
 endif
 ifeq ($(OS)-$(BUILD),freebsd-debug)
@@ -33,6 +36,14 @@ $(ROOT)/line_trace.done: $(ROOT)/line_trace
 	@rm -f $(ROOT)/line_trace.output
 	@touch $@
 
+$(ROOT)/line_trace_shared.done: $(ROOT)/line_trace_shared
+	@echo Testing line_trace
+	! LD_LIBRARY_PATH="$(ROOT)" $(QUIET)$(TIMELIMIT)$(ROOT)/line_trace_shared $(RUN_ARGS) 2> $(ROOT)/line_trace_shared.output
+	# Use sed to canonicalize line_trace_shared.output and compare against expected output in line_trace_shared.exp
+	$(QUIET)$(SED) "s/\[0x[0-9a-f]*\]/\[ADDR\]/g; s/scope //g; s/Nl//g" $(ROOT)/line_trace_shared.output | $(DIFF) -p line_trace_shared.exp -
+	@rm -f $(ROOT)/line_trace_shared.output
+	@touch $@
+
 $(ROOT)/chain.done: $(ROOT)/chain
 	@echo Testing chain
 	$(QUIET)$(TIMELIMIT)$(ROOT)/chain $(RUN_ARGS) > $(ROOT)/chain.output
@@ -55,6 +66,13 @@ $(ROOT)/%.done: $(ROOT)/%
 
 $(ROOT)/unittest_assert: DFLAGS+=-unittest
 $(ROOT)/line_trace: DFLAGS+=$(LINE_TRACE_DFLAGS)
+
+$(ROOT)/line_trace_shared_lib.so: $(SRC)/line_trace_shared_lib.d
+	$(QUIET)$(DMD) $(DFLAGS) $(LINE_TRACE_DFLAGS) -shared -of$@ $<
+
+$(ROOT)/line_trace_shared: $(SRC)/line_trace_shared.d $(ROOT)/line_trace_shared_lib.so
+	$(QUIET)$(DMD) $(LINE_TRACE_DFLAGS) -Isrc -L-L$(ROOT) -L-l:line_trace_shared_lib.so -of$@ $<
+
 $(ROOT)/%: $(SRC)/%.d
 	$(QUIET)$(DMD) $(DFLAGS) -of$@ $<
 

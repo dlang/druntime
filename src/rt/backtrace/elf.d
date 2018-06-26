@@ -61,6 +61,62 @@ struct Image
 
         return null;
     }
+
+    @property size_t baseAddress()
+    {
+        version(linux)
+        {
+            import core.sys.linux.link;
+            import core.sys.linux.elf;
+        }
+        else version(FreeBSD)
+        {
+            import core.sys.freebsd.sys.link_elf;
+            import core.sys.freebsd.sys.elf;
+        }
+        else version(DragonFlyBSD)
+        {
+            import core.sys.dragonflybsd.sys.link_elf;
+            import core.sys.dragonflybsd.sys.elf;
+        }
+
+        static struct ElfAddress
+        {
+            size_t begin;
+            bool set;
+        }
+        ElfAddress elfAddress;
+
+        // the DWARF addresses for DSOs are relative
+        const isDynamicSharedObject = (file.ehdr.e_type == ET_DYN);
+        if (!isDynamicSharedObject)
+            return 0;
+
+        extern(C) int dl_iterate_phdr_cb_ngc_tracehandler(dl_phdr_info* info, size_t, void* elfObj) @nogc
+        {
+            auto obj = cast(ElfAddress*) elfObj;
+            // only take the first address as this will be the main binary
+            if (obj.set)
+                return 0;
+
+            obj.set = true;
+            // search for the executable code segment
+            foreach (const ref phdr; info.dlpi_phdr[0 .. info.dlpi_phnum])
+            {
+                if (phdr.p_type == PT_LOAD && phdr.p_flags & PF_X)
+                {
+                    obj.begin = info.dlpi_addr + phdr.p_vaddr;
+                    //obj.length = phdr.p_memsz;
+                }
+            }
+            // temporarily fall back to this
+            obj.begin = info.dlpi_addr;
+            //obj.length = info.dlpi_phdr.p_memsz;
+            return 0;
+        }
+        dl_iterate_phdr(&dl_iterate_phdr_cb_ngc_tracehandler, &elfAddress);
+        return elfAddress.begin;
+    }
 }
 
 private:
