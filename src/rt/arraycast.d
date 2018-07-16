@@ -25,7 +25,8 @@ void[] _d_arraycast(size_t tsize, size_t fsize, void[] a)
     auto length = a.length;
 
     auto nbytes = length * fsize;
-    if (nbytes % tsize != 0)
+    version (D_NoBoundsChecks) {}
+    else if (nbytes % tsize != 0)
     {
         throw new Error("array cast misalignment");
     }
