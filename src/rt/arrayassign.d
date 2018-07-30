@@ -30,8 +30,25 @@ extern (C) void[] _d_arrayassign(TypeInfo ti, void[] from, void[] to)
 
     // Need a temporary buffer tmp[] big enough to hold one element
     void[16] buf = void;
-    void* ptmp = (elementSize > buf.sizeof) ? alloca(elementSize) : buf.ptr;
-    return _d_arrayassign_l(ti, from, to, ptmp);
+    void* ptmp;
+    if (elementSize <= buf.sizeof)
+    {
+        ptmp = buf.ptr;
+    }
+    else if (elementSize < 1024)
+    {
+        ptmp = alloca(elementSize);
+    }
+    else
+    {
+        ptmp = malloc(elementSize);
+    }
+    auto dst = _d_arrayassign_l(ti, from, to, ptmp);
+    if (elementSize >= 1024)
+    {
+        free(ptmp);
+    }
+    return dst;
 }
 
 /**
@@ -209,12 +226,18 @@ extern (C) void* _d_arraysetassign(void* p, void* value, int count, TypeInfo ti)
     //Need a temporary buffer tmp[] big enough to hold one element
     void[16] buf = void;
     void[] tmp;
-    if (element_size > buf.sizeof)
+    if (element_size <= buf.sizeof)
+    {
+        tmp = buf[];
+    }
+    else if (element_size < 1024)
     {
         tmp = alloca(element_size)[0 .. element_size];
     }
     else
-        tmp = buf[];
+    {
+        tmp = malloc(element_size)[0 .. element_size];
+    }
 
     foreach (i; 0 .. count)
     {
@@ -223,6 +246,10 @@ extern (C) void* _d_arraysetassign(void* p, void* value, int count, TypeInfo ti)
         ti.postblit(p);
         ti.destroy(tmp.ptr);
         p += element_size;
+    }
+    if (element_size >= 1024)
+    {
+        free(tmp.ptr);
     }
     return pstart;
 }
