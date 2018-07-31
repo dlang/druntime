@@ -52,7 +52,7 @@ OBJS_TO_DELETE= errno_c_$(MODEL).obj msvc_$(MODEL).obj msvc_math_$(MODEL).obj
 
 doc: $(DOCS)
 
-$(DOCDIR)\object.html : src\object.d
+$(DOCDIR)\object.html : $(DMD_DIR)\druntime\object.d
 	$(DMD) $(DDOCFLAGS) -Df$@ $(DOCFMT) $**
 
 $(DOCDIR)\core_atomic.html : src\core\atomic.d
@@ -231,7 +231,7 @@ copydir: $(IMPDIR)
 
 copy: $(COPY)
 
-$(IMPDIR)\object.d : src\object.d
+$(IMPDIR)\object.d : $(DMD_DIR)\druntime\object.d
 	copy $** $@
 	if exist $(IMPDIR)\object.di del $(IMPDIR)\object.di
 

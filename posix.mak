@@ -146,7 +146,7 @@ endif
 
 doc: $(DOCS)
 
-$(DOCDIR)/object.html : src/object.d $(DMD)
+$(DOCDIR)/object.html : $(DMD_DIR)/druntime/object.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_%.html : src/core/%.d $(DMD)
@@ -188,7 +188,7 @@ $(IMPDIR)/core/sync/%.di : src/core/sync/%.d $(DMD)
 
 copy: $(COPY)
 
-$(IMPDIR)/object.d : src/object.d
+$(IMPDIR)/object.d : $(DMD_DIR)/druntime/object.d
 	@mkdir -p $(dir $@)
 	@rm -f $(IMPDIR)/object.di
 	cp $< $@
