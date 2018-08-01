@@ -1,5 +1,5 @@
 SRCS=\
-	src\object.d \
+	$(DMD_DIR)\druntime\object.d \
 	\
 	src\core\atomic.d \
 	src\core\attribute.d \
