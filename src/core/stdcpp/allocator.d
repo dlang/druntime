@@ -12,6 +12,8 @@
 
 module core.stdcpp.allocator;
 
+alias allocator = std.allocator;
+
 extern(C++, std):
 
 /**

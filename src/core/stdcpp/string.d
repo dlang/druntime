@@ -24,7 +24,12 @@ module core.stdcpp.string;
 ///////////////////////////////////////////////////////////////////////////////
 
 import core.stdcpp.allocator;
-import core.stdc.stddef;
+import core.stdc.stddef : wchar_t;
+
+alias std_string = std.string;
+//alias std_u16string = std.u16string;
+//alias std_u32string = std.u32string;
+//alias std_wstring = std.wstring;
 
 extern(C++, std):
 
@@ -32,7 +37,7 @@ extern(C++, std):
  * Character traits classes specify character properties and provide specific
  * semantics for certain operations on characters and sequences of characters.
  */
-struct char_traits(CharT) {}
+extern(C++, struct) struct char_traits(CharT) {}
 
 /**
  * The basic_string is the generalization of class string for any character
@@ -42,27 +47,29 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
 {
     enum size_type npos = size_type.max;
 
+    alias size_type = size_t;
+    alias difference_type = ptrdiff_t;
     alias value_type = T;
     alias traits_type = Traits;
     alias allocator_type = Alloc;
-    alias reference = ref T;
-    alias const_reference = ref const(T);
-    alias pointer = T*;
-    alias const_pointer = const(T)*;
+    alias reference = ref value_type;
+    alias const_reference = ref const(value_type);
+    alias pointer = value_type*;
+    alias const_pointer = const(value_type)*;
     alias iterator = pointer;
     alias const_iterator = const_pointer;
     // alias reverse_iterator
     // alias const_reverse_iterator
-    alias difference_type = ptrdiff_t;
-    alias size_type = size_t;
+
+    alias as_array this;
 
     // ctor/dtor
     this(const(T)* ptr, size_type count);
-    this(const(T)* ptr, size_type count, ref const(allocator_type) al = defaultAlloc);
+    this(const(T)* ptr, size_type count, ref const(allocator_type) al);
     this(const(T)* ptr);
-    this(const(T)* ptr, ref const(allocator_type) al = defaultAlloc);
-    extern(D) this(const(T)[] dstr)                                                 { this(dstr.ptr, dstr.length); }
-    extern(D) this(const(T)[] dstr, ref const(allocator_type) al = defaultAlloc)    { this(dstr.ptr, dstr.length); }
+    this(const(T)* ptr, ref const(allocator_type) al);
+//    extern(D) this(const(T)[] dstr)                                                     { this(dstr.ptr, dstr.length); }
+//    extern(D) this(const(T)[] dstr, ref const(allocator_type) al)                       { this(dstr.ptr, dstr.length, al); }
     ~this() nothrow;
 
     ref basic_string opAssign(ref const(basic_string) s);
@@ -79,12 +86,10 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     // no reverse iterator for now.
 
     // Capacity
-    size_type size() const nothrow @trusted @nogc;
-    size_type length() const nothrow @trusted @nogc;
+    size_type length() const nothrow @trusted @nogc                                     { return size(); }
     size_type max_size() const nothrow @trusted @nogc;
-    size_type capacity() const nothrow @trusted @nogc;
 
-    bool empty() const nothrow @trusted @nogc;
+    bool empty() const nothrow @trusted @nogc                                           { return size() == 0; }
 
     void clear() nothrow;
     void resize(size_type n);
@@ -93,19 +98,12 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     void shrink_to_fit();
 
     // Element access
-    ref T opIndex(size_type i) @trusted @nogc;
-    ref const(T) opIndex(size_type i) const @trusted @nogc;
-    ref T at(size_type i) @trusted @nogc;
-    ref const(T) at(size_type i) const @trusted @nogc;
-
     ref T back() @trusted @nogc;
     ref const(T) back() const @trusted @nogc;
     ref T front() @trusted @nogc;
     ref const(T) front() const @trusted @nogc;
 
-    const(T)* c_str() const nothrow @trusted @nogc;
-    T* data() nothrow @trusted @nogc;
-    const(T)* data() const nothrow @trusted @nogc;
+    extern(D) const(T)* c_str() const nothrow @trusted @nogc                            { return data(); }
 
     // Modifiers
     ref basic_string opOpAssign(string op : "+")(ref const(basic_string) s);
@@ -137,7 +135,7 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     ref basic_string insert(size_type pos, const(T)* s);
     ref basic_string insert(size_type pos, const(T)* s, size_type n);
     ref basic_string insert(size_type pos, size_type n, T c);
-    extern(D) ref basic_string insert(size_type pos, const(T)[] s)                      { insert(pos, s.ptr, s.length); return this; }
+//    extern(D) ref basic_string insert(size_type pos, const(T)[] s)                      { insert(pos, s.ptr, s.length); return this; }
 
     ref basic_string erase(size_type pos = 0, size_type len = npos);
 
@@ -188,14 +186,10 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     int compare(size_type pos, size_type len, const(T)* s, size_type n) const;
 
     // D helpers
-    alias as_array this;
-    extern(D)        T[] as_array() nothrow @safe @nogc                                             { return this[]; }
-    extern(D) const(T)[] as_array() const nothrow @safe @nogc                                       { return this[]; }
-
-    extern(D)        T[] opSlice() nothrow @safe @nogc                                              { return data()[0 .. size()]; }
-    extern(D) const(T)[] opSlice() const nothrow @safe @nogc                                        { return data()[0 .. size()]; }
-    extern(D)        T[] opSlice(size_type start, size_type end) @safe                              { assert(start <= end && end <= size(), "Index out of bounds"); return data()[start .. end]; }
-    extern(D) const(T)[] opSlice(size_type start, size_type end) const @safe                        { assert(start <= end && end <= size(), "Index out of bounds"); return data()[start .. end]; }
+    extern(D)        T[] opSlice() nothrow @trusted @nogc                                           { return as_array(); }
+    extern(D) const(T)[] opSlice() const nothrow @trusted @nogc                                     { return as_array(); }
+    extern(D)        T[] opSlice(size_type start, size_type end) @trusted                           { assert(start <= end && end <= size(), "Index out of bounds"); return as_array()[start .. end]; }
+    extern(D) const(T)[] opSlice(size_type start, size_type end) const @trusted                     { assert(start <= end && end <= size(), "Index out of bounds"); return as_array()[start .. end]; }
     extern(D) size_type opDollar(size_t pos)() const nothrow @safe @nogc                            { static assert(pos == 0, "std::vector is one-dimensional"); return size(); }
 
     // support all the assignment variants
@@ -207,11 +201,57 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     extern(D) void opSliceOpAssign(string op)(T value, size_type i, size_type j)                    { mixin("opSlice(i, j)[] " ~ op ~ "= value;"); }
 
 private:
-    void[8] _ = void; // to match sizeof(std::string) and pad the object correctly.
-    __gshared static immutable allocator!T defaultAlloc;
+    version(CRuntime_Microsoft)
+    {
+        import core.stdcpp.utility : _Container_base, _Compressed_pair, _Xout_of_range;
+
+        void _Xran() const @trusted @nogc { _Xout_of_range("invalid string position"); }
+
+        extern(C++, class) struct _String_val
+        {
+            enum _BUF_SIZE = 16 / value_type.sizeof < 1 ? 1 : 16 / value_type.sizeof;
+
+            union _Bxty
+            {
+                value_type[_BUF_SIZE] _Buf;
+                pointer _Ptr;
+            }
+
+            _Container_base base;
+            alias base this;
+
+            _Bxty _Bx = void;
+            size_type _Mysize;  // current length of string
+            size_type _Myres;   // current storage reserved for string
+
+            extern(D) @property inout(value_type)* _Myptr() inout nothrow @trusted @nogc    { return _BUF_SIZE <= _Myres ? _Bx._Ptr : _Bx._Buf.ptr; }
+        }
+
+        _Compressed_pair!(void, _String_val) _Mypair;
+
+    public:
+        // perf will be greatly improved by inlining the primitive access functions
+        extern(D) size_type size() const nothrow @safe @nogc                                { return _Mypair._Myval2._Mysize; }
+        extern(D) size_type capacity() const nothrow @safe @nogc                            { return _Mypair._Myval2._Myres; }
+
+        extern(D) T* data() nothrow @safe @nogc                                             { return _Mypair._Myval2._Myptr; }
+        extern(D) const(T)* data() const nothrow @safe @nogc                                { return _Mypair._Myval2._Myptr; }
+
+        extern(D) ref T opIndex(size_type i) nothrow @trusted @nogc                         { return _Mypair._Myval2._Myptr[0 .. _Mypair._Myval2._Mysize][i]; }
+        extern(D) ref const(T) opIndex(size_type i) const nothrow @trusted @nogc            { return _Mypair._Myval2._Myptr[0 .. _Mypair._Myval2._Mysize][i]; }
+        extern(D) ref T at(size_type i) nothrow @trusted @nogc                              { if (_Mypair._Myval2._Mysize <= i) _Xran(); return _Mypair._Myval2._Myptr[i]; }
+        extern(D) ref const(T) at(size_type i) const nothrow @trusted @nogc                 { if (_Mypair._Myval2._Mysize <= i) _Xran(); return _Mypair._Myval2._Myptr[i]; }
+
+        extern(D)        T[] as_array() nothrow @trusted @nogc                              { return _Mypair._Myval2._Myptr[0 .. _Mypair._Myval2._Mysize]; }
+        extern(D) const(T)[] as_array() const nothrow @trusted @nogc                        { return _Mypair._Myval2._Myptr[0 .. _Mypair._Myval2._Mysize]; }
+    }
+    else
+    {
+        static assert(false, "C++ runtime not supported");
+    }
 }
 
-alias basic_string!char std_string;
-//alias basic_string!wchar std_u16string; // TODO: can't mangle these yet either...
-//alias basic_string!dchar std_u32string;
-//alias basic_string!wchar_t std_wstring; // TODO: we can't mangle wchar_t properly (yet?)
+alias basic_string!char string;
+//alias basic_string!wchar u16string; // TODO: can't mangle these yet either...
+//alias basic_string!dchar u32string;
+//alias basic_string!wchar_t wstring; // TODO: we can't mangle wchar_t properly (yet?)
