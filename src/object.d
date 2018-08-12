@@ -4895,10 +4895,9 @@ Params:
     toType   = name of the type being cast o
     toSize   = total size in bytes of the array being cast to
  */
-private void onArrayCastError()(string fromType, size_t fromSize, string toType, size_t toSize) @trusted
+private void onArrayCastError()(string fromType, size_t fromSize, string toType, size_t toSize) @trusted pure
 {
     import core.internal.string : unsignedToTempString;
-    import core.stdc.stdlib : alloca;
 
     const(char)[][8] msgComponents =
     [
@@ -4912,17 +4911,15 @@ private void onArrayCastError()(string fromType, size_t fromSize, string toType,
         , unsignedToTempString(toSize)
     ];
 
-    // convert discontiguous `msgComponents` to contiguous string on the stack
-    size_t length = 0;
-    foreach (m ; msgComponents)
-        length += m.length;
-
-    auto msg = (cast(char*)alloca(length))[0 .. length];
+    // `alloca` would be preferred here, but it doesn't work in -betterC
+    // See https://issues.dlang.org/show_bug.cgi?id=19159
+    char[1024] msg = void;
 
     size_t index = 0;
     foreach (m ; msgComponents)
         foreach (c; m)
             msg[index++] = c;
+    msg[index] = '\0';
 
     // first argument must evaluate to `false` at compile-time to maintain memory safety in release builds
     assert(false, msg);
