@@ -4898,7 +4898,7 @@ Params:
 private void onArrayCastError()(string fromType, size_t fromSize, string toType, size_t toSize) @trusted
 {
     import core.internal.string : unsignedToTempString;
-    import core.stdc.stdlib : alloca;
+    import core.stdc.stdlib : malloc;
 
     const(char)[][8] msgComponents =
     [
@@ -4912,12 +4912,14 @@ private void onArrayCastError()(string fromType, size_t fromSize, string toType,
         , unsignedToTempString(toSize)
     ];
 
-    // convert discontiguous `msgComponents` to contiguous string on the stack
+    // convert discontiguous `msgComponents` to contiguous string
     size_t length = 0;
     foreach (m ; msgComponents)
         length += m.length;
 
-    auto msg = (cast(char*)alloca(length))[0 .. length];
+    // `alloca` would be preferred here, but it doesn't work in -betterC
+    // See https://issues.dlang.org/show_bug.cgi?id=19159
+    auto msg = (cast(char*)malloc(length))[0 .. length];
 
     size_t index = 0;
     foreach (m ; msgComponents)
@@ -4926,6 +4928,8 @@ private void onArrayCastError()(string fromType, size_t fromSize, string toType,
 
     // first argument must evaluate to `false` at compile-time to maintain memory safety in release builds
     assert(false, msg);
+
+    // no need to free `msg` since program will halt at `assert(false)`
 }
 
 /**
