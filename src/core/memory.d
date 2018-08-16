@@ -812,17 +812,120 @@ struct GC
 
 /**
  * Pure variants of C's memory allocation functions `malloc`, `calloc`, and
+ * `realloc` that achieve purity by aborting the program on failure so
+ * they never visibly change errno.
+ *
+ * The functions may terminate the program using `onOutOfMemoryError` or
+ * `assert(0)`. These functions' purity guarantees no longer hold if
+ * the program continues execution after catching AssertError or
+ * OutOfMemoryError.
+ *
+ * A similar fail-fast variant of C's memory deallocation function `free`
+ * is not provided due to the lack of a portable and efficient way to test
+ * for failure. If purity is required `pureFree` may be used.
+ *
+ * See_Also:
+ *     $(LREF pureMalloc), $(LREF pureCalloc), $(LREF pureRealloc),
+ *     and $(LREF pureFree) which achieve purity by saving and restoring
+ *     errno.
+ *     $(LINK2 https://dlang.org/library/object/error.html, Error class documentation)
+ *     on the danger of continued execution after catching an Error.
+ */
+void* assertMalloc()(size_t size) @nogc nothrow pure @trusted
+{
+    void* ret = fakePureMalloc(size);
+    if (!ret && size)
+    {
+        version (D_Exceptions)
+        {
+            import core.exception : onOutOfMemoryError;
+            onOutOfMemoryError();
+        }
+        else assert(0, "Memory allocation failed");
+    }
+    return ret;
+}
+/// ditto
+void* assertCalloc()(size_t nmemb, size_t size) @nogc nothrow pure @trusted
+{
+    void* ret = fakePureCalloc(nmemb, size);
+    if (!ret && nmemb && size)
+    {
+        version (D_Exceptions)
+        {
+            import core.exception : onOutOfMemoryError;
+            onOutOfMemoryError();
+        }
+        else assert(0, "Memory allocation failed");
+    }
+    return ret;
+}
+/// ditto
+void* assertRealloc()(void* ptr, size_t size) @nogc nothrow pure @system
+{
+    void* ret = fakePureRealloc(ptr, size);
+    if (!ret && size)
+    {
+        version (D_Exceptions)
+        {
+            import core.exception : onOutOfMemoryError;
+            onOutOfMemoryError();
+        }
+        else assert(0, "Memory allocation failed");
+    }
+    return ret;
+}
+
+///
+@nogc nothrow pure @system unittest
+{
+    void[] allocate(size_t n) pure
+    {
+        return assertMalloc(n)[0 .. n];
+    }
+
+    auto buf = allocate(100);
+    assert(buf.length == 100);
+    pureFree(buf.ptr);
+}
+
+@nogc nothrow pure @system unittest
+{
+    const int errno = fakePureErrno();
+
+    void* x = assertMalloc(10);       // normal allocation
+    assert(errno == fakePureErrno()); // errno shouldn't change
+    assert(x !is null);               // allocation should succeed
+
+    x = assertRealloc(x, 20);         // normal reallocation
+    assert(errno == fakePureErrno()); // errno shouldn't change
+    assert(x !is null);               // allocation should succeed
+
+    fakePureFree(x);
+
+    void* y = assertCalloc(10, 1);    // normal zeroed allocation
+    assert(errno == fakePureErrno()); // errno shouldn't change
+    assert(y !is null);               // allocation should succeed
+
+    fakePureFree(y);
+}
+
+/**
+ * Pure variants of C's memory allocation functions `malloc`, `calloc`, and
  * `realloc` and deallocation function `free`.
  *
  * UNIX 98 requires that errno be set to ENOMEM upon failure.
  * Purity is achieved by saving and restoring the value of `errno`, thus
  * behaving as if it were never changed.
  *
+ *
  * See_Also:
  *     $(LINK2 https://dlang.org/spec/function.html#pure-functions, D's rules for purity),
  *     which allow for memory allocation under specific circumstances.
+ *     $(LREF assertMalloc), $(LREF assertCalloc), and $(LREF assertRealloc)
+ *     which achieve purity by terminating on failure.
  */
-void* pureMalloc(size_t size) @trusted pure @nogc nothrow
+void* pureMalloc()(size_t size) @nogc nothrow pure @trusted
 {
     const errnosave = fakePureErrno();
     void* ret = fakePureMalloc(size);
@@ -830,7 +933,7 @@ void* pureMalloc(size_t size) @trusted pure @nogc nothrow
     return ret;
 }
 /// ditto
-void* pureCalloc(size_t nmemb, size_t size) @trusted pure @nogc nothrow
+void* pureCalloc()(size_t nmemb, size_t size) @nogc nothrow pure @trusted
 {
     const errnosave = fakePureErrno();
     void* ret = fakePureCalloc(nmemb, size);
@@ -838,7 +941,7 @@ void* pureCalloc(size_t nmemb, size_t size) @trusted pure @nogc nothrow
     return ret;
 }
 /// ditto
-void* pureRealloc(void* ptr, size_t size) @system pure @nogc nothrow
+void* pureRealloc()(void* ptr, size_t size) @nogc nothrow pure @system
 {
     const errnosave = fakePureErrno();
     void* ret = fakePureRealloc(ptr, size);
@@ -846,7 +949,7 @@ void* pureRealloc(void* ptr, size_t size) @system pure @nogc nothrow
     return ret;
 }
 /// ditto
-void pureFree(void* ptr) @system pure @nogc nothrow
+void pureFree()(void* ptr) @nogc nothrow pure @system
 {
     const errnosave = fakePureErrno();
     fakePureFree(ptr);
@@ -899,7 +1002,30 @@ void pureFree(void* ptr) @system pure @nogc nothrow
 }
 
 // locally purified for internal use here only
+static import core.stdc.errno;
 
+private enum canLinkToErrno = __traits(getOverloads, core.stdc.errno, "errno").length == 1
+    && __traits(getLinkage, core.stdc.errno.errno) == "C";
+
+version (D_BetterC) @nogc nothrow private @system
+{
+    static if (canLinkToErrno)
+    {
+        extern(C)
+        pragma(mangle, __traits(identifier, core.stdc.errno.errno)) ref int fakePureErrno() pure;
+    }
+    else
+    {
+        ref int _errno()() { return core.stdc.errno.errno; }
+
+        private ref int fakePureErrno()() pure
+        {
+            alias FakePureErrno = ref int function() @nogc nothrow pure;
+            return (cast(FakePureErrno) &_errno!())();
+        }
+    }
+}
+else
 extern (C) private @system @nogc nothrow
 {
     ref int fakePureErrnoImpl()
@@ -907,12 +1033,20 @@ extern (C) private @system @nogc nothrow
         import core.stdc.errno;
         return errno();
     }
+
+    static if (canLinkToErrno)
+    {
+        // We don't need fakePureErrnoImpl but for now we'll keep it for compatibility.
+        pragma(mangle, __traits(identifier, core.stdc.errno.errno)) ref int fakePureErrno() pure;
+    }
+    else
+    {
+        pragma(mangle, "fakePureErrnoImpl") ref int fakePureErrno() pure;
+    }
 }
 
 extern (C) private pure @system @nogc nothrow
 {
-    pragma(mangle, "fakePureErrnoImpl") ref int fakePureErrno();
-
     pragma(mangle, "malloc") void* fakePureMalloc(size_t);
     pragma(mangle, "calloc") void* fakePureCalloc(size_t nmemb, size_t size);
     pragma(mangle, "realloc") void* fakePureRealloc(void* ptr, size_t size);
