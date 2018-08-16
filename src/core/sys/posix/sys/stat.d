@@ -806,35 +806,82 @@ else version( FreeBSD )
 {
     // https://github.com/freebsd/freebsd/blob/master/sys/sys/stat.h
 
-    struct stat_t
+    version(FreeBSD12)
     {
-        dev_t       st_dev;
-        ino_t       st_ino;
-        mode_t      st_mode;
-        nlink_t     st_nlink;
-        uid_t       st_uid;
-        gid_t       st_gid;
-        dev_t       st_rdev;
+        struct stat_t
+        {
+            dev_t     st_dev;
+            ino_t     st_ino;
+            nlink_t   st_nlink;
+            mode_t    st_mode;
+            short st_padding0;
+            uid_t     st_uid;
+            gid_t     st_gid;
+            int st_padding1;
+            dev_t     st_rdev;
 
-        time_t      st_atime;
-        c_long      __st_atimensec;
-        time_t      st_mtime;
-        c_long      __st_mtimensec;
-        time_t      st_ctime;
-        c_long      __st_ctimensec;
+            version(X86) int st_atim_ext;
 
-        off_t       st_size;
-        blkcnt_t    st_blocks;
-        blksize_t   st_blksize;
-        fflags_t    st_flags;
-        uint        st_gen;
-        int         st_lspare;
+            time_t      st_atime;
+            c_long      __st_atimensec;
 
-        time_t      st_birthtime;
-        c_long      st_birthtimensec;
+            version(X86) int st_mtim_ext;
 
-        ubyte[16 - timespec.sizeof] padding;
+            time_t      st_mtime;
+            c_long      __st_mtimensec;
+
+            version(X86) int st_ctim_ext;
+
+            time_t      st_ctime;
+            c_long      __st_ctimensec;
+
+            version(X86) int st_btim_ext;
+
+            time_t      st_birthtime;
+            c_long      st_birthtimensec;
+
+            off_t     st_size;
+            blkcnt_t st_blocks;
+            blksize_t st_blksize;
+            fflags_t  st_flags;
+            ulong st_gen;
+            ulong[10] st_spare;
+        }
     }
+    else version(FreeBSD11)
+    {
+        struct stat_t
+        {
+            uint        st_dev;
+            uint        st_ino;
+            mode_t      st_mode;
+            ushort      st_nlink;
+            uid_t       st_uid;
+            gid_t       st_gid;
+            uint        st_rdev;
+
+            time_t      st_atime;
+            c_long      __st_atimensec;
+            time_t      st_mtime;
+            c_long      __st_mtimensec;
+            time_t      st_ctime;
+            c_long      __st_ctimensec;
+
+            off_t       st_size;
+            blkcnt_t    st_blocks;
+            blksize_t   st_blksize;
+            fflags_t    st_flags;
+            uint        st_gen;
+            int         st_lspare;
+
+            time_t      st_birthtime;
+            c_long      st_birthtimensec;
+
+            ubyte[16 - timespec.sizeof] padding;
+        }
+    }
+    else
+        static assert(0, "Unsupported version of FreeBSD");
 
     enum S_IRUSR    = 0x100; // octal 0000400
     enum S_IWUSR    = 0x080; // octal 0000200
