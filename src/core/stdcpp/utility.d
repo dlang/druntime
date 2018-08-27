@@ -28,6 +28,8 @@ struct pair(T1, T2)
 
 version(CRuntime_Microsoft)
 {
+    import core.stdcpp.type_traits : is_empty;
+
     version (_ITERATOR_DEBUG_LEVEL_0)
         enum _ITERATOR_DEBUG_LEVEL = 0;
     else version (_ITERATOR_DEBUG_LEVEL_1)
@@ -35,28 +37,47 @@ version(CRuntime_Microsoft)
     else version (_ITERATOR_DEBUG_LEVEL_2)
         enum _ITERATOR_DEBUG_LEVEL = 2;
     else
-        enum _ITERATOR_DEBUG_LEVEL = 0; // default? dunno...
+    {
+        // as a best-guess, -release will produce code that matches the MSVC release CRT
+        debug
+            enum _ITERATOR_DEBUG_LEVEL = 2;
+        else
+            enum _ITERATOR_DEBUG_LEVEL = 0;
+    }
+
+    struct _Container_base0 {}
+
+    struct _Iterator_base12
+    {
+        _Container_proxy *_Myproxy;
+        _Iterator_base12 *_Mynextiter;
+    }
+    struct _Container_proxy
+    {
+        const(_Container_base12)* _Mycont;
+        _Iterator_base12* _Myfirstiter;
+    }
+    struct _Container_base12 { _Container_proxy* _Myproxy; }
 
     static if (_ITERATOR_DEBUG_LEVEL == 0)
-    {
-        struct _Container_base0 {}
         alias _Container_base = _Container_base0;
-    }
     else
-    {
-        struct _Container_proxy
-        {
-            const(_Container_base12)* _Mycont;
-            _Iterator_base12* _Myfirstiter;
-        }
-        struct _Container_base12 { _Container_proxy* _Myproxy; }
         alias _Container_base = _Container_base12;
-    }
 
-    extern (C++, class) struct _Compressed_pair(_Ty1, _Ty2, bool Ty1Empty = is(_Ty1 == void))
+    extern (C++, class) struct _Compressed_pair(_Ty1, _Ty2, bool Ty1Empty = is_empty!_Ty1.value)
     {
+        enum _HasFirst = !Ty1Empty;
+
+        ref inout(_Ty1) _Get_first() inout nothrow @safe @nogc { return _Myval1; }
+        ref inout(_Ty2) _Get_second() inout nothrow @safe @nogc { return _Myval2; }
+
         static if (!Ty1Empty)
             _Ty1 _Myval1;
+        else
+        {
+            @property ref inout(_Ty1) _Myval1() inout nothrow @trusted @nogc { return *_GetBase(); }
+            private inout(_Ty1)* _GetBase() inout { return cast(_Ty1*)&this; }
+        }
         _Ty2 _Myval2;
     }
 

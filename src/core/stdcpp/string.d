@@ -24,7 +24,9 @@ module core.stdcpp.string;
 ///////////////////////////////////////////////////////////////////////////////
 
 import core.stdcpp.allocator;
+import core.stdcpp.utility : _ITERATOR_DEBUG_LEVEL;
 import core.stdc.stddef : wchar_t;
+import core.stdc.string : strlen;
 
 alias std_string = std.string;
 //alias std_u16string = std.u16string;
@@ -33,11 +35,18 @@ alias std_string = std.string;
 
 extern(C++, std):
 
+alias basic_string!char string;
+//alias basic_string!wchar u16string; // TODO: can't mangle these yet either...
+//alias basic_string!dchar u32string;
+//alias basic_string!wchar_t wstring; // TODO: we can't mangle wchar_t properly (yet?)
+
+
 /**
  * Character traits classes specify character properties and provide specific
  * semantics for certain operations on characters and sequences of characters.
  */
 extern(C++, struct) struct char_traits(CharT) {}
+
 
 /**
  * The basic_string is the generalization of class string for any character
@@ -56,40 +65,39 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     alias const_reference = ref const(value_type);
     alias pointer = value_type*;
     alias const_pointer = const(value_type)*;
-    alias iterator = pointer;
-    alias const_iterator = const_pointer;
-    // alias reverse_iterator
-    // alias const_reverse_iterator
+
+//    alias iterator = pointer;
+//    alias const_iterator = const_pointer;
+//    alias reverse_iterator
+//    alias const_reverse_iterator
 
     alias as_array this;
 
+    // MSVC allocates on default initialisation in debug, which can't be modelled by D `struct`
+    @disable this();
+
     // ctor/dtor
-    this(const(T)* ptr, size_type count);
-    this(const(T)* ptr, size_type count, ref const(allocator_type) al);
-    this(const(T)* ptr);
-    this(const(T)* ptr, ref const(allocator_type) al);
-//    extern(D) this(const(T)[] dstr)                                                     { this(dstr.ptr, dstr.length); }
-//    extern(D) this(const(T)[] dstr, ref const(allocator_type) al)                       { this(dstr.ptr, dstr.length, al); }
+    extern(D) this(const(T)[] dstr) nothrow @safe @nogc                                 { this(&dstr[0], dstr.length); }
+    extern(D) this(const(T)[] dstr, ref const(allocator_type) al) nothrow @safe @nogc   { this(&dstr[0], dstr.length, al); }
     ~this() nothrow;
 
     ref basic_string opAssign(ref const(basic_string) s);
 
     // Iterators
-    iterator begin() nothrow @trusted @nogc;
-    const_iterator begin() const nothrow @trusted @nogc;
-    const_iterator cbegin() const nothrow @trusted @nogc;
-
-    iterator end() nothrow @trusted @nogc;
-    const_iterator end() const nothrow @trusted @nogc;
-    const_iterator cend() const nothrow @trusted @nogc;
+//    iterator begin() nothrow @trusted @nogc;
+//    const_iterator begin() const nothrow @trusted @nogc;
+//    const_iterator cbegin() const nothrow @trusted @nogc;
+//    iterator end() nothrow @trusted @nogc;
+//    const_iterator end() const nothrow @trusted @nogc;
+//    const_iterator cend() const nothrow @trusted @nogc;
 
     // no reverse iterator for now.
 
     // Capacity
-    size_type length() const nothrow @trusted @nogc                                     { return size(); }
+    size_type length() const nothrow @safe @nogc                                        { return size(); }
     size_type max_size() const nothrow @trusted @nogc;
 
-    bool empty() const nothrow @trusted @nogc                                           { return size() == 0; }
+    bool empty() const nothrow @safe @nogc                                              { return size() == 0; }
 
     void clear() nothrow;
     void resize(size_type n);
@@ -98,12 +106,12 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     void shrink_to_fit();
 
     // Element access
-    ref T back() @trusted @nogc;
-    ref const(T) back() const @trusted @nogc;
-    ref T front() @trusted @nogc;
-    ref const(T) front() const @trusted @nogc;
+    extern(D) reference front() @safe @nogc                                             { return as_array()[0]; }
+    extern(D) const_reference front() const @safe @nogc                                 { return as_array()[0]; }
+    extern(D) reference back() @safe @nogc                                              { return as_array()[size()-1]; }
+    extern(D) const_reference back() const @safe @nogc                                  { return as_array()[size()-1]; }
 
-    extern(D) const(T)* c_str() const nothrow @trusted @nogc                            { return data(); }
+    extern(D) const(T)* c_str() const nothrow @safe @nogc                               { return data(); }
 
     // Modifiers
     ref basic_string opOpAssign(string op : "+")(ref const(basic_string) s);
@@ -115,27 +123,27 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     extern(D) ref basic_string opOpAssign(string op : "~")(T s)                         { this += s; return this; }
 
     ref basic_string append(size_type n, T c);
-    ref basic_string append(const(T)* s);
-    ref basic_string append(const(T)* s, size_type n);
+    extern(D) ref basic_string append(const(T)* s) nothrow @nogc                        { assert(s); return append(s, strlen(s)); }
+    ref basic_string append(const(T)* s, size_type n) nothrow @trusted @nogc;
     ref basic_string append(ref const(basic_string) str);
     ref basic_string append(ref const(basic_string) str, size_type subpos, size_type sublen);
-    extern(D) ref basic_string append(const(T)[] s)                                     { append(s.ptr, s.length); return this; }
+    extern(D) ref basic_string append(const(T)[] s) nothrow @safe @nogc                 { append(&s[0], s.length); return this; }
 
     void push_back(T c);
 
     ref basic_string assign(size_type n, T c);
-    ref basic_string assign(const(T)* s);
-    ref basic_string assign(const(T)* s, size_type n);
+    extern(D) ref basic_string assign(const(T)* s) nothrow @nogc                        { assert(s); return assign(s, strlen(s)); }
+    ref basic_string assign(const(T)* s, size_type n) nothrow @trusted @nogc;
     ref basic_string assign(ref const(basic_string) str);
     ref basic_string assign(ref const(basic_string) str, size_type subpos, size_type sublen);
-    extern(D) ref basic_string assign(const(T)[] s)                                     { assign(s.ptr, s.length); return this; }
+    extern(D) ref basic_string assign(const(T)[] s) nothrow @safe @nogc                 { assign(&s[0], s.length); return this; }
 
     ref basic_string insert(size_type pos, ref const(basic_string) str);
     ref basic_string insert(size_type pos, ref const(basic_string) str, size_type subpos, size_type sublen);
-    ref basic_string insert(size_type pos, const(T)* s);
-    ref basic_string insert(size_type pos, const(T)* s, size_type n);
+//    ref basic_string insert(size_type pos, const(T)* s) nothrow @nogc                   { assert(s); return insert(pos, s, strlen(s)); }
+    ref basic_string insert(size_type pos, const(T)* s, size_type n) nothrow @trusted @nogc;
     ref basic_string insert(size_type pos, size_type n, T c);
-//    extern(D) ref basic_string insert(size_type pos, const(T)[] s)                      { insert(pos, s.ptr, s.length); return this; }
+//    extern(D) ref basic_string insert(size_type pos, const(T)[] s) nothrow @safe @nogc  { insert(pos, &s[0], s.length); return this; }
 
     ref basic_string erase(size_type pos = 0, size_type len = npos);
 
@@ -144,7 +152,7 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     void pop_back();
 
     // String operations
-    size_type copy(T* s, size_type len, size_type pos = 0) const;
+    deprecated size_type copy(T* s, size_type len, size_type pos = 0) const;
 
     size_type find(ref const(basic_string) str, size_type pos = 0) const nothrow;
     size_type find(const(T)* s, size_type pos = 0) const;
@@ -186,72 +194,148 @@ extern(C++, class) struct basic_string(T, Traits = char_traits!T, Alloc = alloca
     int compare(size_type pos, size_type len, const(T)* s, size_type n) const;
 
     // D helpers
-    extern(D)        T[] opSlice() nothrow @trusted @nogc                                           { return as_array(); }
-    extern(D) const(T)[] opSlice() const nothrow @trusted @nogc                                     { return as_array(); }
-    extern(D)        T[] opSlice(size_type start, size_type end) @trusted                           { assert(start <= end && end <= size(), "Index out of bounds"); return as_array()[start .. end]; }
-    extern(D) const(T)[] opSlice(size_type start, size_type end) const @trusted                     { assert(start <= end && end <= size(), "Index out of bounds"); return as_array()[start .. end]; }
-    extern(D) size_type opDollar(size_t pos)() const nothrow @safe @nogc                            { static assert(pos == 0, "std::vector is one-dimensional"); return size(); }
+    extern(D) size_type opDollar(size_t pos)() const nothrow @safe @nogc                        { static assert(pos == 0, "std::vector is one-dimensional"); return size(); }
 
-    // support all the assignment variants
-    extern(D) void opSliceAssign(T value)                                                           { opSlice()[] = value; }
-    extern(D) void opSliceAssign(T value, size_type i, size_type j)                                 { opSlice(i, j)[] = value; }
-    extern(D) void opSliceUnary(string op)()                         if (op == "++" || op == "--")  { mixin(op ~ "opSlice()[];"); }
-    extern(D) void opSliceUnary(string op)(size_type i, size_type j) if (op == "++" || op == "--")  { mixin(op ~ "opSlice(i, j)[];"); }
-    extern(D) void opSliceOpAssign(string op)(T value)                                              { mixin("opSlice()[] " ~ op ~ "= value;"); }
-    extern(D) void opSliceOpAssign(string op)(T value, size_type i, size_type j)                    { mixin("opSlice(i, j)[] " ~ op ~ "= value;"); }
-
-private:
     version(CRuntime_Microsoft)
     {
-        import core.stdcpp.utility : _Container_base, _Compressed_pair, _Xout_of_range;
+        this(const(T)* ptr, size_type count) nothrow @safe @nogc                                { _Tidy(); assign(ptr, count); }
+        this(const(T)* ptr, size_type count, ref const(allocator_type) al) nothrow @safe @nogc  { _AssignAllocator(al); _Tidy(); assign(ptr, count); }
+        this(const(T)* ptr) nothrow @nogc                                                       { _Tidy(); assign(ptr); }
+        this(const(T)* ptr, ref const(allocator_type) al) nothrow @nogc                         { _AssignAllocator(al); _Tidy(); assign(ptr); }
+
+        // perf will be greatly improved by inlining the primitive access functions
+        extern(D) size_type size() const nothrow @safe @nogc                                    { return _Get_data()._Mysize; }
+        extern(D) size_type capacity() const nothrow @safe @nogc                                { return _Get_data()._Myres; }
+
+        extern(D)        T* data() nothrow @safe @nogc                                          { return _Get_data()._Myptr; }
+        extern(D) const(T)* data() const nothrow @safe @nogc                                    { return _Get_data()._Myptr; }
+
+        extern(D) ref        T at(size_type i) nothrow @trusted @nogc                           { if (_Get_data()._Mysize <= i) _Xran(); return _Get_data()._Myptr[i]; }
+        extern(D) ref const(T) at(size_type i) const nothrow @trusted @nogc                     { if (_Get_data()._Mysize <= i) _Xran(); return _Get_data()._Myptr[i]; }
+
+        extern(D)        T[] as_array() nothrow @trusted @nogc                                  { return _Get_data()._Myptr[0 .. _Get_data()._Mysize]; }
+        extern(D) const(T)[] as_array() const nothrow @trusted @nogc                            { return _Get_data()._Myptr[0 .. _Get_data()._Mysize]; }
+
+        extern(D) this(this)
+        {
+            // we meed a compatible postblit
+            static if (_ITERATOR_DEBUG_LEVEL > 0)
+            {
+                _Base._Alloc_proxy();
+            }
+
+            if (_Get_data()._IsAllocated())
+            {
+                pointer _Ptr = _Get_data()._Myptr;
+                size_type _Count = _Get_data()._Mysize;
+
+                // re-init to zero
+                _Get_data()._Mysize = 0;
+                _Get_data()._Myres = 0;
+
+                _Tidy();
+                assign(_Ptr, _Count);
+            }
+        }
+
+    private:
+        import core.stdcpp.utility : _Xout_of_range;
+
+        pragma(inline, true) 
+        {
+            extern (D) ref _Base.Alloc _Getal() nothrow @safe @nogc                 { return _Base._Mypair._Myval1; }
+            extern (D) ref inout(_Base.ValTy) _Get_data() inout nothrow @safe @nogc { return _Base._Mypair._Myval2; }
+
+            extern (D) void _Eos(size_type _Newsize) nothrow @nogc                  { _Get_data()._Myptr()[_Get_data()._Mysize = _Newsize] = T(0); }
+        }
+
+        extern (D) void _AssignAllocator(ref const(allocator_type) al) nothrow @nogc
+        {
+            static if (_Base._Mypair._HasFirst)
+                _Getal() = al;
+        }
+
+        extern (D) void _Tidy(bool _Built = false, size_type _Newsize = 0) nothrow @trusted @nogc
+        {
+            if (_Built && _Base.ValTy._BUF_SIZE <= _Get_data()._Myres)
+            {
+                assert(false); // TODO: free buffer...
+            }
+            _Get_data()._Myres = _Base.ValTy._BUF_SIZE - 1;
+            _Eos(_Newsize);
+        }
 
         void _Xran() const @trusted @nogc { _Xout_of_range("invalid string position"); }
 
-        extern(C++, class) struct _String_val
-        {
-            enum _BUF_SIZE = 16 / value_type.sizeof < 1 ? 1 : 16 / value_type.sizeof;
-
-            union _Bxty
-            {
-                value_type[_BUF_SIZE] _Buf;
-                pointer _Ptr;
-            }
-
-            _Container_base base;
-            alias base this;
-
-            _Bxty _Bx = void;
-            size_type _Mysize;  // current length of string
-            size_type _Myres;   // current storage reserved for string
-
-            extern(D) @property inout(value_type)* _Myptr() inout nothrow @trusted @nogc    { return _BUF_SIZE <= _Myres ? _Bx._Ptr : _Bx._Buf.ptr; }
-        }
-
-        _Compressed_pair!(void, _String_val) _Mypair;
-
-    public:
-        // perf will be greatly improved by inlining the primitive access functions
-        extern(D) size_type size() const nothrow @safe @nogc                                { return _Mypair._Myval2._Mysize; }
-        extern(D) size_type capacity() const nothrow @safe @nogc                            { return _Mypair._Myval2._Myres; }
-
-        extern(D) T* data() nothrow @safe @nogc                                             { return _Mypair._Myval2._Myptr; }
-        extern(D) const(T)* data() const nothrow @safe @nogc                                { return _Mypair._Myval2._Myptr; }
-
-        extern(D) ref T opIndex(size_type i) nothrow @trusted @nogc                         { return _Mypair._Myval2._Myptr[0 .. _Mypair._Myval2._Mysize][i]; }
-        extern(D) ref const(T) opIndex(size_type i) const nothrow @trusted @nogc            { return _Mypair._Myval2._Myptr[0 .. _Mypair._Myval2._Mysize][i]; }
-        extern(D) ref T at(size_type i) nothrow @trusted @nogc                              { if (_Mypair._Myval2._Mysize <= i) _Xran(); return _Mypair._Myval2._Myptr[i]; }
-        extern(D) ref const(T) at(size_type i) const nothrow @trusted @nogc                 { if (_Mypair._Myval2._Mysize <= i) _Xran(); return _Mypair._Myval2._Myptr[i]; }
-
-        extern(D)        T[] as_array() nothrow @trusted @nogc                              { return _Mypair._Myval2._Myptr[0 .. _Mypair._Myval2._Mysize]; }
-        extern(D) const(T)[] as_array() const nothrow @trusted @nogc                        { return _Mypair._Myval2._Myptr[0 .. _Mypair._Myval2._Mysize]; }
+        _String_alloc!(_String_base_types!(T, Alloc)) _Base;
     }
     else
     {
         static assert(false, "C++ runtime not supported");
     }
+
+private:
+    // HACK: because no rvalue->ref
+    extern (D) __gshared static immutable allocator_type defaultAlloc;
 }
 
-alias basic_string!char string;
-//alias basic_string!wchar u16string; // TODO: can't mangle these yet either...
-//alias basic_string!dchar u32string;
-//alias basic_string!wchar_t wstring; // TODO: we can't mangle wchar_t properly (yet?)
+
+// platform detail
+version(CRuntime_Microsoft)
+{
+    extern (C++, struct) struct _String_base_types(_Elem, _Alloc)
+    {
+        alias Ty = _Elem;
+        alias Alloc = _Alloc;
+    }
+
+    extern (C++, class) struct _String_alloc(_Alloc_types)
+    {
+        import core.stdcpp.utility : _Compressed_pair;
+
+        alias Ty = _Alloc_types.Ty;
+        alias Alloc = _Alloc_types.Alloc;
+        alias ValTy = _String_val!Ty;
+
+        void _Orphan_all() nothrow @trusted @nogc;
+
+        static if (_ITERATOR_DEBUG_LEVEL > 0)
+        {
+            void _Alloc_proxy() nothrow @trusted @nogc;
+            void _Free_proxy() nothrow @trusted @nogc;
+        }
+
+        _Compressed_pair!(Alloc, ValTy) _Mypair;
+    }
+
+    extern (C++, class) struct _String_val(T)
+    {
+        import core.stdcpp.utility : _Container_base;
+        import core.stdcpp.type_traits : is_empty;
+
+        enum _BUF_SIZE = 16 / T.sizeof < 1 ? 1 : 16 / T.sizeof;
+        enum _ALLOC_MASK = T.sizeof <= 1 ? 15 : T.sizeof <= 2 ? 7 : T.sizeof <= 4 ? 3 : T.sizeof <= 8 ? 1 : 0;
+
+        static if (!is_empty!_Container_base.value)
+        {
+            _Container_base _Base;
+        }
+
+        union _Bxty
+        {
+            T[_BUF_SIZE] _Buf;
+            T* _Ptr;
+        }
+
+        _Bxty _Bx = void;
+        size_t _Mysize;  // current length of string
+        size_t _Myres;   // current storage reserved for string
+
+        pragma(inline, true) 
+        {
+            extern(D) bool _IsAllocated() const @safe @nogc                     { return _BUF_SIZE <= _Myres; }
+            extern(D) @property T* _Myptr() nothrow @trusted @nogc              { return _BUF_SIZE <= _Myres ? _Bx._Ptr : _Bx._Buf.ptr; }
+            extern(D) @property const(T)* _Myptr() const nothrow @trusted @nogc { return _BUF_SIZE <= _Myres ? _Bx._Ptr : _Bx._Buf.ptr; }
+        }
+    }
+}

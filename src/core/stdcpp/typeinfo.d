@@ -90,7 +90,7 @@ else version (CRuntime_Microsoft)
             ~this() {}
         }
 
-        class bad_typeid :exception
+        class bad_typeid : exception
         {
             this(const(char)* _Message = "bad typeid") { super(_Message); }
             ~this() {}
