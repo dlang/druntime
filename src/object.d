@@ -483,6 +483,167 @@ unittest
 }
 
 /**
+Destruct the given object. Correctly call its destructor or finalizer so it no longer
+references any other objects. This $(I does not) reset the memory to init state. After
+this call succeeds, the object memory is in an invalid state, and should not be referenced.
+It does $(I not) initiate a GC cycle or free any GC memory.
+*/
+void destruct(T)(ref T obj) if (is(T == struct))
+{
+    _destructRecurse(obj);
+}
+
+///
+void destruct(T)(T obj) if (is(T == class))
+{
+    static if(__traits(getLinkage, T) == "C++")
+        obj.__xdtor();
+    else
+        rt_finalize(cast(void*)obj); // can destruct without init?
+}
+
+///
+void destruct(T)(T obj) if (is(T == interface))
+{
+    destruct(cast(Object)obj);
+}
+
+///
+void destruct(T : U[n], U, size_t n)(ref T obj) if (!is(T == struct))
+{
+    foreach_reverse (ref e; obj[])
+        destruct(e);
+}
+
+///
+void destruct(T)(ref T obj)
+    if (!is(T == struct) && !is(T == interface) && !is(T == class) && !_isStaticArray!T)
+{
+    // object does not require destruction
+}
+
+unittest
+{
+    struct A { string s = "A";  }
+    A a;
+    a.s = "asd";
+    destruct(a);
+    assert(a.s == "asd");
+}
+unittest
+{
+    static int destroyed = 0;
+    struct C
+    {
+        string s = "C";
+        ~this() nothrow @safe @nogc
+        {
+            destroyed++;
+        }
+    }
+
+    struct B
+    {
+        C c;
+        string s = "B";
+        ~this() nothrow @safe @nogc
+        {
+            destroyed++;
+        }
+    }
+    B a;
+    a.s = "asd";
+    a.c.s = "jkl";
+    destruct(a);
+    assert(destroyed == 2);
+    assert(a.s == "asd");
+    assert(a.c.s == "jkl");
+
+    destroyed = 0;
+    B[5] b;
+    foreach (i; 0 .. b.length)
+    {
+        b[i].s = "abcdef"[i .. i+2];
+        b[i].c.s = "ijklmn"[i .. i+2];
+    }
+    destruct(b);
+    assert(destroyed == 10);
+    assert(b[0].s == "ab" && b[4].s == "ef");
+    assert(b[0].c.s == "ik" && b[4].c.s == "mn");
+}
+unittest
+{
+    // rt_finalize performs destruction, memory initialisation is implementation defined
+    class C
+    {
+        struct Agg
+        {
+            static int dtorCount;
+            ~this() { dtorCount++; }
+        }
+
+        static int dtorCount;
+
+        Agg a;
+        ~this() { dtorCount++; }
+    }
+
+    C c = new C();
+    assert(c.dtorCount == 0);   // destructor not yet called
+    assert(c.a.dtorCount == 0); // destructor not yet called
+    destruct(c);
+    assert(c.dtorCount == 1);   // `c`'s destructor was called
+    assert(c.a.dtorCount == 1); // `c.a`'s destructor was called
+
+    // check C++ destruction
+    extern (C++) class CPP
+    {
+        struct Agg
+        {
+            __gshared int dtorCount;
+
+            int x = 10;
+            ~this() { dtorCount++; }
+        }
+
+        __gshared int dtorCount;
+
+        string s = "S";
+        Agg a;
+        ~this() { dtorCount++; }
+    }
+
+    CPP cpp = new CPP();
+    assert(cpp.dtorCount == 0);   // destructor not yet called
+    assert(cpp.s == "S");         // initial state `cpp.s` is `"S"`
+    assert(cpp.a.dtorCount == 0); // destructor not yet called
+    assert(cpp.a.x == 10);        // initial state `cpp.a.x` is `10`
+    cpp.s = "T";
+    cpp.a.x = 30;
+    assert(cpp.s == "T");         // `cpp.s` is `"T"`
+    destruct(cpp);
+    assert(cpp.dtorCount == 1);   // `cpp`'s destructor was called
+    assert(cpp.s == "T");         // `cpp.s` remains unchanged
+    assert(cpp.a.dtorCount == 1); // `cpp.a`'s destructor was called
+    assert(cpp.a.x == 30);        // `cpp.a.x` remains unchanged
+}
+unittest
+{
+    int[2] a;
+    a[0] = 1;
+    a[1] = 2;
+    destruct(a);
+    assert(a == [ 1, 2 ]);
+}
+unittest
+{
+    int a = 42;
+    destruct(a);
+    assert(a == 42);
+}
+
+
+/**
 Destroys the given object and sets it back to its initial state. It's used to
 _destroy an object, calling its destructor or finalizer so it no longer
 references any other objects. It does $(I not) initiate a GC cycle or free
