@@ -45,6 +45,11 @@ unittest
  */
 class AssertError : Error
 {
+    @safe pure nothrow this()
+    {
+        super(null);
+    }
+
     @safe pure nothrow this( string file, size_t line )
     {
         this(cast(Throwable)null, file, line);
@@ -61,8 +66,14 @@ class AssertError : Error
     }
 }
 
-unittest
+@safe unittest
 {
+    {
+        auto ae = perThreadInstance!AssertError;
+        assert(typeid(ae) is typeid(AssertError));
+        assert(ae.file is null);
+        assert(ae.line == 0);
+    }
     {
         auto ae = new AssertError("hello", 42);
         assert(ae.file == "hello");
@@ -414,11 +425,64 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
     assertHandler = h;
 }
 
+/*
+Returns a perThreadInstance object of class type `C`, i.e. repeated calls to
+`perThreadInstance!C` within a given thread return the same instance. For that
+reason, no constructor parameters are accepted; `C` must allow default
+construction.
+
+Different threads own different instances of `C`.
+
+The destructor of the perThreadInstance object is called during application's
+exit.
+
+Returns: A thread-local instance of type `C`.
+
+Throws: If the default constructor of `C` throws.
+*/
+private C perThreadInstance(C)() if (is(C == class) && is(typeof(new C)))
+{
+    static size_t[1 + (__traits(classInstanceSize, C) - 1) / size_t.sizeof] b;
+    static bool initialized = false;
+    auto result = () @trusted { return cast(C) b.ptr; }();
+    if (!initialized)
+    {
+        assert(typeid(C).initializer.length == b.length * size_t.sizeof);
+        import core.stdc.string;
+        () @trusted
+        {
+            memcpy(b.ptr, typeid(C).initializer.ptr, b.length);
+        }();
+        static if (is(typeof(result.__ctor())))
+            result.__ctor;
+        import core.internal.traits;
+        static if (hasElaborateDestructor!C)
+        {
+            import core.stdc.stdlib;
+            static void destroy()
+            {
+                (cast(C) b.ptr).__dtor;
+            }
+            atexit(&destroy);
+        }
+        initialized = true;
+    }
+    return result;
+}
+
+unittest
+{
+    static class C
+    {
+        ~this() {}
+    }
+    // Ensure coverage of the atexit code
+    assert(perThreadInstance!C !is null);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Overridable Callbacks
 ///////////////////////////////////////////////////////////////////////////////
-
 
 /**
  * A callback for assert errors in D.  The user-supplied assert handler will
@@ -431,9 +495,7 @@ deprecated void setAssertHandler( AssertHandler h ) @trusted nothrow @nogc
  */
 extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) nothrow
 {
-    if( _assertHandler is null )
-        throw new AssertError( file, line );
-    _assertHandler( file, line, null);
+    onAssertErrorMsg(file, line, null);
 }
 
 
@@ -450,7 +512,13 @@ extern (C) void onAssertError( string file = __FILE__, size_t line = __LINE__ ) 
 extern (C) void onAssertErrorMsg( string file, size_t line, string msg ) nothrow
 {
     if( _assertHandler is null )
-        throw new AssertError( msg, file, line );
+    {
+        auto e = perThreadInstance!AssertError;
+        e.msg = msg;
+        e.file = file;
+        e.line = line;
+        throw e;
+    }
     _assertHandler( file, line, msg );
 }
 
