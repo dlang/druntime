@@ -340,16 +340,16 @@ if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStati
 }
 
 //arithmetic type hash
-@trusted @nogc nothrow pure
-size_t hashOf(T)(scope const T val) if (!is(T == enum) && __traits(isArithmetic, T)
+@safe @nogc nothrow pure
+size_t hashOf(T = size_t)(scope const size_t val) if (!is(T == enum) && __traits(isArithmetic, T)
     && __traits(isIntegral, T) && T.sizeof <= size_t.sizeof)
 {
-    return cast(UnqualUnsigned!T) val;
+    return val;
 }
 
 //arithmetic type hash
-@trusted @nogc nothrow pure
-size_t hashOf(T)(scope const T val, size_t seed) if (!is(T == enum) && __traits(isArithmetic, T)
+@safe @nogc nothrow pure
+size_t hashOf(T = size_t)(scope const size_t val, size_t seed) if (!is(T == enum) && __traits(isArithmetic, T)
     && __traits(isIntegral, T) && T.sizeof <= size_t.sizeof)
 {
     static if (size_t.sizeof < ulong.sizeof)
@@ -371,19 +371,67 @@ size_t hashOf(T)(scope const T val, size_t seed) if (!is(T == enum) && __traits(
         enum uint r1 = 31;
         enum uint r2 = 27;
     }
-    auto h = c1 * cast(UnqualUnsigned!T) val;
+    size_t h = c1 * val;
     h = (h << r1) | (h >>> (typeof(h).sizeof * 8 - r1));
     h = (h * c2) ^ seed;
     h = (h << r2) | (h >>> (typeof(h).sizeof * 8 - r2));
     return h * 5 + c3;
 }
 
+private enum _hashLargeInteger =
+q{
+    size_t result = seed;
+    static foreach (i; 0 .. T.sizeof / size_t.sizeof)
+        result = hashOf(cast(size_t) (val >>> (size_t.sizeof * 8 * i)), result);
+    return result;
+};
+
+static if (size_t.sizeof >= ulong.sizeof)
+{
+    //arithmetic type hash
+    @safe @nogc nothrow pure
+    size_t hashOf(T)(scope const T val, size_t seed = 0) if (!is(T == enum) && __traits(isArithmetic, T)
+        && __traits(isIntegral, T) && T.sizeof > size_t.sizeof)
+    {
+        mixin(_hashLargeInteger);
+    }
+}
+else
+{
+    // Needed in 32-bit mode only to pass a unittest due to hashOf(42L) using
+    // hashOf!uint instead of hashOf!long when 42L is a compile-time constant.
+
+    //arithmetic type hash
+    @safe @nogc nothrow pure
+    size_t hashOf(T = long)(scope const long val, size_t seed = 0) if (!is(T == enum) && __traits(isArithmetic, T)
+        && __traits(isIntegral, T) && !__traits(isUnsigned, T) && T.sizeof == ulong.sizeof)
+    {
+        mixin(_hashLargeInteger);
+    }
+
+    //arithmetic type hash
+    @safe @nogc nothrow pure
+    size_t hashOf(T = ulong)(scope const ulong val, size_t seed = 0) if (!is(T == enum) && __traits(isArithmetic, T)
+        && __traits(isIntegral, T) && __traits(isUnsigned, T) && T.sizeof == ulong.sizeof)
+    {
+        mixin(_hashLargeInteger);
+    }
+
+    //arithmetic type hash
+    @safe @nogc nothrow pure
+    size_t hashOf(T)(scope const T val, size_t seed = 0) if (!is(T == enum) && __traits(isArithmetic, T)
+        && __traits(isIntegral, T) && T.sizeof > long.sizeof)
+    {
+        mixin(_hashLargeInteger);
+    }
+}
+
 //arithmetic type hash
 @trusted @nogc nothrow pure
 size_t hashOf(T)(scope const T val, size_t seed = 0) if (!is(T == enum) && __traits(isArithmetic, T)
-    && (!__traits(isIntegral, T) || T.sizeof > size_t.sizeof))
+    && !__traits(isIntegral, T))
 {
-    static if(__traits(isFloating, val))
+    static assert(__traits(isFloating, val), "Internal error: unanticipated type " ~ T.stringof);
     {
         static if (floatCoalesceZeroes || floatCoalesceNaNs)
         {
@@ -414,13 +462,6 @@ size_t hashOf(T)(scope const T val, size_t seed = 0) if (!is(T == enum) && __tra
         else
             return bytesHashAlignedBy!T(toUbyte(data), seed);
     }
-    else
-    {
-        static assert(T.sizeof > size_t.sizeof && __traits(isIntegral, T));
-        static foreach (i; 0 .. T.sizeof / size_t.sizeof)
-            seed = hashOf(cast(size_t) (val >>> (size_t.sizeof * 8 * i)), seed);
-        return seed;
-    }
 }
 
 //typeof(null) hash. CTFE supported
@@ -437,47 +478,68 @@ size_t hashOf(T)(scope const T val, size_t seed) if (!is(T == enum) && is(T : ty
     return hashOf(size_t(0), seed);
 }
 
-//Pointers hash. CTFE unsupported if not null
-@trusted @nogc nothrow pure
-size_t hashOf(T)(scope const T val)
-if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null))
-    && !is(T == struct) && !is(T == class) && !is(T == union))
-{
+private enum _hashOfPointer =
+q{
+    enum bool isChained = is(typeof(seed) : size_t);
     if(__ctfe)
     {
         if(val is null)
         {
-            return 0;
+            static if (isChained)
+                return hashOf(size_t(0), seed);
+            else
+                return 0;
         }
         else
         {
             assert(0, "Unable to calculate hash of non-null pointer at compile time");
         }
-
     }
-    auto addr = cast(size_t) val;
-    return addr ^ (addr >>> 4);
+    static if (isChained)
+    {
+        return hashOf(cast(size_t) val, seed);
+    }
+    else
+    {
+        auto addr = cast(size_t) val;
+        return addr ^ (addr >>> 4);
+    }
+};
+
+//Pointers hash. CTFE unsupported if not null
+@trusted @nogc nothrow pure
+size_t hashOf(T = void*)(scope const void* val)
+if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null)) && !is(T == shared)
+    && !is(T == struct) && !is(T == class) && !is(T == union))
+{
+    mixin(_hashOfPointer);
+}
+
+//Pointers hash. CTFE unsupported if not null
+@trusted @nogc nothrow pure
+size_t hashOf(T)(scope const T val)
+if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null)) && is(T == shared)
+    && !is(T == struct) && !is(T == class) && !is(T == union))
+{
+    mixin(_hashOfPointer);
+}
+
+//Pointers hash. CTFE unsupported if not null
+@trusted @nogc nothrow pure
+size_t hashOf(T = void*)(scope const void* val, size_t seed)
+if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null)) && !is(T == shared)
+    && !is(T == struct) && !is(T == class) && !is(T == union))
+{
+    mixin(_hashOfPointer);
 }
 
 //Pointers hash. CTFE unsupported if not null
 @trusted @nogc nothrow pure
 size_t hashOf(T)(scope const T val, size_t seed)
-if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null))
+if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null)) && is(T == shared)
     && !is(T == struct) && !is(T == class) && !is(T == union))
 {
-    if(__ctfe)
-    {
-        if(val is null)
-        {
-            return hashOf(cast(size_t)0, seed);
-        }
-        else
-        {
-            assert(0, "Unable to calculate hash of non-null pointer at compile time");
-        }
-
-    }
-    return hashOf(cast(size_t)val, seed);
+    mixin(_hashOfPointer);
 }
 
 private enum _hashOfStruct =
