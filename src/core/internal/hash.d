@@ -604,6 +604,21 @@ if (!is(T == enum) && (is(T == interface) || is(T == class))
     return hashOf(cast(const void*) val, seed);
 }
 
+// Index of the `toHash` method in every class's vtbl.
+private enum vtblToHashIndex = 2;
+@system unittest
+{
+    static class C {
+        override size_t toHash() const @trusted nothrow { return 3; }
+    }
+    auto a = new C();
+    auto b = new Object();
+    assert(b.classinfo.vtbl[vtblToHashIndex] is &Object.toHash,
+        "Internal error: incorrect vtblToHashIndex.");
+    assert(a.classinfo.vtbl[vtblToHashIndex] !is b.classinfo.vtbl[vtblToHashIndex],
+        "Internal error: incorrect vtblToHashIndex.");
+}
+
 //class or interface hash. CTFE depends on toHash
 size_t hashOf(T)(T val)
 if (!is(T == enum) && (is(T == interface) || is(T == class))
@@ -611,8 +626,31 @@ if (!is(T == enum) && (is(T == interface) || is(T == class))
 {
     static if (__traits(compiles, {size_t h = val.toHash();}))
         return val ? val.toHash() : 0;
+    else static if (is(T == class) && __traits(compiles, {
+            static assert(&Object.toHash !is &T.toHash); }))
+    {
+        static assert(0, "Type system violation: " ~ T.stringof ~
+            ".toHash() is not callable.");
+    }
+    else static if (is(T == interface))
+    {
+        // Doing this to make .classinfo work.
+        import core.internal.traits : CopyTypeQualifiers;
+        static if (is(T == immutable)) alias U = const Object;
+        else alias U = CopyTypeQualifiers!(T, Object);
+        return hashOf!U(cast(U) val);
+    }
     else
-        return val ? (cast(Object)val).toHash() : 0;
+    {
+        if (val is null) return 0;
+        if (val.classinfo.vtbl[vtblToHashIndex] !is &Object.toHash)
+            throw new Error("Type system violation: " ~
+                typeid(val).name ~ " overrides toHash() and " ~
+                T.stringof ~ ".toHash() cannot be statically determined " ~
+                " to be callable.");
+        auto addr = (() @trusted => cast(size_t) cast(const void*) val)();
+        return addr ^ (addr >> 4);
+    }
 }
 
 //class or interface hash. CTFE depends on toHash
@@ -622,8 +660,31 @@ if (!is(T == enum) && (is(T == interface) || is(T == class))
 {
     static if (__traits(compiles, {size_t h = val.toHash();}))
         return hashOf(val ? cast(size_t) val.toHash() : size_t(0), seed);
+    else static if (is(T == class) && __traits(compiles, {
+            static assert(&Object.toHash !is &T.toHash); }))
+    {
+        static assert(0, "Type system violation: " ~ T.stringof ~
+            ".toHash() is not callable.");
+    }
+    else static if (is(T == interface))
+    {
+        // Doing this to make .classinfo work.
+        import core.internal.traits : CopyTypeQualifiers;
+        static if (is(T == immutable)) alias U = const Object;
+        else alias U = CopyTypeQualifiers!(T, Object);
+        return hashOf!U(cast(U) val);
+    }
     else
-        return hashOf(val ? (cast(Object)val).toHash() : 0, seed);
+    {
+        if (val.classinfo.vtbl[vtblToHashIndex] !is &Object.toHash)
+            throw new Error("Type system violation: " ~
+                typeid(val).name ~ " overrides toHash() and " ~
+                T.stringof ~ ".toHash() cannot be statically determined " ~
+                " to be callable.");
+        if (__ctfe && val is null) return hashOf(size_t(0), seed);
+        auto addr = (() @trusted => cast(size_t) cast(const void*) val)();
+        return hashOf(addr, seed);
+    }
 }
 
 //associative array hash. CTFE depends on base types

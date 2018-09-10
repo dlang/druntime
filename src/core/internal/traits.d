@@ -53,6 +53,21 @@ template Unqual(T)
     }
 }
 
+package(core) template CopyTypeQualifiers(From, To)
+{
+    alias T = From;
+         static if (is(T U ==          immutable U)) alias CopyTypeQualifiers = immutable To;
+    else static if (is(T U == shared inout const U)) alias CopyTypeQualifiers = shared inout const To;
+    else static if (is(T U == shared inout       U)) alias CopyTypeQualifiers = shared inout To;
+    else static if (is(T U == shared       const U)) alias CopyTypeQualifiers = shared const To;
+    else static if (is(T U == shared             U)) alias CopyTypeQualifiers = shared To;
+    else static if (is(T U ==        inout const U)) alias CopyTypeQualifiers = inout const To;
+    else static if (is(T U ==        inout       U)) alias CopyTypeQualifiers = inout To;
+    else static if (is(T U ==              const U)) alias CopyTypeQualifiers = const To;
+    else                                             alias CopyTypeQualifiers = To;
+}
+
+
 // Substitute all `inout` qualifiers that appears in T to `const`
 template substInout(T)
 {
