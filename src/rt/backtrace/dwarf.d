@@ -96,6 +96,10 @@ int traceHandlerOpApplyImpl(const void*[] callstack, scope int delegate(ref size
             bufferLength = snprintf(buffer.ptr, buffer.length, "%s[0x%x]", addressBuffer.ptr, callstack[i]);
 
         assert(bufferLength >= 0);
+        if (bufferLength > buffer.length) {
+            bufferLength = buffer.length;
+            buffer[$-3..$] = '.';
+        }
 
         auto output = buffer[0 .. bufferLength];
         auto pos = i;
