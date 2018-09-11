@@ -175,12 +175,17 @@ struct GC
       * Aggregation of current profile information, requires profiling to be on
      */
     static struct ProfileStats {
+        import core.time : Duration;
         /// total number of GC cycles
         size_t numCollections;
-        /// total time spent doing GC in hnsecs
-        ulong totalCollectionTime;
-        // largest time spent doing one GC cycle in hnsecs
-        ulong maxCollectionTime;
+        /// total time spent doing GC
+        Duration totalCollectionTime;
+        /// total time threads were paused doing GC
+        Duration totalPauseTime;
+        // largest time threads were paused during one GC cycle
+        Duration maxPauseTime;
+        // largest time spent doing one GC cycle
+        Duration maxCollectionTime;
     }
 
     /**
