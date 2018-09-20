@@ -312,6 +312,13 @@ test/%/.run: test/%/Makefile $(DMD)
 		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) LINKDL=$(LINKDL) \
 		QUIET=$(QUIET) TIMELIMIT='$(TIMELIMIT)' PIC=$(PIC)
 
+################### tests ######################################
+
+test_stdcpp:
+	$(MAKE) -f test/stdcpp/posix.mak "DMD=$(DMD)" MODEL=$(MODEL) DRUNTIME=$(DRUNTIME) "CC=$(CC)" test
+
+test_all: test_stdcpp
+
 #################### benchmark suite ##########################
 
 $(ROOT)/benchmark: benchmark/runbench.d target $(DMD)
@@ -378,7 +385,7 @@ style_lint:
 auto-tester-build: target checkwhitespace
 
 .PHONY : auto-tester-test
-auto-tester-test: unittest benchmark-compile-only
+auto-tester-test: unittest test_all benchmark-compile-only
 
 .PHONY : buildkite-test
 buildkite-test: unittest benchmark-compile-only
