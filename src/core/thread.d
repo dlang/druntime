@@ -609,8 +609,11 @@ class Thread
         }
         else version( Posix )
         {
-            pthread_detach( m_addr );
-            m_addr = m_addr.init;
+            if (m_isOwned)
+            {
+                pthread_detach( m_addr );
+                m_addr = m_addr.init;
+            }
         }
         version( Darwin )
         {
@@ -720,6 +723,7 @@ class Thread
                     if( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
                         onThreadError( "Error creating thread" );
                 }
+                m_isOwned = true;
             }
             version( Darwin )
             {
@@ -1530,6 +1534,7 @@ private:
     version( Posix )
     {
         shared bool     m_isRunning;
+        bool            m_isOwned;
     }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
@@ -2116,14 +2121,22 @@ extern (C) bool thread_isMainThread() nothrow @nogc
 
 
 /**
- * Registers the calling thread for use with the D Runtime.  If this routine
- * is called for a thread which is already registered, no action is performed.
+ * Registers the calling thread for use with the D Runtime.  If this routine is
+ * called for a thread which is already registered, no action is performed.  On
+ * Posix systems, the D Runtime does not take ownership of the thread;
+ * specifically, it does not call `pthread_detach` during cleanup.
+ *
+ * Threads registered by this routine should normally be deregistered by
+ * `thread_detachThis`.  Although `thread_detachByAddr` and
+ * `thread_detachInstance` can be used as well, such threads cannot be registered
+ * again by `thread_attachThis` unless `thread_setThis` is called with the
+ * `null` reference first.
  *
  * NOTE: This routine does not run thread-local static constructors when called.
  *       If full functionality as a D thread is desired, the following function
  *       must be called after thread_attachThis:
  *
- *       extern (C) void rt_moduleTlsCtor();
+ *       `extern (C) void rt_moduleTlsCtor();`
  */
 extern (C) Thread thread_attachThis()
 {
@@ -2152,6 +2165,7 @@ private Thread attachThread(Thread thisThread) @nogc
         thisContext.tstack = thisContext.bstack;
 
         atomicStore!(MemoryOrder.raw)(thisThread.m_isRunning, true);
+        thisThread.m_isOwned = false;
     }
     thisThread.m_isDaemon = true;
     thisThread.m_tlsgcdata = rt_tlsgc_init();
@@ -2246,8 +2260,14 @@ version( Windows )
  */
 extern (C) void thread_detachThis() nothrow @nogc
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     if (auto t = Thread.getThis())
+    {
         Thread.remove(t);
+        t.setThis(null);
+    }
 }
 
 
@@ -2264,6 +2284,9 @@ extern (C) void thread_detachThis() nothrow @nogc
  */
 extern (C) void thread_detachByAddr( ThreadID addr )
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     if( auto t = thread_findByAddr( addr ) )
         Thread.remove( t );
 }
@@ -2272,6 +2295,9 @@ extern (C) void thread_detachByAddr( ThreadID addr )
 /// ditto
 extern (C) void thread_detachInstance( Thread t ) nothrow @nogc
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     Thread.remove( t );
 }
 
@@ -2337,6 +2363,18 @@ extern (C) void thread_setThis(Thread t) nothrow @nogc
     Thread.setThis(t);
 }
 
+unittest
+{
+    auto t = new Thread(
+    {
+        auto old = Thread.getThis();
+        assert(old !is null);
+        thread_setThis(null);
+        assert(Thread.getThis() is null);
+        thread_setThis(old);
+    }).start;
+    t.join();
+}
 
 /**
  * Joins all non-daemon threads that are currently running.  This is done by
