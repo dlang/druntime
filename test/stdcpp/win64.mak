@@ -7,6 +7,7 @@ CC=cl
 
 test:
 	"$(CC)" -c /Foarray_cpp.obj test\stdcpp\src\array.cpp /EHsc
-	"$(DMD)" -of=test.exe -m$(MODEL) -conf= -Isrc -defaultlib=$(DRUNTIMELIB) -main -unittest test\stdcpp\src\array_test.d array_cpp.obj
+	"$(CC)" -c /std:c++17 /Fostring_view_cpp.obj test\stdcpp\src\string_view.cpp /EHsc
+	"$(DMD)" -of=test.exe -m$(MODEL) -conf= -Isrc -defaultlib=$(DRUNTIMELIB) -main -unittest test\stdcpp\src\array_test.d array_cpp.obj  string_view_cpp.obj
 	test.exe
-	del test.exe test.obj array_cpp.obj
+	del test.exe test.obj array_cpp.obj string_view_cpp.obj
