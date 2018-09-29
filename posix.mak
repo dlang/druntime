@@ -244,7 +244,7 @@ HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
 ifeq ($(HAS_ADDITIONAL_TESTS),1)
 	ADDITIONAL_TESTS:=test/init_fini test/exceptions test/coverage test/profile test/cycles test/allocations test/typeinfo \
 	    test/aa test/hash \
-	    test/thread test/unittest test/imports test/betterc
+	    test/thread test/unittest test/imports test/betterc test/stdcpp
 	ADDITIONAL_TESTS+=$(if $(SHARED),test/shared,)
 endif
 
@@ -311,13 +311,6 @@ test/%/.run: test/%/Makefile $(DMD)
 	$(QUIET)$(MAKE) -C test/$* MODEL=$(MODEL) OS=$(OS) DMD=$(abspath $(DMD)) BUILD=$(BUILD) \
 		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) LINKDL=$(LINKDL) \
 		QUIET=$(QUIET) TIMELIMIT='$(TIMELIMIT)' PIC=$(PIC)
-
-################### tests ######################################
-
-test_stdcpp:
-	$(MAKE) -f test/stdcpp/posix.mak "DMD=$(DMD)" MODEL=$(MODEL) DRUNTIME=$(DRUNTIME) "CC=$(CC)" test
-
-test_all: test_stdcpp
 
 #################### benchmark suite ##########################
 
