@@ -102,6 +102,9 @@ test_aa:
 test_hash:
 	$(DMD) -m$(MODEL) -conf= -Isrc -defaultlib=$(DRUNTIME) -run test\hash\src\test_hash.d
 
+test_time:
+	$(DMD) -m$(MODEL) -conf= -Isrc -defaultlib=$(DRUNTIME) -run test\time\src\test_time.d
+
 ################### zip/install/clean ##########################
 
 zip: druntime.zip
@@ -121,4 +124,4 @@ clean:
 
 auto-tester-build: target
 
-auto-tester-test: unittest test_uuid test_aa test_hash
+auto-tester-test: unittest test_uuid test_aa test_hash test_time
