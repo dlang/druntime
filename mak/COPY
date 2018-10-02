@@ -16,6 +16,12 @@ COPY=\
 	$(IMPDIR)\core\time.d \
 	$(IMPDIR)\core\vararg.d \
 	\
+	$(IMPDIR)\gc\gcinterface.d \
+    $(IMPDIR)\gc\impl\handlers\gc.d \
+    $(IMPDIR)\gc\config.d \
+    $(IMPDIR)\rt\util\container\array.d \
+    $(IMPDIR)\rt\util\container\common.d \
+	\
 	$(IMPDIR)\core\internal\abort.d \
 	$(IMPDIR)\core\internal\arrayop.d \
 	$(IMPDIR)\core\internal\convert.d \
