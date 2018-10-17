@@ -38,8 +38,14 @@ DOCS=\
 	$(DOCDIR)\core_stdc_wchar_.html \
 	$(DOCDIR)\core_stdc_wctype.html \
 	\
+	$(DOCDIR)\core_stdcpp_allocator.html \
+	$(DOCDIR)\core_stdcpp_array.html \
 	$(DOCDIR)\core_stdcpp_exception.html \
+	$(DOCDIR)\core_stdcpp_string.html \
+	$(DOCDIR)\core_stdcpp_tuple.html \
 	$(DOCDIR)\core_stdcpp_typeinfo.html \
+	$(DOCDIR)\core_stdcpp_utility.html \
+	$(DOCDIR)\core_stdcpp_vector.html \
 	\
 	$(DOCDIR)\core_sync_barrier.html \
 	$(DOCDIR)\core_sync_condition.html \

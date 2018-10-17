@@ -36,7 +36,7 @@ version (CRuntime_DigitalMars)
             //type_info operator=(const type_info rhs);
         }
 
-        class bad_cast : core.stdcpp.exception.std.exception
+        class bad_cast : exception
         {
             this() nothrow { }
             this(const bad_cast) nothrow { }
@@ -45,7 +45,7 @@ version (CRuntime_DigitalMars)
             override const(char)* what() const nothrow;
         }
 
-        class bad_typeid : core.stdcpp.exception.std.exception
+        class bad_typeid : exception
         {
             this() nothrow { }
             this(const bad_typeid) nothrow { }
@@ -84,16 +84,16 @@ else version (CRuntime_Microsoft)
             //type_info operator=(const type_info rhs);
         }
 
-        class bad_cast : core.stdcpp.exception.std.exception
+        class bad_cast : exception
         {
-            this(const(char)* msg = "bad cast");
-            //virtual ~this();
+            this(const(char)* _Message = "bad cast") { super(_Message); }
+            ~this() {}
         }
 
-        class bad_typeid : core.stdcpp.exception.std.exception
+        class bad_typeid : exception
         {
-            this(const(char)* msg = "bad typeid");
-            //virtual ~this();
+            this(const(char)* _Message = "bad typeid") { super(_Message); }
+            ~this() {}
         }
     }
 }
@@ -131,14 +131,14 @@ else version (CRuntime_Glibc)
             this(const(char)*);
         }
 
-        class bad_cast : core.stdcpp.exception.std.exception
+        class bad_cast : exception
         {
             this();
             //~this();
             override const(char)* what() const;
         }
 
-        class bad_typeid : core.stdcpp.exception.std.exception
+        class bad_typeid : exception
         {
             this();
             //~this();
