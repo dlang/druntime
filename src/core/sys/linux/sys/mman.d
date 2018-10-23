@@ -13,7 +13,7 @@ public import core.sys.posix.sys.mman;
 import core.sys.linux.config;
 
 // <bits/mman.h>
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/powerpc/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/powerpc/bits/mman.h
 version (PPC)
 {
     enum PROT_SAO = 0x10;
@@ -38,7 +38,7 @@ version (PPC)
     //     MCL_FUTURE = 0x4000,
     // }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/powerpc/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/powerpc/bits/mman.h
 else version (PPC64)
 {
     enum PROT_SAO = 0x10;
@@ -63,7 +63,7 @@ else version (PPC64)
     //     MCL_FUTURE = 0x4000,
     // }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/s390/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/s390/bits/mman.h
 else version (S390)
 {
     static if (__USE_MISC) enum
@@ -79,7 +79,7 @@ else version (S390)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/s390/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/s390/bits/mman.h
 else version (SystemZ)
 {
     static if (__USE_MISC) enum
@@ -95,7 +95,7 @@ else version (SystemZ)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/sh/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/sh/bits/mman.h
 else version (SH)
 {
     static if (__USE_MISC) enum
@@ -111,7 +111,7 @@ else version (SH)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/sparc/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/sparc/bits/mman.h
 else version (SPARC)
 {
     static if (__USE_MISC) enum
@@ -135,7 +135,7 @@ else version (SPARC)
     //     MCL_FUTURE = 0x4000,
     // }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/sparc/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/sparc/bits/mman.h
 else version (SPARC64)
 {
     static if (__USE_MISC) enum
@@ -159,7 +159,7 @@ else version (SPARC64)
     //     MCL_FUTURE = 0x4000,
     // }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/x86/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/x86/bits/mman.h
 else version (X86)
 {
     static if (__USE_MISC) enum MAP_32BIT = 0x40;
@@ -177,7 +177,7 @@ else version (X86)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/x86/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/x86/bits/mman.h
 else version (X86_64)
 {
     static if (__USE_MISC) enum MAP_32BIT = 0x40;
@@ -195,7 +195,7 @@ else version (X86_64)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/aarch64/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/aarch64/bits/mman.h
 else version (AArch64)
 {
     static if (__USE_MISC) enum
@@ -211,7 +211,7 @@ else version (AArch64)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/alpha/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/alpha/bits/mman.h
 else version (Alpha)
 {
     enum
@@ -303,7 +303,7 @@ else version (Alpha)
     //         POSIX_MADV_DONTNEED = 6,
     // }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/arm/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/arm/bits/mman.h
 else version (ARM)
 {
     static if (__USE_MISC) enum
@@ -319,7 +319,7 @@ else version (ARM)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/hppa/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/hppa/bits/mman.h
 else version (HPPA)
 {
     enum
@@ -423,7 +423,7 @@ else version (HPPA)
     //     POSIX_MADV_DONTNEED = 4,
     // }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/hppa/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/hppa/bits/mman.h
 else version (HPPA64)
 {
     enum
@@ -528,7 +528,7 @@ else version (HPPA64)
     //     POSIX_MADV_DONTNEED = 4,
     // }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/ia64/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/ia64/bits/mman.h
 else version (IA64)
 {
     static if (__USE_MISC) enum
@@ -545,7 +545,7 @@ else version (IA64)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/m68k/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/m68k/bits/mman.h
 else version (M68K)
 {
     static if (__USE_MISC) enum
@@ -561,7 +561,7 @@ else version (M68K)
         MAP_HUGETLB = 0x40000,
     }
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/mips/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/mips/bits/mman.h
 else version (MIPS32)
 {
     static if (__USE_MISC) enum
@@ -577,7 +577,7 @@ else version (MIPS32)
         MAP_HUGETLB = 0x80000,
     }
 }
-// https://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/mips/bits/mman.h
+// https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/mips/bits/mman.h
 else version (MIPS64)
 {
     static if (__USE_MISC) enum
@@ -600,7 +600,7 @@ else
 
 
 // <bits/mman-linux.h>
-// https://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=bits/mman-linux.h
+// https://sourceware.org/git/?p=glibc.git;a=blob;f=bits/mman-linux.h
 version (Alpha)
 {
 }
@@ -690,22 +690,22 @@ else
 }
 
 // Workaround https://issues.dlang.org/show_bug.cgi?id=17883
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/sparc/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/sparc/bits/mman.h
 version (SPARC)
 {
     static if (__USE_MISC) enum MAP_RENAME = MAP_ANONYMOUS;
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/sparc/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/sparc/bits/mman.h
 else version (SPARC64)
 {
     static if (__USE_MISC) enum MAP_RENAME = MAP_ANONYMOUS;
 }
-// http://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/mips/bits/mman.h
+// http://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/mips/bits/mman.h
 else version (MIPS32)
 {
     static if (__USE_MISC) enum MAP_RENAME = MAP_ANONYMOUS;
 }
-// https://sourceware.org/git/?p=glibc.git;a=blob;hb=51e945a8f950a6695754b11c1e6fba8bb750e100;f=sysdeps/unix/sysv/linux/mips/bits/mman.h
+// https://sourceware.org/git/?p=glibc.git;a=blob;f=sysdeps/unix/sysv/linux/mips/bits/mman.h
 else version (MIPS64)
 {
     static if (__USE_MISC) enum MAP_RENAME = MAP_ANONYMOUS;
