@@ -16,6 +16,10 @@ unittest
     assert(str2.length == 0);
     assert(str2.empty == true);
     assert(str2[] == []);
+
+    assert(getFromC() == "I'm from C++!");
+
+    return 0;
 }
 
 
@@ -24,6 +28,7 @@ extern(C++):
 // test the ABI for calls to C++
 int sumOfElements_val(string_view);
 int sumOfElements_ref(ref const(string_view));
+string_view getFromC();
 
 // test the ABI for calls from C++
 int fromC_val(string_view str)
@@ -47,4 +52,9 @@ int fromC_ref(ref const(string_view) str)
     foreach (e; str)
         r += e;
     return r;
+}
+
+string_view getFromD()
+{
+    return string_view("I'm from D!");
 }
