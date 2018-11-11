@@ -21,6 +21,8 @@ COPY=\
 	$(IMPDIR)\core\time.d \
 	$(IMPDIR)\core\vararg.d \
 	\
+	$(IMPDIR)\core\experimental\array.d \
+	\
 	$(IMPDIR)\core\internal\abort.d \
 	$(IMPDIR)\core\internal\arrayop.d \
 	$(IMPDIR)\core\internal\convert.d \
