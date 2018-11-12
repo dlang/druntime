@@ -1,6 +1,8 @@
 ///
 module core.experimental.array;
 
+import core.internal.traits : Unqual;
+
 // { "Imports" from Phobos
 
 // Range functions
@@ -170,33 +172,6 @@ private template ModifyTypePreservingTQ(alias Modifier, T)
  */
 enum bool isAggregateType(T) = is(T == struct) || is(T == union) ||
                                is(T == class) || is(T == interface);
-
-/**
-Removes all qualifiers, if any, from type `T`.
- */
-template Unqual(T)
-{
-    version (none) // Error: recursive alias declaration @@@BUG1308@@@
-    {
-             static if (is(T U ==     const U)) alias Unqual = Unqual!U;
-        else static if (is(T U == immutable U)) alias Unqual = Unqual!U;
-        else static if (is(T U ==     inout U)) alias Unqual = Unqual!U;
-        else static if (is(T U ==    shared U)) alias Unqual = Unqual!U;
-        else                                    alias Unqual =        T;
-    }
-    else // workaround
-    {
-             static if (is(T U ==          immutable U)) alias Unqual = U;
-        else static if (is(T U == shared inout const U)) alias Unqual = U;
-        else static if (is(T U == shared inout       U)) alias Unqual = U;
-        else static if (is(T U == shared       const U)) alias Unqual = U;
-        else static if (is(T U == shared             U)) alias Unqual = U;
-        else static if (is(T U ==        inout const U)) alias Unqual = U;
-        else static if (is(T U ==        inout       U)) alias Unqual = U;
-        else static if (is(T U ==              const U)) alias Unqual = U;
-        else                                             alias Unqual = T;
-    }
-}
 
 /**
 Is `From` implicitly convertible to `To`?
