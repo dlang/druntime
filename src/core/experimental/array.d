@@ -611,8 +611,8 @@ version(unittest)
     private alias SCAlloc = shared PrefixAllocator;
     private alias SSCAlloc = shared PrefixAllocator;
 
-    SCAlloc _allocator;
-    SSCAlloc _sallocator;
+    SCAlloc localAllocator;
+    SSCAlloc sharedAllocator;
 
     @nogc nothrow pure @trusted
     void[] pureAllocate(bool isShared, size_t n)
@@ -623,10 +623,10 @@ version(unittest)
     @nogc nothrow @safe
     void[] _allocate(bool isShared, size_t n)
     {
-        return isShared ? _sallocator.allocate(n) : _allocator.allocate(n);
+        return isShared ? sharedAllocator.allocate(n) : localAllocator.allocate(n);
     }
 
-    static if (hasMember!(typeof(_allocator), "expand"))
+    static if (hasMember!(typeof(localAllocator), "expand"))
     {
         @nogc nothrow pure @trusted
         bool pureExpand(bool isShared, ref void[] b, size_t delta)
@@ -637,7 +637,7 @@ version(unittest)
         @nogc nothrow @safe
         bool _expand(bool isShared, ref void[] b, size_t delta)
         {
-            return isShared ?  _sallocator.expand(b, delta) : _allocator.expand(b, delta);
+            return isShared ?  sharedAllocator.expand(b, delta) : localAllocator.expand(b, delta);
         }
     }
 
@@ -650,7 +650,7 @@ version(unittest)
     @nogc nothrow
     void _dispose(T)(bool isShared, T[] b)
     {
-        return isShared ?  _sallocator.dispose(b) : _allocator.dispose(b);
+        return isShared ?  sharedAllocator.dispose(b) : localAllocator.dispose(b);
     }
 }
 
@@ -661,87 +661,87 @@ private:
 
     import core.atomic : atomicOp;
 
-    T[] _payload;
-    Unqual!T[] _support;
+    T[] payload;
+    Unqual!T[] support;
 
     version(unittest)
     {
     }
     else
     {
-        alias _allocator = shared PrefixAllocator.instance;
-        alias _sallocator = shared PrefixAllocator.instance;
+        alias localAllocator = shared PrefixAllocator.instance;
+        alias sharedAllocator = shared PrefixAllocator.instance;
     }
 
     static enum double capacityFactor = 3.0 / 2;
     static enum initCapacity = 3;
-    bool _isShared;
+    bool isShared;
 
     @trusted
     auto pref() const
     {
-        assert(_support !is null);
-        if (_isShared)
+        assert(support !is null);
+        if (isShared)
         {
-            return _sallocator.prefix(_support);
+            return sharedAllocator.prefix(support);
         }
         else
         {
-            return _allocator.prefix(_support);
+            return localAllocator.prefix(support);
         }
     }
 
-    private size_t _opPrefix(string op, T)(const T[] support, size_t val) const
+    private size_t _opPrefix(string op, T)(const T[] _support, size_t val) const
     {
-        assert(support !is null);
-        if (_isShared)
+        assert(_support !is null);
+        if (isShared)
         {
-            return cast(size_t)(atomicOp!op(*cast(shared size_t *)&_sallocator.prefix(support), val));
+            return cast(size_t)(atomicOp!op(*cast(shared size_t *)&sharedAllocator.prefix(_support), val));
         }
         else
         {
-            mixin("return cast(size_t)(*cast(size_t *)&_allocator.prefix(support)" ~ op ~ "val);");
+            mixin("return cast(size_t)(*cast(size_t *)&localAllocator.prefix(_support)" ~ op ~ "val);");
         }
     }
 
     @nogc nothrow pure @trusted
-    size_t opPrefix(string op, T)(const T[] support, size_t val) const
+    size_t opPrefix(string op, T)(const T[] _support, size_t val) const
     if ((op == "+=") || (op == "-="))
     {
 
-        return (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(support, val);
+        return (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(_support, val);
     }
 
     @nogc nothrow pure @trusted
-    size_t opCmpPrefix(string op, T)(const T[] support, size_t val) const
+    size_t opCmpPrefix(string op, T)(const T[] _support, size_t val) const
     if ((op == "==") || (op == "<=") || (op == "<") || (op == ">=") || (op == ">"))
     {
-        return (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(support, val);
+        return (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(_support, val);
     }
 
     @nogc nothrow pure @trusted
-    void addRef(SupportQual, this Q)(SupportQual support)
+    void addRef(SupportQual, this Q)(SupportQual _support)
     {
-        assert(support !is null);
-        cast(void) opPrefix!("+=")(support, 1);
+        assert(_support !is null);
+        cast(void) opPrefix!("+=")(_support, 1);
     }
 
-    void delRef(Unqual!T[] support)
+    void delRef(Unqual!T[] _support)
     {
         // Will be optimized away, but the type system infers T's safety
         if (0) { T t = T.init; }
 
-        assert(support !is null);
-        if (opPrefix!("-=")(support, 1) == 0)
+        assert(_support !is null);
+        if (opPrefix!("-=")(_support, 1) == 0)
         {
             () @trusted {
                 version(unittest)
                 {
-                    pureDispose(_isShared, support);
+                    pureDispose(isShared, _support);
                 }
                 else
                 {
-                    _allocator.dispose(support);
+                    localAllocator.dispose(_support);
                 }
             }();
         }
@@ -764,18 +764,18 @@ private:
 
         version(unittest)
         {
-            void[] tmpSupport = (() @trusted => pureAllocate(_isShared, stuffLength * stateSize!T))();
+            void[] tmpSupport = (() @trusted => pureAllocate(isShared, stuffLength * stateSize!T))();
         }
         else
         {
             void[] tmpSupport;
-            if (_isShared)
+            if (isShared)
             {
-                tmpSupport = (() @trusted => _sallocator.allocate(stuffLength * stateSize!T))();
+                tmpSupport = (() @trusted => sharedAllocator.allocate(stuffLength * stateSize!T))();
             }
             else
             {
-                tmpSupport = (() @trusted => _allocator.allocate(stuffLength * stateSize!T))();
+                tmpSupport = (() @trusted => localAllocator.allocate(stuffLength * stateSize!T))();
             }
         }
 
@@ -783,7 +783,7 @@ private:
         size_t i = 0;
         foreach (ref item; } ~ stuff ~ q{)
         {
-            alias TT = ElementType!(typeof(_payload));
+            alias TT = ElementType!(typeof(payload));
             size_t s = i * stateSize!TT;
             size_t e = (i + 1) * stateSize!TT;
             void[] tmp = tmpSupport[s .. e];
@@ -791,17 +791,17 @@ private:
             (() @trusted => emplace!TT(tmp, item))();
         }
 
-        _support = (() @trusted => cast(typeof(_support))(tmpSupport))();
-        _payload = (() @trusted => cast(typeof(_payload))(_support[0 .. stuffLength]))();
-        if (_support) addRef(_support);
+        support = (() @trusted => cast(typeof(support))(tmpSupport))();
+        payload = (() @trusted => cast(typeof(payload))(support[0 .. stuffLength]))();
+        if (support) addRef(support);
         };
     }
 
     void destroyUnused()
     {
-        if (_support !is null)
+        if (support !is null)
         {
-            delRef(_support);
+            delRef(support);
         }
     }
 
@@ -823,7 +823,7 @@ public:
     {
         static if (is(Q == immutable) || is(Q == const))
         {
-            _isShared = true;
+            isShared = true;
             mixin(immutableInsert!(typeof(values))("values"));
         }
         else
@@ -875,7 +875,7 @@ public:
     {
         static if (is(Q == immutable) || is(Q == const))
         {
-            _isShared = true;
+            isShared = true;
             mixin(immutableInsert!(typeof(stuff))("stuff"));
         }
         else
@@ -888,13 +888,13 @@ public:
     // {
 
     private enum copyCtorIncRef = q{
-        _payload = rhs._payload;
-        _support = rhs._support;
-        _isShared = rhs._isShared;
+        payload = rhs.payload;
+        support = rhs.support;
+        isShared = rhs.isShared;
 
-        if (_support !is null)
+        if (support !is null)
         {
-            addRef(_support);
+            addRef(support);
         }
     };
 
@@ -925,14 +925,14 @@ public:
 
     this(ref typeof(this) rhs) immutable
     {
-        _isShared = true;
+        isShared = true;
         mixin(immutableInsert!(typeof(rhs))("rhs"));
     }
 
     this(const ref typeof(this) rhs) immutable
     {
-        _isShared = rhs._isShared;
-        mixin(immutableInsert!(typeof(rhs._payload))("rhs._payload"));
+        isShared = rhs.isShared;
+        mixin(immutableInsert!(typeof(rhs.payload))("rhs.payload"));
     }
 
     this(immutable ref typeof(this) rhs) immutable
@@ -946,15 +946,15 @@ public:
     // End Copy Ctors
 
     // Immutable ctors
-    private this(SuppQual, PaylQual, this Qualified)(SuppQual support, PaylQual payload, bool isShared)
-        if (is(typeof(_support) : typeof(support)))
+    private this(SuppQual, PaylQual, this Qualified)(SuppQual _support, PaylQual _payload, bool _isShared)
+        if (is(typeof(support) : typeof(_support)))
     {
-        _support = support;
-        _payload = payload;
-        _isShared = isShared;
-        if (_support !is null)
+        support = _support;
+        payload = _payload;
+        isShared = _isShared;
+        if (support !is null)
         {
-            addRef(_support);
+            addRef(support);
         }
     }
 
@@ -999,13 +999,13 @@ public:
     private @nogc nothrow pure @trusted
     size_t slackFront() const
     {
-        return _payload.ptr - _support.ptr;
+        return payload.ptr - support.ptr;
     }
 
     private @nogc nothrow pure @trusted
     size_t slackBack() const
     {
-        return _support.ptr + _support.length - _payload.ptr - _payload.length;
+        return support.ptr + support.length - payload.ptr - payload.length;
     }
 
     /**
@@ -1019,7 +1019,7 @@ public:
     @nogc nothrow pure @safe
     size_t length() const
     {
-        return _payload.length;
+        return payload.length;
     }
 
     /// ditto
@@ -1052,7 +1052,7 @@ public:
         {
             reserve(len);
         }
-        _payload = (() @trusted => cast(T[])(_support[slackFront .. len]))();
+        payload = (() @trusted => cast(T[])(support[slackFront .. len]))();
     }
 
     ///
@@ -1117,28 +1117,28 @@ public:
 
         if (n <= capacity) { return; }
 
-        static if (hasMember!(typeof(_allocator), "expand"))
-        if (_support && opCmpPrefix!"=="(_support, 1))
+        static if (hasMember!(typeof(localAllocator), "expand"))
+        if (support && opCmpPrefix!"=="(support, 1))
         {
-            void[] buf = _support;
+            void[] buf = support;
             version(unittest)
             {
-                auto successfulExpand = pureExpand(_isShared, buf, (n - capacity) * stateSize!T);
+                auto successfulExpand = pureExpand(isShared, buf, (n - capacity) * stateSize!T);
             }
             else
             {
-                auto successfulExpand = _allocator.expand(buf, (n - capacity) * stateSize!T);
+                auto successfulExpand = localAllocator.expand(buf, (n - capacity) * stateSize!T);
             }
 
             if (successfulExpand)
             {
-                const oldLength = _support.length;
-                _support = (() @trusted => cast(Unqual!T[])(buf))();
+                const oldLength = support.length;
+                support = (() @trusted => cast(Unqual!T[])(buf))();
                 // Emplace extended buf
                 // TODO: maybe? emplace only if T has indirections
-                foreach (i; oldLength .. _support.length)
+                foreach (i; oldLength .. support.length)
                 {
-                    emplace(&_support[i]);
+                    emplace(&support[i]);
                 }
                 return;
             }
@@ -1150,18 +1150,18 @@ public:
 
         version(unittest)
         {
-            auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(_isShared, n * stateSize!T)))();
+            auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(isShared, n * stateSize!T)))();
         }
         else
         {
-            auto tmpSupport = (() @trusted => cast(Unqual!T[])(_allocator.allocate(n * stateSize!T)))();
+            auto tmpSupport = (() @trusted => cast(Unqual!T[])(localAllocator.allocate(n * stateSize!T)))();
         }
         assert(tmpSupport !is null);
         for (size_t i = 0; i < tmpSupport.length; ++i)
         {
-            if (i < _payload.length)
+            if (i < payload.length)
             {
-                emplace(&tmpSupport[i], _payload[i]);
+                emplace(&tmpSupport[i], payload[i]);
             }
             else
             {
@@ -1170,9 +1170,9 @@ public:
         }
 
         destroyUnused();
-        _support = tmpSupport;
-        addRef(_support);
-        _payload = (() @trusted => cast(T[])(_support[0 .. _payload.length]))();
+        support = tmpSupport;
+        addRef(support);
+        payload = (() @trusted => cast(T[])(support[0 .. payload.length]))();
         assert(capacity >= n);
     }
 
@@ -1228,11 +1228,11 @@ public:
 
         version(unittest)
         {
-            auto tmpSupport = (() @trusted => cast(Unqual!T[])(pureAllocate(_isShared, stuffLength * stateSize!T)))();
+            auto tmpSupport = (() @trusted => cast(Unqual!T[])(pureAllocate(isShared, stuffLength * stateSize!T)))();
         }
         else
         {
-            auto tmpSupport = (() @trusted => cast(Unqual!T[])(_allocator.allocate(stuffLength * stateSize!T)))();
+            auto tmpSupport = (() @trusted => cast(Unqual!T[])(localAllocator.allocate(stuffLength * stateSize!T)))();
         }
         assert(stuffLength == 0 || (stuffLength > 0 && tmpSupport !is null));
         for (size_t i = 0; i < tmpSupport.length; ++i)
@@ -1248,11 +1248,11 @@ public:
         size_t result = insert(pos, tmpSupport);
         version(unittest)
         {
-            () @trusted { pureDispose(_isShared, tmpSupport); }();
+            () @trusted { pureDispose(isShared, tmpSupport); }();
         }
         else
         {
-            () @trusted { _allocator.dispose(tmpSupport); }();
+            () @trusted { localAllocator.dispose(tmpSupport); }();
         }
         return result;
     }
@@ -1264,7 +1264,7 @@ public:
         // Will be optimized away, but the type system infers T's safety
         if (0) { T t = T.init; }
 
-        assert(pos <= _payload.length);
+        assert(pos <= payload.length);
 
         if (stuff.length == 0) return 0;
         if (stuff.length > slackBack)
@@ -1276,23 +1276,23 @@ public:
             }
             reserve((() @trusted => cast(size_t)(newCapacity))());
         }
-        //_support[pos + stuff.length .. _payload.length + stuff.length] =
-            //_support[pos .. _payload.length];
-        for (size_t i = _payload.length + stuff.length - 1; i >= pos +
+        //support[pos + stuff.length .. payload.length + stuff.length] =
+            //support[pos .. payload.length];
+        for (size_t i = payload.length + stuff.length - 1; i >= pos +
                 stuff.length; --i)
         {
             // Avoids underflow if payload is empty
-            _support[i] = _support[i - stuff.length];
+            support[i] = support[i - stuff.length];
         }
 
-        //writefln("typeof support[i] %s", typeof(_support[0]).stringof);
+        //writefln("typeof support[i] %s", typeof(support[0]).stringof);
 
-        //_support[pos .. pos + stuff.length] = stuff[];
+        //support[pos .. pos + stuff.length] = stuff[];
         for (size_t i = pos, j = 0; i < pos + stuff.length; ++i, ++j) {
-            _support[i] = stuff[j];
+            support[i] = stuff[j];
         }
 
-        _payload = (() @trusted => cast(T[])(_support[0 .. _payload.length + stuff.length]))();
+        payload = (() @trusted => cast(T[])(support[0 .. payload.length + stuff.length]))();
         return stuff.length;
     }
 
@@ -1321,9 +1321,9 @@ public:
     @nogc nothrow pure @safe
     bool isUnique(this _)()
     {
-        if (_support !is null)
+        if (support !is null)
         {
-            return cast(bool) opCmpPrefix!"=="(_support, 1);
+            return cast(bool) opCmpPrefix!"=="(support, 1);
         }
         return true;
     }
@@ -1381,7 +1381,7 @@ public:
     ref auto front(this _)()
     {
         assert(!empty, "Array.front: Array is empty");
-        return _payload[0];
+        return payload[0];
     }
 
     ///
@@ -1404,7 +1404,7 @@ public:
     void popFront()
     {
         assert(!empty, "Array.popFront: Array is empty");
-        _payload = _payload[1 .. $];
+        payload = payload[1 .. $];
     }
 
     ///
@@ -1486,7 +1486,7 @@ public:
 
             // Iterate through the underlying payload
             // The array is kept alive (rc > 0) from the caller scope
-            foreach (ref e; this._payload)
+            foreach (ref e; this.payload)
             {
                 static if (!is(typeof(fn(T.init)) == int))
                 {
@@ -1527,13 +1527,13 @@ public:
             assert(ia.each!bar == false);
         }
 
-        assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-        assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+        assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+        assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
     }
 
     //int opApply(int delegate(const ref T) dg) const
     //{
-        //if (_payload.length && dg(_payload[0])) return 1;
+        //if (payload.length && dg(payload[0])) return 1;
         //if (!this.empty) this.tail.opApply(dg);
         //return 0;
     //}
@@ -1687,7 +1687,7 @@ public:
     }
     body
     {
-        return typeof(this)(_support, _payload[start .. end], _isShared);
+        return typeof(this)(support, payload[start .. end], isShared);
     }
 
     ///
@@ -1719,7 +1719,7 @@ public:
     }
     body
     {
-        return _payload[idx];
+        return payload[idx];
     }
 
     ///
@@ -1749,7 +1749,7 @@ public:
     }
     body
     {
-        mixin("return " ~ op ~ "_payload[idx];");
+        mixin("return " ~ op ~ "payload[idx];");
     }
 
     ///
@@ -1783,7 +1783,7 @@ public:
     }
     body
     {
-        return _payload[idx] = elem;
+        return payload[idx] = elem;
     }
 
     ///
@@ -1812,7 +1812,7 @@ public:
     if (isImplicitlyConvertible!(U, T))
     body
     {
-        _payload[] = elem;
+        payload[] = elem;
         return this;
     }
 
@@ -1847,7 +1847,7 @@ public:
     }
     body
     {
-        return _payload[start .. end] = elem;
+        return payload[start .. end] = elem;
     }
 
     ///
@@ -1881,7 +1881,7 @@ public:
     }
     body
     {
-        mixin("return _payload[idx]" ~ op ~ "= elem;");
+        mixin("return payload[idx]" ~ op ~ "= elem;");
     }
 
     ///
@@ -1963,19 +1963,19 @@ public:
      */
     auto ref opAssign()(auto ref typeof(this) rhs)
     {
-        if (rhs._support !is null && _support is rhs._support)
+        if (rhs.support !is null && support is rhs.support)
         {
-            if (rhs._payload is _payload)
+            if (rhs.payload is payload)
                 return this;
         }
 
-        if (rhs._support !is null)
+        if (rhs.support !is null)
         {
-            rhs.addRef(rhs._support);
+            rhs.addRef(rhs.support);
         }
         destroyUnused();
-        _support = rhs._support;
-        _payload = rhs._payload;
+        support = rhs.support;
+        payload = rhs.payload;
         return this;
     }
 
@@ -2051,7 +2051,7 @@ public:
     ///
     bool opEquals()(auto ref typeof(this) rhs) const
     {
-        return _support.equal(rhs);
+        return support.equal(rhs);
     }
 
     ///
@@ -2125,7 +2125,7 @@ public:
     auto toHash()
     {
         // will be safe with 2.082
-        return () @trusted { return _support.hashOf; }();
+        return () @trusted { return support.hashOf; }();
     }
 
     ///
@@ -2189,8 +2189,8 @@ void testConcatAndAppend()
     () nothrow pure @safe {
         testConcatAndAppend();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
 version(unittest) private nothrow pure @safe
@@ -2235,8 +2235,8 @@ void testSimple()
     () nothrow pure @safe {
         testSimple();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
 version(unittest) private nothrow pure @safe
@@ -2274,8 +2274,8 @@ void testSimpleImmutable()
     () nothrow pure @safe {
         testSimpleImmutable();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
 version(unittest) private nothrow pure @safe
@@ -2315,8 +2315,8 @@ void testCopyAndRef()
     () nothrow pure @safe {
         testCopyAndRef();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
 version(unittest) private nothrow pure @safe
@@ -2348,22 +2348,22 @@ void testImmutability()
     {
         auto aa = Array!(int)(1, 2, 3);
         auto aa2 = aa.idup();
-        assert(aa.opCmpPrefix!"=="(aa._support, 1));
-        assert(aa2.opCmpPrefix!"=="(aa2._support, 1));
+        assert(aa.opCmpPrefix!"=="(aa.support, 1));
+        assert(aa2.opCmpPrefix!"=="(aa2.support, 1));
     }
 
     {
         auto aa = const Array!(int)(1, 2, 3);
         auto aa2 = aa.idup();
-        assert(aa.opCmpPrefix!"=="(aa._support, 1));
-        assert(aa2.opCmpPrefix!"=="(aa2._support, 1));
+        assert(aa.opCmpPrefix!"=="(aa.support, 1));
+        assert(aa2.opCmpPrefix!"=="(aa2.support, 1));
     }
 
     {
         auto aa = immutable Array!(int)(1, 2, 3);
         auto aa2 = aa.idup();
-        assert(aa.opCmpPrefix!"=="(aa._support, 2));
-        assert(aa2.opCmpPrefix!"=="(aa2._support, 2));
+        assert(aa.opCmpPrefix!"=="(aa.support, 2));
+        assert(aa2.opCmpPrefix!"=="(aa2.support, 2));
     }
 }
 
@@ -2374,8 +2374,8 @@ void testConstness()
     auto a2 = a;
     auto a3 = a2.save();
     immutable Array!int a5 = a;
-    assert(a5.opCmpPrefix!"=="(a5._support, 1));
-    assert(a.opCmpPrefix!"=="(a._support, 3));
+    assert(a5.opCmpPrefix!"=="(a5.support, 1));
+    assert(a.opCmpPrefix!"=="(a.support, 3));
 
     assert(a2.front == 1);
     assert(a2[0] == a2.front);
@@ -2393,8 +2393,8 @@ void testConstness()
         testImmutability();
         testConstness();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
 version(unittest) private nothrow pure @safe
@@ -2402,10 +2402,10 @@ void testWithStruct()
 {
     auto array = Array!int(1, 2, 3);
     {
-        assert(array.opCmpPrefix!"=="(array._support, 1));
+        assert(array.opCmpPrefix!"=="(array.support, 1));
 
         auto arrayOfArrays = Array!(Array!int)(array);
-        assert(array.opCmpPrefix!"=="(array._support, 2));
+        assert(array.opCmpPrefix!"=="(array.support, 2));
         assert(equal(arrayOfArrays.front, [1, 2, 3]));
         arrayOfArrays.front.front = 2;
         assert(equal(arrayOfArrays.front, [2, 2, 3]));
@@ -2416,15 +2416,15 @@ void testWithStruct()
 
         // immutable is transitive, so it must iterate over array and
         // create a copy, and not set a ref
-        assert(array.opCmpPrefix!"=="(array._support, 2));
+        assert(array.opCmpPrefix!"=="(array.support, 2));
         array.front = 3;
         assert(immArrayOfArrays.front.front == 2);
-        assert(immArrayOfArrays.opCmpPrefix!"=="(immArrayOfArrays._support, 1));
-        assert(immArrayOfArrays.front.opCmpPrefix!"=="(immArrayOfArrays.front._support, 1));
+        assert(immArrayOfArrays.opCmpPrefix!"=="(immArrayOfArrays.support, 1));
+        assert(immArrayOfArrays.front.opCmpPrefix!"=="(immArrayOfArrays.front.support, 1));
         static assert(!__traits(compiles, immArrayOfArrays.front.front = 2));
         static assert(!__traits(compiles, immArrayOfArrays.front = array));
     }
-    assert(array.opCmpPrefix!"=="(array._support, 1));
+    assert(array.opCmpPrefix!"=="(array.support, 1));
     assert(equal(array, [3, 2, 3]));
 }
 
@@ -2433,8 +2433,8 @@ void testWithStruct()
     () nothrow pure @safe {
         testWithStruct();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
 version(unittest) private nothrow pure @safe
@@ -2465,8 +2465,8 @@ void testWithClass()
     () nothrow pure @safe {
         testWithClass();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
 version(unittest) private @nogc nothrow pure @safe
@@ -2505,8 +2505,8 @@ void testOpOverloads()
     () @nogc nothrow pure @safe {
         testOpOverloads();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
 version(unittest) private nothrow pure @safe
@@ -2537,6 +2537,6 @@ void testSlice()
     () nothrow pure @safe {
         testSlice();
     }();
-    assert(_allocator.bytesUsed == 0, "Array ref count leaks memory");
-    assert(_sallocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
+    assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
