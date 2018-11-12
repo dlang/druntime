@@ -682,10 +682,12 @@ version(unittest)
 ///
 struct Array(T)
 {
+private:
+
     import core.atomic : atomicOp;
 
-    package T[] _payload;
-    package Unqual!T[] _support;
+    T[] _payload;
+    Unqual!T[] _support;
 
     version(unittest)
     {
@@ -696,11 +698,8 @@ struct Array(T)
         alias _sallocator = shared PrefixAllocator.instance;
     }
 
-private:
-
     static enum double capacityFactor = 3.0 / 2;
     static enum initCapacity = 3;
-
     bool _isShared;
 
     @trusted
@@ -809,10 +808,7 @@ private:
         size_t i = 0;
         foreach (ref item; } ~ stuff ~ q{)
         {
-            //writefln("the type is %s %s %s", T.stringof, typeof(_support).stringof, typeof(_payload).stringof);
             alias TT = ElementType!(typeof(_payload));
-            //pragma(msg, typeof(item).stringof, " TT is ", TT.stringof);
-
             size_t s = i * stateSize!TT;
             size_t e = (i + 1) * stateSize!TT;
             void[] tmp = tmpSupport[s .. e];
@@ -916,7 +912,7 @@ public:
     // Begin Copy Ctors
     // {
 
-    private static enum copyCtorIncRef = q{
+    private enum copyCtorIncRef = q{
         _payload = rhs._payload;
         _support = rhs._support;
         _isShared = rhs._isShared;
@@ -1064,19 +1060,24 @@ public:
     }
 
     /**
-     * Set the length of the array to `len`. `len` must be less than or equal
-     * to the `capacity` of the array.
+     * Set the length of the array to `len`. If `len` exceeds the available
+     * `capacity` of the array, an attempt to extend the array in place is made.
+     * If extending is not possible, a reallocation will occur; if the new
+     * length of the array is longer than `len`, the remainder will be default
+     * initialized.
      *
      * Params:
      *      len = a positive integer
      *
-     * Complexity: $(BIGOH 1).
+     * Complexity: $(BIGOH n).
      */
-    @nogc nothrow pure @trusted
-    void forceLength(size_t len)
+    void length(size_t len)
     {
-        assert(len <= capacity);
-        _payload = cast(T[])(_support[slackFront .. len]);
+        if (capacity < len)
+        {
+            reserve(len);
+        }
+        _payload = (() @trusted => cast(T[])(_support[slackFront .. len]))();
     }
 
     ///
@@ -1084,8 +1085,16 @@ public:
     @safe unittest
     {
         auto a = Array!int(1, 2, 3);
-        a.forceLength(2);
+        a.length = 2;
         assert(a.length == 2);
+
+        auto b = a;
+        assert(a.capacity < 10);
+        a.length = 10; // will trigger a reallocation
+        assert(a.length == 10);
+        assert(b.length == 2);
+        a[0] = 20;
+        assert(a[0] != b[0]);
     }
 
     /**
@@ -1178,7 +1187,6 @@ public:
             if (i < _payload.length)
             {
                 emplace(&tmpSupport[i], _payload[i]);
-                //pragma(msg, typeof(&tmpSupport[i]).stringof);
             }
             else
             {
