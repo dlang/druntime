@@ -5,207 +5,6 @@ import core.internal.traits : Unqual;
 
 // { "Imports" from Phobos
 
-// Range functions
-
-/**
-Implements the range interface primitive `front` for built-in arrays. Due to the
-fact that nonmember functions can be called with the first argument using the dot
-notation, `array.front` is equivalent to `front(array)`. For $(GLOSSARY narrow strings),
-`front` automatically returns the first $(GLOSSARY code point) as _a `dchar`.
-*/
-@property ref T front(T)(T[] a) @safe pure nothrow @nogc
-//TODO: if (!isNarrowString!(T[]) && !is(T[] == void[]))
-if (!is(T[] == void[]))
-{
-    assert(a.length, "Attempting to fetch the front of an empty array of " ~ T.stringof);
-    return a[0];
-}
-
-/**
-Implements the range interface primitive `empty` for types that obey `hasLength`
-property and for narrow strings.
- */
-@property bool empty(T)(auto ref scope const(T) a)
-//TODO: if (is(typeof(a.length) : size_t) || isNarrowString!T)
-if (is(typeof(a.length) : size_t))
-{
-    return !a.length;
-}
-
-/**
-Implements the range interface primitive `popFront` for built-in arrays. For
-$(GLOSSARY narrow strings), `popFront` automatically advances to the next
-$(GLOSSARY code point).
-*/
-void popFront(T)(ref T[] a) @safe pure nothrow @nogc
-//TODO: if (!isNarrowString!(T[]) && !is(T[] == void[]))
-if (!is(T[] == void[]))
-{
-    assert(a.length, "Attempting to popFront() past the end of an array of " ~ T.stringof);
-    a = a[1 .. $];
-}
-
-/**
-This is a best-effort implementation of `length` for any kind of range.
-*/
-auto walkLength(Range)(Range range)
-if (isInputRange!Range && !isInfinite!Range)
-{
-    static if (hasLength!Range)
-        return range.length;
-    else
-    {
-        size_t result;
-        for ( ; !range.empty ; range.popFront() )
-            ++result;
-        return result;
-    }
-}
-
-/**
-*/
-enum bool isInputRange(R) =
-    is(typeof(R.init) == R)
-    && is(typeof(R.init.empty()) == bool)
-    && is(typeof((return ref R r) => r.front))
-    && !is(typeof(R.init.front()) == void)
-    && is(typeof((R r) => r.popFront));
-
-/**
-*/
-template isInfinite(R)
-{
-    static if (isInputRange!R && __traits(compiles, { enum e = R.empty; }))
-        enum bool isInfinite = !R.empty;
-    else
-        enum bool isInfinite = false;
-}
-
-// End Range functions
-
-/**
-Yields `true` if and only if `T` is an aggregate that defines a symbol called `name`.
- */
-enum hasMember(T, string name) = __traits(hasMember, T, name);
-
-/**
-Detect whether type `T` is an array (static or dynamic.
-*/
-enum bool isArray(T) = isStaticArray!T || isDynamicArray!T;
-
-/**
- * Detect whether type `T` is a static array.
- */
-enum bool isStaticArray(T) = __traits(isStaticArray, T);
-
-/**
- * Detect whether type `T` is a dynamic array.
- */
-enum bool isDynamicArray(T) = is(DynamicArrayTypeOf!T) && !isAggregateType!T;
-
-/*
- */
-template DynamicArrayTypeOf(T)
-{
-    static if (is(AliasThisTypeOf!T AT) && !is(AT[] == AT))
-        alias X = DynamicArrayTypeOf!AT;
-    else
-        alias X = OriginalType!T;
-
-    static if (is(Unqual!X : E[], E) && !is(typeof({ enum n = X.length; })))
-    {
-        alias DynamicArrayTypeOf = X;
-    }
-    else
-        static assert(0, T.stringof~" is not a dynamic array");
-}
-
-// SomethingTypeOf
-private template AliasThisTypeOf(T)
-if (isAggregateType!T)
-{
-    alias members = AliasSeq!(__traits(getAliasThis, T));
-
-    static if (members.length == 1)
-    {
-        alias AliasThisTypeOf = typeof(__traits(getMember, T.init, members[0]));
-    }
-    else
-        static assert(0, T.stringof~" does not have alias this type");
-}
-
-template AliasSeq(TList...)
-{
-    alias AliasSeq = TList;
-}
-
-/**
- * Strips off all `enum`s from type `T`.
- */
-template OriginalType(T)
-{
-    template Impl(T)
-    {
-        static if (is(T U == enum)) alias Impl = OriginalType!U;
-        else                        alias Impl =              T;
-    }
-
-    alias OriginalType = ModifyTypePreservingTQ!(Impl, T);
-}
-
-// [For internal use]
-private template ModifyTypePreservingTQ(alias Modifier, T)
-{
-         static if (is(T U ==          immutable U)) alias ModifyTypePreservingTQ =          immutable Modifier!U;
-    else static if (is(T U == shared inout const U)) alias ModifyTypePreservingTQ = shared inout const Modifier!U;
-    else static if (is(T U == shared inout       U)) alias ModifyTypePreservingTQ = shared inout       Modifier!U;
-    else static if (is(T U == shared       const U)) alias ModifyTypePreservingTQ = shared       const Modifier!U;
-    else static if (is(T U == shared             U)) alias ModifyTypePreservingTQ = shared             Modifier!U;
-    else static if (is(T U ==        inout const U)) alias ModifyTypePreservingTQ =        inout const Modifier!U;
-    else static if (is(T U ==        inout       U)) alias ModifyTypePreservingTQ =              inout Modifier!U;
-    else static if (is(T U ==              const U)) alias ModifyTypePreservingTQ =              const Modifier!U;
-    else                                             alias ModifyTypePreservingTQ =                    Modifier!T;
-}
-
-/**
- * Detect whether type `T` is an aggregate type.
- */
-enum bool isAggregateType(T) = is(T == struct) || is(T == union) ||
-                               is(T == class) || is(T == interface);
-
-/**
-Is `From` implicitly convertible to `To`?
- */
-enum bool isImplicitlyConvertible(From, To) = is(From : To);
-
-/**
-The element type of `R`. `R` does not have to be a range. The element type is
-determined as the type yielded by `r.front` for an object `r` of type `R`. For
-example, `ElementType!(T[])` is `T` if `T[]` isn't a narrow string; if it is, the
-element type is `dchar`. If `R` doesn't have `front`, `ElementType!R` is `void`.
- */
-template ElementType(R)
-{
-    static if (is(typeof(R.init.front.init) T))
-        alias ElementType = T;
-    else
-        alias ElementType = void;
-}
-
-/**
-Yields `true` if `R` has a `length` member that returns a value of `size_t`
-type. `R` does not have to be a range. If `R` is a range, algorithms in the
-standard library are only guaranteed to support `length` with type `size_t`.
-*/
-template hasLength(R)
-{
-    static if (is(typeof(((R* r) => r.length)(null)) Length))
-        enum bool hasLength = is(Length == size_t);
-        //TODO: enum bool hasLength = is(Length == size_t) && !isNarrowString!R;
-    else
-        enum bool hasLength = false;
-}
-
 // { Allocators
 
 /**
@@ -457,8 +256,20 @@ void dispose(A, T)(auto ref A alloc, auto ref T[] array)
 
 // } End "Imports" from Phobos
 
+/**
+The element type of `R`. `R` does not have to be a range. The element type is
+determined as the type yielded by `r[0]` for an object `r` of type `R`.
+ */
+template ElementType(R)
+{
+    static if (is(typeof(R.init[0].init) T))
+        alias ElementType = T;
+    else
+        alias ElementType = void;
+}
+
 auto tail(Collection)(Collection collection)
-if (isInputRange!Collection)
+if (is(typeof(collection.popFront())))
 {
     collection.popFront();
     return collection;
@@ -471,11 +282,11 @@ if (is(ElementType!T : ElementType!U)
 {
     if (a.length != b.length) return false;
 
-    while (!a.empty)
+    while (a.length)
     {
-        if (a.front != b.front) return false;
-        a.popFront();
-        b.popFront();
+        if (a[0] != b[0]) return false;
+        a = a[1 .. $];
+        b = b[1 .. $];
     }
     return true;
 }
@@ -626,7 +437,7 @@ version(unittest)
         return isShared ? sharedAllocator.allocate(n) : localAllocator.allocate(n);
     }
 
-    static if (hasMember!(typeof(localAllocator), "expand"))
+    static if (__traits(hasMember, typeof(localAllocator), "expand"))
     {
         @nogc nothrow pure @trusted
         bool pureExpand(bool isShared, ref void[] b, size_t delta)
@@ -749,16 +560,8 @@ private:
 
     static string immutableInsert(StuffType)(string stuff)
     {
-        static if (hasLength!StuffType)
-        {
-            auto stuffLengthStr = q{
-                size_t stuffLength = } ~ stuff ~ ".length;";
-        }
-        else
-        {
-            auto stuffLengthStr = q{
-                size_t stuffLength = walkLength(} ~ stuff ~ ");";
-        }
+        auto stuffLengthStr = q{
+            size_t stuffLength = } ~ stuff ~ ".length;";
 
         return stuffLengthStr ~ q{
 
@@ -816,10 +619,8 @@ public:
      *
      * Complexity: $(BIGOH m), where `m` is the number of items.
      */
-    //version(none)
     this(U, this Q)(U[] values...)
-    if (!is(Q == shared)
-        && isImplicitlyConvertible!(U, T))
+    if (!is(Q == shared) && is(U : T))
     {
         static if (is(Q == immutable) || is(Q == const))
         {
@@ -867,6 +668,7 @@ public:
      *
      * Complexity: $(BIGOH m), where `m` is the number of elements in the range.
      */
+    version(none)
     this(Stuff, this Q)(Stuff stuff)
     if (!is(Q == shared)
         && isInputRange!Stuff && !isInfinite!Stuff
@@ -1117,7 +919,7 @@ public:
 
         if (n <= capacity) { return; }
 
-        static if (hasMember!(typeof(localAllocator), "expand"))
+        static if (__traits(hasMember, typeof(localAllocator), "expand"))
         if (support && opCmpPrefix!"=="(support, 1))
         {
             void[] buf = support;
@@ -1188,20 +990,13 @@ public:
     }
 
     /**
-     * Inserts the elements of an
-     * $(REF_ALTTEXT input range, isInputRange, std,range,primitives), or a
-     * variable number of items, at the given `pos`.
-     *
-     * If no allocator was provided when the array was created, the
-     * $(REF, GCAllocator, std,experimental,allocator,gc_allocator) will be used.
-     * If `Stuff` defines `length`, `Array` will use it to reserve the
-     * necessary amount of memory.
+     * Inserts the elements of an array, or a built-in array or an element
+     * at the given `pos`.
      *
      * Params:
      *      pos = a positive integer
-     *      stuff = an input range of elements that are implitictly convertible
-     *              to `T`; a variable number of items either in the form of a
-     *              list or as a built-in array
+     *      stuff = an element, or an array, or built-in array of elements that
+     *              are implitictly convertible to `T`
      *
      * Returns:
      *      the number of elements inserted
@@ -1210,57 +1005,18 @@ public:
      *             elements in the range.
      */
     size_t insert(Stuff)(size_t pos, Stuff stuff)
-    if (!isArray!(typeof(stuff)) && isInputRange!Stuff && !isInfinite!Stuff
-        && isImplicitlyConvertible!(ElementType!Stuff, T))
+    if (is(Stuff == Array!T))
     {
-        // Will be optimized away, but the type system infers T's safety
-        if (0) { T t = T.init; }
-
-        static if (hasLength!Stuff)
-        {
-            size_t stuffLength = stuff.length;
-        }
-        else
-        {
-            size_t stuffLength = walkLength(stuff);
-        }
-        if (stuffLength == 0) return 0;
-
-        version(unittest)
-        {
-            auto tmpSupport = (() @trusted => cast(Unqual!T[])(pureAllocate(isShared, stuffLength * stateSize!T)))();
-        }
-        else
-        {
-            auto tmpSupport = (() @trusted => cast(Unqual!T[])(localAllocator.allocate(stuffLength * stateSize!T)))();
-        }
-        assert(stuffLength == 0 || (stuffLength > 0 && tmpSupport !is null));
-        for (size_t i = 0; i < tmpSupport.length; ++i)
-        {
-                emplace(&tmpSupport[i]);
-        }
-
-        size_t i = 0;
-        foreach (ref item; stuff)
-        {
-            tmpSupport[i++] = item;
-        }
-        size_t result = insert(pos, tmpSupport);
-        version(unittest)
-        {
-            () @trusted { pureDispose(isShared, tmpSupport); }();
-        }
-        else
-        {
-            () @trusted { localAllocator.dispose(tmpSupport); }();
-        }
-        return result;
+        mixin(insertImpl);
     }
 
-    /// ditto
-    size_t insert(Stuff)(size_t pos, Stuff[] stuff...)
-    if (isImplicitlyConvertible!(Stuff, T))
+    size_t insert(U)(size_t pos, U[] stuff...)
+    if (is(U : T))
     {
+        mixin(insertImpl);
+    }
+
+    private enum insertImpl = q{
         // Will be optimized away, but the type system infers T's safety
         if (0) { T t = T.init; }
 
@@ -1285,8 +1041,7 @@ public:
             support[i] = support[i - stuff.length];
         }
 
-        //writefln("typeof support[i] %s", typeof(support[0]).stringof);
-
+        // Can't use below, because it doesn't do opAssign, but memcpy
         //support[pos .. pos + stuff.length] = stuff[];
         for (size_t i = pos, j = 0; i < pos + stuff.length; ++i, ++j) {
             support[i] = stuff[j];
@@ -1294,7 +1049,7 @@ public:
 
         payload = (() @trusted => cast(T[])(support[0 .. payload.length + stuff.length]))();
         return stuff.length;
-    }
+    };
 
     ///
     static if (is(T == int))
@@ -1776,7 +1531,7 @@ public:
      * Complexity: $(BIGOH 1).
      */
     ref auto opIndexAssign(U)(U elem, size_t idx)
-    if (isImplicitlyConvertible!(U, T))
+    if (is(U : T))
     in
     {
         assert(idx < length, "Array.opIndexAssign: Index out of bounds");
@@ -1809,7 +1564,7 @@ public:
      Complexity: $(BIGOH n).
      */
     ref auto opIndexAssign(U)(U elem)
-    if (isImplicitlyConvertible!(U, T))
+    if (is(U : T))
     body
     {
         payload[] = elem;
@@ -1839,7 +1594,7 @@ public:
     Complexity: $(BIGOH n).
     */
     auto opSliceAssign(U)(U elem, size_t start, size_t end)
-    if (isImplicitlyConvertible!(U, T))
+    if (is(U : T))
     in
     {
         assert(start <= end, "Array.opSliceAssign: Index out of bounds");
@@ -1874,7 +1629,7 @@ public:
      * Complexity: $(BIGOH 1).
      */
     ref auto opIndexOpAssign(string op, U)(U elem, size_t idx)
-    if (isImplicitlyConvertible!(U, T))
+    if (is(U : T))
     in
     {
         assert(idx < length, "Array.opIndexOpAssign!" ~ op ~ ": Index out of bounds");
@@ -1912,7 +1667,7 @@ public:
         if (op == "~" &&
             (is (U : const typeof(this))
              || is (U : T)
-             || (isInputRange!U && isImplicitlyConvertible!(ElementType!U, T))
+             || (is (U == V[], V) && is(V : T))
             ))
     {
         auto newArray = this.dup();
@@ -2022,7 +1777,7 @@ public:
         if (op == "~" &&
             (is (U == typeof(this))
              || is (U : T)
-             || (isInputRange!U && isImplicitlyConvertible!(ElementType!U, T))
+             || (is (U == V[], V) && is(V : T))
             ))
     {
         insert(length, rhs);
@@ -2051,7 +1806,7 @@ public:
     ///
     bool opEquals()(auto ref typeof(this) rhs) const
     {
-        return support.equal(rhs);
+        return payload.equal(rhs);
     }
 
     ///
@@ -2071,21 +1826,23 @@ public:
 
     ///
     int opCmp(U)(auto ref U rhs)
-    if (isInputRange!U && isImplicitlyConvertible!(ElementType!U, T))
+    if ((is(U == Array!V, V) || is(U == V[], V)) && is(V : T))
     {
         auto r1 = this;
         auto r2 = rhs;
-        for (; !r1.empty && !r2.empty; r1.popFront, r2.popFront)
+        while (r1.length && r2.length)
         {
-            if (r1.front < r2.front)
+            if (r1[0] < r2[0])
                 return -1;
-            else if (r1.front > r2.front)
+            else if (r1[0] > r2[0])
                 return 1;
+            r1 = r1[1 .. $];
+            r2 = r2[1 .. $];
         }
         // arrays are equal until here, but it could be that one of them is shorter
-        if (r1.empty && r2.empty)
+        if (!r1.length && !r2.length)
             return 0;
-        return r1.empty ? -1 : 1;
+        return (r1.length == 0) ? -1 : 1;
     }
 
     ///
