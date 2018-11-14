@@ -1184,4 +1184,24 @@ unittest
     assert(GC.addrOf(y.ptr) == null);
 }
 
-
+/**
+ * A callback for out of memory errors in D. An $(REF OutOfMemoryError, core,exception)
+ * will be thrown if exceptions are enabled. Otherwise the program will abort.
+ * When exceptions are enabled this function is a wrapper around
+ * $(REF onOutOfMemoryError, core,exception).
+ *
+ * Throws:
+ *  $(REF OutOfMemoryError, core,exception).
+ */
+void onOutOfMemoryError()(void* pretend_sideffect = null) @nogc nothrow pure @trusted
+{
+    version (D_Exceptions)
+    {
+        static import core.exception;
+        core.exception.onOutOfMemoryError();
+    }
+    else
+    {
+        assert(0, "Memory allocation failed");
+    }
+}

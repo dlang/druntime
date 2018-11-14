@@ -1,6 +1,6 @@
 include ../common.mak
 
-TESTS:=test18828
+TESTS:=test18828 oom
 
 .PHONY: all clean
 all: $(addprefix $(ROOT)/,$(addsuffix ,$(TESTS)))
