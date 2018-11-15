@@ -83,7 +83,7 @@ else
 alias wchar_t wint_t;
 
 ///
-enum wchar_t WEOF = 0xFFFF;
+enum wchar_t WEOF = cast(wchar_t)0xFFFF;
 
 ///
 int fwprintf(FILE* stream, in wchar_t* format, ...);

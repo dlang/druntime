@@ -31,6 +31,10 @@ version (StdDdoc)
             alias ddoc_long = int;
             alias ddoc_ulong = uint;
         }
+        version (Posix)
+            alias ddoc_wchar_t = dchar;
+        else
+            alias ddoc_wchar_t = wchar;
     }
 
     /***
@@ -86,6 +90,12 @@ version (StdDdoc)
      * C++ compiler's `ptrdiff_t` type.
      */
     alias cpp_ptrdiff_t = ptrdiff_t;
+
+    /***
+     * Used for a character type that corresponds in size and mangling to the associated
+     * C++ compiler's `wchar_t` type.
+     */
+    alias wchar_t = ddoc_wchar_t;
 }
 else
 {
@@ -112,6 +122,9 @@ version (Windows)
 
     alias long  cpp_longlong;
     alias ulong cpp_ulonglong;
+
+    enum __c_wchar_t : wchar;
+    alias wchar_t = __c_wchar_t;
 }
 else version (Posix)
 {
@@ -143,6 +156,8 @@ else version (Posix)
     alias long  cpp_longlong;
     alias ulong cpp_ulonglong;
   }
+    enum __c_wchar_t : dchar;
+    alias wchar_t = __c_wchar_t;
 }
 
 version (CRuntime_Microsoft)

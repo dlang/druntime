@@ -599,7 +599,7 @@ extern (C) void _d_print_throwable(Throwable t)
                 len += written;
             }
 
-            typeof(ptr) get() { if (ptr) ptr[len] = 0; return ptr; }
+            typeof(ptr) get() { if (ptr) ptr[len] = '\0'; return ptr; }
 
             void free() { .free(ptr); }
         }
