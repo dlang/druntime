@@ -190,7 +190,7 @@ class ManualGC : GC
         return BlkInfo.init;
     }
 
-    core.memory.GC.Stats stats() nothrow
+    core.memory.GC.Stats stats(ulong fields) nothrow
     {
         return typeof(return).init;
     }

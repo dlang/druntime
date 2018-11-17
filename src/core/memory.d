@@ -138,7 +138,7 @@ private
     }
 
     extern (C) BlkInfo_ gc_query( void* p ) pure nothrow;
-    extern (C) GC.Stats gc_stats ( ) nothrow @nogc;
+    extern (C) GC.Stats gc_stats ( ulong fields ) nothrow @nogc;
 
     extern (C) void gc_addRoot( in void* p ) nothrow @nogc;
     extern (C) void gc_addRange( in void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc;
@@ -169,6 +169,12 @@ struct GC
         /// number of free bytes on the GC heap (might only get updated after a collection)
         size_t freeSize;
     }
+
+    /**
+     * Auto-generated bitflag enum with values of identical names as `Stats`
+     * struct. Optionally used to specify exact stats to calculate.
+     */
+    mixin(generateFieldEnum!Stats);
 
     /**
      * Enables automatic garbage collection behavior if collections have
@@ -674,10 +680,16 @@ struct GC
     /**
      * Returns runtime stats for currently active GC implementation
      * See `core.memory.GC.Stats` for list of available metrics.
+     *
+     * Params:
+     *    fields = optional bit flag argument which specifies which stats need
+     *      to be calculated. By default equals to "all fields". If some field
+     *      was not requested via bit flag, its value in returned `Stats` struct
+     *      will be undefined.
      */
-    static Stats stats() nothrow
+    static Stats stats(ulong fields = ulong.max) nothrow
     {
-        return gc_stats();
+        return gc_stats(fields);
     }
 
     /**
@@ -1184,4 +1196,49 @@ unittest
     assert(GC.addrOf(y.ptr) == null);
 }
 
+/**
+    For a given struct `S` generated bitflag enum with a value for each of
+    struct fields.
+ */
+private string generateFieldEnum(alias S)()
+{
+    import core.internal.string;
 
+    string code = "enum " ~ __traits(identifier, S) ~ "Fields\n{\n";
+    ulong shift = 0;
+    char[3] buf;
+
+    foreach (idx, _; S.init.tupleof)
+    {
+        auto init = "1UL << " ~ unsignedToTempString(shift, buf);
+        code ~= __traits(identifier, S.tupleof[idx]) ~ " = " ~ init ~ ",\n";
+        ++shift;
+    }
+
+    code ~= "}";
+
+    return code;
+}
+
+unittest
+{
+    static struct Dummy
+    {
+        int a, b, c;
+    }
+
+    enum code = generateFieldEnum!Dummy();
+
+    static assert (code == "enum DummyFields
+{
+a = 1UL << 0,
+b = 1UL << 1,
+c = 1UL << 2,
+}");
+
+    mixin(code);
+
+    assert(DummyFields.a == 1);
+    assert(DummyFields.b == 2);
+    assert(DummyFields.c == 4);
+}

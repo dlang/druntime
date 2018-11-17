@@ -1191,11 +1191,11 @@ class ConservativeGC : GC
     }
 
 
-    core.memory.GC.Stats stats() nothrow
+    core.memory.GC.Stats stats(ulong fields) nothrow
     {
         typeof(return) ret;
 
-        runLocked!(getStatsNoSync, otherTime, numOthers)(ret);
+        runLocked!(getStatsNoSync, otherTime, numOthers)(ret, fields);
 
         return ret;
     }
@@ -1204,29 +1204,37 @@ class ConservativeGC : GC
     //
     //
     //
-    private void getStatsNoSync(out core.memory.GC.Stats stats) nothrow
+    private void getStatsNoSync(out core.memory.GC.Stats stats, ulong fields) nothrow
     {
-        foreach (pool; gcx.pooltable[0 .. gcx.npools])
+        alias Flags = core.memory.GC.StatsFields;
+
+        if ((fields & Flags.usedSize) || (fields & Flags.freeSize))
         {
-            foreach (bin; pool.pagetable[0 .. pool.npages])
+            // calculates both if any is requested as it is part of the same
+            // iteration process
+
+            foreach (pool; gcx.pooltable[0 .. gcx.npools])
             {
-                if (bin == B_FREE)
-                    stats.freeSize += PAGESIZE;
-                else
-                    stats.usedSize += PAGESIZE;
+                foreach (bin; pool.pagetable[0 .. pool.npages])
+                {
+                    if (bin == B_FREE)
+                        stats.freeSize += PAGESIZE;
+                    else
+                        stats.usedSize += PAGESIZE;
+                }
             }
-        }
 
-        size_t freeListSize;
-        foreach (n; 0 .. B_PAGE)
-        {
-            immutable sz = binsize[n];
-            for (List *list = gcx.bucket[n]; list; list = list.next)
-                freeListSize += sz;
-        }
+            size_t freeListSize;
+            foreach (n; 0 .. B_PAGE)
+            {
+                immutable sz = binsize[n];
+                for (List *list = gcx.bucket[n]; list; list = list.next)
+                    freeListSize += sz;
+            }
 
-        stats.usedSize -= freeListSize;
-        stats.freeSize += freeListSize;
+            stats.usedSize -= freeListSize;
+            stats.freeSize += freeListSize;
+        }
     }
 }
 
