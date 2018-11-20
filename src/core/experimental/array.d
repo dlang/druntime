@@ -655,37 +655,6 @@ public:
         }
     }
 
-    /**
-     * Constructs a qualified array out of an
-     * $(REF_ALTTEXT input range, isInputRange, std,range,primitives)
-     * that will use the collection decided allocator object.
-     * If `Stuff` defines `length`, `Array` will use it to reserve the
-     * necessary amount of memory.
-     *
-     * Params:
-     *      stuff = an input range of elements that are implitictly convertible
-     *              to `T`
-     *
-     * Complexity: $(BIGOH m), where `m` is the number of elements in the range.
-     */
-    version(none)
-    this(Stuff, this Q)(Stuff stuff)
-    if (!is(Q == shared)
-        && isInputRange!Stuff && !isInfinite!Stuff
-        && isImplicitlyConvertible!(ElementType!Stuff, T)
-        && !is(Stuff == T[]))
-    {
-        static if (is(Q == immutable) || is(Q == const))
-        {
-            isShared = true;
-            mixin(immutableInsert!(typeof(stuff))("stuff"));
-        }
-        else
-        {
-            insert(0, stuff);
-        }
-    }
-
     // Begin Copy Ctors
     // {
 
