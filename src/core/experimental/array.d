@@ -275,35 +275,6 @@ if (is(typeof(collection.popFront())))
     return collection;
 }
 
-auto equal(T, U)(T a, U b)
-if (is(ElementType!T : ElementType!U)
-     && (is(T : V[], V) || is(T : Array!V2, V2))
-     && (is(U : V4[], V4) || is(U : Array!V3, V3)))
-{
-    if (a.length != b.length) return false;
-
-    while (a.length)
-    {
-        if (a[0] != b[0]) return false;
-        a = a[1 .. $];
-        b = b[1 .. $];
-    }
-    return true;
-}
-
-@safe unittest
-{
-    auto a = [1, 2, 3];
-    auto b = Array!int(a);
-
-    assert(equal(a, a));
-    assert(equal(a, b));
-    assert(equal(b, a));
-    assert(equal(b, b));
-    a ~= 1;
-    assert(!equal(a, b));
-}
-
 struct PrefixAllocator
 {
     /**
@@ -640,18 +611,18 @@ public:
         // Create a list from a list of ints
         {
             auto a = Array!int(1, 2, 3);
-            assert(equal(a, [1, 2, 3]));
+            assert(a == [1, 2, 3]);
         }
         // Create a list from an array of ints
         {
             auto a = Array!int([1, 2, 3]);
-            assert(equal(a, [1, 2, 3]));
+            assert(a == [1, 2, 3]);
         }
         // Create a list from a list from an input range
         {
             auto a = Array!int(1, 2, 3);
             auto a2 = Array!int(a);
-            assert(equal(a2, [1, 2, 3]));
+            assert(a2 == [1, 2, 3]);
         }
     }
 
@@ -955,7 +926,7 @@ public:
         Array!int a;
         a.reserve(stuff.length);
         a ~= stuff;
-        assert(equal(a, stuff));
+        assert(a == stuff);
     }
 
     /**
@@ -1030,7 +1001,7 @@ public:
         size_t pos = 0;
         pos += a.insert(pos, 1);
         pos += a.insert(pos, [2, 3]);
-        assert(equal(a, [1, 2, 3]));
+        assert(a == [1, 2, 3]);
     }
 
     /**
@@ -1369,7 +1340,7 @@ public:
         auto stuff = [1, 2, 3];
         auto a = immutable Array!int(stuff);
         auto aDup = a.dup;
-        assert(equal(aDup, stuff));
+        assert(aDup == stuff);
         aDup.front = 0;
         assert(aDup.front == 0);
         assert(a.front == 1);
@@ -1420,8 +1391,8 @@ public:
     {
         auto stuff = [1, 2, 3];
         auto a = Array!int(stuff);
-        assert(equal(a[], stuff));
-        assert(equal(a[1 .. $], stuff[1 .. $]));
+        assert(a[] == stuff);
+        assert(a[1 .. $] == stuff[1 .. $]);
     }
 
     /**
@@ -1546,7 +1517,7 @@ public:
     {
         auto a = Array!int([1, 2, 3]);
         a[] = 0;
-        assert(a.equal([0, 0, 0]));
+        assert(a == [0, 0, 0]);
     }
 
     /**
@@ -1580,7 +1551,7 @@ public:
     {
         auto a = Array!int([1, 2, 3, 4, 5, 6]);
         a[1 .. 3] = 0;
-        assert(a.equal([1, 0, 0, 4, 5, 6]));
+        assert(a == [1, 0, 0, 4, 5, 6]);
     }
 
     /**
@@ -1663,9 +1634,9 @@ public:
         auto a = Array!int(1);
         auto a2 = a ~ 2;
 
-        assert(equal(a2, [1, 2]));
+        assert(a2 == [1, 2]);
         a.front = 0;
-        assert(equal(a2, [1, 2]));
+        assert(a2 == [1, 2]);
     }
 
     /**
@@ -1711,9 +1682,9 @@ public:
         auto a2 = Array!int(1, 2);
 
         a = a2; // this will free the old a
-        assert(equal(a, [1, 2]));
+        assert(a == [1, 2]);
         a.front = 0;
-        assert(equal(a2, [0, 2]));
+        assert(a2 == [0, 2]);
     }
 
     static if (is(T == int))
@@ -1723,8 +1694,8 @@ public:
         auto arr1 = arr[1 .. $];
         auto arr2 = arr[3 .. $];
         arr1 = arr2;
-        assert(arr1.equal([4, 5, 6]));
-        assert(arr2.equal([4, 5, 6]));
+        assert(arr1 == [4, 5, 6]);
+        assert(arr2 == [4, 5, 6]);
     }
 
     /**
@@ -1763,19 +1734,51 @@ public:
 
         a ~= 1;
         a ~= [2, 3];
-        assert(equal(a, [1, 2, 3]));
+        assert(a == [1, 2, 3]);
 
         // append an input range
         a ~= a2;
-        assert(equal(a, [1, 2, 3, 4, 5]));
+        assert(a == [1, 2, 3, 4, 5]);
         a2.front = 0;
-        assert(equal(a, [1, 2, 3, 4, 5]));
+        assert(a == [1, 2, 3, 4, 5]);
     }
 
     ///
-    bool opEquals()(auto ref typeof(this) rhs) const
+    bool opEquals(U)(const U rhs) const
+    if (is(U : const typeof(this))
+        || (is(U : const V[], V) && is(typeof(T.init == V.init))))
     {
-        return payload.equal(rhs);
+        auto a = this;
+        if (a.length != rhs.length) return false;
+
+        for (size_t i = 0; i < a.length; ++i)
+        {
+            if (a[i] != rhs[i]) return false;
+        }
+        return true;
+    }
+
+    static if (is(T == int))
+    @safe unittest
+    {
+        auto a = [1, 2, 3];
+        auto b = Array!int(a);
+
+        assert(a == a);
+        assert(a == b);
+        assert(b == a);
+        assert(b == b);
+        a ~= 1;
+        assert(a != b);
+
+        static struct S
+        {
+            int x;
+            bool opEquals(int rhs) const { return x == rhs; }
+        }
+
+        auto s = [S(1), S(2), S(3)];
+        assert(b == s);
     }
 
     ///
@@ -1871,30 +1874,30 @@ void testConcatAndAppend()
     Array!(int) a2 = Array!(int)();
 
     auto a3 = a ~ a2;
-    assert(equal(a3, [1, 2, 3]));
+    assert(a3 == [1, 2, 3]);
 
     auto a4 = a3;
     a3 = a3 ~ 4;
-    assert(equal(a3, [1, 2, 3, 4]));
+    assert(a3 == [1, 2, 3, 4]);
     a3 = a3 ~ [5];
-    assert(equal(a3, [1, 2, 3, 4, 5]));
-    assert(equal(a4, [1, 2, 3]));
+    assert(a3 == [1, 2, 3, 4, 5]);
+    assert(a4 == [1, 2, 3]);
 
     a4 = a3;
     a3 ~= 6;
-    assert(equal(a3, [1, 2, 3, 4, 5, 6]));
+    assert(a3 == [1, 2, 3, 4, 5, 6]);
     a3 ~= [7];
 
     a3 ~= a3;
-    assert(equal(a3, [1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]));
+    assert(a3 == [1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]);
 
     Array!int a5 = Array!(int)();
     a5 ~= [1, 2, 3];
-    assert(equal(a5, [1, 2, 3]));
+    assert(a5 == [1, 2, 3]);
     auto a6 = a5;
     a5 = a5;
     a5[0] = 10;
-    assert(equal(a5, a6));
+    assert(a5 == a6);
 
     // Test concat with mixed qualifiers
     auto a7 = immutable Array!(int)(a5);
@@ -1902,11 +1905,11 @@ void testConcatAndAppend()
     a5.front = 1;
     assert(a7.front == 10);
     auto a8 = a5 ~ a7;
-    assert(equal(a8, [1, 2, 3, 10, 2, 3]));
+    assert(a8 == [1, 2, 3, 10, 2, 3]);
 
     auto a9 = const Array!(int)(a5);
     auto a10 = a5 ~ a9;
-    assert(equal(a10, [1, 2, 3, 1, 2, 3]));
+    assert(a10 == [1, 2, 3, 1, 2, 3]);
 }
 
 @safe unittest
@@ -1928,24 +1931,24 @@ void testSimple()
     size_t pos = 0;
     a.insert(pos, 1, 2, 3);
     assert(a.front == 1);
-    assert(equal(a, a));
-    assert(equal(a, [1, 2, 3]));
+    assert(a == a);
+    assert(a == [1, 2, 3]);
 
     a.popFront();
     assert(a.front == 2);
-    assert(equal(a, [2, 3]));
+    assert(a == [2, 3]);
 
     a.insert(pos, [4, 5, 6]);
     a.insert(pos, 7);
     a.insert(pos, [8]);
-    assert(equal(a, [8, 7, 4, 5, 6, 2, 3]));
+    assert(a == [8, 7, 4, 5, 6, 2, 3]);
 
     a.insert(a.length, 0, 1);
     a.insert(a.length, [-1, -2]);
-    assert(equal(a, [8, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]));
+    assert(a == [8, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]);
 
     a.front = 9;
-    assert(equal(a, [9, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]));
+    assert(a == [9, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]);
 
     auto aTail = a.tail;
     assert(aTail.front == 7);
@@ -1973,22 +1976,22 @@ void testSimpleImmutable()
     size_t pos = 0;
     a.insert(pos, 1, 2, 3);
     assert(a.front == 1);
-    assert(equal(a, a));
-    assert(equal(a, [1, 2, 3]));
+    assert(a == a);
+    assert(a == [1, 2, 3]);
 
     a.popFront();
     assert(a.front == 2);
-    assert(equal(a, [2, 3]));
+    assert(a == [2, 3]);
     assert(a.tail.front == 3);
 
     a.insert(pos, [4, 5, 6]);
     a.insert(pos, 7);
     a.insert(pos, [8]);
-    assert(equal(a, [8, 7, 4, 5, 6, 2, 3]));
+    assert(a == [8, 7, 4, 5, 6, 2, 3]);
 
     a.insert(a.length, 0, 1);
     a.insert(a.length, [-1, -2]);
-    assert(equal(a, [8, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]));
+    assert(a == [8, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]);
 
     // Cannot modify immutable values
     static assert(!__traits(compiles, a.front = 9));
@@ -2008,24 +2011,24 @@ void testCopyAndRef()
 {
     auto aFromList = Array!int(1, 2, 3);
     auto aFromRange = Array!int(aFromList);
-    assert(equal(aFromList, aFromRange));
+    assert(aFromList == aFromRange);
 
     aFromList.popFront();
-    assert(equal(aFromList, [2, 3]));
-    assert(equal(aFromRange, [1, 2, 3]));
+    assert(aFromList == [2, 3]);
+    assert(aFromRange == [1, 2, 3]);
 
     size_t pos = 0;
     Array!int aInsFromRange = Array!int();
     aInsFromRange.insert(pos, aFromList);
     aFromList.popFront();
-    assert(equal(aFromList, [3]));
-    assert(equal(aInsFromRange, [2, 3]));
+    assert(aFromList == [3]);
+    assert(aInsFromRange == [2, 3]);
 
     Array!int aInsBackFromRange = Array!int();
     aInsBackFromRange.insert(pos, aFromList);
     aFromList.popFront();
     assert(aFromList.empty);
-    assert(equal(aInsBackFromRange, [3]));
+    assert(aInsBackFromRange == [3]);
 
     auto aFromRef = aInsFromRange;
     auto aFromDup = aInsFromRange.dup;
@@ -2062,12 +2065,12 @@ void testImmutability()
 
     // Create a mutable copy from an immutable array
     auto a5 = a.dup();
-    assert(equal(a5, [1, 2, 3]));
+    assert(a5 == [1, 2, 3]);
     assert(a5.front == 1);
     a5.front = 2;
     assert(a5.front == 2);
     assert(a.front == 1);
-    assert(equal(a5, [2, 2, 3]));
+    assert(a5 == [2, 2, 3]);
 
     // Create immtable copies from mutable, const and immutable
     {
@@ -2131,10 +2134,10 @@ void testWithStruct()
 
         auto arrayOfArrays = Array!(Array!int)(array);
         assert(array.opCmpPrefix!"=="(array.support, 2));
-        assert(equal(arrayOfArrays.front, [1, 2, 3]));
+        assert(arrayOfArrays.front == [1, 2, 3]);
         arrayOfArrays.front.front = 2;
-        assert(equal(arrayOfArrays.front, [2, 2, 3]));
-        assert(equal(arrayOfArrays.front, array));
+        assert(arrayOfArrays.front == [2, 2, 3]);
+        assert(arrayOfArrays.front == array);
         static assert(!__traits(compiles, arrayOfArrays.insert(1)));
 
         auto immArrayOfArrays = immutable Array!(Array!int)(array);
@@ -2150,7 +2153,7 @@ void testWithStruct()
         static assert(!__traits(compiles, immArrayOfArrays.front = array));
     }
     assert(array.opCmpPrefix!"=="(array.support, 1));
-    assert(equal(array, [3, 2, 3]));
+    assert(array == [3, 2, 3]);
 }
 
 @safe unittest
@@ -2239,22 +2242,22 @@ void testSlice()
 {
     auto a = Array!int(1, 2, 3, 4);
     auto b = a[];
-    assert(equal(a, b));
+    assert(a == b);
     b[1] = 5;
     assert(a[1] == 5);
 
     size_t startPos = 2;
     auto c = b[startPos .. $];
-    assert(equal(c, [3, 4]));
+    assert(c == [3, 4]);
     c[0] = 5;
-    assert(equal(a, b));
-    assert(equal(a, [1, 5, 5, 4]));
+    assert(a == b);
+    assert(a == [1, 5, 5, 4]);
     assert(a.capacity == b.capacity && b.capacity == c.capacity + startPos);
 
     c ~= 5;
-    assert(equal(c, [5, 4, 5]));
-    assert(equal(a, b));
-    assert(equal(a, [1, 5, 5, 4]));
+    assert(c == [5, 4, 5]);
+    assert(a == b);
+    assert(a == [1, 5, 5, 4]);
 }
 
 @safe unittest
