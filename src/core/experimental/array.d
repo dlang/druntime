@@ -1850,8 +1850,7 @@ public:
     ///
     auto toHash()
     {
-        // will be safe with 2.082
-        return () @trusted { return support.hashOf; }();
+        return payload.hashOf;
     }
 
     ///
