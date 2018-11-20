@@ -269,13 +269,6 @@ private template ElementType(R)
         alias ElementType = void;
 }
 
-auto tail(Collection)(Collection collection)
-if (is(typeof(collection.popFront())))
-{
-    collection.popFront();
-    return collection;
-}
-
 private struct PrefixAllocator
 {
     /**
@@ -491,7 +484,6 @@ private:
     size_t opPrefix(string op, T)(const T[] _support, size_t val) const
     if ((op == "+=") || (op == "-="))
     {
-
         return (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(_support, val);
     }
 
@@ -555,16 +547,16 @@ private:
         }
 
         assert(stuffLength == 0 || (stuffLength > 0 && tmpSupport !is null));
-        size_t i = 0;
-        foreach (ref item; } ~ stuff ~ q{)
-        {
-            alias TT = ElementType!(typeof(payload));
-            size_t s = i * stateSize!TT;
-            size_t e = (i + 1) * stateSize!TT;
-            void[] tmp = tmpSupport[s .. e];
-            i++;
-            (() @trusted => emplace!TT(tmp, item))();
-        }
+        for (size_t i = 0; i < stuffLength; ++i)
+        } ~ ""
+        ~"{"
+        ~"    alias TT = ElementType!(typeof(payload));"
+        ~"    size_t s = i * stateSize!TT;"
+        ~"    size_t e = (i + 1) * stateSize!TT;"
+        ~"    void[] tmp = tmpSupport[s .. e];"
+        ~"    (() @trusted => emplace!TT(tmp, " ~ stuff ~ "[i]))();"
+        ~"}"
+        ~q{
 
         support = (() @trusted => cast(typeof(support))(tmpSupport))();
         payload = (() @trusted => cast(typeof(payload))(support[0 .. stuffLength]))();
@@ -752,7 +744,7 @@ public:
     }
 
     /**
-     * Return the number of elements in the array..
+     * Return the number of elements in the array.
      *
      * Returns:
      *      the length of the array.
@@ -997,7 +989,7 @@ public:
     @safe unittest
     {
         Array!int a;
-        assert(a.empty);
+        assert(a.length == 0);
 
         size_t pos = 0;
         pos += a.insert(pos, 1);
@@ -1034,122 +1026,10 @@ public:
         {
             auto a2 = a;
             assert(!a.isUnique);
-            a2.front = 0;
-            assert(a.front == 0);
+            a2[0] = 0;
+            assert(a[0] == 0);
         } // a2 goes out of scope
         assert(a.isUnique);
-    }
-
-    /**
-     * Check if the array is empty.
-     *
-     * Returns:
-     *      `true` if there are no elements in the array; `false` otherwise.
-     *
-     * Complexity: $(BIGOH 1).
-     */
-    @nogc nothrow pure @safe
-    bool empty() const
-    {
-        return length == 0;
-    }
-
-    ///
-    static if (is(T == int))
-    @safe unittest
-    {
-        Array!int a;
-        assert(a.empty);
-        size_t pos = 0;
-        a.insert(pos, 1);
-        assert(!a.empty);
-    }
-
-    /**
-     * Provide access to the first element in the array. The user must check
-     * that the array isn't `empty`, prior to calling this function.
-     *
-     * Returns:
-     *      a reference to the first element.
-     *
-     * Complexity: $(BIGOH 1).
-     */
-    ref auto front(this _)()
-    {
-        assert(!empty, "Array.front: Array is empty");
-        return payload[0];
-    }
-
-    ///
-    static if (is(T == int))
-    @safe unittest
-    {
-        auto a = Array!int(1, 2, 3);
-        assert(a.front == 1);
-        a.front = 0;
-        assert(a.front == 0);
-    }
-
-    /**
-     * Advance to the next element in the array. The user must check
-     * that the array isn't `empty`, prior to calling this function.
-     *
-     * Complexity: $(BIGOH 1).
-     */
-    @nogc nothrow pure @safe
-    void popFront()
-    {
-        assert(!empty, "Array.popFront: Array is empty");
-        payload = payload[1 .. $];
-    }
-
-    ///
-    static if (is(T == int))
-    @safe unittest
-    {
-        auto stuff = [1, 2, 3];
-        auto a = Array!int(stuff);
-        size_t i = 0;
-        while (!a.empty)
-        {
-            assert(a.front == stuff[i++]);
-            a.popFront;
-        }
-        assert(a.empty);
-    }
-
-    /**
-     * Advance to the next element in the array. The user must check
-     * that the array isn't `empty`, prior to calling this function.
-     *
-     * This must be used in order to iterate through a `const` or `immutable`
-     * array For a mutable array this is equivalent to calling `popFront`.
-     *
-     * Returns:
-     *      an array that starts with the next element in the original array.
-     *
-     * Complexity: $(BIGOH 1).
-     */
-    Qualified tail(this Qualified)()
-    {
-        assert(!empty, "Array.tail: Array is empty");
-
-        static if (is(Qualified == immutable) || is(Qualified == const))
-        {
-            return this[1 .. $];
-        }
-        else
-        {
-            return .tail(this);
-        }
-    }
-
-    ///
-    static if (is(T == int))
-    @safe unittest
-    {
-        auto ia = immutable Array!int([1, 2, 3]);
-        assert(ia.tail.front == 2);
     }
 
     /**
@@ -1235,37 +1115,6 @@ public:
     //}
 
     /**
-     * Perform a shallow copy of the array.
-     *
-     * Returns:
-     *      a new reference to the current array.
-     *
-     * Complexity: $(BIGOH 1).
-     */
-    ref auto save(this _)()
-    {
-        return this;
-    }
-
-    ///
-    static if (is(T == int))
-    @safe unittest
-    {
-        auto stuff = [1, 2, 3];
-        auto a = Array!int(stuff);
-        size_t i = 0;
-
-        auto tmp = a.save;
-        while (!tmp.empty)
-        {
-            assert(tmp.front == stuff[i++]);
-            tmp.popFront;
-        }
-        assert(tmp.empty);
-        assert(!a.empty);
-    }
-
-    /**
      * Perform an immutable copy of the array. This will create a new array that
      * will copy the elements of the current array. This will `NOT` call `dup` on
      * the elements of the array, regardless if `T` defines it or not. If the array
@@ -1342,14 +1191,14 @@ public:
         auto a = immutable Array!int(stuff);
         auto aDup = a.dup;
         assert(aDup == stuff);
-        aDup.front = 0;
-        assert(aDup.front == 0);
-        assert(a.front == 1);
+        aDup[0] = 0;
+        assert(aDup[0] == 0);
+        assert(a[0] == 1);
     }
 
     /**
-     * Return a slice to the current array. This is equivalent to calling
-     * `save`.
+     * Return a slice to the current array. This is equivalent to performing
+     * a shallow copy of the array.
      *
      * Returns:
      *      an array that references the current array.
@@ -1358,7 +1207,7 @@ public:
      */
     Qualified opSlice(this Qualified)()
     {
-        return this.save;
+        return this;
     }
 
     /**
@@ -1636,7 +1485,7 @@ public:
         auto a2 = a ~ 2;
 
         assert(a2 == [1, 2]);
-        a.front = 0;
+        a[0] = 0;
         assert(a2 == [1, 2]);
     }
 
@@ -1684,7 +1533,7 @@ public:
 
         a = a2; // this will free the old a
         assert(a == [1, 2]);
-        a.front = 0;
+        a[0] = 0;
         assert(a2 == [0, 2]);
     }
 
@@ -1731,7 +1580,7 @@ public:
     {
         Array!int a;
         auto a2 = Array!int(4, 5);
-        assert(a.empty);
+        assert(a.length == 0);
 
         a ~= 1;
         a ~= [2, 3];
@@ -1740,7 +1589,7 @@ public:
         // append an input range
         a ~= a2;
         assert(a == [1, 2, 3, 4, 5]);
-        a2.front = 0;
+        a2[0] = 0;
         assert(a == [1, 2, 3, 4, 5]);
     }
 
@@ -1902,9 +1751,9 @@ void testConcatAndAppend()
 
     // Test concat with mixed qualifiers
     auto a7 = immutable Array!(int)(a5);
-    assert(a7.front == 10);
-    a5.front = 1;
-    assert(a7.front == 10);
+    assert(a7[0] == 10);
+    a5[0] = 1;
+    assert(a7[0] == 10);
     auto a8 = a5 ~ a7;
     assert(a8 == [1, 2, 3, 10, 2, 3]);
 
@@ -1926,17 +1775,17 @@ version(unittest) private nothrow pure @safe
 void testSimple()
 {
     auto a = Array!int();
-    assert(a.empty);
+    assert(a.length == 0);
     assert(a.isUnique);
 
     size_t pos = 0;
     a.insert(pos, 1, 2, 3);
-    assert(a.front == 1);
+    assert(a[0] == 1);
     assert(a == a);
     assert(a == [1, 2, 3]);
 
-    a.popFront();
-    assert(a.front == 2);
+    a = a[1 .. $];
+    assert(a[0] == 2);
     assert(a == [2, 3]);
 
     a.insert(pos, [4, 5, 6]);
@@ -1948,14 +1797,14 @@ void testSimple()
     a.insert(a.length, [-1, -2]);
     assert(a == [8, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]);
 
-    a.front = 9;
+    a[0] = 9;
     assert(a == [9, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]);
 
-    auto aTail = a.tail;
-    assert(aTail.front == 7);
-    aTail.front = 8;
-    assert(aTail.front == 8);
-    assert(a.tail.front == 8);
+    auto aTail = a[1 .. $];
+    assert(aTail[0] == 7);
+    aTail[0] = 8;
+    assert(aTail[0] == 8);
+    assert(a[1 .. $][0] == 8);
     assert(!a.isUnique);
 }
 
@@ -1972,18 +1821,18 @@ version(unittest) private nothrow pure @safe
 void testSimpleImmutable()
 {
     auto a = Array!(immutable int)();
-    assert(a.empty);
+    assert(a.length == 0);
 
     size_t pos = 0;
     a.insert(pos, 1, 2, 3);
-    assert(a.front == 1);
+    assert(a[0] == 1);
     assert(a == a);
     assert(a == [1, 2, 3]);
 
-    a.popFront();
-    assert(a.front == 2);
+    a = a[1 .. $];
+    assert(a[0] == 2);
     assert(a == [2, 3]);
-    assert(a.tail.front == 3);
+    assert(a[1 .. $][0] == 3);
 
     a.insert(pos, [4, 5, 6]);
     a.insert(pos, 7);
@@ -1995,7 +1844,7 @@ void testSimpleImmutable()
     assert(a == [8, 7, 4, 5, 6, 2, 3, 0, 1, -1, -2]);
 
     // Cannot modify immutable values
-    static assert(!__traits(compiles, a.front = 9));
+    static assert(!__traits(compiles, { a[0] = 9; }));
 }
 
 @safe unittest
@@ -2014,29 +1863,29 @@ void testCopyAndRef()
     auto aFromRange = Array!int(aFromList);
     assert(aFromList == aFromRange);
 
-    aFromList.popFront();
+    aFromList = aFromList[1 .. $];
     assert(aFromList == [2, 3]);
     assert(aFromRange == [1, 2, 3]);
 
     size_t pos = 0;
     Array!int aInsFromRange = Array!int();
     aInsFromRange.insert(pos, aFromList);
-    aFromList.popFront();
+    aFromList = aFromList[1 .. $];
     assert(aFromList == [3]);
     assert(aInsFromRange == [2, 3]);
 
     Array!int aInsBackFromRange = Array!int();
     aInsBackFromRange.insert(pos, aFromList);
-    aFromList.popFront();
-    assert(aFromList.empty);
+    aFromList = aFromList[1 .. $];
+    assert(aFromList.length == 0);
     assert(aInsBackFromRange == [3]);
 
     auto aFromRef = aInsFromRange;
     auto aFromDup = aInsFromRange.dup;
-    assert(aInsFromRange.front == 2);
-    aFromRef.front = 5;
-    assert(aInsFromRange.front == 5);
-    assert(aFromDup.front == 2);
+    assert(aInsFromRange[0] == 2);
+    aFromRef[0] = 5;
+    assert(aInsFromRange[0] == 5);
+    assert(aFromDup[0] == 2);
 }
 
 @safe unittest
@@ -2053,24 +1902,23 @@ void testImmutability()
 {
     auto a = immutable Array!(int)(1, 2, 3);
     auto a2 = a;
-    auto a3 = a2.save();
 
-    assert(a2.front == 1);
-    assert(a2[0] == a2.front);
-    static assert(!__traits(compiles, a2.front = 4));
-    static assert(!__traits(compiles, a2.popFront()));
+    assert(a2[0] == 1);
+    assert(a2[0] == a2[0]);
+    static assert(!__traits(compiles, { a2[0] = 4; }));
+    static assert(!__traits(compiles, { a2 = a2[1 .. $]; }));
 
-    auto a4 = a2.tail;
-    assert(a4.front == 2);
+    auto a4 = a2[1 .. $];
+    assert(a4[0] == 2);
     static assert(!__traits(compiles, a4 = a4.tail));
 
     // Create a mutable copy from an immutable array
     auto a5 = a.dup();
     assert(a5 == [1, 2, 3]);
-    assert(a5.front == 1);
-    a5.front = 2;
-    assert(a5.front == 2);
-    assert(a.front == 1);
+    assert(a5[0] == 1);
+    a5[0] = 2;
+    assert(a5[0] == 2);
+    assert(a[0] == 1);
     assert(a5 == [2, 2, 3]);
 
     // Create immtable copies from mutable, const and immutable
@@ -2101,18 +1949,17 @@ void testConstness()
 {
     auto a = const Array!(int)(1, 2, 3);
     auto a2 = a;
-    auto a3 = a2.save();
     immutable Array!int a5 = a;
     assert(a5.opCmpPrefix!"=="(a5.support, 1));
-    assert(a.opCmpPrefix!"=="(a.support, 3));
+    assert(a.opCmpPrefix!"=="(a.support, 2));
 
-    assert(a2.front == 1);
-    assert(a2[0] == a2.front);
-    static assert(!__traits(compiles, a2.front = 4));
-    static assert(!__traits(compiles, a2.popFront()));
+    assert(a2[0] == 1);
+    assert(a2[0] == a2[0]);
+    static assert(!__traits(compiles, { a2[0] = 4; }));
+    static assert(!__traits(compiles, { a2 = a2[1 .. $]; }));
 
-    auto a4 = a2.tail;
-    assert(a4.front == 2);
+    auto a4 = a2[1 .. $];
+    assert(a4[0] == 2);
     static assert(!__traits(compiles, a4 = a4.tail));
 }
 
@@ -2135,10 +1982,10 @@ void testWithStruct()
 
         auto arrayOfArrays = Array!(Array!int)(array);
         assert(array.opCmpPrefix!"=="(array.support, 2));
-        assert(arrayOfArrays.front == [1, 2, 3]);
-        arrayOfArrays.front.front = 2;
-        assert(arrayOfArrays.front == [2, 2, 3]);
-        assert(arrayOfArrays.front == array);
+        assert(arrayOfArrays[0] == [1, 2, 3]);
+        arrayOfArrays[0][0] = 2;
+        assert(arrayOfArrays[0] == [2, 2, 3]);
+        assert(arrayOfArrays[0] == array);
         static assert(!__traits(compiles, arrayOfArrays.insert(1)));
 
         auto immArrayOfArrays = immutable Array!(Array!int)(array);
@@ -2146,12 +1993,12 @@ void testWithStruct()
         // immutable is transitive, so it must iterate over array and
         // create a copy, and not set a ref
         assert(array.opCmpPrefix!"=="(array.support, 2));
-        array.front = 3;
-        assert(immArrayOfArrays.front.front == 2);
+        array[0] = 3;
+        assert(immArrayOfArrays[0][0] == 2);
         assert(immArrayOfArrays.opCmpPrefix!"=="(immArrayOfArrays.support, 1));
-        assert(immArrayOfArrays.front.opCmpPrefix!"=="(immArrayOfArrays.front.support, 1));
-        static assert(!__traits(compiles, immArrayOfArrays.front.front = 2));
-        static assert(!__traits(compiles, immArrayOfArrays.front = array));
+        assert(immArrayOfArrays[0].opCmpPrefix!"=="(immArrayOfArrays[0].support, 1));
+        static assert(!__traits(compiles, { immArrayOfArrays[0][0] = 2; }));
+        static assert(!__traits(compiles, { immArrayOfArrays[0] = array; }));
     }
     assert(array.opCmpPrefix!"=="(array.support, 1));
     assert(array == [3, 2, 3]);
@@ -2182,9 +2029,9 @@ void testWithClass()
     MyClass c = new MyClass(10);
     {
         Array!MyClass a = Array!MyClass(c);
-        assert(a.front.x == 10);
-        assert(a.front is c);
-        a.front.x = 20;
+        assert(a[0].x == 10);
+        assert(a[0] is c);
+        a[0].x = 20;
     }
     assert(c.x == 20);
 }
