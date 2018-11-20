@@ -12,7 +12,7 @@ Returns the size in bytes of the state that needs to be allocated to hold an
 object of type `T`. `stateSize!T` is zero for `struct`s that are not
 nested and have no nonstatic member variables.
  */
-template stateSize(T)
+private template stateSize(T)
 {
     static if (is(T == class) || is(T == interface))
         enum stateSize = __traits(classInstanceSize, T);
@@ -22,13 +22,13 @@ template stateSize(T)
         enum stateSize = T.sizeof;
 }
 
-template isAbstractClass(T...)
+private template isAbstractClass(T...)
 if (T.length == 1)
 {
     enum bool isAbstractClass = __traits(isAbstractClass, T[0]);
 }
 
-template isInnerClass(T)
+private template isInnerClass(T)
 if (is(T == class))
 {
     static if (is(typeof(T.outer)))
@@ -37,9 +37,9 @@ if (is(T == class))
         enum isInnerClass = false;
 }
 
-enum classInstanceAlignment(T) = size_t.alignof >= T.alignof ? size_t.alignof : T.alignof;
+private enum classInstanceAlignment(T) = size_t.alignof >= T.alignof ? size_t.alignof : T.alignof;
 
-T emplace(T, Args...)(T chunk, auto ref Args args)
+private T emplace(T, Args...)(T chunk, auto ref Args args)
 if (is(T == class))
 {
     static assert(!isAbstractClass!T, T.stringof ~
@@ -77,7 +77,7 @@ if (is(T == class))
     return chunk;
 }
 
-T emplace(T, Args...)(void[] chunk, auto ref Args args)
+private T emplace(T, Args...)(void[] chunk, auto ref Args args)
 if (is(T == class))
 {
     enum classSize = __traits(classInstanceSize, T);
@@ -85,7 +85,7 @@ if (is(T == class))
     return emplace!T(cast(T)(chunk.ptr), args);
 }
 
-T* emplace(T, Args...)(void[] chunk, auto ref Args args)
+private T* emplace(T, Args...)(void[] chunk, auto ref Args args)
 if (!is(T == class))
 {
     testEmplaceChunk(chunk, T.sizeof, T.alignof);
@@ -93,20 +93,20 @@ if (!is(T == class))
     return cast(T*) chunk.ptr;
 }
 
-T* emplace(T)(T* chunk) @safe pure nothrow
+private T* emplace(T)(T* chunk) @safe pure nothrow
 {
     emplaceRef!T(*chunk);
     return chunk;
 }
 
-T* emplace(T, Args...)(T* chunk, auto ref Args args)
+private T* emplace(T, Args...)(T* chunk, auto ref Args args)
 if (is(T == struct) || Args.length == 1)
 {
     emplaceRef!T(*chunk, args);
     return chunk;
 }
 
-package void emplaceRef(T, UT, Args...)(ref UT chunk, auto ref Args args)
+private void emplaceRef(T, UT, Args...)(ref UT chunk, auto ref Args args)
 {
     static if (args.length == 0)
     {
@@ -172,7 +172,7 @@ package void emplaceRef(T, UT, Args...)(ref UT chunk, auto ref Args args)
     }
 }
 // ditto
-package void emplaceRef(UT, Args...)(ref UT chunk, auto ref Args args)
+private void emplaceRef(UT, Args...)(ref UT chunk, auto ref Args args)
 if (is(UT == Unqual!UT))
 {
     emplaceRef!(UT, UT)(chunk, args);
@@ -201,11 +201,10 @@ void testEmplaceChunk(void[] chunk, size_t typeSize, size_t typeAlignment)
     assert((cast(size_t) chunk.ptr) % typeAlignment == 0, "emplace: Chunk is not aligned.");
 }
 
-enum hasElaborateDestructor(T) = __traits(compiles, { T t; t.__dtor(); })
-                                 ||  __traits(compiles, { T t; t.__xdtor(); });
-
-void dispose(A, T)(auto ref A alloc, auto ref T* p)
+private void dispose(A, T)(auto ref A alloc, auto ref T* p)
 {
+    import core.internal.traits : hasElaborateDestructor;
+
     static if (hasElaborateDestructor!T)
     {
         destroy(*p);
@@ -215,7 +214,7 @@ void dispose(A, T)(auto ref A alloc, auto ref T* p)
         p = null;
 }
 
-void dispose(A, T)(auto ref A alloc, auto ref T p)
+private void dispose(A, T)(auto ref A alloc, auto ref T p)
 if (is(T == class) || is(T == interface))
 {
     if (!p) return;
@@ -238,8 +237,10 @@ if (is(T == class) || is(T == interface))
         p = null;
 }
 
-void dispose(A, T)(auto ref A alloc, auto ref T[] array)
+private void dispose(A, T)(auto ref A alloc, auto ref T[] array)
 {
+    import core.internal.traits : hasElaborateDestructor;
+
     static if (hasElaborateDestructor!(typeof(array[0])))
     {
         foreach (ref e; array)
@@ -260,7 +261,7 @@ void dispose(A, T)(auto ref A alloc, auto ref T[] array)
 The element type of `R`. `R` does not have to be a range. The element type is
 determined as the type yielded by `r[0]` for an object `r` of type `R`.
  */
-template ElementType(R)
+private template ElementType(R)
 {
     static if (is(typeof(R.init[0].init) T))
         alias ElementType = T;
@@ -275,7 +276,7 @@ if (is(typeof(collection.popFront())))
     return collection;
 }
 
-struct PrefixAllocator
+private struct PrefixAllocator
 {
     /**
     The alignment is a static constant equal to `platformAlignment`, which
@@ -393,16 +394,16 @@ version(unittest)
     private alias SCAlloc = shared PrefixAllocator;
     private alias SSCAlloc = shared PrefixAllocator;
 
-    SCAlloc localAllocator;
-    SSCAlloc sharedAllocator;
+    private SCAlloc localAllocator;
+    private SSCAlloc sharedAllocator;
 
-    @nogc nothrow pure @trusted
+    private @nogc nothrow pure @trusted
     void[] pureAllocate(bool isShared, size_t n)
     {
         return (cast(void[] function(bool, size_t) @nogc nothrow pure)(&_allocate))(isShared, n);
     }
 
-    @nogc nothrow @safe
+    private @nogc nothrow @safe
     void[] _allocate(bool isShared, size_t n)
     {
         return isShared ? sharedAllocator.allocate(n) : localAllocator.allocate(n);
@@ -410,26 +411,26 @@ version(unittest)
 
     static if (__traits(hasMember, typeof(localAllocator), "expand"))
     {
-        @nogc nothrow pure @trusted
+        private @nogc nothrow pure @trusted
         bool pureExpand(bool isShared, ref void[] b, size_t delta)
         {
             return (cast(bool function(bool, ref void[], size_t) @nogc nothrow pure)(&_expand))(isShared, b, delta);
         }
 
-        @nogc nothrow @safe
+        private @nogc nothrow @safe
         bool _expand(bool isShared, ref void[] b, size_t delta)
         {
             return isShared ?  sharedAllocator.expand(b, delta) : localAllocator.expand(b, delta);
         }
     }
 
-    @nogc nothrow pure
+    private @nogc nothrow pure
     void pureDispose(T)(bool isShared, T[] b)
     {
         return (cast(void function(bool, T[]) @nogc nothrow pure)(&_dispose!(T)))(isShared, b);
     }
 
-    @nogc nothrow
+    private @nogc nothrow
     void _dispose(T)(bool isShared, T[] b)
     {
         return isShared ?  sharedAllocator.dispose(b) : localAllocator.dispose(b);
