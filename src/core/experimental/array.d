@@ -433,12 +433,10 @@ version(unittest)
 ///
 struct Array(T)
 {
-private:
-
     import core.atomic : atomicOp;
 
-    T[] payload;
-    Unqual!T[] support;
+    private T[] payload;
+    private Unqual!T[] support;
 
     version(unittest)
     {
@@ -449,11 +447,11 @@ private:
         alias sharedAllocator = shared PrefixAllocator.instance;
     }
 
-    static enum double capacityFactor = 3.0 / 2;
-    static enum initCapacity = 3;
-    bool isShared;
+    private static enum double capacityFactor = 3.0 / 2;
+    private static enum initCapacity = 3;
+    private bool isShared;
 
-    @trusted
+    private @trusted
     auto pref() const
     {
         assert(support !is null);
@@ -480,28 +478,28 @@ private:
         }
     }
 
-    @nogc nothrow pure @trusted
+    private @nogc nothrow pure @trusted
     size_t opPrefix(string op, T)(const T[] _support, size_t val) const
     if ((op == "+=") || (op == "-="))
     {
         return (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(_support, val);
     }
 
-    @nogc nothrow pure @trusted
+    private @nogc nothrow pure @trusted
     size_t opCmpPrefix(string op, T)(const T[] _support, size_t val) const
     if ((op == "==") || (op == "<=") || (op == "<") || (op == ">=") || (op == ">"))
     {
         return (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(_support, val);
     }
 
-    @nogc nothrow pure @trusted
+    private @nogc nothrow pure @trusted
     void addRef(SupportQual, this Q)(SupportQual _support)
     {
         assert(_support !is null);
         cast(void) opPrefix!("+=")(_support, 1);
     }
 
-    void delRef(Unqual!T[] _support)
+    private void delRef(Unqual!T[] _support)
     {
         // Will be optimized away, but the type system infers T's safety
         if (0) { T t = T.init; }
@@ -522,7 +520,7 @@ private:
         }
     }
 
-    static string immutableInsert(StuffType)(string stuff)
+    private static string immutableInsert(StuffType)(string stuff)
     {
         auto stuffLengthStr = q{
             size_t stuffLength = } ~ stuff ~ ".length;";
@@ -564,7 +562,7 @@ private:
         };
     }
 
-    void destroyUnused()
+    private void destroyUnused()
     {
         if (support !is null)
         {
@@ -572,7 +570,6 @@ private:
         }
     }
 
-public:
     /**
      * Constructs a qualified array out of a number of items
      * that will use the collection deciced allocator object.
