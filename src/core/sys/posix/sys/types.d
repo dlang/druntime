@@ -177,6 +177,24 @@ else version (NetBSD)
     alias c_long      time_t;
     alias uint        uid_t;
 }
+else version (OpenBSD)
+{
+    // https://github.com/openbsd/src/blob/master/sys/sys/types.h
+    // https://github.com/openbsd/src/blob/master/sys/sys/_types.h
+    alias long      blkcnt_t;   /* blocks allocated for file */
+    alias int       blksize_t;  /* optimal blocksize for I/O */
+    alias int       dev_t;      /* device number */
+    alias uint      gid_t;      /* group id */
+    alias ulong     ino_t;      /* inode number */
+    alias uint      mode_t;     /* permissions */
+    alias uint      nlink_t;    /* link count */
+    alias long      off_t;      /* file offset or size */
+    alias int       pid_t;      /* process id */
+    // ssize_t is defined as c_long for every architecture.
+    alias c_long    ssize_t;
+    alias long      time_t;
+    alias uint      uid_t;
+}
 else version (DragonFlyBSD)
 {
     alias long      blkcnt_t;
@@ -357,6 +375,16 @@ else version (NetBSD)
     alias ulong     fsfilcnt_t;
     alias c_long    clock_t;
     alias long      id_t;
+    alias c_long    key_t;
+    alias c_long    suseconds_t;
+    alias uint      useconds_t;
+}
+else version (OpenBSD)
+{
+    alias ulong     fsblkcnt_t;
+    alias ulong     fsfilcnt_t;
+    alias long      clock_t;
+    alias uint      id_t;
     alias c_long    key_t;
     alias c_long    suseconds_t;
     alias uint      useconds_t;
@@ -922,6 +950,27 @@ else version (NetBSD)
     alias uint pthread_key_t;
     alias void* pthread_t;
 }
+else version (OpenBSD)
+{
+    alias uint lwpid_t;
+
+    alias void* pthread_attr_t;
+    alias void* pthread_cond_t;
+    alias void* pthread_condattr_t;
+    alias int   pthread_key_t;
+    alias void* pthread_mutex_t;
+    alias void* pthread_mutexattr_t;
+    // pthread_once_t defined below.
+    alias void* pthread_rwlock_t;
+    alias void* pthread_rwlockattr_t;
+    alias void* pthread_t;
+
+    struct pthread_once_t
+    {
+        int state;
+        pthread_mutex_t mutex;
+    }
+}
 else version (DragonFlyBSD)
 {
     alias int lwpid_t;
@@ -1258,6 +1307,11 @@ else version (NetBSD)
     alias void* pthread_barrier_t;
     alias void* pthread_barrierattr_t;
 }
+else version (OpenBSD)
+{
+    alias void* pthread_barrier_t;
+    alias void* pthread_barrierattr_t;
+}
 else version (DragonFlyBSD)
 {
     alias void* pthread_barrier_t;
@@ -1326,6 +1380,10 @@ else version (FreeBSD)
 else version (NetBSD)
 {
     //already defined
+}
+else version (OpenBSD)
+{
+    alias void* pthread_spinlock_t;
 }
 else version (DragonFlyBSD)
 {
