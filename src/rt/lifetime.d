@@ -1605,7 +1605,7 @@ do
                 {
                     // not enough space, try extending
                     auto extendsize = newsize + offset + LARGEPAD - info.size;
-                    auto u = GC.extend(info.base, extendsize, extendsize);
+                    auto u = gc_extend_emplace(info.base, extendsize, extendsize, info.size, ti, tinext);
                     if (u)
                     {
                         // extend worked, now try setting the length
@@ -1824,7 +1824,7 @@ do
                 {
                     // not enough space, try extending
                     auto extendsize = newsize + offset + LARGEPAD - info.size;
-                    auto u = GC.extend(info.base, extendsize, extendsize);
+                    auto u = gc_extend_emplace(info.base, extendsize, extendsize, info.size, ti, tinext);
                     if (u)
                     {
                         // extend worked, now try setting the length

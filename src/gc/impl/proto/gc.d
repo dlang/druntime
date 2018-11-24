@@ -140,6 +140,11 @@ class ProtoGC : GC
         if (p) assert(false, "Invalid memory deallocation");
     }
 
+    bool emplace(void *p, size_t len, const(TypeInfo) ti) nothrow
+    {
+        return false;
+    }
+
     void* addrOf(void* p) nothrow @nogc
     {
         return null;

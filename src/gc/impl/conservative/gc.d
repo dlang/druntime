@@ -316,7 +316,7 @@ class ConservativeGC : GC
         if ((config.gc != "precise") && (config.gc != "conservative"))
             return;
 
-        if(config.gc == "precise")
+        if (config.gc == "precise")
             isPrecise = true;
 
         auto p = cstdlib.malloc(__traits(classInstanceSize,ConservativeGC));
