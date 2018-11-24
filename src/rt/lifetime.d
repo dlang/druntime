@@ -736,17 +736,17 @@ shared static this()
 
 BlkInfo gc_qalloc_emplace(size_t sz, uint ba, const TypeInfo ti, const TypeInfo tinext) nothrow pure
 {
-    if(gc_precise && !(ba & BlkAttr.NO_SCAN))
+    if (gc_precise && !(ba & BlkAttr.NO_SCAN))
     {
         // an array of classes is in fact an array of pointers
         const(TypeInfo) tielem = typeid(tinext) is typeid(TypeInfo_Class) ? typeid(void*) : tinext;
 
-        if( sz <= PAGESIZE / 2 )
+        if (sz <= PAGESIZE / 2)
             return GC.qalloc(sz, ba | BlkAttr.REP_RTINFO, tielem);
 
         // for large arrays, we have to emplace the type info pointer bitmap at offset LARGEPAD
         BlkInfo info = GC.qalloc(sz, ba | BlkAttr.NO_RTINFO, tielem);
-        if(info.base)
+        if (info.base)
         {
             void* arr = __arrayStart(info);
             GC.emplace(arr, info.base + info.size - arr, tielem);
@@ -772,7 +772,7 @@ size_t gc_extend_emplace(void* p, size_t mx, size_t sz, size_t oldsz, const Type
     // safer to use "null" to temporarily switch to conservative scanning (if not NOSCAN set) until we have
     //  a mechanism not to change exisiting pointer info at all.
     size_t newsz = GC.extend(p, mx, sz, null);
-    if(newsz >= PAGESIZE)
+    if (newsz >= PAGESIZE)
     {
         // an array of classes is in fact an array of pointers
         const(TypeInfo) tielem = typeid(tinext) is typeid(TypeInfo_Class) ? typeid(void*) : tinext;

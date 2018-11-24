@@ -271,14 +271,14 @@ debug(PRINTF)
 string debugTypeName(const(TypeInfo) ti) nothrow
 {
     string name;
-    if(ti is null)
+    if (ti is null)
         name = "null";
-    else if(auto ci = cast(TypeInfo_Class)ti)
+    else if (auto ci = cast(TypeInfo_Class)ti)
         name = ci.name;
-    else if(auto si = cast(TypeInfo_Struct)ti)
+    else if (auto si = cast(TypeInfo_Struct)ti)
         name = si.name;
-    else if(auto ci = cast(TypeInfo_Const)ti)
-        static if(__traits(compiles,ci.base)) // different whether compiled with object.di or object.d
+    else if (auto ci = cast(TypeInfo_Const)ti)
+        static if (__traits(compiles,ci.base)) // different whether compiled with object.di or object.d
             return debugTypeName(ci.base);
         else
             return debugTypeName(ci.next);
@@ -703,7 +703,7 @@ class ConservativeGC : GC
                     auto newsz = (size + PAGESIZE - 1) / PAGESIZE;
                     if (newsz == psz)
                     {
-                        if(isPrecise)
+                        if (isPrecise)
                             pool.setPointerBitmap(p, size, newsz * PAGESIZE, bits, ti);
                         alloc_size = psize;
                         return p;
@@ -740,7 +740,7 @@ class ConservativeGC : GC
                         pool.setBits(biti, bits);
                     }
                     alloc_size = newsz * PAGESIZE;
-                    if(isPrecise)
+                    if (isPrecise)
                         pool.setPointerBitmap(p, size, newsz * PAGESIZE, bits, ti);
                     return p;
                 }
@@ -774,7 +774,7 @@ class ConservativeGC : GC
                 else
                 {
                     alloc_size = psize;
-                    if(isPrecise)
+                    if (isPrecise)
                         pool.setPointerBitmap(p, size, psize, bits, ti);
                 }
             }
@@ -843,7 +843,7 @@ class ConservativeGC : GC
             if (isPrecise)
             {
                 auto biti = cast(size_t)(p - pool.baseAddr) >> pool.shiftBy;
-                if(!pool.noscan.test(biti))
+                if (!pool.noscan.test(biti))
                     pool.setPointerBitmap(p, psize + sz * PAGESIZE, psize + sz * PAGESIZE, ti, BlkAttr.REP_RTINFO);
             }
             return (psz + sz) * PAGESIZE;
@@ -1116,7 +1116,7 @@ class ConservativeGC : GC
     */
     bool emplace(void *p, size_t len, const(TypeInfo) ti) nothrow
     {
-        if(!isPrecise)
+        if (!isPrecise)
             return false;
         if (!p)
             return false;
@@ -1136,7 +1136,7 @@ class ConservativeGC : GC
         sentinel_Invariant(p);
         Pool* pool;
         BlkInfo info = gcx.getInfo(p, &pool);
-        if(!info.base)
+        if (!info.base)
             return false;
 
         debug(SENTINEL)
@@ -1685,7 +1685,7 @@ struct Gcx
     BlkInfo getInfo(void* p, Pool** ppool = null) nothrow
     {
         Pool* pool = findPool(p);
-        if(ppool)
+        if (ppool)
             *ppool = pool;
         if (pool)
             return pool.slGetInfo(p);
@@ -2027,7 +2027,7 @@ struct Gcx
         void reset()
         {
             _length = 0;
-            if(_p)
+            if (_p)
             {
                 os_mem_unmap(_p, _cap * T.sizeof);
                 _p = null;
@@ -2089,7 +2089,7 @@ struct Gcx
      */
     void mark(bool precise)(void *pbot, void *ptop) scope nothrow
     {
-        static if(precise)
+        static if (precise)
             alias toscan = toscanPrecise;
         else
             alias toscan = toscanConservative;
@@ -2144,7 +2144,7 @@ struct Gcx
 
         for (;;)
         {
-            static if(precise && useBitRange) if (p1base)
+            static if (precise && useBitRange) if (p1base)
             {
                 if (isptr.empty())
                 {
@@ -2265,7 +2265,7 @@ struct Gcx
                 auto next = &stack[--stackPos];
                 p1 = cast(void**)next.pbot;
                 p2 = cast(void**)next.ptop;
-                static if(precise)
+                static if (precise)
                 {
                     isPtrBase = next.ptrbase;
                     p1base = isPtrBase ? cast(void**)(cast(size_t)p1 & p1BaseMask) : null;
@@ -2277,7 +2277,7 @@ struct Gcx
                 auto next = toscan.pop();
                 p1 = cast(void**)next.pbot;
                 p2 = cast(void**)next.ptop;
-                static if(precise)
+                static if (precise)
                 {
                     isPtrBase = next.ptrbase;
                     p1base = isPtrBase ? cast(void**)(cast(size_t)p1 & p1BaseMask) : null;
@@ -2294,7 +2294,7 @@ struct Gcx
         LaddRange:
             if (++p1 < p2)
             {
-                static if(precise && useBitRange) if (p1base && isptr.empty())
+                static if (precise && useBitRange) if (p1base && isptr.empty())
                 {
                     debug(MARK_PRINTF) printSkip(p1, p2);
                     goto LendOfRange;
@@ -2304,7 +2304,7 @@ struct Gcx
                 {
                     stack[stackPos].pbot = base;
                     stack[stackPos].ptop = top;
-                    static if(precise)
+                    static if (precise)
                     {
                         auto nbase = cast(void**)(cast(size_t)base & p1BaseMask);
                         auto ptroff = (nbase - cast(void**)pool.baseAddr) / GCBits.BITS_PER_WORD;
@@ -2313,13 +2313,13 @@ struct Gcx
                     stackPos++;
                     continue;
                 }
-                static if(precise) if (p1base)
+                static if (precise) if (p1base)
                 {
                     // normalize pointers so we only have to save a single pointer
                     auto nbase = isPtrBase ? cast(void**)(cast(size_t)p1 & p1BaseMask) : null;
                     isPtrBase += (nbase - p1base) / GCBits.BITS_PER_WORD;
                 }
-                static if(precise)
+                static if (precise)
                     toscan.push(ScanRange!precise(p1, p2, isPtrBase));
                 else
                     toscan.push(ScanRange!precise(p1, p2));
@@ -2332,7 +2332,7 @@ struct Gcx
             // continue with last found range
             p1 = cast(void**)base;
             p2 = cast(void**)top;
-            static if(precise)
+            static if (precise)
             {
                 assert (pool);
                 p1base = cast(void**)pool.baseAddr;
@@ -2340,7 +2340,7 @@ struct Gcx
             }
 
         LcontRange:
-            static if(precise && useBitRange) if (p1base)
+            static if (precise && useBitRange) if (p1base)
             {
                 size_t p1bitpos = p1 - p1base;
                 size_t p2bitpos = p2 - p1base;
@@ -2932,7 +2932,7 @@ struct Pool
         auto nbits = cast(size_t)poolsize >> shiftBy;
 
         mark.alloc(nbits);
-        if(ConservativeGC.isPrecise)
+        if (ConservativeGC.isPrecise)
         {
             is_pointer.alloc(cast(size_t)poolsize/(void*).sizeof);
             is_pointer.setRange(0, is_pointer.nbits);
@@ -3241,7 +3241,7 @@ struct Pool
                 size_t element_size = * bitmap;
                 bitmap++;
                 size_t tocopy;
-                if(attr & BlkAttr.REP_RTINFO)
+                if (attr & BlkAttr.REP_RTINFO)
                 {
                     tocopy = s/(void*).sizeof;
                     is_pointer.copyRangeRepeating(offset/(void*).sizeof, tocopy, bitmap, element_size/(void*).sizeof);
@@ -3255,18 +3255,18 @@ struct Pool
                 debug(PRINTF) printf("\tSetting bitmap for new object (%s)\n\t\tat %p\t\tcopying from %p + %llu: ",
                                      debugTypeName(ti).ptr, p, bitmap, cast(ulong)element_size);
                 debug(PRINTF)
-                    for(size_t i = 0; i < element_size/((void*).sizeof); i++)
+                    for (size_t i = 0; i < element_size/((void*).sizeof); i++)
                         printf("%d", (bitmap[i/(8*size_t.sizeof)] >> (i%(8*size_t.sizeof))) & 1);
                 debug(PRINTF) printf("\n");
 
-                if(tocopy * (void*).sizeof < s) // better safe than sorry: if allocated more, assume pointers inside
+                if (tocopy * (void*).sizeof < s) // better safe than sorry: if allocated more, assume pointers inside
                 {
                     debug(PRINTF) printf("    Appending %d pointer bits\n", s/(void*).sizeof - tocopy);
                     is_pointer.setRange(offset/(void*).sizeof + tocopy, s/(void*).sizeof - tocopy);
                 }
             }
 
-            if(s < allocSize)
+            if (s < allocSize)
             {
                 offset = (offset + s + (void*).sizeof - 1) & ~((void*).sizeof - 1);
                 is_pointer.clrRange(offset/(void*).sizeof, (allocSize - s)/(void*).sizeof);
