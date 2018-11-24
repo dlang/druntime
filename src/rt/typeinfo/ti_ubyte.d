@@ -22,7 +22,7 @@ class TypeInfo_h : TypeInfo
     pure:
     nothrow:
 
-    override string toString() const pure nothrow @safe { return "ubyte"; }
+    override string toStringImpl(ToStringContext) const pure nothrow @safe { return "ubyte"; }
 
     override size_t getHash(scope const void* p)
     {
@@ -66,5 +66,5 @@ class TypeInfo_b : TypeInfo_h
     pure:
     nothrow:
 
-    override string toString() const pure nothrow @safe { return "bool"; }
+    override string toStringImpl(ToStringContext) const pure nothrow @safe { return "bool"; }
 }

@@ -23,5 +23,5 @@ class TypeInfo_j : TypeInfo_e
   nothrow:
   @safe:
 
-    override string toString() const { return ireal.stringof; }
+    override string toStringImpl(ToStringContext) const { return ireal.stringof; }
 }

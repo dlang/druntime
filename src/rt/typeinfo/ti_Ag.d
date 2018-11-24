@@ -22,7 +22,7 @@ class TypeInfo_Ag : TypeInfo_Array
 {
     override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override string toString() const { return "byte[]"; }
+    override string toStringImpl(ToStringContext) const { return "byte[]"; }
 
     override size_t getHash(scope const void* p) @trusted const
     {
@@ -71,7 +71,7 @@ class TypeInfo_Ag : TypeInfo_Array
 
 class TypeInfo_Ah : TypeInfo_Ag
 {
-    override string toString() const { return "ubyte[]"; }
+    override string toStringImpl(ToStringContext) const { return "ubyte[]"; }
 
     override int compare(in void* p1, in void* p2) const
     {
@@ -91,7 +91,7 @@ class TypeInfo_Ah : TypeInfo_Ag
 
 class TypeInfo_Av : TypeInfo_Ah
 {
-    override string toString() const { return "void[]"; }
+    override string toStringImpl(ToStringContext) const { return "void[]"; }
 
     override @property inout(TypeInfo) next() inout
     {
@@ -103,7 +103,7 @@ class TypeInfo_Av : TypeInfo_Ah
 
 class TypeInfo_Ab : TypeInfo_Ah
 {
-    override string toString() const { return "bool[]"; }
+    override string toStringImpl(ToStringContext) const { return "bool[]"; }
 
     override @property inout(TypeInfo) next() inout
     {
@@ -115,7 +115,7 @@ class TypeInfo_Ab : TypeInfo_Ah
 
 class TypeInfo_Aa : TypeInfo_Ah
 {
-    override string toString() const { return "char[]"; }
+    override string toStringImpl(ToStringContext) const { return "char[]"; }
 
     override size_t getHash(scope const void* p) @trusted const
     {
@@ -133,7 +133,7 @@ class TypeInfo_Aa : TypeInfo_Ah
 
 class TypeInfo_Aya : TypeInfo_Aa
 {
-    override string toString() const { return "immutable(char)[]"; }
+    override string toStringImpl(ToStringContext) const { return "immutable(char)[]"; }
 
     override @property inout(TypeInfo) next() inout
     {
@@ -145,7 +145,7 @@ class TypeInfo_Aya : TypeInfo_Aa
 
 class TypeInfo_Axa : TypeInfo_Aa
 {
-    override string toString() const { return "const(char)[]"; }
+    override string toStringImpl(ToStringContext) const { return "const(char)[]"; }
 
     override @property inout(TypeInfo) next() inout
     {
