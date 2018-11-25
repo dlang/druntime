@@ -400,9 +400,9 @@ struct BitRange
      * Construct a BitRange.
      *
      * Params:
-     *   bitarr - The array of bits to iterate over
-     *   numBits - The total number of valid bits in the given bit array
-     *   startBit - The initial start index to start searching
+     *   bitarr   = The array of bits to iterate over
+     *   numBits  = The total number of valid bits in the given bit array
+     *   startBit = The initial start index to start searching
      */
     this(const(size_t)* bitarr, size_t numBits, size_t startBit) @system
     {
