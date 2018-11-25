@@ -200,6 +200,14 @@ Bucket[] allocBuckets(size_t dim) @trusted pure nothrow
 // Entry
 //------------------------------------------------------------------------------
 
+immutable bool gc_precise;
+
+extern(C) void aaa_init() @nogc
+{
+    import gc.config;
+    cast() gc_precise = (config.gc == "precise");
+}
+
 private void* allocEntry(in Impl* aa, in void* pkey)
 {
     import rt.lifetime : _d_newitemU;
@@ -251,9 +259,13 @@ TypeInfo_Struct fakeEntryTI(const TypeInfo keyti, const TypeInfo valti)
     auto kti = unqualify(keyti);
     auto vti = unqualify(valti);
 
+    bool entryHasDtor = hasDtor(kti) || hasDtor(vti);
+    if (!gc_precise && !entryHasDtor)
+        return null;
+
     // save kti and vti after type info for struct
     enum sizeti = __traits(classInstanceSize, TypeInfo_Struct);
-    void* p = GC.malloc(sizeti + 4 * (void*).sizeof);
+    void* p = GC.malloc(sizeti + (gc_precise ? 4 : 2) * (void*).sizeof);
     import core.stdc.string : memcpy;
 
     memcpy(p, typeid(TypeInfo_Struct).initializer().ptr, sizeti);
@@ -266,17 +278,24 @@ TypeInfo_Struct fakeEntryTI(const TypeInfo keyti, const TypeInfo valti)
     static immutable tiName = __MODULE__ ~ ".Entry!(...)";
     ti.name = tiName;
 
-    auto rtinfoData = cast(size_t[2]*) (extra + 2);
-    ti.m_RTInfo = rtinfoEntry(keyti, valti, *rtinfoData);
-    ti.m_flags = ti.m_RTInfo is rtinfoNoPointers ? cast(TypeInfo_Struct.StructFlags)0 : TypeInfo_Struct.StructFlags.hasPointers;
-
+    if (gc_precise)
+    {
+        auto rtinfoData = cast(size_t[2]*) (extra + 2);
+        ti.m_RTInfo = rtinfoEntry(keyti, valti, *rtinfoData);
+        ti.m_flags = ti.m_RTInfo is rtinfoNoPointers ? cast(TypeInfo_Struct.StructFlags)0 : TypeInfo_Struct.StructFlags.hasPointers;
+    }
+    else
+    {
+        ti.m_RTInfo = null;
+        ti.m_flags = cast(TypeInfo_Struct.StructFlags)(keyti.flags | valti.flags) & TypeInfo_Struct.StructFlags.hasPointers;
+    }
     // we don't expect the Entry objects to be used outside of this module, so we have control
     // over the non-usage of the callback methods and other entries and can keep these null
     // xtoHash, xopEquals, xopCmp, xtoString and xpostblit
     immutable entrySize = talign(kti.tsize, vti.talign) + vti.tsize;
     ti.m_init = (cast(ubyte*) null)[0 .. entrySize]; // init length, but not ptr
 
-    if (hasDtor(kti) || hasDtor(vti))
+    if (entryHasDtor)
     {
         // xdtor needs to be built from the dtors of key and value for the GC
         ti.xdtorti = &entryDtor;

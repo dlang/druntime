@@ -36,13 +36,17 @@ private
 
 extern (C)
 {
+    void gc_config()
+    {
+        config.initialize();
+    }
+
     void gc_init()
     {
         instanceLock.lock();
         if (!isInstanceInit)
         {
             auto protoInstance = instance;
-            config.initialize();
             ManualGC.initialize(instance);
             ConservativeGC.initialize(instance);
 

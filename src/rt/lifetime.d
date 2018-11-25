@@ -40,8 +40,9 @@ private
 }
 
 private immutable bool callStructDtorsDuringGC;
+private immutable bool gc_precise;
 
-extern (C) void lifetime_init()
+extern (C) void lifetime_init() @nogc
 {
     // this is run before static ctors, so it is safe to modify immutables
     import rt.config;
@@ -50,6 +51,9 @@ extern (C) void lifetime_init()
         cast() callStructDtorsDuringGC = s[0] == '1' || s[0] == 'y' || s[0] == 'Y';
     else
         cast() callStructDtorsDuringGC = true;
+
+    import gc.config;
+    cast() gc_precise = (config.gc == "precise");
 }
 
 /**
@@ -724,14 +728,6 @@ void __doPostblit(void *ptr, size_t len, const TypeInfo ti)
         for (;ptr < eptr;ptr += size)
             ti.postblit(ptr);
     }
-}
-
-immutable bool gc_precise;
-
-shared static this()
-{
-    import gc.config;
-    gc_precise = (config.gc == "precise");
 }
 
 BlkInfo gc_qalloc_emplace(size_t sz, uint ba, const TypeInfo ti, const TypeInfo tinext) nothrow pure

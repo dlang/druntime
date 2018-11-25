@@ -58,11 +58,12 @@ extern (C) void _d_monitor_staticctor();
 extern (C) void _d_monitor_staticdtor();
 extern (C) void _d_critical_init();
 extern (C) void _d_critical_term();
-extern (C) void gc_init();
+extern (C) void gc_config();
 extern (C) void gc_term();
 extern (C) void thread_init() @nogc;
 extern (C) void thread_term() @nogc;
-extern (C) void lifetime_init();
+extern (C) void lifetime_init() @nogc;
+extern (C) void aaa_init() @nogc;
 extern (C) void rt_moduleCtor();
 extern (C) void rt_moduleTlsCtor();
 extern (C) void rt_moduleDtor();
@@ -196,10 +197,12 @@ extern (C) int rt_init()
         // this initializes mono time before anything else to allow usage
         // in other druntime systems.
         _d_initMonoTime();
+        gc_config();
         thread_init();
         // TODO: fixme - calls GC.addRange -> Initializes GC
         initStaticDataGC();
         lifetime_init();
+        aaa_init();
         rt_moduleCtor();
         rt_moduleTlsCtor();
         return 1;
