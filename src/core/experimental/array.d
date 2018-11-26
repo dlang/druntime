@@ -278,7 +278,7 @@ private struct PrefixAllocator
     enum uint alignment = size_t.alignof;
     static enum prefixSize = size_t.sizeof;
 
-    version(unittest)
+    version (unittest)
     {
         // During unittesting, we are keeping a count of the number of bytes allocated
         size_t bytesUsed;
@@ -296,7 +296,7 @@ private struct PrefixAllocator
         // Init reference count to 0
         *(cast(size_t *) p) = 0;
 
-        version(unittest)
+        version (unittest)
         {
             static if (is(typeof(this) == shared))
             {
@@ -318,7 +318,7 @@ private struct PrefixAllocator
         import core.memory : pureFree;
         assert(b !is null);
 
-        version(unittest)
+        version (unittest)
         {
             static if (is(typeof(this) == shared))
             {
@@ -382,7 +382,7 @@ private struct PrefixAllocator
 }
 
 
-version(unittest)
+version (unittest)
 {
     private alias SCAlloc = shared PrefixAllocator;
     private alias SSCAlloc = shared PrefixAllocator;
@@ -438,7 +438,7 @@ struct Array(T)
     private T[] payload;
     private Unqual!T[] support;
 
-    version(unittest)
+    version (unittest)
     {
     }
     else
@@ -508,7 +508,7 @@ struct Array(T)
         if (opPrefix!("-=")(_support, 1) == 0)
         {
             () @trusted {
-                version(unittest)
+                version (unittest)
                 {
                     pureDispose(isShared, _support);
                 }
@@ -527,7 +527,7 @@ struct Array(T)
 
         return stuffLengthStr ~ q{
 
-        version(unittest)
+        version (unittest)
         {
             void[] tmpSupport = (() @trusted => pureAllocate(isShared, stuffLength * stateSize!T))();
         }
@@ -853,7 +853,7 @@ struct Array(T)
         if (support && opCmpPrefix!"=="(support, 1))
         {
             void[] buf = support;
-            version(unittest)
+            version (unittest)
             {
                 auto successfulExpand = pureExpand(isShared, buf, (n - capacity) * stateSize!T);
             }
@@ -880,7 +880,7 @@ struct Array(T)
             }
         }
 
-        version(unittest)
+        version (unittest)
         {
             auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(isShared, n * stateSize!T)))();
         }
@@ -1715,7 +1715,7 @@ struct Array(T)
     }
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testConcatAndAppend()
 {
     auto a = Array!(int)(1, 2, 3);
@@ -1769,7 +1769,7 @@ void testConcatAndAppend()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testSimple()
 {
     auto a = Array!int();
@@ -1815,7 +1815,7 @@ void testSimple()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testSimpleImmutable()
 {
     auto a = Array!(immutable int)();
@@ -1854,7 +1854,7 @@ void testSimpleImmutable()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testCopyAndRef()
 {
     auto aFromList = Array!int(1, 2, 3);
@@ -1895,7 +1895,7 @@ void testCopyAndRef()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testImmutability()
 {
     auto a = immutable Array!(int)(1, 2, 3);
@@ -1942,7 +1942,7 @@ void testImmutability()
     }
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testConstness()
 {
     auto a = const Array!(int)(1, 2, 3);
@@ -1971,7 +1971,7 @@ void testConstness()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testWithStruct()
 {
     auto array = Array!int(1, 2, 3);
@@ -2011,7 +2011,7 @@ void testWithStruct()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testWithClass()
 {
     class MyClass
@@ -2043,7 +2043,7 @@ void testWithClass()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
-version(unittest) private @nogc nothrow pure @safe
+version (unittest) private @nogc nothrow pure @safe
 void testOpOverloads()
 {
     auto a = Array!int(1, 2, 3, 4);
@@ -2083,7 +2083,7 @@ void testOpOverloads()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
-version(unittest) private nothrow pure @safe
+version (unittest) private nothrow pure @safe
 void testSlice()
 {
     auto a = Array!int(1, 2, 3, 4);
