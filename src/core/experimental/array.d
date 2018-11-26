@@ -1223,13 +1223,12 @@ struct Array(T)
      * Complexity: $(BIGOH 1)
      */
     Qualified opSlice(this Qualified)(size_t start, size_t end)
-    in
     {
-        assert(start <= end && end <= length,
-               "Array.opSlice(s, e): Invalid bounds: Ensure start <= end <= length");
-    }
-    body
-    {
+        version (D_NoBoundsChecks) { } else
+        {
+            assert(start <= end && end <= length,
+                   "Array.opSlice(s, e): Invalid bounds: Ensure start <= end <= length");
+        }
         return typeof(this)(support, payload[start .. end], isShared);
     }
 
@@ -1256,12 +1255,11 @@ struct Array(T)
      * Complexity: $(BIGOH 1).
      */
     ref auto opIndex(this _)(size_t idx)
-    in
     {
-        assert(idx < length, "Array.opIndex: Index out of bounds");
-    }
-    body
-    {
+        version (D_NoBoundsChecks) { } else
+        {
+            assert(idx < length, "Array.opIndex: Index out of bounds");
+        }
         return payload[idx];
     }
 
@@ -1286,12 +1284,11 @@ struct Array(T)
      * Complexity: $(BIGOH 1).
      */
     ref auto opIndexUnary(string op)(size_t idx)
-    in
     {
-        assert(idx < length, "Array.opIndexUnary!" ~ op ~ ": Index out of bounds");
-    }
-    body
-    {
+        version (D_NoBoundsChecks) { } else
+        {
+            assert(idx < length, "Array.opIndexUnary!" ~ op ~ ": Index out of bounds");
+        }
         mixin("return " ~ op ~ "payload[idx];");
     }
 
@@ -1320,12 +1317,11 @@ struct Array(T)
      */
     ref auto opIndexAssign(U)(U elem, size_t idx)
     if (is(U : T))
-    in
     {
-        assert(idx < length, "Array.opIndexAssign: Index out of bounds");
-    }
-    body
-    {
+        version (D_NoBoundsChecks) { } else
+        {
+            assert(idx < length, "Array.opIndexAssign: Index out of bounds");
+        }
         return payload[idx] = elem;
     }
 
@@ -1383,13 +1379,12 @@ struct Array(T)
     */
     auto opSliceAssign(U)(U elem, size_t start, size_t end)
     if (is(U : T))
-    in
     {
-        assert(start <= end, "Array.opSliceAssign: Index out of bounds");
-        assert(end < length, "Array.opSliceAssign: Index out of bounds");
-    }
-    body
-    {
+        version (D_NoBoundsChecks) { } else
+        {
+            assert(start <= end, "Array.opSliceAssign: Index out of bounds");
+            assert(end < length, "Array.opSliceAssign: Index out of bounds");
+        }
         return payload[start .. end] = elem;
     }
 
@@ -1418,12 +1413,11 @@ struct Array(T)
      */
     ref auto opIndexOpAssign(string op, U)(U elem, size_t idx)
     if (is(U : T))
-    in
     {
-        assert(idx < length, "Array.opIndexOpAssign!" ~ op ~ ": Index out of bounds");
-    }
-    body
-    {
+        version (D_NoBoundsChecks) { } else
+        {
+            assert(idx < length, "Array.opIndexOpAssign!" ~ op ~ ": Index out of bounds");
+        }
         mixin("return payload[idx]" ~ op ~ "= elem;");
     }
 
