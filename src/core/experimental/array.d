@@ -1035,8 +1035,8 @@ struct Array(T)
      * arrays.
      *
      * Normally, the entire array is iterated. If partial iteration (early stopping)
-     * is desired, `fun` needs to return a value of type `int` (`-1` to stop, or
-     * anything else to continue the iteration.
+     * is desired, `fun` needs to return a value of a comparable type, `CT`,
+     * (`CT.init` to stop, or anything else to continue the iteration).
      *
      * Params:
      *      fun = unary function to apply on each element of the array.
@@ -1061,14 +1061,15 @@ struct Array(T)
             // The array is kept alive (rc > 0) from the caller scope
             foreach (ref e; this.payload)
             {
-                static if (!is(typeof(fn(T.init)) == int))
+                alias Result = typeof(fn(e));
+                static if (is(typeof(Result.init == Result.init)))
                 {
-                    cast(void) fn(e);
+                    if (fn(e) == Result.init)
+                        return false;
                 }
                 else
                 {
-                    if (fn(e) == -1)
-                        return false;
+                    cast(void) fn(e);
                 }
             }
             return true;
@@ -1082,7 +1083,7 @@ struct Array(T)
         auto ia = immutable Array!int([3, 2, 1]);
 
         static bool foo(int x) { return x > 0; }
-        static int bar(int x) { return x > 1 ? 1 : -1; }
+        static int bar(int x) { return x > 1 ? 1 : 0; }
 
         assert(ia.each!foo == true);
         assert(ia.each!bar == false);
@@ -1094,7 +1095,7 @@ struct Array(T)
             auto ia = immutable Array!int([3, 2, 1]);
 
             static bool foo(int x) { return x > 0; }
-            static int bar(int x) { return x > 1 ? 1 : -1; }
+            static int bar(int x) { return x > 1 ? 1 : 0; }
 
             assert(ia.each!foo == true);
             assert(ia.each!bar == false);
