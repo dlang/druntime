@@ -431,7 +431,7 @@ version (unittest)
 }
 
 ///
-struct Array(T)
+struct rcarray(T)
 {
     import core.atomic : atomicOp;
 
@@ -600,18 +600,18 @@ struct Array(T)
     {
         // Create a list from a list of ints
         {
-            auto a = Array!int(1, 2, 3);
+            auto a = rcarray!int(1, 2, 3);
             assert(a == [1, 2, 3]);
         }
         // Create a list from an array of ints
         {
-            auto a = Array!int([1, 2, 3]);
+            auto a = rcarray!int([1, 2, 3]);
             assert(a == [1, 2, 3]);
         }
         // Create a list from a list from an input range
         {
-            auto a = Array!int(1, 2, 3);
-            auto a2 = Array!int(a);
+            auto a = rcarray!int(1, 2, 3);
+            auto a2 = rcarray!int(a);
             assert(a2 == [1, 2, 3]);
         }
     }
@@ -698,34 +698,34 @@ struct Array(T)
     static if (is(T == int))
     @nogc nothrow pure @safe unittest
     {
-        auto a = Array!int(1, 2, 3);
+        auto a = rcarray!int(1, 2, 3);
 
         // Infer safety
-        static assert(!__traits(compiles, () @safe { Array!Unsafe(Unsafe(1)); }));
-        static assert(!__traits(compiles, () @safe { auto a = const Array!Unsafe(Unsafe(1)); }));
-        static assert(!__traits(compiles, () @safe { auto a = immutable Array!Unsafe(Unsafe(1)); }));
+        static assert(!__traits(compiles, () @safe { rcarray!Unsafe(Unsafe(1)); }));
+        static assert(!__traits(compiles, () @safe { auto a = const rcarray!Unsafe(Unsafe(1)); }));
+        static assert(!__traits(compiles, () @safe { auto a = immutable rcarray!Unsafe(Unsafe(1)); }));
 
-        static assert(!__traits(compiles, () @safe { Array!UnsafeDtor(UnsafeDtor(1)); }));
-        static assert(!__traits(compiles, () @safe { auto s = const Array!UnsafeDtor(UnsafeDtor(1)); }));
-        static assert(!__traits(compiles, () @safe { auto s = immutable Array!UnsafeDtor(UnsafeDtor(1)); }));
+        static assert(!__traits(compiles, () @safe { rcarray!UnsafeDtor(UnsafeDtor(1)); }));
+        static assert(!__traits(compiles, () @safe { auto s = const rcarray!UnsafeDtor(UnsafeDtor(1)); }));
+        static assert(!__traits(compiles, () @safe { auto s = immutable rcarray!UnsafeDtor(UnsafeDtor(1)); }));
 
         // Infer purity
-        static assert(!__traits(compiles, () pure { Array!Impure(Impure(1)); }));
-        static assert(!__traits(compiles, () pure { auto a = const Array!Impure(Impure(1)); }));
-        static assert(!__traits(compiles, () pure { auto a = immutable Array!Impure(Impure(1)); }));
+        static assert(!__traits(compiles, () pure { rcarray!Impure(Impure(1)); }));
+        static assert(!__traits(compiles, () pure { auto a = const rcarray!Impure(Impure(1)); }));
+        static assert(!__traits(compiles, () pure { auto a = immutable rcarray!Impure(Impure(1)); }));
 
-        static assert(!__traits(compiles, () pure { Array!ImpureDtor(ImpureDtor(1)); }));
-        static assert(!__traits(compiles, () pure { auto s = const Array!ImpureDtor(ImpureDtor(1)); }));
-        static assert(!__traits(compiles, () pure { auto s = immutable Array!ImpureDtor(ImpureDtor(1)); }));
+        static assert(!__traits(compiles, () pure { rcarray!ImpureDtor(ImpureDtor(1)); }));
+        static assert(!__traits(compiles, () pure { auto s = const rcarray!ImpureDtor(ImpureDtor(1)); }));
+        static assert(!__traits(compiles, () pure { auto s = immutable rcarray!ImpureDtor(ImpureDtor(1)); }));
 
         // Infer throwability
-        static assert(!__traits(compiles, () nothrow { Array!Throws(Throws(1)); }));
-        static assert(!__traits(compiles, () nothrow { auto a = const Array!Throws(Throws(1)); }));
-        static assert(!__traits(compiles, () nothrow { auto a = immutable Array!Throws(Throws(1)); }));
+        static assert(!__traits(compiles, () nothrow { rcarray!Throws(Throws(1)); }));
+        static assert(!__traits(compiles, () nothrow { auto a = const rcarray!Throws(Throws(1)); }));
+        static assert(!__traits(compiles, () nothrow { auto a = immutable rcarray!Throws(Throws(1)); }));
 
-        static assert(!__traits(compiles, () nothrow { Array!ThrowsDtor(ThrowsDtor(1)); }));
-        static assert(!__traits(compiles, () nothrow { auto s = const Array!ThrowsDtor(ThrowsDtor(1)); }));
-        static assert(!__traits(compiles, () nothrow { auto s = immutable Array!ThrowsDtor(ThrowsDtor(1)); }));
+        static assert(!__traits(compiles, () nothrow { rcarray!ThrowsDtor(ThrowsDtor(1)); }));
+        static assert(!__traits(compiles, () nothrow { auto s = const rcarray!ThrowsDtor(ThrowsDtor(1)); }));
+        static assert(!__traits(compiles, () nothrow { auto s = immutable rcarray!ThrowsDtor(ThrowsDtor(1)); }));
     }
 
     private @nogc nothrow pure @trusted
@@ -761,7 +761,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int(1, 2, 3);
+        auto a = rcarray!int(1, 2, 3);
         assert(a.length == 3);
         assert(a[$ - 1] == 3);
     }
@@ -791,7 +791,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int(1, 2, 3);
+        auto a = rcarray!int(1, 2, 3);
         a.length = 2;
         assert(a.length == 2);
 
@@ -823,7 +823,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int(1, 2, 3);
+        auto a = rcarray!int(1, 2, 3);
         a.reserve(10);
         assert(a.capacity == 10);
     }
@@ -913,7 +913,7 @@ struct Array(T)
     @safe unittest
     {
         auto stuff = [1, 2, 3];
-        Array!int a;
+        rcarray!int a;
         a.reserve(stuff.length);
         a ~= stuff;
         assert(a == stuff);
@@ -935,7 +935,7 @@ struct Array(T)
      *             elements in the range.
      */
     size_t insert(Stuff)(size_t pos, Stuff stuff)
-    if (is(Stuff == Array!T))
+    if (is(Stuff == rcarray!T))
     {
         mixin(insertImpl);
     }
@@ -985,7 +985,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        Array!int a;
+        rcarray!int a;
         assert(a.length == 0);
 
         size_t pos = 0;
@@ -1017,7 +1017,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int(24, 42);
+        auto a = rcarray!int(24, 42);
 
         assert(a.isUnique);
         {
@@ -1080,7 +1080,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto ia = immutable Array!int([3, 2, 1]);
+        auto ia = immutable rcarray!int([3, 2, 1]);
 
         static bool foo(int x) { return x > 0; }
         static int bar(int x) { return x > 1 ? 1 : 0; }
@@ -1092,7 +1092,7 @@ struct Array(T)
     @safe unittest
     {
         {
-            auto ia = immutable Array!int([3, 2, 1]);
+            auto ia = immutable rcarray!int([3, 2, 1]);
 
             static bool foo(int x) { return x > 0; }
             static int bar(int x) { return x > 1 ? 1 : 0; }
@@ -1123,9 +1123,9 @@ struct Array(T)
      *
      * Complexity: $(BIGOH n).
      */
-    immutable(Array!T) idup(this Q)()
+    immutable(rcarray!T) idup(this Q)()
     {
-        auto r = immutable Array!T(this);
+        auto r = immutable rcarray!T(this);
         return r;
     }
 
@@ -1134,19 +1134,19 @@ struct Array(T)
     @safe unittest
     {
         {
-            auto a = Array!(int)(1, 2, 3);
+            auto a = rcarray!(int)(1, 2, 3);
             auto a2 = a.idup();
             static assert (is(typeof(a2) == immutable));
         }
 
         {
-            auto a = const Array!(int)(1, 2, 3);
+            auto a = const rcarray!(int)(1, 2, 3);
             auto a2 = a.idup();
             static assert (is(typeof(a2) == immutable));
         }
 
         {
-            auto a = immutable Array!(int)(1, 2, 3);
+            auto a = immutable rcarray!(int)(1, 2, 3);
             auto a2 = a.idup();
             static assert (is(typeof(a2) == immutable));
         }
@@ -1162,9 +1162,9 @@ struct Array(T)
      *
      * Complexity: $(BIGOH n).
      */
-    Array!T dup(this Q)()
+    rcarray!T dup(this Q)()
     {
-        Array!T result;
+        rcarray!T result;
 
         static if (is(Q == immutable) || is(Q == const))
         {
@@ -1186,7 +1186,7 @@ struct Array(T)
     @safe unittest
     {
         auto stuff = [1, 2, 3];
-        auto a = immutable Array!int(stuff);
+        auto a = immutable rcarray!int(stuff);
         auto aDup = a.dup;
         assert(aDup == stuff);
         aDup[0] = 0;
@@ -1237,7 +1237,7 @@ struct Array(T)
     @safe unittest
     {
         auto stuff = [1, 2, 3];
-        auto a = Array!int(stuff);
+        auto a = rcarray!int(stuff);
         assert(a[] == stuff);
         assert(a[1 .. $] == stuff[1 .. $]);
     }
@@ -1267,7 +1267,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int([1, 2, 3]);
+        auto a = rcarray!int([1, 2, 3]);
         assert(a[2] == 3);
     }
 
@@ -1296,7 +1296,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int([1, 2, 3]);
+        auto a = rcarray!int([1, 2, 3]);
         int x = --a[2];
         assert(a[2] == 2);
         assert(x == 2);
@@ -1329,7 +1329,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int([1, 2, 3]);
+        auto a = rcarray!int([1, 2, 3]);
         a[2] = 2;
         assert(a[2] == 2);
         (a[2] = 3)++;
@@ -1359,7 +1359,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int([1, 2, 3]);
+        auto a = rcarray!int([1, 2, 3]);
         a[] = 0;
         assert(a == [0, 0, 0]);
     }
@@ -1392,7 +1392,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int([1, 2, 3, 4, 5, 6]);
+        auto a = rcarray!int([1, 2, 3, 4, 5, 6]);
         a[1 .. 3] = 0;
         assert(a == [1, 0, 0, 4, 5, 6]);
     }
@@ -1425,7 +1425,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int([1, 2, 3]);
+        auto a = rcarray!int([1, 2, 3]);
         a[2] += 2;
         assert(a[2] == 5);
         (a[2] += 3)++;
@@ -1473,7 +1473,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int(1);
+        auto a = rcarray!int(1);
         auto a2 = a ~ 2;
 
         assert(a2 == [1, 2]);
@@ -1520,8 +1520,8 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = Array!int(1);
-        auto a2 = Array!int(1, 2);
+        auto a = rcarray!int(1);
+        auto a2 = rcarray!int(1, 2);
 
         a = a2; // this will free the old a
         assert(a == [1, 2]);
@@ -1532,7 +1532,7 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto arr = Array!int(1, 2, 3, 4, 5, 6);
+        auto arr = rcarray!int(1, 2, 3, 4, 5, 6);
         auto arr1 = arr[1 .. $];
         auto arr2 = arr[3 .. $];
         arr1 = arr2;
@@ -1570,8 +1570,8 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        Array!int a;
-        auto a2 = Array!int(4, 5);
+        rcarray!int a;
+        auto a2 = rcarray!int(4, 5);
         assert(a.length == 0);
 
         a ~= 1;
@@ -1604,7 +1604,7 @@ struct Array(T)
     @safe unittest
     {
         auto a = [1, 2, 3];
-        auto b = Array!int(a);
+        auto b = rcarray!int(a);
 
         assert(a == a);
         assert(a == b);
@@ -1627,9 +1627,9 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto arr1 = Array!int(1, 2);
-        auto arr2 = Array!int(1, 2);
-        auto arr3 = Array!int(2, 3);
+        auto arr1 = rcarray!int(1, 2);
+        auto arr2 = rcarray!int(1, 2);
+        auto arr3 = rcarray!int(2, 3);
         assert(arr1 == arr2);
         assert(arr2 == arr1);
         assert(arr1 != arr3);
@@ -1640,7 +1640,7 @@ struct Array(T)
 
     ///
     int opCmp(U)(auto ref U rhs)
-    if ((is(U == Array!V, V) || is(U == V[], V)) && is(V : T))
+    if ((is(U == rcarray!V, V) || is(U == V[], V)) && is(V : T))
     {
         auto r1 = this;
         auto r2 = rhs;
@@ -1663,10 +1663,10 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto arr1 = Array!int(1, 2);
-        auto arr2 = Array!int(1, 2);
-        auto arr3 = Array!int(2, 3);
-        auto arr4 = Array!int(0, 3);
+        auto arr1 = rcarray!int(1, 2);
+        auto arr2 = rcarray!int(1, 2);
+        auto arr3 = rcarray!int(2, 3);
+        auto arr4 = rcarray!int(0, 3);
         assert(arr1 <= arr2);
         assert(arr2 >= arr1);
         assert(arr1 < arr3);
@@ -1679,9 +1679,9 @@ struct Array(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto arr1 = Array!int(1, 2);
+        auto arr1 = rcarray!int(1, 2);
         auto arr2 = [1, 2];
-        auto arr3 = Array!int(2, 3);
+        auto arr3 = rcarray!int(2, 3);
         auto arr4 = [0, 3];
         assert(arr1 <= arr2);
         assert(arr2 >= arr1);
@@ -1701,19 +1701,19 @@ struct Array(T)
     ///
     @safe unittest
     {
-        auto arr1 = Array!int(1, 2);
-        assert(arr1.toHash == Array!int(1, 2).toHash);
+        auto arr1 = rcarray!int(1, 2);
+        assert(arr1.toHash == rcarray!int(1, 2).toHash);
         arr1 ~= 3;
-        assert(arr1.toHash == Array!int(1, 2, 3).toHash);
-        assert(Array!int().toHash == Array!int().toHash);
+        assert(arr1.toHash == rcarray!int(1, 2, 3).toHash);
+        assert(rcarray!int().toHash == rcarray!int().toHash);
     }
 }
 
 version (unittest) private nothrow pure @safe
 void testConcatAndAppend()
 {
-    auto a = Array!(int)(1, 2, 3);
-    Array!(int) a2 = Array!(int)();
+    auto a = rcarray!(int)(1, 2, 3);
+    rcarray!(int) a2 = rcarray!(int)();
 
     auto a3 = a ~ a2;
     assert(a3 == [1, 2, 3]);
@@ -1733,7 +1733,7 @@ void testConcatAndAppend()
     a3 ~= a3;
     assert(a3 == [1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]);
 
-    Array!int a5 = Array!(int)();
+    rcarray!int a5 = rcarray!(int)();
     a5 ~= [1, 2, 3];
     assert(a5 == [1, 2, 3]);
     auto a6 = a5;
@@ -1742,14 +1742,14 @@ void testConcatAndAppend()
     assert(a5 == a6);
 
     // Test concat with mixed qualifiers
-    auto a7 = immutable Array!(int)(a5);
+    auto a7 = immutable rcarray!(int)(a5);
     assert(a7[0] == 10);
     a5[0] = 1;
     assert(a7[0] == 10);
     auto a8 = a5 ~ a7;
     assert(a8 == [1, 2, 3, 10, 2, 3]);
 
-    auto a9 = const Array!(int)(a5);
+    auto a9 = const rcarray!(int)(a5);
     auto a10 = a5 ~ a9;
     assert(a10 == [1, 2, 3, 1, 2, 3]);
 }
@@ -1766,7 +1766,7 @@ void testConcatAndAppend()
 version (unittest) private nothrow pure @safe
 void testSimple()
 {
-    auto a = Array!int();
+    auto a = rcarray!int();
     assert(a.length == 0);
     assert(a.isUnique);
 
@@ -1812,7 +1812,7 @@ void testSimple()
 version (unittest) private nothrow pure @safe
 void testSimpleImmutable()
 {
-    auto a = Array!(immutable int)();
+    auto a = rcarray!(immutable int)();
     assert(a.length == 0);
 
     size_t pos = 0;
@@ -1851,8 +1851,8 @@ void testSimpleImmutable()
 version (unittest) private nothrow pure @safe
 void testCopyAndRef()
 {
-    auto aFromList = Array!int(1, 2, 3);
-    auto aFromRange = Array!int(aFromList);
+    auto aFromList = rcarray!int(1, 2, 3);
+    auto aFromRange = rcarray!int(aFromList);
     assert(aFromList == aFromRange);
 
     aFromList = aFromList[1 .. $];
@@ -1860,13 +1860,13 @@ void testCopyAndRef()
     assert(aFromRange == [1, 2, 3]);
 
     size_t pos = 0;
-    Array!int aInsFromRange = Array!int();
+    rcarray!int aInsFromRange = rcarray!int();
     aInsFromRange.insert(pos, aFromList);
     aFromList = aFromList[1 .. $];
     assert(aFromList == [3]);
     assert(aInsFromRange == [2, 3]);
 
-    Array!int aInsBackFromRange = Array!int();
+    rcarray!int aInsBackFromRange = rcarray!int();
     aInsBackFromRange.insert(pos, aFromList);
     aFromList = aFromList[1 .. $];
     assert(aFromList.length == 0);
@@ -1892,7 +1892,7 @@ void testCopyAndRef()
 version (unittest) private nothrow pure @safe
 void testImmutability()
 {
-    auto a = immutable Array!(int)(1, 2, 3);
+    auto a = immutable rcarray!(int)(1, 2, 3);
     auto a2 = a;
 
     assert(a2[0] == 1);
@@ -1915,21 +1915,21 @@ void testImmutability()
 
     // Create immtable copies from mutable, const and immutable
     {
-        auto aa = Array!(int)(1, 2, 3);
+        auto aa = rcarray!(int)(1, 2, 3);
         auto aa2 = aa.idup();
         assert(aa.opCmpPrefix!"=="(aa.support, 1));
         assert(aa2.opCmpPrefix!"=="(aa2.support, 1));
     }
 
     {
-        auto aa = const Array!(int)(1, 2, 3);
+        auto aa = const rcarray!(int)(1, 2, 3);
         auto aa2 = aa.idup();
         assert(aa.opCmpPrefix!"=="(aa.support, 1));
         assert(aa2.opCmpPrefix!"=="(aa2.support, 1));
     }
 
     {
-        auto aa = immutable Array!(int)(1, 2, 3);
+        auto aa = immutable rcarray!(int)(1, 2, 3);
         auto aa2 = aa.idup();
         assert(aa.opCmpPrefix!"=="(aa.support, 2));
         assert(aa2.opCmpPrefix!"=="(aa2.support, 2));
@@ -1939,9 +1939,9 @@ void testImmutability()
 version (unittest) private nothrow pure @safe
 void testConstness()
 {
-    auto a = const Array!(int)(1, 2, 3);
+    auto a = const rcarray!(int)(1, 2, 3);
     auto a2 = a;
-    immutable Array!int a5 = a;
+    immutable rcarray!int a5 = a;
     assert(a5.opCmpPrefix!"=="(a5.support, 1));
     assert(a.opCmpPrefix!"=="(a.support, 2));
 
@@ -1968,11 +1968,11 @@ void testConstness()
 version (unittest) private nothrow pure @safe
 void testWithStruct()
 {
-    auto array = Array!int(1, 2, 3);
+    auto array = rcarray!int(1, 2, 3);
     {
         assert(array.opCmpPrefix!"=="(array.support, 1));
 
-        auto arrayOfArrays = Array!(Array!int)(array);
+        auto arrayOfArrays = rcarray!(rcarray!int)(array);
         assert(array.opCmpPrefix!"=="(array.support, 2));
         assert(arrayOfArrays[0] == [1, 2, 3]);
         arrayOfArrays[0][0] = 2;
@@ -1980,7 +1980,7 @@ void testWithStruct()
         assert(arrayOfArrays[0] == array);
         static assert(!__traits(compiles, arrayOfArrays.insert(1)));
 
-        auto immArrayOfArrays = immutable Array!(Array!int)(array);
+        auto immArrayOfArrays = immutable rcarray!(rcarray!int)(array);
 
         // immutable is transitive, so it must iterate over array and
         // create a copy, and not set a ref
@@ -2020,7 +2020,7 @@ void testWithClass()
 
     MyClass c = new MyClass(10);
     {
-        Array!MyClass a = Array!MyClass(c);
+        rcarray!MyClass a = rcarray!MyClass(c);
         assert(a[0].x == 10);
         assert(a[0] is c);
         a[0].x = 20;
@@ -2040,7 +2040,7 @@ void testWithClass()
 version (unittest) private @nogc nothrow pure @safe
 void testOpOverloads()
 {
-    auto a = Array!int(1, 2, 3, 4);
+    auto a = rcarray!int(1, 2, 3, 4);
     assert(a[0] == 1); // opIndex
 
     // opIndexUnary
@@ -2080,7 +2080,7 @@ void testOpOverloads()
 version (unittest) private nothrow pure @safe
 void testSlice()
 {
-    auto a = Array!int(1, 2, 3, 4);
+    auto a = rcarray!int(1, 2, 3, 4);
     auto b = a[];
     assert(a == b);
     b[1] = 5;
