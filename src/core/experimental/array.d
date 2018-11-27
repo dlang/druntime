@@ -1164,21 +1164,7 @@ struct rcarray(T)
      */
     rcarray!T dup(this Q)()
     {
-        rcarray!T result;
-
-        static if (is(Q == immutable) || is(Q == const))
-        {
-            result.reserve(length);
-            foreach(i; 0 .. length)
-            {
-                result ~= this[i];
-            }
-        }
-        else
-        {
-            result.insert(0, this);
-        }
-        return result;
+        return rcarray!T(payload);
     }
 
     ///
