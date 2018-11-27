@@ -1125,8 +1125,7 @@ struct rcarray(T)
      */
     immutable(rcarray!T) idup(this Q)()
     {
-        auto r = immutable rcarray!T(this);
-        return r;
+        return immutable rcarray!T(this);
     }
 
     ///
