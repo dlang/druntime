@@ -341,6 +341,9 @@ GREP = grep
 
 checkwhitespace:
 # restrict to linux, other platforms don't have a version of grep that supports -P
+	git ls-tree --name-only -r HEAD
+	ls -a
+	ls mak
 ifeq (linux,$(OS))
 	$(GREP) -n -U -P "([ \t]$$|\r)" $(CWS_MAKEFILES) ; test "$$?" -ne 0
 	$(GREP) -n -U -P "( $$|\r|\t)" $(NOT_MAKEFILES) ; test "$$?" -ne 0
