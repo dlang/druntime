@@ -27,7 +27,10 @@ version (Posix)
     {
         static if ( false && is( typeof( clock_gettime ) ) )
         {
-            clock_gettime( CLOCK_REALTIME, &t );
+            static if (is(typeof(CLOCK_MONOTONIC)))
+                clock_gettime( CLOCK_MONOTONIC, &t );
+            else
+                clock_gettime( CLOCK_REALTIME, &t );
         }
         else
         {
