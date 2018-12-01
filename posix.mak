@@ -329,6 +329,8 @@ style: checkwhitespace
 auto-tester-build: target checkwhitespace
 
 .PHONY : auto-tester-test
-auto-tester-test: unittest
+# Disable unittests for Druntime.
+auto-tester-test:
+	@echo "Druntime unittests disabled"
 
 .DELETE_ON_ERROR: # GNU Make directive (delete output files on error)
