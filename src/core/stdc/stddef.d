@@ -26,11 +26,12 @@ alias nullptr_t = typeof(null);
 
 version (Windows)
 {
-    ///
-    alias wchar wchar_t;
+    enum __c_wchar_t : wchar;
 }
 else version (Posix)
 {
-    ///
-    alias dchar wchar_t;
+    enum __c_wchar_t : dchar;
 }
+
+///
+alias wchar_t = __c_wchar_t;
