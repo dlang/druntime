@@ -21,7 +21,22 @@ FIELD_OFFSET(t,f), CONTAINING_RECORD(address, type, field)
 
 alias void   VOID;
 alias char   CHAR, CCHAR;
-alias wchar  WCHAR;
+
+/* #if !defined(_NATIVE_WCHAR_T_DEFINED)
+ * typedef unsigned short WCHAR;
+ * #else
+ * typedef wchar_t WCHAR;
+ * #endif
+ *
+ * References:
+ *   https://docs.microsoft.com/en-us/windows/desktop/extensiblestorageengine/gg269344(v%3Dexchg.10)
+ *   https://docs.microsoft.com/en-au/cpp/build/reference/zc-wchar-t-wchar-t-is-native-type?view=vs-2017
+ */
+version (Cpp98)
+    alias wchar  WCHAR;
+else
+    alias wchar_t WCHAR;
+
 alias bool   BOOLEAN;
 alias byte   FCHAR;
 alias ubyte  UCHAR;
@@ -33,7 +48,7 @@ alias ulong  DWORDLONG, ULONGLONG;
 
 alias void*  PVOID, LPVOID;
 alias char*  PSZ, PCHAR, PCCHAR, LPCH, PCH, LPSTR, PSTR;
-alias wchar* PWCHAR, LPWCH, PWCH, LPWSTR, PWSTR;
+alias WCHAR* PWCHAR, LPWCH, PWCH, LPWSTR, PWSTR;
 alias bool*  PBOOLEAN;
 alias ubyte* PUCHAR;
 alias short* PSHORT;
@@ -47,7 +62,7 @@ alias void*  PVOID64;
 
 // const versions
 alias const(char)*  PCCH, LPCCH, PCSTR, LPCSTR;
-alias const(wchar)* LPCWCH, PCWCH, LPCWSTR, PCWSTR;
+alias const(WCHAR)* LPCWCH, PCWCH, LPCWSTR, PCWSTR;
 
 version (Unicode) {
     alias WCHAR TCHAR, _TCHAR;
@@ -60,7 +75,7 @@ alias TCHAR*        PTCH , PTBYTE, LPTCH , PTSTR , LPTSTR , LP, PTCHAR;
 alias const(TCHAR)* PCTCH,         LPCTCH, PCTSTR, LPCTSTR            ;
 
 enum char ANSI_NULL = '\0';
-enum wchar UNICODE_NULL = '\0';
+enum WCHAR UNICODE_NULL = '\0';
 
 enum APPLICATION_ERROR_MASK       = 0x20000000;
 enum ERROR_SEVERITY_SUCCESS       = 0x00000000;
