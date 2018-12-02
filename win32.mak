@@ -1316,4 +1316,5 @@ clean:
 
 auto-tester-build: target
 
-auto-tester-test: unittest
+# Disable unittests for Druntime.
+auto-tester-test:
