@@ -4,11 +4,10 @@
  * $(C_HEADER_DESCRIPTION pubs.opengroup.org/onlinepubs/009695399/basedefs/_wchar.h.html, _wchar.h)
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License: Distributed under the
- *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
- *    (See accompanying file LICENSE)
+ * License:     $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Sean Kelly
- * Source:    $(DRUNTIMESRC core/stdc/_wchar_.d)
+ * Source:    $(LINK2 https://github.com/dlang/druntime/blob/master/src/core/stdc/wchar_.d, _wchar_.d)
+ * Documentation: https://dlang.org/phobos/core_stdc_wchar_.html
  * Standards: ISO/IEC 9899:1999 (E)
  */
 
@@ -249,3 +248,73 @@ size_t wcrtomb(char* s, wchar_t wc, mbstate_t* ps);
 size_t mbsrtowcs(wchar_t* dst, in char** src, size_t len, mbstate_t* ps);
 ///
 size_t wcsrtombs(char* dst, in wchar_t** src, size_t len, mbstate_t* ps);
+
+version (Cpp98)
+{
+}
+else
+{
+    /* Add backwards compatibility overloads to the same functions for wchar* and dchar*.
+     * Being C with no name mangling, they'll resolve to the same functions.
+     */
+    version (Windows)
+        private alias _old_wchar_t = wchar;
+    else version (Posix)
+        private alias _old_wchar_t = dchar;
+
+    int fwprintf(FILE* stream, in _old_wchar_t* format, ...);
+    int fwscanf(FILE* stream, in _old_wchar_t* format, ...);
+    int swprintf(_old_wchar_t* s, size_t n, in _old_wchar_t* format, ...);
+    int swscanf(in _old_wchar_t* s, in _old_wchar_t* format, ...);
+    int vfwprintf(FILE* stream, in _old_wchar_t* format, va_list arg);
+    int vfwscanf(FILE* stream, in _old_wchar_t* format, va_list arg);
+    int vswprintf(_old_wchar_t* s, size_t n, in _old_wchar_t* format, va_list arg);
+    int vswscanf(in _old_wchar_t* s, in _old_wchar_t* format, va_list arg);
+    int vwprintf(in _old_wchar_t* format, va_list arg);
+    int vwscanf(in _old_wchar_t* format, va_list arg);
+    int wprintf(in _old_wchar_t* format, ...);
+    int wscanf(in _old_wchar_t* format, ...);
+    _old_wchar_t* fgetws(_old_wchar_t* s, int n, FILE* stream);
+    int      fputws(in _old_wchar_t* s, FILE* stream);
+    double  wcstod(in _old_wchar_t* nptr, _old_wchar_t** endptr);
+    float   wcstof(in _old_wchar_t* nptr, _old_wchar_t** endptr);
+    real    wcstold(in _old_wchar_t* nptr, _old_wchar_t** endptr);
+    c_long  wcstol(in _old_wchar_t* nptr, _old_wchar_t** endptr, int base);
+    long    wcstoll(in _old_wchar_t* nptr, _old_wchar_t** endptr, int base);
+    c_ulong wcstoul(in _old_wchar_t* nptr, _old_wchar_t** endptr, int base);
+    ulong   wcstoull(in _old_wchar_t* nptr, _old_wchar_t** endptr, int base);
+    pure _old_wchar_t* wcscpy(return _old_wchar_t* s1, scope const _old_wchar_t* s2);
+    pure _old_wchar_t* wcsncpy(return _old_wchar_t* s1, scope const _old_wchar_t* s2, size_t n);
+    pure _old_wchar_t* wcscat(return _old_wchar_t* s1, scope const _old_wchar_t* s2);
+    pure _old_wchar_t* wcsncat(return _old_wchar_t* s1, scope const _old_wchar_t* s2, size_t n);
+    pure int wcscmp(scope const _old_wchar_t* s1, scope const _old_wchar_t* s2);
+    int      wcscoll(scope const _old_wchar_t* s1, scope const _old_wchar_t* s2);
+    pure int wcsncmp(scope const _old_wchar_t* s1, scope const _old_wchar_t* s2, size_t n);
+    size_t   wcsxfrm(scope _old_wchar_t* s1, scope const _old_wchar_t* s2, size_t n);
+    pure inout(_old_wchar_t)* wcschr(return inout(_old_wchar_t)* s, wchar_t c);
+    pure size_t wcscspn(scope const _old_wchar_t* s1, scope const _old_wchar_t* s2);
+    pure inout(_old_wchar_t)* wcspbrk(return inout(_old_wchar_t)* s1, scope const _old_wchar_t* s2);
+    pure inout(_old_wchar_t)* wcsrchr(return inout(_old_wchar_t)* s, wchar_t c);
+    pure size_t wcsspn(scope const _old_wchar_t* s1, scope const _old_wchar_t* s2);
+    pure inout(_old_wchar_t)* wcsstr(return inout(_old_wchar_t)* s1, scope const _old_wchar_t* s2);
+    _old_wchar_t* wcstok(return _old_wchar_t* s1, scope const _old_wchar_t* s2, _old_wchar_t** ptr);
+    pure size_t wcslen(scope const _old_wchar_t* s);
+    pure _old_wchar_t* wmemchr(return const _old_wchar_t* s, wchar_t c, size_t n);
+    pure int      wmemcmp(scope const _old_wchar_t* s1, scope const _old_wchar_t* s2, size_t n);
+    pure _old_wchar_t* wmemcpy(return _old_wchar_t* s1, scope const _old_wchar_t* s2, size_t n);
+    pure _old_wchar_t* wmemmove(return _old_wchar_t* s1, scope const _old_wchar_t* s2, size_t n);
+    pure _old_wchar_t* wmemset(return _old_wchar_t* s, wchar_t c, size_t n);
+    size_t wcsftime(_old_wchar_t* s, size_t maxsize, in _old_wchar_t* format, in tm* timeptr);
+
+    version (Windows)
+    {
+        // Can't overload based on return type
+        //_old_wchar_t* _wasctime(tm*);      // non-standard
+        //_old_wchar_t* _wctime(time_t*);    // non-standard
+
+        _old_wchar_t* _wstrdate(_old_wchar_t*); // non-standard
+        _old_wchar_t* _wstrtime(_old_wchar_t*); // non-standard
+    }
+    size_t mbrtowc(_old_wchar_t* pwc, in char* s, size_t n, mbstate_t* ps);
+    size_t mbsrtowcs(_old_wchar_t* dst, in char** src, size_t len, mbstate_t* ps);
+}
