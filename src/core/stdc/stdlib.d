@@ -234,3 +234,21 @@ version (CRuntime_Microsoft)
     ///
     long  _wcstoi64(scope inout(wchar)*, scope inout(wchar)**,int);
 }
+
+version (Cpp98)
+{
+}
+else
+{
+    /* Add backwards compatibility overloads to the same functions for wchar* and dchar*.
+     * Being C with no name mangling, they'll resolve to the same functions.
+     */
+    version (Windows)
+        private alias _old_wchar_t = wchar;
+    else version (Posix)
+        private alias _old_wchar_t = dchar;
+
+    int     mbtowc(scope _old_wchar_t* pwc, scope const char* s, size_t n);
+    size_t  mbstowcs(scope _old_wchar_t* pwcs, scope const char* s, size_t n);
+    size_t  wcstombs(scope char* s, scope const _old_wchar_t* pwcs, size_t n);
+}
