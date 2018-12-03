@@ -38,3 +38,21 @@ intmax_t  strtoimax(in char*, char**, int);
 uintmax_t strtoumax(in char *, char**, int);
 intmax_t  wcstoimax(in wchar_t*, wchar_t**, int);
 uintmax_t wcstoumax(in wchar_t*, wchar_t**, int);
+
+version (Cpp98)
+{
+}
+else
+{
+    /* Add backwards compatibility overloads to the same functions for wchar* and dchar*.
+     * Being C with no name mangling, they'll resolve to the same functions.
+     */
+    version (Windows)
+        private alias _old_wchar_t = wchar;
+    else version (Posix)
+        private alias _old_wchar_t = dchar;
+
+    intmax_t  wcstoimax(in _old_wchar_t* nptr, _old_wchar_t** endptr, int base);
+    uintmax_t wcstoumax(in _old_wchar_t* nptr, _old_wchar_t** endptr, int base);
+}
+
