@@ -1263,11 +1263,6 @@ struct rcarray(T)
      */
     Qualified opSlice(this Qualified)(size_t start, size_t end)
     {
-        version (D_NoBoundsChecks) { } else
-        {
-            assert(start <= end && end <= length,
-                   "Array.opSlice(s, e): Invalid bounds: Ensure start <= end <= length");
-        }
         return typeof(this)(support, payload[start .. end], isShared);
     }
 
@@ -1295,10 +1290,6 @@ struct rcarray(T)
      */
     ref auto opIndex(this _)(size_t idx)
     {
-        version (D_NoBoundsChecks) { } else
-        {
-            assert(idx < length, "Array.opIndex: Index out of bounds");
-        }
         return payload[idx];
     }
 
@@ -1324,10 +1315,6 @@ struct rcarray(T)
      */
     ref auto opIndexUnary(string op)(size_t idx)
     {
-        version (D_NoBoundsChecks) { } else
-        {
-            assert(idx < length, "Array.opIndexUnary!" ~ op ~ ": Index out of bounds");
-        }
         mixin("return " ~ op ~ "payload[idx];");
     }
 
@@ -1357,10 +1344,6 @@ struct rcarray(T)
     ref auto opIndexAssign(U)(U elem, size_t idx)
     if (is(U : T))
     {
-        version (D_NoBoundsChecks) { } else
-        {
-            assert(idx < length, "Array.opIndexAssign: Index out of bounds");
-        }
         return payload[idx] = elem;
     }
 
@@ -1419,11 +1402,6 @@ struct rcarray(T)
     auto opSliceAssign(U)(U elem, size_t start, size_t end)
     if (is(U : T))
     {
-        version (D_NoBoundsChecks) { } else
-        {
-            assert(start <= end, "Array.opSliceAssign: Index out of bounds");
-            assert(end < length, "Array.opSliceAssign: Index out of bounds");
-        }
         return payload[start .. end] = elem;
     }
 
@@ -1453,10 +1431,6 @@ struct rcarray(T)
     ref auto opIndexOpAssign(string op, U)(U elem, size_t idx)
     if (is(U : T))
     {
-        version (D_NoBoundsChecks) { } else
-        {
-            assert(idx < length, "Array.opIndexOpAssign!" ~ op ~ ": Index out of bounds");
-        }
         mixin("return payload[idx]" ~ op ~ "= elem;");
     }
 
