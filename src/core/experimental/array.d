@@ -448,13 +448,46 @@ struct rcarray(T)
 
     private static enum double capacityFactor = 3.0 / 2;
     private static enum initCapacity = 3;
-    private bool isShared;
+    //private bool isShared;
+
+    private static enum isSharedMask = 1UL << ((PrefixAllocator.prefixSize * 8) - 1);
+
+    private @nogc nothrow pure @safe
+    bool isShared() const
+    {
+        return opCmpPrefix!">="(support, isSharedMask);
+    }
+
+    private @nogc nothrow pure @trusted
+    void setIsShared(T)(const T[] _support, bool _isShared) const
+    {
+        static size_t _sharedOpCmpPrefix(string op, T)(const T[] _support, size_t val)
+        {
+            return cast(size_t)(atomicOp!op(*cast(shared size_t *)&sharedAllocator.prefix(_support), val));
+        }
+
+        static size_t _sharedOpPrefix(string op, T)(const T[] _support, size_t val)
+        {
+            return cast(size_t)(atomicOp!op(*cast(shared size_t *)&sharedAllocator.prefix(_support), val));
+        }
+
+
+        if (_isShared)
+        {
+            //auto t = (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_sharedOpCmpPrefix!("==", T)))(_support, 1);
+            //assert(t);
+            cast(void) (cast(size_t function(const T[], size_t) @nogc nothrow pure)(&_sharedOpPrefix!("|=", T)))(_support, isSharedMask);
+            //atomicOp!op(*cast(shared size_t *)&sharedAllocator.prefix(support), val);
+        }
+    }
 
     private @trusted
     auto pref() const
     {
         assert(support !is null);
-        if (isShared)
+        auto _isShared = true;
+        //if (isShared)
+        if (_isShared)
         {
             return sharedAllocator.prefix(support);
         }
@@ -467,7 +500,9 @@ struct rcarray(T)
     private size_t _opPrefix(string op, T)(const T[] _support, size_t val) const
     {
         assert(_support !is null);
-        if (isShared)
+        auto _isShared = true;
+        //if (isShared)
+        if (_isShared)
         {
             return cast(size_t)(atomicOp!op(*cast(shared size_t *)&sharedAllocator.prefix(_support), val));
         }
@@ -485,10 +520,10 @@ struct rcarray(T)
     }
 
     private @nogc nothrow pure @trusted
-    size_t opCmpPrefix(string op, T)(const T[] _support, size_t val) const
+    bool opCmpPrefix(string op, T)(const T[] _support, size_t val) const
     if ((op == "==") || (op == "<=") || (op == "<") || (op == ">=") || (op == ">"))
     {
-        return (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(_support, val);
+        return cast(bool) (cast(size_t delegate(const T[], size_t) const @nogc nothrow pure)(&_opPrefix!(op, T)))(_support, val);
     }
 
     private @nogc nothrow pure @trusted
@@ -504,7 +539,8 @@ struct rcarray(T)
         if (0) { T t = T.init; }
 
         assert(_support !is null);
-        if (opPrefix!("-=")(_support, 1) == 0)
+        size_t defaultRCVal = isShared * isSharedMask;
+        if (opPrefix!("-=")(_support, 1) == defaultRCVal)
         {
             () @trusted {
                 version (CoreUnittest)
@@ -519,7 +555,7 @@ struct rcarray(T)
         }
     }
 
-    private static string immutableInsert(StuffType)(string stuff)
+    private static string immutableInsert(StuffType, alias _isShared)(string stuff)
     {
         auto stuffLengthStr = q{
             size_t stuffLength = } ~ stuff ~ ".length;";
@@ -528,12 +564,12 @@ struct rcarray(T)
 
         version (CoreUnittest)
         {
-            void[] tmpSupport = (() @trusted => pureAllocate(isShared, stuffLength * stateSize!T))();
+            void[] tmpSupport = (() @trusted => pureAllocate(_isShared, stuffLength * stateSize!T))();
         }
         else
         {
             void[] tmpSupport;
-            if (isShared)
+            if (_isShared)
             {
                 tmpSupport = (() @trusted => sharedAllocator.allocate(stuffLength * stateSize!T))();
             }
@@ -584,8 +620,17 @@ struct rcarray(T)
     {
         static if (is(Q == immutable) || is(Q == const))
         {
-            isShared = true;
-            mixin(immutableInsert!(typeof(values))("values"));
+            static if (is(Q == immutable))
+            {
+                bool _isShared = true;
+                mixin(immutableInsert!(typeof(values), true)("values"));
+                setIsShared(support, true);
+            }
+            else
+            {
+                bool _isShared = false;
+                mixin(immutableInsert!(typeof(values), true)("values"));
+            }
         }
         else
         {
@@ -621,7 +666,8 @@ struct rcarray(T)
     private enum copyCtorIncRef = q{
         payload = rhs.payload;
         support = rhs.support;
-        isShared = rhs.isShared;
+        //isShared = rhs.isShared;
+        setIsShared(support, rhs.isShared);
 
         if (support !is null)
         {
@@ -656,14 +702,20 @@ struct rcarray(T)
 
     this(ref typeof(this) rhs) immutable
     {
-        isShared = true;
-        mixin(immutableInsert!(typeof(rhs))("rhs"));
+                bool _isShared = true;
+        mixin(immutableInsert!(typeof(rhs), true)("rhs"));
+        //isShared = true;
+        setIsShared(support, true);
     }
 
     this(const ref typeof(this) rhs) immutable
     {
-        isShared = rhs.isShared;
-        mixin(immutableInsert!(typeof(rhs.payload))("rhs.payload"));
+        // TODO should infer rhs.isShared
+                bool _isShared = true;
+        mixin(immutableInsert!(typeof(rhs.payload), true)("rhs.payload"));
+        //isShared = rhs.isShared;
+        setIsShared(support, true);
+        //setIsShared(support, rhs.isShared);
     }
 
     this(immutable ref typeof(this) rhs) immutable
@@ -682,7 +734,8 @@ struct rcarray(T)
     {
         support = _support;
         payload = _payload;
-        isShared = _isShared;
+        //isShared = _isShared;
+        setIsShared(support, _isShared);
         if (support !is null)
         {
             addRef(support);
@@ -881,7 +934,9 @@ struct rcarray(T)
 
         version (CoreUnittest)
         {
-            auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(isShared, n * stateSize!T)))();
+            // TODO ok?
+            auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(false, n * stateSize!T)))();
+            //auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(isShared, n * stateSize!T)))();
         }
         else
         {
@@ -1696,6 +1751,29 @@ struct rcarray(T)
 version (CoreUnittest)
 { // Begin CoreUnittest - conditional compilation so we can check for mem leaks
 
+template CommonType(T...)
+{
+    static if (is(typeof(T[0])))
+    {
+        alias CommonType = typeof(T[0]);
+    }
+    else
+    {
+        alias CommonType = T[0];
+    }
+}
+
+CommonType!T[T.length] staticArray(T...)(T args)
+if (is(CommonType!T))
+{
+    return [args];
+}
+
+unittest {
+    auto a = staticArray(1,2,3,4);
+    static assert(is(typeof(a) == int[4]));
+}
+
 private nothrow pure @safe
 void testConcatAndAppend()
 {
@@ -1900,26 +1978,28 @@ void testImmutability()
     assert(a[0] == 1);
     assert(a5 == [2, 2, 3]);
 
+    enum isSharedMask = 1UL << ((PrefixAllocator.prefixSize * 8) - 1);
+
     // Create immtable copies from mutable, const and immutable
     {
         auto aa = rcarray!(int)(1, 2, 3);
         auto aa2 = aa.idup();
         assert(aa.opCmpPrefix!"=="(aa.support, 1));
-        assert(aa2.opCmpPrefix!"=="(aa2.support, 1));
+        assert(aa2.opCmpPrefix!"=="(aa2.support, (1 | isSharedMask)));
     }
 
     {
         auto aa = const rcarray!(int)(1, 2, 3);
         auto aa2 = aa.idup();
         assert(aa.opCmpPrefix!"=="(aa.support, 1));
-        assert(aa2.opCmpPrefix!"=="(aa2.support, 1));
+        assert(aa2.opCmpPrefix!"=="(aa2.support, (1 | isSharedMask)));
     }
 
     {
         auto aa = immutable rcarray!(int)(1, 2, 3);
         auto aa2 = aa.idup();
-        assert(aa.opCmpPrefix!"=="(aa.support, 2));
-        assert(aa2.opCmpPrefix!"=="(aa2.support, 2));
+        assert(aa.opCmpPrefix!"=="(aa.support, (2 | isSharedMask)));
+        assert(aa2.opCmpPrefix!"=="(aa2.support, (2 | isSharedMask)));
     }
 }
 
@@ -1929,7 +2009,9 @@ void testConstness()
     auto a = const rcarray!(int)(1, 2, 3);
     auto a2 = a;
     immutable rcarray!int a5 = a;
-    assert(a5.opCmpPrefix!"=="(a5.support, 1));
+    enum isSharedMask = 1UL << ((PrefixAllocator.prefixSize * 8) - 1);
+
+    assert(a5.opCmpPrefix!"=="(a5.support, (1 | isSharedMask)));
     assert(a.opCmpPrefix!"=="(a.support, 2));
 
     assert(a2[0] == 1);
@@ -1955,6 +2037,7 @@ void testConstness()
 private nothrow pure @safe
 void testWithStruct()
 {
+    enum isSharedMask = 1UL << ((PrefixAllocator.prefixSize * 8) - 1);
     auto array = rcarray!int(1, 2, 3);
     {
         assert(array.opCmpPrefix!"=="(array.support, 1));
@@ -1974,8 +2057,8 @@ void testWithStruct()
         assert(array.opCmpPrefix!"=="(array.support, 2));
         array[0] = 3;
         assert(immArrayOfArrays[0][0] == 2);
-        assert(immArrayOfArrays.opCmpPrefix!"=="(immArrayOfArrays.support, 1));
-        assert(immArrayOfArrays[0].opCmpPrefix!"=="(immArrayOfArrays[0].support, 1));
+        assert(immArrayOfArrays.opCmpPrefix!"=="(immArrayOfArrays.support, (1 | isSharedMask)));
+        assert(immArrayOfArrays[0].opCmpPrefix!"=="(immArrayOfArrays[0].support, (1 | isSharedMask)));
         static assert(!__traits(compiles, { immArrayOfArrays[0][0] = 2; }));
         static assert(!__traits(compiles, { immArrayOfArrays[0] = array; }));
     }
