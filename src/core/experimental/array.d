@@ -555,9 +555,9 @@ struct rcarray(T)
         }
     }
 
-    private static string immutableInsert(StuffType, alias _isShared)(string stuff)
+    private static string immutableInsert(StuffType, alias _isShared, string stuff)()
     {
-        auto stuffLengthStr = q{
+        enum stuffLengthStr = q{
             size_t stuffLength = } ~ stuff ~ ".length;";
 
         return stuffLengthStr ~ q{
@@ -591,7 +591,11 @@ struct rcarray(T)
         ~"}"
         ~q{
 
-        support = (() @trusted => cast(typeof(support))(tmpSupport))();
+        // In order to support D_BetterC, we need to cast the `void[]` to `T.ptr`
+        // and then manually pass the length information again. This way we avoid
+        // calling druntime's `_d_arraycast`, which is called whenever we cast between
+        // two dynamic arrays.
+        support = (() @trusted => (cast(typeof(support.ptr))(tmpSupport.ptr))[0 .. stuffLength])();
         payload = (() @trusted => cast(typeof(payload))(support[0 .. stuffLength]))();
         if (support) addRef(support);
         };
@@ -623,13 +627,13 @@ struct rcarray(T)
             static if (is(Q == immutable))
             {
                 bool _isShared = true;
-                mixin(immutableInsert!(typeof(values), true)("values"));
+                mixin(immutableInsert!(typeof(values), true, "values")());
                 setIsShared(support, true);
             }
             else
             {
                 bool _isShared = false;
-                mixin(immutableInsert!(typeof(values), true)("values"));
+                mixin(immutableInsert!(typeof(values), true, "values")());
             }
         }
         else
@@ -702,20 +706,18 @@ struct rcarray(T)
 
     this(ref typeof(this) rhs) immutable
     {
-                bool _isShared = true;
-        mixin(immutableInsert!(typeof(rhs), true)("rhs"));
+        bool _isShared = true;
+        mixin(immutableInsert!(typeof(rhs), true, "rhs")());
         //isShared = true;
         setIsShared(support, true);
     }
 
     this(const ref typeof(this) rhs) immutable
     {
-        // TODO should infer rhs.isShared
-                bool _isShared = true;
-        mixin(immutableInsert!(typeof(rhs.payload), true)("rhs.payload"));
-        //isShared = rhs.isShared;
+        bool _isShared = true;
+        mixin(immutableInsert!(typeof(rhs.payload), true, "rhs.payload")());
+        //isShared = true;
         setIsShared(support, true);
-        //setIsShared(support, rhs.isShared);
     }
 
     this(immutable ref typeof(this) rhs) immutable
@@ -934,13 +936,22 @@ struct rcarray(T)
 
         version (CoreUnittest)
         {
-            // TODO ok?
-            auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(false, n * stateSize!T)))();
-            //auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(isShared, n * stateSize!T)))();
+            version(D_BetterC)
+            {
+                Unqual!T[] tmpSupport = (() @trusted  => (cast(Unqual!T*)(pureAllocate(false, n * stateSize!T).ptr))[0 .. n])();
+            }
+            else
+            {
+                auto tmpSupport = (() @trusted  => cast(Unqual!T[])(pureAllocate(false, n * stateSize!T)))();
+            }
         }
         else
         {
-            auto tmpSupport = (() @trusted => cast(Unqual!T[])(localAllocator.allocate(n * stateSize!T)))();
+            // In order to support D_BetterC, we need to cast the `void[]` to `T.ptr`
+            // and then manually pass the length information again. This way we avoid
+            // calling druntime's `_d_arraycast`, which is called whenever we cast between
+            // two dynamic arrays.
+            Unqual!T[] tmpSupport = (() @trusted => (cast(Unqual!T*)(localAllocator.allocate(n * stateSize!T).ptr))[0 .. n])();
         }
         assert(tmpSupport !is null);
         for (size_t i = 0; i < tmpSupport.length; ++i)
@@ -1705,6 +1716,8 @@ struct rcarray(T)
         assert(arr3 > arr4);
     }
 
+    version(D_BetterC) { } else
+    {
     ///
     auto toHash()
     {
@@ -1719,6 +1732,7 @@ struct rcarray(T)
         arr1 ~= 3;
         assert(arr1.toHash == rcarray!int(1, 2, 3).toHash);
         assert(rcarray!int().toHash == rcarray!int().toHash);
+    }
     }
 }
 
@@ -2049,6 +2063,9 @@ void testWithStruct()
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
 
+version(D_BetterC) { } else
+{ // Can't test with class in D_BetterC
+
 private nothrow pure @safe
 void testWithClass()
 {
@@ -2080,6 +2097,8 @@ void testWithClass()
     assert(localAllocator.bytesUsed == 0, "Array ref count leaks memory");
     assert(sharedAllocator.bytesUsed == 0, "Array ref count leaks memory");
 }
+
+} // Can't test with class in D_BetterC
 
 private @nogc nothrow pure @safe
 void testOpOverloads()
