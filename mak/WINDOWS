@@ -33,6 +33,7 @@ copydir: $(IMPDIR)
 	mkdir $(IMPDIR)\core\stdc
 	mkdir $(IMPDIR)\core\stdcpp
 	mkdir $(IMPDIR)\core\internal
+	mkdir $(IMPDIR)\core\internal\object
 	mkdir $(IMPDIR)\core\sys\darwin\mach
 	mkdir $(IMPDIR)\core\sys\freebsd\sys
 	mkdir $(IMPDIR)\core\sys\dragonflybsd\sys
@@ -115,6 +116,9 @@ $(IMPDIR)\core\internal\string.d : src\core\internal\string.d
 	copy $** $@
 
 $(IMPDIR)\core\internal\traits.d : src\core\internal\traits.d
+	copy $** $@
+
+$(IMPDIR)\core\internal\object\lifetime.d : src\core\internal\object\lifetime.d
 	copy $** $@
 
 $(IMPDIR)\core\stdc\assert_.d : src\core\stdc\assert_.d

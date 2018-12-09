@@ -152,6 +152,9 @@ $(DOCDIR)/object.html : src/object.d $(DMD)
 $(DOCDIR)/core_%.html : src/core/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
+$(DOCDIR)/core_internal_object_%.html : src/core/internal/object/%.d $(DMD)
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+
 $(DOCDIR)/core_stdc_%.html : src/core/stdc/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 

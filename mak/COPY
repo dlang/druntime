@@ -25,6 +25,8 @@ COPY=\
 	$(IMPDIR)\core\internal\string.d \
 	$(IMPDIR)\core\internal\traits.d \
 	\
+	$(IMPDIR)\core\internal\object\lifetime.d \
+	\
 	$(IMPDIR)\core\stdc\assert_.d \
 	$(IMPDIR)\core\stdc\complex.d \
 	$(IMPDIR)\core\stdc\config.d \
