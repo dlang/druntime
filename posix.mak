@@ -123,7 +123,7 @@ SRCS:=$(subst \,/,$(SRCS))
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32	 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= $(ROOT)/errno_c.o $(ROOT)/threadasm.o
+OBJS= $(ROOT)/errno_c.o
 
 ifeq ($(OS),osx)
 ifeq ($(MODEL), 64)
@@ -222,10 +222,6 @@ $(ROOT)/%.o : src/rt/%.c
 	$(CC) -c $(CFLAGS) $< -o$@
 
 $(ROOT)/errno_c.o : src/core/stdc/errno.c
-	@mkdir -p $(dir $@)
-	$(CC) -c $(CFLAGS) $< -o$@
-
-$(ROOT)/threadasm.o : src/core/threadasm.S
 	@mkdir -p $(dir $@)
 	$(CC) -c $(CFLAGS) $< -o$@
 
