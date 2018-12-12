@@ -1,5 +1,5 @@
 /**
- * Support code for mutithreading.
+ * ARM support code for fibers and multithreading.
  *
  * Copyright: Copyright Mikola Lysenko 2005 - 2012.
  * License: Distributed under the
@@ -20,9 +20,6 @@
 .section .note.GNU-stack,"",%progbits
 #endif
 
-/************************************************************************************
- * ARM ASM BITS
- ************************************************************************************/
 #if defined(__ARM_EABI__)
 
 /**

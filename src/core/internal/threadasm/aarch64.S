@@ -1,5 +1,5 @@
 /**
- * Support code for mutithreading.
+ * AArch64 support code for fibers and multithreading.
  *
  * Copyright: Copyright Mikola Lysenko 2005 - 2012.
  * License: Distributed under the
@@ -28,10 +28,6 @@
 #else
 #define CSYM(name) name
 #endif
-
-/************************************************************************************
- * AArch64 (arm64) ASM BITS
- ************************************************************************************/
 
 /**
  * preserve/restore AAPCS64 registers

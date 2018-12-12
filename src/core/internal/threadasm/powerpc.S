@@ -1,5 +1,5 @@
 /**
- * Support code for mutithreading.
+ * PowerPC support code for fibers and multithreading.
  *
  * Copyright: Copyright Mikola Lysenko 2005 - 2012.
  * License: Distributed under the
@@ -19,10 +19,6 @@
  */
 .section .note.GNU-stack,"",%progbits
 #endif
-
-/************************************************************************************
- * POWER PC ASM BITS
- ************************************************************************************/
 
 /**
  * Performs a context switch.
