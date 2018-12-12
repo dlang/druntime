@@ -4915,9 +4915,9 @@ private:
 
             // Only need to set return address (lr).  Everything else is fine
             // zero initialized.
-            pstack -= size_t.sizeof * 11;    // skip past x19-x29
-            push(cast(size_t) &fiber_trampoline); // see threadasm.S for docs
-            pstack += size_t.sizeof;         // adjust sp (newp) above lr
+            pstack -= size_t.sizeof * 11;         // skip past x19-x29
+            push(cast(size_t) &fiber_trampoline); // see threadasm/aarch64.S for docs
+            pstack += size_t.sizeof;              // adjust sp (newp) above lr
         }
         else version (AsmARM_Posix)
         {
