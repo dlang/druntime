@@ -9,16 +9,7 @@
  * Source:    $(DRUNTIMESRC core/_thread.d)
  */
 
-#if (__linux__ || __FreeBSD__ || __NetBSD__ || __DragonFly__) && __ELF__
-/*
- * Mark the resulting object file as not requiring execution permissions on
- * stack memory. The absence of this section would mark the whole resulting
- * library as requiring an executable stack, making it impossible to
- * dynamically load druntime on several Linux platforms where this is
- * forbidden due to security policies.
- */
-.section .note.GNU-stack,"",%progbits
-#endif
+#include "common.S"
 
 #if defined(__ARM_EABI__)
 
@@ -53,12 +44,12 @@
 
 .text
 .align  2
-.global fiber_switchContext
+.global CSYM(fiber_switchContext)
 #if defined(__ARM_PCS_VFP) || (defined(__ARM_PCS) && !defined(__SOFTFP__)) // ARM_HardFloat  || ARM_SoftFP
   .fpu vfp
 #endif
-.type   fiber_switchContext, %function
-fiber_switchContext:
+.type   CSYM(fiber_switchContext), %function
+CSYM(fiber_switchContext):
     .fnstart
     push {r4-r11}
     // update the oldp pointer. Link register and floating point registers stored later to prevent the GC from

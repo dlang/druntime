@@ -9,16 +9,7 @@
  * Source:    $(DRUNTIMESRC core/internal/threadasm/_powerpc.S)
  */
 
-#if (__linux__ || __FreeBSD__ || __NetBSD__ || __DragonFly__) && __ELF__
-/*
- * Mark the resulting object file as not requiring execution permissions on
- * stack memory. The absence of this section would mark the whole resulting
- * library as requiring an executable stack, making it impossible to
- * dynamically load druntime on several Linux platforms where this is
- * forbidden due to security policies.
- */
-.section .note.GNU-stack,"",%progbits
-#endif
+#include "common.S"
 
 /**
  * Performs a context switch.
@@ -29,8 +20,8 @@
  */
 .text
 .align 2
-.globl _fiber_switchContext
-_fiber_switchContext:
+.globl CSYM(fiber_switchContext)
+CSYM(fiber_switchContext):
 
     /* Save linkage area */
     mflr        0
