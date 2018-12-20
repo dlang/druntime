@@ -105,12 +105,7 @@ version (Windows)
      *      opaque handle to the DLL if successfully loaded
      *      null if failure
      */
-    extern (C) void* rt_loadLibrary(const char* name)
-    {
-        return initLibrary(.LoadLibraryA(name));
-    }
-
-    extern (C) void* rt_loadLibraryW(const WCHAR* name)
+    extern (C) void* rt_loadLibrary(const WCHAR* name)
     {
         return initLibrary(.LoadLibraryW(name));
     }

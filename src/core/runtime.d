@@ -10,6 +10,8 @@
 
 module core.runtime;
 
+version (Windows) import core.sys.windows.windef : WCHAR;
+
 version (OSX)
     version = Darwin;
 else version (iOS)
@@ -21,6 +23,8 @@ else version (WatchOS)
 
 /// C interface for Runtime.loadLibrary
 extern (C) void* rt_loadLibrary(const char* name);
+/// ditto
+version (Windows) extern (C) void* rt_loadLibrary(const WCHAR* name);
 
 /// C interface for Runtime.unloadLibrary, returns 1/0 instead of bool
 extern (C) int rt_unloadLibrary(void* ptr);
@@ -247,7 +251,7 @@ struct Runtime
 
             buf[len] = '\0';
 
-            return rt_loadLibraryW(buf);
+            return rt_loadLibrary(buf);
         }
         else version (Posix)
         {
