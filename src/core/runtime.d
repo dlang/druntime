@@ -10,8 +10,6 @@
 
 module core.runtime;
 
-version (Windows) import core.sys.windows.windef : WCHAR;
-
 version (OSX)
     version = Darwin;
 else version (iOS)
@@ -23,8 +21,6 @@ else version (WatchOS)
 
 /// C interface for Runtime.loadLibrary
 extern (C) void* rt_loadLibrary(const char* name);
-/// ditto
-version (Windows) extern (C) void* rt_loadLibrary(const WCHAR* name);
 
 /// C interface for Runtime.unloadLibrary, returns 1/0 instead of bool
 extern (C) int rt_unloadLibrary(void* ptr);
@@ -231,27 +227,8 @@ struct Runtime
         import core.stdc.stdlib : free, malloc;
         version (Windows)
         {
-            import core.sys.windows.windows;
-
-            if (name.length == 0) return null;
-            // Load a DLL at runtime
-            auto len = MultiByteToWideChar(
-                CP_UTF8, 0, name.ptr, cast(int)name.length, null, 0);
-            if (len == 0)
-                return null;
-
-            auto buf = cast(WCHAR*)malloc((len+1) * WCHAR.sizeof);
-            if (buf is null) return null;
-            scope (exit) free(buf);
-
-            len = MultiByteToWideChar(
-                CP_UTF8, 0, name.ptr, cast(int)name.length, buf, len);
-            if (len == 0)
-                return null;
-
-            buf[len] = '\0';
-
-            return rt_loadLibrary(buf);
+            name[$ - 1] = '\0';
+            return rt_loadLibrary(&name[0]);
         }
         else version (Posix)
         {

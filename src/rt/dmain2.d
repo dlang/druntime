@@ -105,9 +105,29 @@ version (Windows)
      *      opaque handle to the DLL if successfully loaded
      *      null if failure
      */
-    extern (C) void* rt_loadLibrary(const WCHAR* name)
+    extern (C) void* rt_loadLibrary(const char* name)
     {
-        return initLibrary(.LoadLibraryW(name));
+        immutable name_length = strlen(name);
+
+        if (name_length == 0) return null;
+        // Load a DLL at runtime
+        auto len = MultiByteToWideChar(
+                CP_UTF8, 0, name, cast(int) name_length, null, 0);
+        if (len == 0)
+            return null;
+
+        auto buf = cast(WCHAR*) malloc((len+1) * WCHAR.sizeof);
+        if (buf is null) return null;
+        scope (exit) free(buf);
+
+        len = MultiByteToWideChar(
+                CP_UTF8, 0, name, cast(int) name_length, buf, len);
+        if (len == 0)
+            return null;
+
+        buf[len] = '\0';
+
+        return initLibrary(.LoadLibraryW(buf));
     }
 
     void* initLibrary(void* mod)
