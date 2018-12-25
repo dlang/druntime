@@ -2,7 +2,7 @@
 ;  Module initialization support.
 ;
 ;  Copyright: Copyright Digital Mars 2000 - 2010.
-;  License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+;  License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
 ;  Authors:   Walter Bright
 ;
 ;           Copyright Digital Mars 2000 - 2010.
@@ -108,6 +108,58 @@ __minit:
     shr EAX,2           ; convert to array length
     mov dword ptr __moduleinfo_array,EAX
     ret
+
+; RTLCaptureContext - Windows 2000 does not have this!
+public _RtlCaptureContext@4
+_RtlCaptureContext@4 proc near
+
+var_4= dword ptr -4
+arg_0= dword ptr  4
+
+push    ebx
+mov     ebx, [esp+4+arg_0]
+mov     [ebx+0B0h], eax
+mov     [ebx+0ACh], ecx
+mov     [ebx+0A8h], edx
+mov     eax, [esp+4+var_4]
+mov     [ebx+0A4h], eax
+mov     [ebx+0A0h], esi
+mov     [ebx+9Ch], edi
+jmp     CaptureRest
+_RtlCaptureContext@4 endp
+
+
+public _RtlpCaptureContext@4
+_RtlpCaptureContext@4 proc near
+
+arg_0= dword ptr  4
+
+push    ebx
+mov     ebx, [esp+4+arg_0]
+mov     dword ptr [ebx+0B0h], 0
+mov     dword ptr [ebx+0ACh], 0
+mov     dword ptr [ebx+0A8h], 0
+mov     dword ptr [ebx+0A4h], 0
+mov     dword ptr [ebx+0A0h], 0
+mov     dword ptr [ebx+9Ch], 0
+CaptureRest::
+mov     word ptr [ebx+0BCh], cs
+mov     word ptr [ebx+98h], ds
+mov     word ptr [ebx+94h], es
+mov     word ptr [ebx+90h], fs
+mov     word ptr [ebx+8Ch], gs
+mov     word ptr [ebx+0C8h], ss
+pushf
+pop     dword ptr [ebx+0C0h]
+mov     eax, [ebp+4]
+mov     [ebx+0B8h], eax
+mov     eax, [ebp+0]
+mov     [ebx+0B4h], eax
+lea     eax, [ebp+8]
+mov     [ebx+0C4h], eax
+pop     ebx
+retn    4
+_RtlpCaptureContext@4 endp
 
 _TEXT   ends
 
