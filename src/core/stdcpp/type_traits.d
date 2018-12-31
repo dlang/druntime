@@ -17,7 +17,7 @@ struct integral_constant(T, T Val)
 {
     enum T value = Val;
     alias value_type = T;
-    alias type = integral_constant!(value_type, value);
+    alias type = typeof(this);
 }
 
 alias bool_constant(bool b) = integral_constant!(bool, b);

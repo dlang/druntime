@@ -1,6 +1,6 @@
 include ../common.mak
 
-TESTS:=array
+TESTS:=array allocator
 
 .PHONY: all clean
 

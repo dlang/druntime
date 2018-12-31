@@ -49,6 +49,6 @@ extern(C++, class) struct allocator(T)
         void deallocate(T* ptr, size_t count) nothrow @nogc;
     }
 
-    //    extern (D) T[] allocArray(size_t count) nothrow @nogc   { return allocate(count)[0 .. count]; }
-    //    extern (D) void deallocArray(ref T[] array) nothrow @nogc   { deallocate(array.ptr, array.length); }
+    extern (D) T[] allocArray(size_t count) nothrow @nogc   { return allocate(count)[0 .. count]; }
+    extern (D) void deallocArray(ref T[] array) nothrow @nogc   { deallocate(array.ptr, array.length); }
 }
