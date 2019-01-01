@@ -53,9 +53,51 @@ SRCS=\
 	src\core\sync\rwmutex.d \
 	src\core\sync\semaphore.d \
 	\
-	src\core\sys\freebsd\execinfo.d \
-	src\core\sys\freebsd\sys\event.d \
+	src\core\sys\darwin\dlfcn.d \
+	src\core\sys\darwin\execinfo.d \
+	src\core\sys\darwin\pthread.d \
+	src\core\sys\darwin\mach\dyld.d \
+	src\core\sys\darwin\mach\getsect.d \
+	src\core\sys\darwin\mach\kern_return.d \
+	src\core\sys\darwin\mach\loader.d \
+	src\core\sys\darwin\mach\port.d \
+	src\core\sys\darwin\mach\semaphore.d \
+	src\core\sys\darwin\mach\thread_act.d \
+	src\core\sys\darwin\netinet\in_.d \
 	\
+	src\core\sys\freebsd\dlfcn.d \
+	src\core\sys\freebsd\execinfo.d \
+	src\core\sys\freebsd\netinet\in_.d \
+	src\core\sys\freebsd\sys\_bitset.d \
+	src\core\sys\freebsd\sys\_cpuset.d \
+	src\core\sys\freebsd\sys\cdefs.d \
+	src\core\sys\freebsd\sys\elf_common.d \
+	src\core\sys\freebsd\sys\elf.d \
+	src\core\sys\freebsd\sys\elf32.d \
+	src\core\sys\freebsd\sys\elf64.d \
+	src\core\sys\freebsd\sys\event.d \
+	src\core\sys\freebsd\sys\link_elf.d \
+	src\core\sys\freebsd\sys\mman.d \
+	src\core\sys\freebsd\sys\mount.d \
+	src\core\sys\freebsd\time.d \
+	\
+	src\core\sys\dragonflybsd\dlfcn.d \
+	src\core\sys\dragonflybsd\execinfo.d \
+	src\core\sys\dragonflybsd\netinet\in_.d \
+	src\core\sys\dragonflybsd\sys\_bitset.d \
+	src\core\sys\dragonflybsd\sys\_cpuset.d \
+	src\core\sys\dragonflybsd\sys\cdefs.d \
+	src\core\sys\dragonflybsd\sys\elf_common.d \
+	src\core\sys\dragonflybsd\sys\elf.d \
+	src\core\sys\dragonflybsd\sys\elf32.d \
+	src\core\sys\dragonflybsd\sys\elf64.d \
+	src\core\sys\dragonflybsd\sys\event.d \
+	src\core\sys\dragonflybsd\sys\link_elf.d \
+	src\core\sys\dragonflybsd\sys\mman.d \
+	src\core\sys\dragonflybsd\time.d \
+	\
+	src\core\sys\linux\netinet\in_.d \
+	src\core\sys\linux\netinet\tcp.d \
 	src\core\sys\linux\stdio.d \
 	src\core\sys\linux\tipc.d \
 	src\core\sys\linux\sys\inotify.d \
@@ -65,7 +107,6 @@ SRCS=\
 	src\core\sys\linux\sys\sysinfo.d \
 	src\core\sys\linux\sys\time.d \
 	src\core\sys\linux\sys\xattr.d \
-	src\core\sys\linux\sys\netinet\tcp.d \
 	\
 	src\core\sys\posix\dirent.d \
 	src\core\sys\posix\signal.d \

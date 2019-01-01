@@ -105,7 +105,7 @@ void scanTLSRanges(void[]* rng, scope void delegate(void* pbeg, void* pend) noth
  *       the corresponding address in the TLS dynamic per-thread data.
  */
 
-version(X86)
+version (X86)
 {
     // NB: the compiler mangles this function as '___tls_get_addr'
     // even though it is extern(D)
@@ -118,7 +118,7 @@ version(X86)
         return tls.ptr + offset;
     }
 }
-else version(ARM)
+else version (ARM)
 {
     extern(C) void* __tls_get_addr( void** p ) nothrow @nogc
     {

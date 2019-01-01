@@ -154,7 +154,7 @@ unittest
 
     int bug5381(string s)
     {
-        switch(s)
+        switch (s)
         {
             case "unittest":        return 1;
             case "D_Version2":      return 2;
@@ -234,7 +234,7 @@ body
     size_t low = 0;
     auto high = table.length;
 
-    version(none)
+    version (none)
     {
         // Print table
         wprintf("ca[] = '%.*s'\n", ca.length, ca.ptr);
@@ -284,7 +284,7 @@ unittest
 
     int bug5381(wstring ws)
     {
-        switch(ws)
+        switch (ws)
         {
             case "unittest":        return 1;
             case "D_Version2":      return 2;
@@ -360,7 +360,7 @@ body
     size_t low = 0;
     auto high = table.length;
 
-    version(none)
+    version (none)
     {
         // Print table
         wprintf("ca[] = '%.*s'\n", ca.length, ca.ptr);
@@ -410,7 +410,7 @@ unittest
 
     int bug5381(dstring ds)
     {
-        switch(ds)
+        switch (ds)
         {
             case "unittest":        return 1;
             case "D_Version2":      return 2;

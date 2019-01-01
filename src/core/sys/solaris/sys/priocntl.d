@@ -2,7 +2,7 @@
  * D header file for the Solaris priocntl(2) and priocntlset(2) functions.
  *
  * Copyright:   Copyright 2014 Jason King.
- * License:     $(WEB www.boost.org/LICENSE_1.0.txt, Boost License 1.0).
+ * License:     $(HTTP www.boost.org/LICENSE_1.0.txt, Boost License 1.0).
  * Authors:     Jason King
  */
 
@@ -20,6 +20,7 @@ nothrow:
 extern (C):
 
 import core.sys.posix.sys.types : caddr_t, id_t;
+import core.sys.posix.sys.wait : idtype_t;
 import core.stdc.config : c_long;
 import core.sys.solaris.sys.procset;
 import core.sys.solaris.sys.types : pri_t;

@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -92,33 +92,45 @@ int     wctomb(char*, wchar_t);
 int posix_memalign(void**, size_t, size_t);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     int posix_memalign(void**, size_t, size_t);
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     int posix_memalign(void**, size_t, size_t);
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     int posix_memalign(void**, size_t, size_t);
 }
-else version( OpenBSD )
+else version (OpenBSD)
 {
     int posix_memalign(void**, size_t, size_t);
 }
-else version( Solaris )
+else version (DragonFlyBSD)
 {
     int posix_memalign(void**, size_t, size_t);
 }
-else version( Darwin )
+else version (Solaris)
 {
     int posix_memalign(void**, size_t, size_t);
 }
-else version( CRuntime_Bionic )
+else version (Darwin)
+{
+    int posix_memalign(void**, size_t, size_t);
+}
+else version (CRuntime_Bionic)
 {
     // Added since Lollipop
+    int posix_memalign(void**, size_t, size_t);
+}
+else version (CRuntime_Musl)
+{
+    int posix_memalign(void**, size_t, size_t);
+}
+else version (CRuntime_UClibc)
+{
     int posix_memalign(void**, size_t, size_t);
 }
 
@@ -130,54 +142,72 @@ int setenv(in char*, in char*, int);
 int unsetenv(in char*);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     int setenv(in char*, in char*, int);
     int unsetenv(in char*);
 
     void* valloc(size_t); // LEGACY non-standard
 }
-else version( Darwin )
+else version (Darwin)
 {
     int setenv(in char*, in char*, int);
     int unsetenv(in char*);
 
     void* valloc(size_t); // LEGACY non-standard
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     int setenv(in char*, in char*, int);
     int unsetenv(in char*);
 
     void* valloc(size_t); // LEGACY non-standard
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     int setenv(in char*, in char*, int);
     int __unsetenv13(in char*);
     alias __unsetenv13 unsetenv;
     void* valloc(size_t); // LEGACY non-standard
 }
-else version( OpenBSD )
+else version (OpenBSD)
 {
     int setenv(in char*, in char*, int);
     int unsetenv(in char*);
 
     void* valloc(size_t); // LEGACY non-standard
 }
-else version( CRuntime_Bionic )
+else version (DragonFlyBSD)
+{
+    int setenv(in char*, in char*, int);
+    int unsetenv(in char*);
+
+    void* valloc(size_t); // LEGACY non-standard
+}
+else version (CRuntime_Bionic)
 {
     int setenv(in char*, in char*, int);
     int unsetenv(in char*);
 
     void* valloc(size_t);
 }
-else version( Solaris )
+else version (Solaris)
 {
     int setenv(in char*, in char*, int);
     int unsetenv(in char*);
 
     void* valloc(size_t); // LEGACY non-standard
+}
+else version (CRuntime_Musl)
+{
+    int setenv(in char*, in char*, int);
+    int unsetenv(in char*);
+}
+else version (CRuntime_UClibc)
+{
+    int setenv(in char*, in char*, int);
+    int unsetenv(in char*);
+    void* valloc(size_t);
 }
 
 //
@@ -187,27 +217,35 @@ else version( Solaris )
 int rand_r(uint*);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     int rand_r(uint*);
 }
-else version( Darwin )
+else version (Darwin)
 {
     int rand_r(uint*);
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     int rand_r(uint*);
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     int rand_r(uint*);
 }
-else version( OpenBSD )
+else version (OpenBSD)
 {
     int rand_r(uint*);
 }
-else version( Solaris )
+else version (DragonFlyBSD)
+{
+    int rand_r(uint*);
+}
+else version (Solaris)
+{
+    int rand_r(uint*);
+}
+else version (CRuntime_UClibc)
 {
     int rand_r(uint*);
 }
@@ -257,7 +295,7 @@ void   srandom(uint);
 int    unlockpt(int);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     //WNOHANG     (defined in core.sys.posix.sys.wait)
     //WUNTRACED   (defined in core.sys.posix.sys.wait)
@@ -298,7 +336,7 @@ version( CRuntime_Glibc )
     void   srandom(uint);
     int    unlockpt(int);
 
-  static if( __USE_LARGEFILE64 )
+  static if ( __USE_LARGEFILE64 )
   {
     int    mkstemp64(char*);
     alias  mkstemp64 mkstemp;
@@ -308,7 +346,7 @@ version( CRuntime_Glibc )
     int    mkstemp(char*);
   }
 }
-else version( Darwin )
+else version (Darwin)
 {
     //WNOHANG     (defined in core.sys.posix.sys.wait)
     //WUNTRACED   (defined in core.sys.posix.sys.wait)
@@ -349,7 +387,7 @@ else version( Darwin )
     void   srandom(uint);
     int    unlockpt(int);
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     //WNOHANG     (defined in core.sys.posix.sys.wait)
     //WUNTRACED   (defined in core.sys.posix.sys.wait)
@@ -390,7 +428,7 @@ else version( FreeBSD )
     void   srandom(uint);
     int    unlockpt(int);
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     //WNOHANG     (defined in core.sys.posix.sys.wait)
     //WUNTRACED   (defined in core.sys.posix.sys.wait)
@@ -431,7 +469,7 @@ else version(NetBSD)
     void   srandom(uint);
     int    unlockpt(int);
 }
-else version( OpenBSD )
+else version (OpenBSD)
 {
     //WNOHANG     (defined in core.sys.posix.sys.wait)
     //WUNTRACED   (defined in core.sys.posix.sys.wait)
@@ -472,7 +510,48 @@ else version( OpenBSD )
     void   srandom(uint);
     int    unlockpt(int);
 }
-else version( CRuntime_Bionic )
+else version (DragonFlyBSD)
+{
+    //WNOHANG     (defined in core.sys.posix.sys.wait)
+    //WUNTRACED   (defined in core.sys.posix.sys.wait)
+    //WEXITSTATUS (defined in core.sys.posix.sys.wait)
+    //WIFEXITED   (defined in core.sys.posix.sys.wait)
+    //WIFSIGNALED (defined in core.sys.posix.sys.wait)
+    //WIFSTOPPED  (defined in core.sys.posix.sys.wait)
+    //WSTOPSIG    (defined in core.sys.posix.sys.wait)
+    //WTERMSIG    (defined in core.sys.posix.sys.wait)
+
+    c_long a64l(in char*);
+    double drand48();
+    //char*  ecvt(double, int, int *, int *); // LEGACY
+    double erand48(ref ushort[3]);
+    //char*  fcvt(double, int, int *, int *); // LEGACY
+    //char*  gcvt(double, int, char*); // LEGACY
+    int    getsubopt(char**, in char**, char**);
+    int    grantpt(int);
+    char*  initstate(uint, char*, size_t);
+    c_long jrand48(ref ushort[3]);
+    char*  l64a(c_long);
+    void   lcong48(ref ushort[7]);
+    c_long lrand48();
+    char*  mktemp(char*); // LEGACY
+    int    mkstemp(char*);
+    char*  mkdtemp(char*); // Defined in IEEE 1003.1, 2008 Edition
+    c_long mrand48();
+    c_long nrand48(ref ushort[3]);
+    int    posix_openpt(int);
+    char*  ptsname(int);
+    int    putenv(char*);
+    c_long random();
+    char*  realpath(in char*, char*);
+    ushort *seed48(ref ushort[3]);
+    void   setkey(in char*);
+    char*  setstate(in char*);
+    void   srand48(c_long);
+    void   srandom(uint);
+    int    unlockpt(int);
+}
+else version (CRuntime_Bionic)
 {
     double  drand48();
     double  erand48(ref ushort[3]);
@@ -493,7 +572,14 @@ else version( CRuntime_Bionic )
     void    srandom(uint s) { srand48(s); }
     int     unlockpt(int);
 }
-else version( Solaris )
+else version (CRuntime_Musl)
+{
+    char*  realpath(in char*, char*);
+    int    putenv(char*);
+    int    mkstemp(char*);
+
+}
+else version (Solaris)
 {
     //WNOHANG     (defined in core.sys.posix.sys.wait)
     //WUNTRACED   (defined in core.sys.posix.sys.wait)
@@ -550,4 +636,45 @@ else version( Solaris )
         else
             int mkstemp(char*);
     }
+}
+else version (CRuntime_UClibc)
+{
+    c_long a64l(in char*);
+    double drand48();
+    char*  ecvt(double, int, int *, int *);
+    double erand48(ref ushort[3]);
+    char*  fcvt(double, int, int *, int *);
+    char*  gcvt(double, int, char*);
+    int    getsubopt(char**, in char**, char**);
+    int    grantpt(int);
+    char*  initstate(uint, char*, size_t);
+    c_long jrand48(ref ushort[3]);
+    char*  l64a(c_long);
+    void   lcong48(ref ushort[7]);
+    c_long lrand48();
+    char*  mktemp(char*);
+    char*  mkdtemp(char*);
+    c_long mrand48();
+    c_long nrand48(ref ushort[3]);
+    int    posix_openpt(int);
+    char*  ptsname(int);
+    int    putenv(char*);
+    c_long random();
+    char*  realpath(in char*, char*);
+    ushort* seed48(ref ushort[3]);
+    void   setkey(in char*);
+    char*  setstate(in char*);
+    void   srand48(c_long);
+    void   srandom(uint);
+    int    unlockpt(int);
+
+  static if ( __USE_LARGEFILE64 )
+  {
+    int    mkstemp64(char*);
+    alias  mkstemp64 mkstemp;
+  }
+  else
+  {
+    int    mkstemp(char*);
+  }
 }

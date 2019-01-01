@@ -127,7 +127,7 @@ if (is(T ==  float) || is(T ==  double) || is(T ==  real) ||
     }
 }
 
-version(unittest)
+version (unittest)
 {
     alias TypeTuple(T...) = T;
 }

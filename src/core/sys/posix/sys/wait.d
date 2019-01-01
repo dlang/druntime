@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -50,7 +50,7 @@ pid_t wait(int*);
 pid_t waitpid(pid_t, int*, int);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     enum WNOHANG        = 1;
     enum WUNTRACED      = 2;
@@ -63,7 +63,7 @@ version( CRuntime_Glibc )
     }
 
     //
-    // NOTE: These macros assume __USE_BSD is not defined in the relevant
+    // NOTE: These macros assume __USE_MISC is not defined in the relevant
     //       C headers as the parameter definition there is different and
     //       much more complicated.
     //
@@ -78,7 +78,7 @@ version( CRuntime_Glibc )
     extern (D) int  WSTOPSIG( int status )     { return WEXITSTATUS( status );      }
     extern (D) int  WTERMSIG( int status )     { return status & 0x7F;              }
 }
-else version( Darwin )
+else version (Darwin)
 {
     enum WNOHANG        = 1;
     enum WUNTRACED      = 2;
@@ -100,7 +100,7 @@ else version( Darwin )
     extern (D) int  WSTOPSIG( int status )     { return status >> 8;                     }
     extern (D) int  WTERMSIG( int status )     { return _WSTATUS( status );              }
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     enum WNOHANG        = 1;
     enum WUNTRACED      = 2;
@@ -122,7 +122,29 @@ else version( FreeBSD )
     extern (D) int  WSTOPSIG( int status )     { return status >> 8;                     }
     extern (D) int  WTERMSIG( int status )     { return _WSTATUS( status );              }
 }
-else version(NetBSD)
+else version (NetBSD)
+{
+    enum WNOHANG        = 1;
+    enum WUNTRACED      = 2;
+
+    private
+    {
+        enum _WSTOPPED = 0x7F; // octal 0177
+    }
+
+    extern (D) int _WSTATUS(int status)         { return (status & 0x7F);           }
+    extern (D) int  WEXITSTATUS( int status )   { return (status >> 8);             }
+    extern (D) int  WIFCONTINUED( int status )  { return status == 0x13;            }
+    extern (D) bool WIFEXITED( int status )     { return _WSTATUS(status) == 0;     }
+    extern (D) bool WIFSIGNALED( int status )
+    {
+        return _WSTATUS( status ) != _WSTOPPED && _WSTATUS( status ) != 0;
+    }
+    extern (D) bool WIFSTOPPED( int status )   { return _WSTATUS( status ) == _WSTOPPED; }
+    extern (D) int  WSTOPSIG( int status )     { return status >> 8;                     }
+    extern (D) int  WTERMSIG( int status )     { return _WSTATUS( status );              }
+}
+else version (DragonFlyBSD)
 {
     enum WNOHANG        = 1;
     enum WUNTRACED      = 2;
@@ -157,7 +179,7 @@ else version (Solaris)
     extern (D) int WSTOPSIG(int status) { return (status >> 8) & 0x7f; }
     extern (D) int WTERMSIG(int status) { return (status & 0x7f); }
 }
-else version( CRuntime_Bionic )
+else version (CRuntime_Bionic)
 {
     enum WNOHANG   = 1;
     enum WUNTRACED = 2;
@@ -168,6 +190,54 @@ else version( CRuntime_Bionic )
     extern (D) bool WIFSTOPPED( int status ) { return WTERMSIG(status) == 0x7F; }
     extern (D) int  WSTOPSIG( int status ) { return WEXITSTATUS(status); }
     extern (D) int  WTERMSIG( int status ) { return status & 0x7F; }
+}
+else version (CRuntime_Musl)
+{
+    enum WNOHANG        = 1;
+    enum WUNTRACED      = 2;
+
+    extern (D) int  WEXITSTATUS( int status ) { return ( status & 0xFF00 ) >> 8; }
+    extern (D) int  WIFCONTINUED( int status ) { return status == 0xffff; }
+    extern (D) bool WIFEXITED( int status ) { return WTERMSIG( status ) == 0; }
+    extern (D) bool WIFSIGNALED( int status ) { return (status&0xffff)-1U < 0xffU; }
+    extern (D) bool WIFSTOPPED( int status ) { return cast(short)(((status&0xffff)*0x10001)>>8) > 0x7f00; }
+    extern (D) int  WTERMSIG( int status ) { return status & 0x7F; }
+    alias WEXITSTATUS WSTOPSIG;
+}
+else version (CRuntime_UClibc)
+{
+    enum WNOHANG        = 1;
+    enum WUNTRACED      = 2;
+
+    private
+    {
+        enum __W_CONTINUED = 0xFFFF;
+
+        extern (D) int __WTERMSIG( int status ) { return status & 0x7F; }
+    }
+
+    //
+    // NOTE: These macros assume __USE_BSD is not defined in the relevant
+    //       C headers as the parameter definition there is different and
+    //       much more complicated.
+    //
+    extern (D) int  WEXITSTATUS( int status )  { return ( status & 0xFF00 ) >> 8;   }
+    extern (D) int  WIFCONTINUED( int status ) { return status == __W_CONTINUED;    }
+    extern (D) bool WIFEXITED( int status )    { return __WTERMSIG( status ) == 0;  }
+    extern (D) bool WIFSIGNALED( int status )
+    {
+        return ( cast(ulong) ( ( status & 0xffff ) - 1U ) >> 1 ) < 0xffU;
+    }
+    version (MIPS32)
+    {
+        extern (D) bool WIFSTOPPED( int status )   { return ( status & 0xFF ) == 0x7F;  }
+    }
+    else
+    {
+        extern (D) bool WIFSTOPPED( int status )   { return ( status & 0xFF ) == 0x7F && ( status & 0xFF00 );  }
+    }
+    extern (D) int  WSTOPSIG( int status )     { return WEXITSTATUS( status );      }
+    extern (D) int  WTERMSIG( int status )     { return status & 0x7F;              }
 }
 else
 {
@@ -196,7 +266,7 @@ enum idtype_t
 int waitid(idtype_t, id_t, siginfo_t*, int);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     enum WEXITED    = 4;
     enum WSTOPPED   = 2;
@@ -212,7 +282,7 @@ version( CRuntime_Glibc )
 
     int waitid(idtype_t, id_t, siginfo_t*, int);
 }
-else version( Darwin )
+else version (Darwin)
 {
     enum WEXITED    = 0x00000004;
     enum WSTOPPED   = 0x00000008;
@@ -241,6 +311,12 @@ else version (NetBSD)
     enum WSTOPPED       = WUNTRACED;
     //enum WCONTINUED     = 4;
     enum WNOWAIT        = 0x00010000;
+}
+else version (DragonFlyBSD)
+{
+    enum WSTOPPED       = WUNTRACED;
+    enum WCONTINUED     = 4;
+    enum WNOWAIT        = 8;
 }
 else version (Solaris)
 {
@@ -273,7 +349,7 @@ else version (Solaris)
 
     int waitid(idtype_t, id_t, siginfo_t*, int);
 }
-else version( CRuntime_Bionic )
+else version (CRuntime_Bionic)
 {
     enum WEXITED    = 4;
     enum WSTOPPED   = 2;
@@ -281,6 +357,25 @@ else version( CRuntime_Bionic )
     enum WNOWAIT    = 0x01000000;
 
     alias int idtype_t;
+
+    int waitid(idtype_t, id_t, siginfo_t*, int);
+}
+else version (CRuntime_Musl)
+{
+}
+else version (CRuntime_UClibc)
+{
+    enum WEXITED    = 4;
+    enum WSTOPPED   = 2;
+    enum WCONTINUED = 8;
+    enum WNOWAIT    = 0x01000000;
+
+    enum idtype_t
+    {
+        P_ALL,
+        P_PID,
+        P_PGID
+    }
 
     int waitid(idtype_t, id_t, siginfo_t*, int);
 }
