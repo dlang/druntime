@@ -146,7 +146,7 @@ interface GC
      * Retrieve statistics about garbage collection.
      * Useful for debugging and tuning.
      */
-    core.memory.GC.Stats stats() nothrow;
+    core.memory.GC.Stats stats(ulong fields) nothrow;
 
     /**
      * add p to list of roots

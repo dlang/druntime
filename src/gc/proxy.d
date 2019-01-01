@@ -184,9 +184,9 @@ extern (C)
         return instance.query( p );
     }
 
-    core.memory.GC.Stats gc_stats() nothrow
+    core.memory.GC.Stats gc_stats(ulong fields) nothrow
     {
-        return instance.stats();
+        return instance.stats(fields);
     }
 
     void gc_addRoot( void* p ) nothrow @nogc
