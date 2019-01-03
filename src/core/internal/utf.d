@@ -425,61 +425,98 @@ dchar decode(in dchar[] s, ref size_t idx)
         return c; // dummy return
     }
 
-
 /* =================== Encode ======================= */
 
-/*******************************
+/**
+ * Encodes `c` into the static array `buf`.
+ *
+ * Params:
+ *     buf = destination of encoded character
+ *     c = character to encode
+ *
+ * Returns:
+ *     The length of the encoded character (a number between `1` and `4` for
+ *     `char[4]` buffers and a number between `1` and `2` for `wchar[2]` buffers)
+ *     or `0` in case of failure.
+ */
+@nogc nothrow pure @safe
+size_t encode(out char[4] buf, dchar c)
+in
+{
+    assert(isValidDchar(c));
+}
+do
+{
+    if (c <= 0x7F)
+    {
+        buf[0] = cast(char) c;
+        return 1;
+    }
+    else if (c <= 0x7FF)
+    {
+        buf[0] = cast(char)(0xC0 | (c >> 6));
+        buf[1] = cast(char)(0x80 | (c & 0x3F));
+        return 2;
+    }
+    else if (c <= 0xFFFF)
+    {
+        buf[0] = cast(char)(0xE0 | (c >> 12));
+        buf[1] = cast(char)(0x80 | ((c >> 6) & 0x3F));
+        buf[2] = cast(char)(0x80 | (c & 0x3F));
+        return 3;
+    }
+    else if (c <= 0x10FFFF)
+    {
+        buf[0] = cast(char)(0xF0 | (c >> 18));
+        buf[1] = cast(char)(0x80 | ((c >> 12) & 0x3F));
+        buf[2] = cast(char)(0x80 | ((c >> 6) & 0x3F));
+        buf[3] = cast(char)(0x80 | (c & 0x3F));
+        return 4;
+    }
+    return 0;
+}
+
+/// ditto
+@nogc nothrow pure @safe
+size_t encode(out wchar[2] buf, dchar c)
+in
+{
+    assert(isValidDchar(c));
+}
+do
+{
+    if (c <= 0xFFFF)
+    {
+        buf[0] = cast(wchar) c;
+        return 1;
+    }
+    else if (c <= 0x10FFFF)
+    {
+        buf[0] = cast(wchar) ((((c - 0x10000) >> 10) & 0x3FF) + 0xD800);
+        buf[1] = cast(wchar) (((c - 0x10000) & 0x3FF) + 0xDC00);
+        return 2;
+    }
+    return 0;
+}
+
+/**
  * Encodes character c and appends it to array s[].
  */
-@safe pure nothrow
+nothrow pure @safe
 void encode(ref char[] s, dchar c)
-    in
-    {
-        assert(isValidDchar(c));
-    }
-    do
-    {
-        char[] r = s;
+in
+{
+    assert(isValidDchar(c));
+}
+do
+{
+    char[4] buf;
+    size_t L = encode(buf, c);
+    assert(L); // If L is 0, then encode has failed
+    s ~= buf[0 .. L];
+}
 
-        if (c <= 0x7F)
-        {
-            r ~= cast(char) c;
-        }
-        else
-        {
-            char[4] buf;
-            uint L;
-
-            if (c <= 0x7FF)
-            {
-                buf[0] = cast(char)(0xC0 | (c >> 6));
-                buf[1] = cast(char)(0x80 | (c & 0x3F));
-                L = 2;
-            }
-            else if (c <= 0xFFFF)
-            {
-                buf[0] = cast(char)(0xE0 | (c >> 12));
-                buf[1] = cast(char)(0x80 | ((c >> 6) & 0x3F));
-                buf[2] = cast(char)(0x80 | (c & 0x3F));
-                L = 3;
-            }
-            else if (c <= 0x10FFFF)
-            {
-                buf[0] = cast(char)(0xF0 | (c >> 18));
-                buf[1] = cast(char)(0x80 | ((c >> 12) & 0x3F));
-                buf[2] = cast(char)(0x80 | ((c >> 6) & 0x3F));
-                buf[3] = cast(char)(0x80 | (c & 0x3F));
-                L = 4;
-            }
-            else
-            {
-                assert(0);
-            }
-            r ~= buf[0 .. L];
-        }
-        s = r;
-    }
-
+///
 unittest
 {
     debug(utf) printf("utf.encode.unittest\n");
@@ -499,43 +536,32 @@ unittest
     assert(s == "abcda\xC2\xA9\xE2\x89\xA0");
 }
 
-/** ditto */
-@safe pure nothrow
+/// ditto
+nothrow pure @safe
 void encode(ref wchar[] s, dchar c)
-    in
-    {
-        assert(isValidDchar(c));
-    }
-    do
-    {
-        wchar[] r = s;
+in
+{
+    assert(isValidDchar(c));
+}
+do
+{
+    wchar[2] buf;
+    size_t L = encode(buf, c);
+    assert(L);
+    s ~= buf[0 .. L];
+}
 
-        if (c <= 0xFFFF)
-        {
-            r ~= cast(wchar) c;
-        }
-        else
-        {
-            wchar[2] buf;
-
-            buf[0] = cast(wchar) ((((c - 0x10000) >> 10) & 0x3FF) + 0xD800);
-            buf[1] = cast(wchar) (((c - 0x10000) & 0x3FF) + 0xDC00);
-            r ~= buf;
-        }
-        s = r;
-    }
-
-/** ditto */
-@safe pure nothrow
+/// ditto
+nothrow pure @safe
 void encode(ref dchar[] s, dchar c)
-    in
-    {
-        assert(isValidDchar(c));
-    }
-    do
-    {
-        s ~= c;
-    }
+in
+{
+    assert(isValidDchar(c));
+}
+do
+{
+    s ~= c;
+}
 
 /**
 Returns the code length of $(D c) in the encoding using $(D C) as a
