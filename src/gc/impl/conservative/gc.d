@@ -116,6 +116,9 @@ __gshared long extendTime;
 __gshared long otherTime;
 __gshared long lockTime;
 
+// thread-local counter
+size_t bytesAllocated;
+
 private
 {
     extern (C)
@@ -525,7 +528,9 @@ class ConservativeGC : GC
             sentinel_init(p, size);
             alloc_size = size;
         }
+
         gcx.log_malloc(p, size);
+        .bytesAllocated += alloc_size;
 
         debug(PRINTF) printf("  => p = %p\n", p);
         return p;
@@ -1229,6 +1234,12 @@ class ConservativeGC : GC
 
         stats.usedSize -= freeListSize;
         stats.freeSize += freeListSize;
+        stats.allocatedInCurrentThread = .bytesAllocated;
+    }
+
+    void resetThreadLocalStats() nothrow @nogc
+    {
+        .bytesAllocated = 0;
     }
 }
 
