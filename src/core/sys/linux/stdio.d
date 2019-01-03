@@ -28,7 +28,7 @@ extern(C) nothrow
         cookie_close_function_t close;
     }
     FILE* fopencookie(in void* cookie, in char* mode, cookie_io_functions_t io_funcs);
-    void setbuffer(FILE *stream, char *buf, size_t size); // note: _BSD_SOURCE
+    void setbuffer(FILE *stream, char *buf, size_t size); // note: _DEFAULT_SOURCE
 }
 
 unittest
@@ -76,7 +76,7 @@ unittest
     assert(written == "hello".length);
     // Note: do not swap reading and writing here.
     int c = 0;
-    while((c = fgetc(f)) != EOF)
+    while ((c = fgetc(f)) != EOF)
     {
         assert(c == 'a');
         break; // endless otherwise

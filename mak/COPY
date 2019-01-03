@@ -61,12 +61,16 @@ COPY=\
 	$(IMPDIR)\core\sys\darwin\mach\semaphore.d \
 	$(IMPDIR)\core\sys\darwin\mach\thread_act.d \
 	\
+	$(IMPDIR)\core\sys\darwin\netinet\in_.d \
+	\
 	$(IMPDIR)\core\sys\darwin\sys\cdefs.d \
 	$(IMPDIR)\core\sys\darwin\sys\event.d \
 	$(IMPDIR)\core\sys\darwin\sys\mman.d \
 	\
 	$(IMPDIR)\core\sys\freebsd\dlfcn.d \
 	$(IMPDIR)\core\sys\freebsd\execinfo.d \
+	\
+	$(IMPDIR)\core\sys\freebsd\netinet\in_.d \
 	\
 	$(IMPDIR)\core\sys\freebsd\sys\cdefs.d \
 	$(IMPDIR)\core\sys\freebsd\pthread_np.d \
@@ -78,8 +82,27 @@ COPY=\
 	$(IMPDIR)\core\sys\freebsd\sys\elf_common.d \
 	$(IMPDIR)\core\sys\freebsd\sys\event.d \
 	$(IMPDIR)\core\sys\freebsd\sys\link_elf.d \
+	$(IMPDIR)\core\sys\freebsd\sys\mount.d \
 	$(IMPDIR)\core\sys\freebsd\sys\mman.d \
 	$(IMPDIR)\core\sys\freebsd\time.d \
+	\
+	$(IMPDIR)\core\sys\dragonflybsd\dlfcn.d \
+	$(IMPDIR)\core\sys\dragonflybsd\execinfo.d \
+	\
+	$(IMPDIR)\core\sys\dragonflybsd\netinet\in_.d \
+	\
+	$(IMPDIR)\core\sys\dragonflybsd\sys\cdefs.d \
+	$(IMPDIR)\core\sys\dragonflybsd\pthread_np.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\_bitset.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\_cpuset.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\elf.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\elf32.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\elf64.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\elf_common.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\event.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\link_elf.d \
+	$(IMPDIR)\core\sys\dragonflybsd\sys\mman.d \
+	$(IMPDIR)\core\sys\dragonflybsd\time.d \
 	\
 	$(IMPDIR)\core\sys\linux\config.d \
 	$(IMPDIR)\core\sys\linux\dlfcn.d \
@@ -97,12 +120,15 @@ COPY=\
 	$(IMPDIR)\core\sys\linux\tipc.d \
 	$(IMPDIR)\core\sys\linux\unistd.d \
 	\
+	$(IMPDIR)\core\sys\linux\netinet\in_.d \
+	$(IMPDIR)\core\sys\linux\netinet\tcp.d \
+	$(IMPDIR)\core\sys\linux\sys\netinet\tcp.d \
+	\
 	$(IMPDIR)\core\sys\linux\sys\auxv.d \
 	$(IMPDIR)\core\sys\linux\sys\eventfd.d \
 	$(IMPDIR)\core\sys\linux\sys\file.d \
 	$(IMPDIR)\core\sys\linux\sys\inotify.d \
 	$(IMPDIR)\core\sys\linux\sys\mman.d \
-	$(IMPDIR)\core\sys\linux\sys\netinet\tcp.d \
 	$(IMPDIR)\core\sys\linux\sys\signalfd.d \
 	$(IMPDIR)\core\sys\linux\sys\socket.d \
 	$(IMPDIR)\core\sys\linux\sys\sysinfo.d \
@@ -112,21 +138,8 @@ COPY=\
 	\
 	$(IMPDIR)\core\sys\openbsd\dlfcn.d \
 	\
-	$(IMPDIR)\core\sys\osx\execinfo.d \
-	$(IMPDIR)\core\sys\osx\pthread.d \
-	\
-	$(IMPDIR)\core\sys\osx\mach\dyld.d \
-	$(IMPDIR)\core\sys\osx\mach\getsect.d \
-	$(IMPDIR)\core\sys\osx\mach\kern_return.d \
-	$(IMPDIR)\core\sys\osx\mach\loader.d \
-	$(IMPDIR)\core\sys\osx\mach\port.d \
-	$(IMPDIR)\core\sys\osx\mach\semaphore.d \
-	$(IMPDIR)\core\sys\osx\mach\thread_act.d \
-	\
-	$(IMPDIR)\core\sys\osx\sys\cdefs.d \
-	$(IMPDIR)\core\sys\osx\sys\mman.d \
-	\
 	$(IMPDIR)\core\sys\posix\arpa\inet.d \
+	$(IMPDIR)\core\sys\posix\aio.d \
 	$(IMPDIR)\core\sys\posix\config.d \
 	$(IMPDIR)\core\sys\posix\dirent.d \
 	$(IMPDIR)\core\sys\posix\dlfcn.d \

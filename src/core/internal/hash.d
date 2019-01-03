@@ -71,7 +71,7 @@ if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStati
 @trusted nothrow pure
 size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && __traits(isArithmetic, T))
 {
-    static if(__traits(isFloating, val))
+    static if (__traits(isFloating, val))
     {
         T data = (val != val) ? T.nan : val;
         auto bytes = toUbyte(data);
@@ -97,9 +97,9 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0)
 if (!is(T == enum) && is(T V : V*) && !is(T : typeof(null))
     && !is(T == struct) && !is(T == class) && !is(T == union))
 {
-    if(__ctfe)
+    if (__ctfe)
     {
-        if(val is null)
+        if (val is null)
         {
             return hashOf(cast(size_t)0);
         }
@@ -121,7 +121,7 @@ size_t hashOf(T)(auto ref T val, size_t seed = 0) if (!is(T == enum) && (is(T ==
     }
     else
     {
-        static if(__traits(hasMember, T, "toHash") && is(typeof(T.toHash) == function))
+        static if (__traits(hasMember, T, "toHash") && is(typeof(T.toHash) == function))
         {
             pragma(msg, "Warning: struct "~__traits(identifier, T)~" has method toHash, however it cannot be called with "~T.stringof~" this.");
         }
@@ -416,14 +416,14 @@ unittest // issue 15111
 // MurmurHash3 was written by Austin Appleby, and is placed in the public
 // domain. The author hereby disclaims copyright to this source code.
 
-version(X86)
+version (X86)
     version = AnyX86;
-version(X86_64)
+version (X86_64)
     version = AnyX86;
 
-version(AnyX86)
+version (AnyX86)
 {
-    version(DigitalMars)
+    version (DigitalMars)
     {
     }
     else
@@ -447,12 +447,12 @@ size_t bytesHash(const(void)* buf, size_t len, size_t seed)
     static uint get32bits(const (ubyte)* x) pure nothrow @nogc
     {
         //Compiler can optimize this code to simple *cast(uint*)x if it possible.
-        version(HasUnalignedOps)
+        version (HasUnalignedOps)
         {
             if (!__ctfe)
                 return *cast(uint*)x; //BUG: Can't be inlined by DMD
         }
-        version(BigEndian)
+        version (BigEndian)
         {
             return ((cast(uint) x[0]) << 24) | ((cast(uint) x[1]) << 16) | ((cast(uint) x[2]) << 8) | (cast(uint) x[3]);
         }
@@ -487,7 +487,7 @@ size_t bytesHash(const(void)* buf, size_t len, size_t seed)
     //----------
     // body
     auto end_data = data+nblocks*uint.sizeof;
-    for(; data!=end_data; data += uint.sizeof)
+    for (; data!=end_data; data += uint.sizeof)
     {
         uint k1 = get32bits(data);
         k1 *= c1;
@@ -503,7 +503,7 @@ size_t bytesHash(const(void)* buf, size_t len, size_t seed)
     // tail
     uint k1 = 0;
 
-    switch(len & 3)
+    switch (len & 3)
     {
         case 3: k1 ^= data[2] << 16; goto case;
         case 2: k1 ^= data[1] << 8;  goto case;

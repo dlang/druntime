@@ -15,7 +15,7 @@ module rt.typeinfo.ti_cent;
 
 private import rt.util.hash;
 
-static if(is(cent)):
+static if (is(cent)):
 
 // cent
 

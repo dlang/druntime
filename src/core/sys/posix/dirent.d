@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly,
               Alex Rønne Petersn
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
@@ -49,7 +49,7 @@ dirent* readdir(DIR*);
 void    rewinddir(DIR*);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     // NOTE: The following constants are non-standard Linux definitions
     //       for dirent.d_type.
@@ -80,7 +80,7 @@ version( CRuntime_Glibc )
         // Managed by OS
     }
 
-    static if( __USE_FILE_OFFSET64 )
+    static if ( __USE_FILE_OFFSET64 )
     {
         dirent* readdir64(DIR*);
         alias   readdir64 readdir;
@@ -90,7 +90,7 @@ version( CRuntime_Glibc )
         dirent* readdir(DIR*);
     }
 }
-else version( Darwin )
+else version (Darwin)
 {
     enum
     {
@@ -128,13 +128,14 @@ else version( Darwin )
     // inode functions by appending $INODE64 to newer 64-bit inode functions.
     // Other Darwin variants (iOS, TVOS, WatchOS) only support 64-bit inodes,
     // no suffix needed
-    version( OSX )
+    version (OSX)
         pragma(mangle, "readdir$INODE64") dirent* readdir(DIR*);
     else
         dirent* readdir(DIR*);
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
+    // https://github.com/freebsd/freebsd/blob/master/sys/sys/dirent.h
     enum
     {
         DT_UNKNOWN  = 0,
@@ -162,7 +163,7 @@ else version( FreeBSD )
 
     dirent* readdir(DIR*);
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     enum
     {
@@ -191,7 +192,7 @@ else version(NetBSD)
     dirent* __readdir30(DIR*);
     alias __readdir30 readdir;
 }
-else version( OpenBSD )
+else version (OpenBSD)
 {
     enum
     {
@@ -215,6 +216,36 @@ else version( OpenBSD )
         ubyte     d_namlen;
         ubyte[4]  __d_padding;
         char[256] d_name;
+    }
+
+    alias void* DIR;
+
+    dirent* readdir(DIR*);
+}
+else version (DragonFlyBSD)
+{
+    enum
+    {
+        DT_UNKNOWN  = 0,
+        DT_FIFO     = 1,
+        DT_CHR      = 2,
+        DT_DIR      = 4,
+        DT_BLK      = 6,
+        DT_REG      = 8,
+        DT_LNK      = 10,
+        DT_SOCK     = 12,
+        DT_WHT      = 14,
+        DT_DBF      = 15,         /* database record file */
+    }
+
+    struct dirent
+    {
+        ino_t     d_fileno;       /* file number of entry */
+        ushort    d_reclen;       /* strlen(d_name) */
+        ubyte     d_type;         /* file type, see blow */
+        ubyte     d_unused1;      /* padding, reserved */
+        uint      d_unused2;      /* reserved */
+        char[256] d_name;         /* name, NUL-terminated */
     }
 
     alias void* DIR;
@@ -257,7 +288,7 @@ else version (Solaris)
         }
     }
 }
-else version( CRuntime_Bionic )
+else version (CRuntime_Bionic)
 {
     enum
     {
@@ -287,6 +318,93 @@ else version( CRuntime_Bionic )
 
     dirent* readdir(DIR*);
 }
+else version (CRuntime_Musl)
+{
+    enum
+    {
+        DT_UNKNOWN  = 0,
+        DT_FIFO     = 1,
+        DT_CHR      = 2,
+        DT_DIR      = 4,
+        DT_BLK      = 6,
+        DT_REG      = 8,
+        DT_LNK      = 10,
+        DT_SOCK     = 12,
+        DT_WHT      = 14
+    }
+
+    struct dirent
+    {
+        ino_t       d_ino;
+        off_t       d_off;
+        ushort      d_reclen;
+        ubyte       d_type;
+        char[256]   d_name;
+    }
+
+    struct DIR
+    {
+    }
+
+    static if ( __USE_FILE_OFFSET64 )
+    {
+        dirent* readdir64(DIR*);
+        alias   readdir64 readdir;
+    }
+    else
+    {
+        dirent* readdir(DIR*);
+    }
+}
+else version (CRuntime_UClibc)
+{
+    // NOTE: The following constants are non-standard Linux definitions
+    //       for dirent.d_type.
+    enum
+    {
+        DT_UNKNOWN  = 0,
+        DT_FIFO     = 1,
+        DT_CHR      = 2,
+        DT_DIR      = 4,
+        DT_BLK      = 6,
+        DT_REG      = 8,
+        DT_LNK      = 10,
+        DT_SOCK     = 12,
+        DT_WHT      = 14
+    }
+
+    struct dirent
+    {
+        static if (__USE_FILE_OFFSET64)
+        {
+            ino64_t d_ino;
+            off64_t d_off;
+        }
+        else
+        {
+            ino_t d_ino;
+            off_t d_off;
+        }
+        ushort      d_reclen;
+        ubyte       d_type;
+        char[256]   d_name;
+    }
+
+    struct DIR
+    {
+        // Managed by OS
+    }
+
+    static if ( __USE_FILE_OFFSET64 )
+    {
+        dirent* readdir64(DIR*);
+        alias   readdir64 readdir;
+    }
+    else
+    {
+        dirent* readdir(DIR*);
+    }
+}
 else
 {
     static assert(false, "Unsupported platform");
@@ -295,9 +413,9 @@ else
 // Only OS X out of the Darwin family needs special treatment.  Other Darwins
 // (iOS, TVOS, WatchOS) are fine with normal symbol names for these functions
 // in else below.
-version( OSX )
+version (OSX)
 {
-    version( D_LP64 )
+    version (D_LP64)
     {
         int closedir(DIR*);
         pragma(mangle, "opendir$INODE64")   DIR* opendir(in char*);
@@ -312,7 +430,7 @@ version( OSX )
         pragma(mangle, "rewinddir$INODE64$UNIX2003") void rewinddir(DIR*);
     }
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     int     closedir(DIR*);
     DIR*    __opendir30(in char*);
@@ -334,9 +452,9 @@ else
 int readdir_r(DIR*, dirent*, dirent**);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
-  static if( __USE_LARGEFILE64 )
+  static if ( __USE_LARGEFILE64 )
   {
     int   readdir64_r(DIR*, dirent*, dirent**);
     alias readdir64_r readdir_r;
@@ -346,23 +464,27 @@ version( CRuntime_Glibc )
     int readdir_r(DIR*, dirent*, dirent**);
   }
 }
-else version( Darwin )
+else version (Darwin)
 {
-    version( OSX )
+    version (OSX)
         pragma(mangle, "readdir_r$INODE64") int readdir_r(DIR*, dirent*, dirent**);
     else
         int readdir_r(DIR*, dirent*, dirent**);
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     int readdir_r(DIR*, dirent*, dirent**);
 }
-else version(NetBSD)
+else version (DragonFlyBSD)
+{
+    int readdir_r(DIR*, dirent*, dirent**);
+}
+else version (NetBSD)
 {
     int __readdir_r30(DIR*, dirent*, dirent**);
     alias __readdir_r30 readdir_r;
 }
-else version( OpenBSD )
+else version (OpenBSD)
 {
     int readdir_r(DIR*, dirent*, dirent**);
 }
@@ -378,9 +500,25 @@ else version (Solaris)
         int readdir_r(DIR*, dirent*, dirent**);
     }
 }
-else version( CRuntime_Bionic )
+else version (CRuntime_Bionic)
 {
     int readdir_r(DIR*, dirent*, dirent**);
+}
+else version (CRuntime_Musl)
+{
+
+}
+else version (CRuntime_UClibc)
+{
+  static if ( __USE_LARGEFILE64 )
+  {
+    int   readdir64_r(DIR*, dirent*, dirent**);
+    alias readdir64_r readdir_r;
+  }
+  else
+  {
+    int readdir_r(DIR*, dirent*, dirent**);
+  }
 }
 else
 {
@@ -395,31 +533,36 @@ void   seekdir(DIR*, c_long);
 c_long telldir(DIR*);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     void   seekdir(DIR*, c_long);
     c_long telldir(DIR*);
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     void   seekdir(DIR*, c_long);
     c_long telldir(DIR*);
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     void   seekdir(DIR*, c_long);
     c_long telldir(DIR*);
 }
-else version( OpenBSD )
+else version (OpenBSD)
+{
+    void   seekdir(DIR*, c_long);
+    c_long telldir(DIR*);
+}
+else version (DragonFlyBSD)
 {
     void   seekdir(DIR*, c_long);
     c_long telldir(DIR*);
 }
 else version (Darwin)
 {
-    version( OSX )
+    version (OSX)
     {
-        version ( D_LP64 )
+        version (D_LP64)
         {
             pragma(mangle, "seekdir$INODE64") void seekdir(DIR*, c_long);
             pragma(mangle, "telldir$INODE64") c_long telldir(DIR*);
@@ -445,6 +588,14 @@ else version (Solaris)
 }
 else version (CRuntime_Bionic)
 {
+}
+else version (CRuntime_Musl)
+{
+}
+else version (CRuntime_UClibc)
+{
+    void   seekdir(DIR*, c_long);
+    c_long telldir(DIR*);
 }
 else
 {

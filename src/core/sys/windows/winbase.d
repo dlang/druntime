@@ -1638,7 +1638,7 @@ extern (Windows) nothrow @nogc {
     //--------------------------------------
     // These functions are problematic
 
-    version(UseNtoSKernel) {}else {
+    version (UseNtoSKernel) {}else {
         /* CAREFUL: These are exported from ntoskrnl.exe and declared in winddk.h
            as __fastcall functions, but are  exported from kernel32.dll as __stdcall */
         static if (_WIN32_WINNT >= 0x501) {
@@ -1823,7 +1823,6 @@ WINBASEAPI DWORD WINAPI GetCurrentThreadId(void);
     BOOL GetDiskFreeSpaceExW(LPCWSTR, PULARGE_INTEGER, PULARGE_INTEGER, PULARGE_INTEGER);
     UINT GetDriveTypeA(LPCSTR);
     UINT GetDriveTypeW(LPCWSTR);
-    LPSTR GetEnvironmentStrings(); // ???
     LPSTR GetEnvironmentStringsA();
     LPWSTR GetEnvironmentStringsW();
     DWORD GetEnvironmentVariableA(LPCSTR, LPSTR, DWORD);
@@ -2702,6 +2701,7 @@ version (Unicode) {
     alias GetDiskFreeSpaceA GetDiskFreeSpace;
     alias GetDiskFreeSpaceExA GetDiskFreeSpaceEx;
     alias GetDriveTypeA GetDriveType;
+    alias GetEnvironmentStringsA GetEnvironmentStrings;
     alias GetEnvironmentVariableA GetEnvironmentVariable;
     alias GetFileAttributesA GetFileAttributes;
     alias GetFullPathNameA GetFullPathName;

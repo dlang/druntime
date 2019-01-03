@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -58,7 +58,7 @@ char*     inet_ntop(int, in void*, char*, socklen_t);
 int       inet_pton(int, in char*, void*);
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     alias uint16_t in_port_t;
     alias uint32_t in_addr_t;
@@ -83,7 +83,7 @@ version( CRuntime_Glibc )
     const(char)*    inet_ntop(int, in void*, char*, socklen_t);
     int             inet_pton(int, in char*, void*);
 }
-else version( Darwin )
+else version (Darwin)
 {
     alias uint16_t in_port_t;
     alias uint32_t in_addr_t;
@@ -108,7 +108,7 @@ else version( Darwin )
     const(char)*    inet_ntop(int, in void*, char*, socklen_t);
     int             inet_pton(int, in char*, void*);
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     alias uint16_t in_port_t;
     alias uint32_t in_addr_t;
@@ -133,7 +133,7 @@ else version( FreeBSD )
     const(char)*    inet_ntop(int, in void*, char*, socklen_t);
     int             inet_pton(int, in char*, void*);
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     alias uint16_t in_port_t;
     alias uint32_t in_addr_t;
@@ -158,7 +158,32 @@ else version(NetBSD)
     const(char)*    inet_ntop(int, in void*, char*, socklen_t);
     int             inet_pton(int, in char*, void*);
 }
-else version( Solaris )
+else version (DragonFlyBSD)
+{
+    alias uint16_t in_port_t;
+    alias uint32_t in_addr_t;
+
+    struct in_addr
+    {
+        in_addr_t s_addr;
+    }
+
+    enum INET_ADDRSTRLEN = 16;
+
+    @trusted pure
+    {
+    uint32_t htonl(uint32_t);
+    uint16_t htons(uint16_t);
+    uint32_t ntohl(uint32_t);
+    uint16_t ntohs(uint16_t);
+    }
+
+    in_addr_t       inet_addr(in char*);
+    char*           inet_ntoa(in_addr);
+    const(char)*    inet_ntop(int, in void*, char*, socklen_t);
+    int             inet_pton(int, in char*, void*);
+}
+else version (Solaris)
 {
     alias uint16_t in_port_t;
     alias uint32_t in_addr_t;
@@ -182,7 +207,7 @@ else version( Solaris )
     const(char)*    inet_ntop(int, in void*, char*, socklen_t);
     int             inet_pton(int, in char*, void*);
 }
-else version( CRuntime_Bionic )
+else version (CRuntime_Bionic)
 {
     alias uint32_t in_addr_t;
 
@@ -222,6 +247,56 @@ else version( CRuntime_Bionic )
     const(char)*    inet_ntop(int, in void*, char*, size_t);
     int             inet_pton(int, in char*, void*);
 }
+else version (CRuntime_Musl)
+{
+    alias uint16_t in_port_t;
+    alias uint32_t in_addr_t;
+
+    struct in_addr
+    {
+        in_addr_t s_addr;
+    }
+
+    enum INET_ADDRSTRLEN = 16;
+
+    @trusted pure
+    {
+    uint32_t htonl(uint32_t);
+    uint16_t htons(uint16_t);
+    uint32_t ntohl(uint32_t);
+    uint16_t ntohs(uint16_t);
+    }
+
+    in_addr_t       inet_addr(in char*);
+    char*           inet_ntoa(in_addr);
+    const(char)*    inet_ntop(int, in void*, char*, socklen_t);
+    int             inet_pton(int, in char*, void*);
+}
+else version (CRuntime_UClibc)
+{
+    alias uint16_t in_port_t;
+    alias uint32_t in_addr_t;
+
+    struct in_addr
+    {
+        in_addr_t s_addr;
+    }
+
+    enum INET_ADDRSTRLEN = 16;
+
+    @trusted pure
+    {
+    uint32_t htonl(uint32_t);
+    uint16_t htons(uint16_t);
+    uint32_t ntohl(uint32_t);
+    uint16_t ntohs(uint16_t);
+    }
+
+    in_addr_t       inet_addr(in char*);
+    char*           inet_ntoa(in_addr);
+    const(char)*    inet_ntop(int, in void*, char*, socklen_t);
+    int             inet_pton(int, in char*, void*);
+}
 
 //
 // IPV6 (IP6)
@@ -233,27 +308,35 @@ NOTE: The following must must be defined in core.sys.posix.arpa.inet to break
 INET6_ADDRSTRLEN // from core.sys.posix.netinet.in_
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     enum INET6_ADDRSTRLEN = 46;
 }
-else version( Darwin )
+else version (Darwin)
 {
     enum INET6_ADDRSTRLEN = 46;
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     enum INET6_ADDRSTRLEN = 46;
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     enum INET6_ADDRSTRLEN = 46;
 }
-else version( Solaris )
+else version (DragonFlyBSD)
 {
     enum INET6_ADDRSTRLEN = 46;
 }
-else version( CRuntime_Bionic )
+else version (Solaris)
+{
+    enum INET6_ADDRSTRLEN = 46;
+}
+else version (CRuntime_Bionic)
+{
+    enum INET6_ADDRSTRLEN = 46;
+}
+else version (CRuntime_UClibc)
 {
     enum INET6_ADDRSTRLEN = 46;
 }

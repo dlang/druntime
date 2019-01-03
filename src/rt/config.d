@@ -92,7 +92,7 @@ string rt_configOption(string opt, scope rt_configCallBack dg = null, bool rever
 
 string rt_cmdlineOption(string opt, scope rt_configCallBack dg) @nogc nothrow
 {
-    if(rt_cmdline_enabled!())
+    if (rt_cmdline_enabled!())
     {
         foreach (a; rt_args)
         {
@@ -110,7 +110,7 @@ string rt_cmdlineOption(string opt, scope rt_configCallBack dg) @nogc nothrow
 
 string rt_envvarsOption(string opt, scope rt_configCallBack dg) @nogc nothrow
 {
-    if(rt_envvars_enabled!())
+    if (rt_envvars_enabled!())
     {
         if (opt.length >= 32)
             assert(0);
@@ -136,7 +136,7 @@ string rt_linkOption(string opt, scope rt_configCallBack dg) @nogc nothrow
 {
     foreach (a; rt_options!())
     {
-        if(a.length > opt.length && a[0..opt.length] == opt && a[opt.length] == '=')
+        if (a.length > opt.length && a[0..opt.length] == opt && a[opt.length] == '=')
         {
             string s = dg(a[opt.length + 1 .. $]);
             if (s != null)

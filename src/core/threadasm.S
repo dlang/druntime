@@ -2,7 +2,7 @@
  * Support code for mutithreading.
  *
  * Copyright: Copyright Mikola Lysenko 2005 - 2012.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Mikola Lysenko, Martin Nowak, Kai Nacke
  */
 
@@ -13,15 +13,25 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 
-#if (defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__)) && defined(__ELF__)
+#if (__linux__ || __FreeBSD__ || __NetBSD__ || __DragonFly__) && __ELF__
 /*
  * Mark the resulting object file as not requiring execution permissions on
  * stack memory. The absence of this section would mark the whole resulting
  * library as requiring an executable stack, making it impossible to
  * dynamically load druntime on several Linux platforms where this is
  * forbidden due to security policies.
+ * Use %progbits instead of @progbits to support ARM and X86.
  */
 .section .note.GNU-stack,"",%progbits
+#endif
+
+/* Let preprocessor tell us if C symbols have a prefix: __USER_LABEL_PREFIX__ */
+#ifdef __USER_LABEL_PREFIX__
+#define GLUE2(a, b) a ## b
+#define GLUE(a, b) GLUE2(a, b)
+#define CSYM(name) GLUE(__USER_LABEL_PREFIX__, name)
+#else
+#define CSYM(name) name
 #endif
 
 /************************************************************************************
@@ -52,7 +62,6 @@
 #if defined( USE_ABI_2 )
     .abiversion 2
 #endif
-    .globl  _D4core6thread18callWithStackShellFNbMDFPvZvZv
     .globl  _D4core6thread18callWithStackShellFNbMDFNbPvZvZv
     .align  2
     .type   _D4core6thread18callWithStackShellFNbMDFNbPvZvZv,@function
@@ -322,12 +331,12 @@ fiber_switchContext:
 #ifdef __mips_hard_float
 #define ALIGN8(val) (val + (-val & 7))
 #define BELOW (ALIGN8(6 * 8 + 4))
-    sdcl $f20, (0 * 8 - BELOW)($sp)
-    sdcl $f22, (1 * 8 - BELOW)($sp)
-    sdcl $f24, (2 * 8 - BELOW)($sp)
-    sdcl $f26, (3 * 8 - BELOW)($sp)
-    sdcl $f28, (4 * 8 - BELOW)($sp)
-    sdcl $f30, (5 * 8 - BELOW)($sp)
+    sdc1 $f20, (0 * 8 - BELOW)($sp)
+    sdc1 $f22, (1 * 8 - BELOW)($sp)
+    sdc1 $f24, (2 * 8 - BELOW)($sp)
+    sdc1 $f26, (3 * 8 - BELOW)($sp)
+    sdc1 $f28, (4 * 8 - BELOW)($sp)
+    sdc1 $f30, (5 * 8 - BELOW)($sp)
 #endif
     sw $ra, -4($sp)
 
@@ -347,12 +356,12 @@ fiber_switchContext:
     move $sp, $a1
 
 #ifdef __mips_hard_float
-    ldcl $f20, (0 * 8 - BELOW)($sp)
-    ldcl $f22, (1 * 8 - BELOW)($sp)
-    ldcl $f24, (2 * 8 - BELOW)($sp)
-    ldcl $f26, (3 * 8 - BELOW)($sp)
-    ldcl $f28, (4 * 8 - BELOW)($sp)
-    ldcl $f30, (5 * 8 - BELOW)($sp)
+    ldc1 $f20, (0 * 8 - BELOW)($sp)
+    ldc1 $f22, (1 * 8 - BELOW)($sp)
+    ldc1 $f24, (2 * 8 - BELOW)($sp)
+    ldc1 $f26, (3 * 8 - BELOW)($sp)
+    ldc1 $f28, (4 * 8 - BELOW)($sp)
+    ldc1 $f30, (5 * 8 - BELOW)($sp)
 #endif
     lw $ra, -4($sp)
 
@@ -450,4 +459,83 @@ fiber_switchContext:
     // return by writing lr into pc
     mov pc, r1
     .fnend
+
+#elif defined(__aarch64__)
+/************************************************************************************
+ * AArch64 (arm64) ASM BITS
+ ************************************************************************************/
+/**
+ * preserve/restore AAPCS64 registers
+ *   x19-x28 5.1.1 64-bit callee saved
+ *   x29 fp, or possibly callee saved reg - depends on platform choice 5.2.3)
+ *   x30 lr
+ *   d8-d15  5.1.2 says callee only must save bottom 64-bits (the "d" regs)
+ *
+ * saved regs on stack will look like:
+ *   19: x19
+ *   18: x20
+ *   ...
+ *   10: x28
+ *    9: x29 (fp)  <-- oldp / *newp save stack top
+ *    8: x30 (lr)
+ *    7: d8
+ *   ...
+ *    0: d15       <-- sp
+ */
+        .text
+        .global CSYM(fiber_switchContext)
+        .type   fiber_switchContext, %function
+        .p2align  2
+CSYM(fiber_switchContext):
+        stp     d15, d14, [sp, #-20*8]!
+        stp     d13, d12, [sp, #2*8]
+        stp     d11, d10, [sp, #4*8]
+        stp     d9, d8,   [sp, #6*8]
+        stp     x30, x29, [sp, #8*8] // lr, fp
+        stp     x28, x27, [sp, #10*8]
+        stp     x26, x25, [sp, #12*8]
+        stp     x24, x23, [sp, #14*8]
+        stp     x22, x21, [sp, #16*8]
+        stp     x20, x19, [sp, #18*8]
+
+        // oldp is set above saved lr (x30) to hide it and float regs
+        // from GC
+        add     x19, sp, #9*8
+        str     x19, [x0]       // *oldp tstack
+        sub     sp, x1, #9*8    // switch to newp sp
+
+        ldp     x20, x19, [sp, #18*8]
+        ldp     x22, x21, [sp, #16*8]
+        ldp     x24, x23, [sp, #14*8]
+        ldp     x26, x25, [sp, #12*8]
+        ldp     x28, x27, [sp, #10*8]
+        ldp     x30, x29, [sp, #8*8] // lr, fp
+        ldp     d9, d8,   [sp, #6*8]
+        ldp     d11, d10, [sp, #4*8]
+        ldp     d13, d12, [sp, #2*8]
+        ldp     d15, d14, [sp], #20*8
+        ret
+
+
+/**
+ * When generating any kind of backtrace (gdb, exception handling) for
+ * a function called in a Fiber, we need to tell the unwinder to stop
+ * at our Fiber main entry point, i.e. we need to mark the bottom of
+ * the call stack. This can be done by clearing the link register lr
+ * prior to calling fiber_entryPoint (i.e. in fiber_switchContext) or
+ * using a .cfi_undefined directive for the link register in the
+ * Fiber entry point. cfi_undefined seems to yield better results in gdb.
+ * Unfortunately we can't place it into fiber_entryPoint using inline
+ * asm, so we use this trampoline instead.
+ */
+        .text
+        .global CSYM(fiber_trampoline)
+        .p2align  2
+        .type   fiber_trampoline, %function
+CSYM(fiber_trampoline):
+        .cfi_startproc
+        .cfi_undefined x30
+        // fiber_entryPoint never returns
+        bl fiber_entryPoint
+        .cfi_endproc
 #endif

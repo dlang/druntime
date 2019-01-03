@@ -9,11 +9,11 @@
 module rt.util.hash;
 
 
-version( X86 )
+version (X86)
     version = AnyX86;
-version( X86_64 )
+version (X86_64)
     version = AnyX86;
-version( AnyX86 )
+version (AnyX86)
     version = HasUnalignedOps;
 
 
@@ -30,7 +30,7 @@ size_t hashOf( const(void)[] buf, size_t seed )
     {
         // CTFE doesn't support casting ubyte* -> ushort*, so revert to
         // per-byte access when in CTFE.
-        version( HasUnalignedOps )
+        version (HasUnalignedOps)
         {
             if (!__ctfe)
                 return *cast(ushort*) x;
@@ -45,13 +45,13 @@ size_t hashOf( const(void)[] buf, size_t seed )
     auto len = buf.length;
     auto hash = seed;
 
-    if( len == 0 || data is null )
+    if ( len == 0 || data is null )
         return 0;
 
     int rem = len & 3;
     len >>= 2;
 
-    for( ; len > 0; len-- )
+    for ( ; len > 0; len-- )
     {
         hash += get16bits( data );
         auto tmp = (get16bits( data + 2 ) << 11) ^ hash;
@@ -60,7 +60,7 @@ size_t hashOf( const(void)[] buf, size_t seed )
         hash += hash >> 11;
     }
 
-    switch( rem )
+    switch ( rem )
     {
     case 3: hash += get16bits( data );
             hash ^= hash << 16;

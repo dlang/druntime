@@ -2,7 +2,7 @@
  * D header file for POSIX.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2009.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Sean Kelly, Alex Rønne Petersen
  * Standards: The Open Group Base Specifications Issue 6, IEEE Std 1003.1, 2004 Edition
  */
@@ -59,7 +59,7 @@ int setitimer(int, in itimerval*, itimerval*);
 int utimes(in char*, ref const(timeval)[2]); // LEGACY
 */
 
-version( CRuntime_Glibc )
+version (CRuntime_Glibc)
 {
     struct timeval
     {
@@ -82,7 +82,17 @@ version( CRuntime_Glibc )
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, ref const(timeval)[2]); // LEGACY
 }
-else version( Darwin )
+else version (CRuntime_Musl)
+{
+    struct timeval
+    {
+        time_t      tv_sec;
+        suseconds_t tv_usec;
+    }
+    int gettimeofday(timeval*, void*);
+    int utimes(in char*, ref const(timeval)[2]);
+}
+else version (Darwin)
 {
     struct timeval
     {
@@ -108,7 +118,7 @@ else version( Darwin )
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, ref const(timeval)[2]);
 }
-else version( FreeBSD )
+else version (FreeBSD)
 {
     struct timeval
     {
@@ -134,7 +144,7 @@ else version( FreeBSD )
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, ref const(timeval)[2]);
 }
-else version(NetBSD)
+else version (NetBSD)
 {
     struct timeval
     {
@@ -150,6 +160,32 @@ else version(NetBSD)
 
     int getitimer(int, itimerval*);
     int gettimeofday(timeval*, void*); // timezone_t* is normally void*
+    int setitimer(int, in itimerval*, itimerval*);
+    int utimes(in char*, ref const(timeval)[2]);
+}
+else version (DragonFlyBSD)
+{
+    struct timeval
+    {
+        time_t      tv_sec;
+        suseconds_t tv_usec;
+    }
+
+    struct itimerval
+    {
+        timeval it_interval;
+        timeval it_value;
+    }
+
+    // non-standard
+    struct timezone_t
+    {
+        int tz_minuteswest;
+        int tz_dsttime;
+    }
+
+    int getitimer(int, itimerval*);
+    int gettimeofday(timeval*, timezone_t*); // timezone_t* is normally void*
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, ref const(timeval)[2]);
 }
@@ -172,7 +208,7 @@ else version (Solaris)
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, ref const(timeval)[2]);
 }
-else version( CRuntime_Bionic )
+else version (CRuntime_Bionic)
 {
     struct timeval
     {
@@ -198,6 +234,29 @@ else version( CRuntime_Bionic )
 
     int getitimer(int, itimerval*);
     int gettimeofday(timeval*, timezone_t*);
+    int setitimer(int, in itimerval*, itimerval*);
+    int utimes(in char*, ref const(timeval)[2]);
+}
+else version (CRuntime_UClibc)
+{
+    struct timeval
+    {
+        time_t      tv_sec;
+        suseconds_t tv_usec;
+    }
+
+    struct itimerval
+    {
+        timeval it_interval;
+        timeval it_value;
+    }
+
+    enum ITIMER_REAL    = 0;
+    enum ITIMER_VIRTUAL = 1;
+    enum ITIMER_PROF    = 2;
+
+    int getitimer(int, itimerval*);
+    int gettimeofday(timeval*, void*);
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, ref const(timeval)[2]);
 }
