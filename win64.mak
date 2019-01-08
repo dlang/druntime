@@ -120,3 +120,4 @@ auto-tester-build:
 
 # Disable unittests for Druntime.
 auto-tester-test:
+	@echo "Druntime unittests disabled"
