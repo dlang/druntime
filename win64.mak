@@ -115,7 +115,8 @@ clean:
 	del $(DRUNTIME) $(OBJS_TO_DELETE) $(GCSTUB)
 	rmdir /S /Q $(DOCDIR) $(IMPDIR)
 
-auto-tester-build: target
+auto-tester-build:
+	$(MAKE) -f win64.mak "DMD=$(DMD)" "VCDIR=$(VCINSTALLDIR)" "SDKDIR=$(WindowsSdkDir)" "CC=$(VCBIN_DIR)\cl" "LD=$(VCBIN_DIR)\link" "AR=$(VCBIN_DIR)\lib" target
 
 # Disable unittests for Druntime.
 auto-tester-test:
