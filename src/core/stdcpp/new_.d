@@ -16,8 +16,10 @@ import core.stdcpp.exception : exception;
 
 @nogc:
 
+
 // TODO: this really should come from __traits(getTargetInfo, "defaultNewAlignment")
 enum size_t __STDCPP_DEFAULT_NEW_ALIGNMENT__ = 16;
+
 
 extern (C++, "std")
 {
@@ -33,6 +35,93 @@ extern (C++, "std")
     @nogc:
         ///
         this() { super("bad allocation", 1); }
+    }
+}
+
+
+// D wrapping API to re-introduce the overloads
+pragma(inline, true)
+{
+    /// D binding for ::operator new
+    void[] cpp_new(size_t count)
+    {
+        return __cpp_new(count)[0 .. count];
+    }
+
+    /// D binding for ::operator new
+    void[] cpp_new(size_t count) nothrow @trusted
+    {
+        void* mem = __cpp_new_nothrow(count);
+        return mem ? mem[0 .. count] : null;
+    }
+
+    /// D binding for ::operator delete
+    void cpp_delete(void* ptr)
+    {
+        __cpp_delete(ptr);
+    }
+
+    /// D binding for ::operator delete
+    void cpp_delete(void* ptr) nothrow
+    {
+        __cpp_delete_nothrow(ptr);
+    }
+
+    /// D binding for ::operator delete
+    void cpp_delete(void[] mem)
+    {
+        static if (__cpp_sized_deallocation)
+            return __cpp_delete_size(mem.ptr, mem.length);
+        else
+            return __cpp_delete(mem.ptr);
+    }
+
+    /// D binding for ::operator delete
+    void cpp_delete(void[] mem) nothrow @trusted
+    {
+        // TODO: should we call the sized delete and catch instead `if (__cpp_sized_deallocation)`?
+        __cpp_delete_nothrow(mem.ptr);
+    }
+
+    static if (__cpp_aligned_new)
+    {
+        /// D binding for ::operator new
+        void[] cpp_new(size_t count, size_t alignment)
+        {
+            return __cpp_new_aligned(count, cast(align_val_t)alignment)[0 .. count];
+        }
+
+        /// D binding for ::operator new
+        void[] cpp_new(size_t count, size_t alignment) nothrow @trusted
+        {
+            void* mem = __cpp_new_aligned_nothrow(count, cast(align_val_t)alignment);
+            return mem ? mem[0 .. count] : null;
+        }
+
+        /// D binding for ::operator delete
+        void cpp_delete(void* ptr, size_t alignment)
+        {
+            __cpp_delete_aligned(ptr, cast(align_val_t)alignment);
+        }
+
+        /// D binding for ::operator delete
+        void cpp_delete(void* ptr, size_t alignment) nothrow
+        {
+            __cpp_delete_align_nothrow(ptr, cast(align_val_t)alignment);
+        }
+
+        /// D binding for ::operator delete
+        void cpp_delete(void[] mem, size_t alignment)
+        {
+            __cpp_delete_size_aligned(mem.ptr, mem.length, cast(align_val_t)alignment);
+        }
+
+        /// D binding for ::operator delete
+        void cpp_delete(void[] mem, size_t alignment) nothrow @trusted
+        {
+            // TODO: should we call the sized delete and catch instead?
+            __cpp_delete_align_nothrow(mem.ptr, cast(align_val_t)alignment);
+        }
     }
 }
 
