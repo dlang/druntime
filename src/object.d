@@ -2815,6 +2815,11 @@ class Throwable : Object
         {
             sink(": "); sink(msg);
         }
+        formatStackTrace(sink);
+    }
+
+    protected final void formatStackTrace(scope void delegate(in char[]) sink) const
+    {
         if (info)
         {
             try
