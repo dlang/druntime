@@ -621,6 +621,8 @@ else version (OpenBSD)
     }
 
     ///
+    alias __sFILE _iobuf;
+    ///
     alias shared(__sFILE) FILE;
 }
 else version (DragonFlyBSD)
@@ -994,7 +996,7 @@ else version (OpenBSD)
         _IONBF = 2,
     }
 
-    private extern shared FILE[] __sF;
+    private extern shared FILE[3] __sF;
 
     ///
     shared stdin  = &__sF[0];
