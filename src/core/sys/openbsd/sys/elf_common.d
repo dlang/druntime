@@ -218,7 +218,7 @@ version (OpenBSD):
     enum DT_PLTRELSZ =     2;           // size of relocation entries in PLT
     enum DT_PLTGOT =       3;           // address PLT/GOT
     enum DT_HASH =         4;           // address of symbol hash table
-    enum DT_STRTAB =       5;           // address of string able
+    enum DT_STRTAB =       5;           // address of string table
     enum DT_SYMTAB =       6;           // address of symbol table
     enum DT_RELA =         7;           // address of relocation table
     enum DT_RELASZ =       8;           // size of relocation table

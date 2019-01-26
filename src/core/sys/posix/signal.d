@@ -2565,6 +2565,9 @@ else version (NetBSD)
 }
 else version (OpenBSD)
 {
+    // Get _MAX_PAGE_SHIFT for the MINSIGSTKSZ and SIGSTKSZ values
+    import core.sys.openbsd.sys.types : _MAX_PAGE_SHIFT;
+
     // No SIGPOLL on *BSD
     enum SIGPROF        = 27;
     enum SIGSYS         = 12;
@@ -2589,8 +2592,17 @@ else version (OpenBSD)
         SS_DISABLE = 0x0004,
     }
 
-    enum MINSIGSTKSZ = 8192;
-    enum SIGSTKSZ    = (MINSIGSTKSZ + 32768);
+    // OpenBSD Src: src/sys/sys/signal.h: 183
+    enum MINSIGSTKSZ = (3U << _MAX_PAGE_SHIFT); // minimum allowable stack
+
+    if (_MAX_PAGE_SHIFT < 14) // Recommended stack size
+    {
+        enum SIGSTKSZ = (MINSIGSTKSZ + (1U << _MAX_PAGE_SHIFT) * 4);
+    }
+    else
+    {
+        enum SIGSTKSZ = (MINSIGSTKSZ + (1U << _MAX_PAGE_SHIFT) * 2);
+    }
 
     //ucontext_t (defined in core.sys.posix.ucontext)
     //mcontext_t (defined in core.sys.posix.ucontext)

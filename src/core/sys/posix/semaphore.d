@@ -98,8 +98,18 @@ else version (NetBSD)
 }
 else version (OpenBSD)
 {
-    struct __sem { }
-    alias sem_t = __sem*;
+    // Located in OpenBSD src: sys/sys/sem.h
+    struct sem
+    {
+        ushort semval;      // semaphore value
+        pid_t sempid;       // pid of last operation
+        ushort semncnt;     // # awaiting semval > cval
+        ushort semzcnt;     // # awaiting semval = 0
+    }
+
+    // Make anothe ralias to keep the struct name consistent here
+    // and with the OpenBSD source code.
+    alias sem sem_t;
 
     enum SEM_FAILED = cast(sem_t*) null;
 }
