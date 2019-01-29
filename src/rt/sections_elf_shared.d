@@ -14,6 +14,7 @@ version (CRuntime_Glibc) enum SharedELF = true;
 else version (CRuntime_Musl) enum SharedELF = true;
 else version (FreeBSD) enum SharedELF = true;
 else version (NetBSD) enum SharedELF = true;
+else version (OpenBSD) enum SharedELF = true;
 else version (DragonFlyBSD) enum SharedELF = true;
 else version (CRuntime_UClibc) enum SharedELF = true;
 else enum SharedELF = false;
@@ -42,6 +43,12 @@ else version (NetBSD)
     import core.sys.netbsd.dlfcn;
     import core.sys.netbsd.sys.elf;
     import core.sys.netbsd.sys.link_elf;
+}
+    else version (OpenBSD)
+{
+    import core.sys.openbsd.dlfcn;
+    import core.sys.openbsd.sys.elf;
+    import core.sys.openbsd.sys.link_elf;
 }
 else version (DragonFlyBSD)
 {
@@ -152,6 +159,7 @@ __gshared bool _isRuntimeInitialized;
 version (FreeBSD) private __gshared void* dummy_ref;
 version (DragonFlyBSD) private __gshared void* dummy_ref;
 version (NetBSD) private __gshared void* dummy_ref;
+version (OpenBSD) private __gshared void* dummy_ref;
 
 /****
  * Gets called on program startup just before GC is initialized.
@@ -163,6 +171,7 @@ void initSections() nothrow @nogc
     version (FreeBSD) dummy_ref = &_d_dso_registry;
     version (DragonFlyBSD) dummy_ref = &_d_dso_registry;
     version (NetBSD) dummy_ref = &_d_dso_registry;
+    version (OpenBSD) dummy_ref = &_d_dso_registry;
 }
 
 
@@ -295,6 +304,7 @@ private:
 version (FreeBSD) deprecated extern (C) __gshared void* _Dmodule_ref;
 version (DragonFlyBSD) deprecated extern (C) __gshared void* _Dmodule_ref;
 version (NetBSD) deprecated extern (C) __gshared void* _Dmodule_ref;
+version (OpenBSD) deprecated extern (C) __gshared void* _Dmodule_ref;
 
 version (Shared)
 {
@@ -712,6 +722,8 @@ version (Shared)
                     strtab = cast(const(char)*)(info.dlpi_addr + dyn.d_un.d_ptr); // relocate
                 else version (NetBSD)
                     strtab = cast(const(char)*)(info.dlpi_addr + dyn.d_un.d_ptr); // relocate
+                else version (OpenBSD)
+                    strtab = cast(const(char)*)(info.dlpi_addr + dyn.d_un.d_ptr); // relocate
                 else version (DragonFlyBSD)
                     strtab = cast(const(char)*)(info.dlpi_addr + dyn.d_un.d_ptr); // relocate
                 else
@@ -799,9 +811,10 @@ void scanSegments(in ref dl_phdr_info info, DSO* pdso) nothrow @nogc
  */
 bool findDSOInfoForAddr(in void* addr, dl_phdr_info* result=null) nothrow @nogc
 {
-    version (linux)       enum IterateManually = true;
-    else version (NetBSD) enum IterateManually = true;
-    else                  enum IterateManually = false;
+    version (linux)        enum IterateManually = true;
+    else version (NetBSD)  enum IterateManually = true;
+    else version (OpenBSD) enum IterateManually = true;
+    else                   enum IterateManually = false;
 
     static if (IterateManually)
     {
@@ -864,6 +877,7 @@ version (linux) import core.sys.linux.errno : program_invocation_name;
 version (FreeBSD) extern(C) const(char)* getprogname() nothrow @nogc;
 version (DragonFlyBSD) extern(C) const(char)* getprogname() nothrow @nogc;
 version (NetBSD) extern(C) const(char)* getprogname() nothrow @nogc;
+version (OpenBSD) extern(C) const(char)* getprogname() nothrow @nogc;
 
 @property const(char)* progname() nothrow @nogc
 {
@@ -871,6 +885,7 @@ version (NetBSD) extern(C) const(char)* getprogname() nothrow @nogc;
     version (FreeBSD) return getprogname();
     version (DragonFlyBSD) return getprogname();
     version (NetBSD) return getprogname();
+    version (OpenBSD) return getprogname();
 }
 
 const(char)[] dsoName(const char* dlpi_name) nothrow @nogc

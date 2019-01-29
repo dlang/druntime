@@ -27,6 +27,8 @@ else version (FreeBSD)
     public import rt.sections_elf_shared;
 else version (NetBSD)
     public import rt.sections_elf_shared;
+else version (OpenBSD)
+    public import rt.sections_elf_shared;
 else version (DragonFlyBSD)
     public import rt.sections_elf_shared;
 else version (Solaris)

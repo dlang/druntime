@@ -111,6 +111,15 @@ else version (NetBSD)
     enum POSIX_MADV_DONTNEED    = 4;
     int posix_madvise(void *addr, size_t len, int advice);
 }
+else version( OpenBSD )
+{
+    enum POSIX_MADV_NORMAL      = 0;    // no further special treatment
+    enum POSIX_MADV_RANDOM      = 1;    // expect random page references
+    enum POSIX_MADV_SEQUENTIAL  = 2;    // expect sequential page reference
+    enum POSIX_MADV_WILLNEED    = 3;    // will need these pages
+    enum POSIX_MADV_DONTNEED    = 4;    // don't need these pages
+    int posix_madvise(void *addr, size_t len, int advice);
+}
 else version (DragonFlyBSD)
 {
     enum POSIX_MADV_NORMAL      = 0;
@@ -184,6 +193,13 @@ else version (NetBSD)
     enum PROT_WRITE     = 0x02;
     enum PROT_EXEC      = 0x04;
 }
+else version(OpenBSD)
+{
+    enum PROT_NONE      = 0x00;     // no permission
+    enum PROT_READ      = 0x01;     // pages can be read
+    enum PROT_WRITE     = 0x02;     // pages can be written
+    enum PROT_EXEC      = 0x04;     // pages can be executed
+}
 else version (DragonFlyBSD)
 {
     enum PROT_NONE      = 0x00;
@@ -252,6 +268,11 @@ else version (FreeBSD)
     int   munmap(void*, size_t);
 }
 else version (NetBSD)
+{
+    void* mmap(void*, size_t, int, int, int, off_t);
+    int   munmap(void*, size_t);
+}
+else version(OpenBSD)
 {
     void* mmap(void*, size_t, int, int, int, off_t);
     int   munmap(void*, size_t);
@@ -423,6 +444,22 @@ else version (NetBSD)
     int __msync13(void*, size_t, int);
     alias msync = __msync13;
 }
+else version(OpenBSD)
+{
+    enum MAP_SHARED     = 0x0001;           // share changes
+    enum MAP_PRIVATE    = 0x0002;           // changes are private
+    enum MAP_FIXED      = 0x0010;           // map addr must be exactly as requested
+    enum MAP_ANON       = 0x1000;           // allocated from memory, swap space
+    enum MAP_ANONYMOUS  = MAP_ANON          // alternate POSIX spelling
+
+    enum MAP_FAILED     = cast(void*)-1;    // Error return from mmap
+
+    enum MS_ASYNC       = 0x01;             // perform asynchronous writes
+    enum MS_SYNC        = 0x02;             // perform synchronous writes
+    enum MS_INVALIDATE  = 0x04;             // invalidate cached data
+
+    int msync(void*, size_t, int);
+}
 else version (DragonFlyBSD)
 {
     enum MAP_SHARED     = 0x0001;
@@ -585,6 +622,14 @@ else version (NetBSD)
     int mlockall(int);
     int munlockall();
 }
+else version(OpenBSD)
+{
+    enum MCL_CURRENT    = 0x01;     // lock all pages currently mapped
+    enum MCL_FUTURE     = 0x02;     // lock all pages mapped in the future
+
+    int mlockall(int);
+    int munlockall();
+}
 else version (DragonFlyBSD)
 {
     enum MCL_CURRENT    = 0x0001;
@@ -657,6 +702,11 @@ else version (NetBSD)
     int mlock(in void*, size_t);
     int munlock(in void*, size_t);
 }
+else version (OpenBSD)
+{
+    int mlock(in void*, size_t);
+    int munlock(in void*, size_t);
+}
 else version (DragonFlyBSD)
 {
     int mlock(in void*, size_t);
@@ -705,6 +755,10 @@ else version (FreeBSD)
     int mprotect(void*, size_t, int);
 }
 else version (NetBSD)
+{
+    int mprotect(void*, size_t, int);
+}
+else version(OpenBSD)
 {
     int mprotect(void*, size_t, int);
 }
@@ -757,6 +811,11 @@ else version (FreeBSD)
     int shm_unlink(in char*);
 }
 else version (NetBSD)
+{
+    int shm_open(in char*, int, mode_t);
+    int shm_unlink(in char*);
+}
+else version(OpenBSD)
 {
     int shm_open(in char*, int, mode_t);
     int shm_unlink(in char*);
