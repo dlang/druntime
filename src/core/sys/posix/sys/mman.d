@@ -450,7 +450,7 @@ else version(OpenBSD)
     enum MAP_PRIVATE    = 0x0002;           // changes are private
     enum MAP_FIXED      = 0x0010;           // map addr must be exactly as requested
     enum MAP_ANON       = 0x1000;           // allocated from memory, swap space
-    enum MAP_ANONYMOUS  = MAP_ANON          // alternate POSIX spelling
+    enum MAP_ANONYMOUS  = MAP_ANON;         // alternate POSIX spelling
 
     enum MAP_FAILED     = cast(void*)-1;    // Error return from mmap
 

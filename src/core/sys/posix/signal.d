@@ -2595,7 +2595,7 @@ else version (OpenBSD)
     // OpenBSD Src: src/sys/sys/signal.h: 183
     enum MINSIGSTKSZ = (3U << _MAX_PAGE_SHIFT); // minimum allowable stack
 
-    if (_MAX_PAGE_SHIFT < 14) // Recommended stack size
+    static if (_MAX_PAGE_SHIFT < 14) // Recommended stack size
     {
         enum SIGSTKSZ = (MINSIGSTKSZ + (1U << _MAX_PAGE_SHIFT) * 4);
     }

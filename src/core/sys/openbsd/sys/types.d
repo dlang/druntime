@@ -1,7 +1,5 @@
 /**
   * D header file for OpenBSD
-  *
-  * Authors: Ryan Boggs
   */
 module core.sys.openbsd.sys.types;
 

@@ -2,10 +2,6 @@
 
 /++
     D header file for OpenBSD's extensions to POSIX's time.h.
-
-    Copyright: Copyright 2018
-    License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
-    Authors:   Ryan Boggs, boggsrm  at  gmail  dot  com
 +/
 module core.sys.openbsd.time;
 
