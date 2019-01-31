@@ -1878,9 +1878,9 @@ else version (NetBSD)
 }
 else version(OpenBSD)
 {
-    int   fstat(int, stat*);
-    int   lstat(in char*, stat*);
-    int   stat(in char*, stat*);
+    int   fstat(int, stat_t*);
+    int   lstat(in char*, stat_t*);
+    int   stat(in char*, stat_t*);
 }
 else version (DragonFlyBSD)
 {
