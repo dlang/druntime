@@ -1119,6 +1119,222 @@ else version (NetBSD)
     int     sockatmark(int) @safe;
     int     socketpair(int, int, int, ref int[2]) @safe;
 }
+else version (OpenBSD)
+{
+    alias uint   socklen_t;
+    alias ubyte  sa_family_t;
+
+    struct sockaddr
+    {
+        ubyte       sa_len;
+        sa_family_t sa_family;
+        byte[14]    sa_data;
+    }
+
+    struct sockaddr_storage
+    {
+         ubyte              ss_len;
+         sa_family_t        ss_family;
+         byte[6]            __ss_pad1;
+         ulong              __ss_pad2;
+         byte[240] __ss_pad3;
+    }
+
+    struct msghdr
+    {
+        void*     msg_name;
+        socklen_t msg_namelen;
+        iovec*    msg_iov;
+        uint      msg_iovlen;
+        void*     msg_control;
+        socklen_t msg_controllen;
+        int       msg_flags;
+    }
+
+    struct cmsghdr
+    {
+         socklen_t cmsg_len;
+         int       cmsg_level;
+         int       cmsg_type;
+    }
+
+    enum : uint
+    {
+        SCM_RIGHTS      = 0x01,     // access rights
+        SCM_TIMESTAMP   = 0x04,     // timestamp
+    }
+
+    import core.sys.openbsd.sys.types : _ALIGNBYTES;
+    private // <machine/_types.h>
+    {
+        extern (D) size_t _ALIGN( size_t p ) { return (p + _ALIGNBYTES) & ~_ALIGNBYTES; }
+    }
+
+    extern (D) ubyte* CMSG_DATA( cmsghdr* cmsg )
+    {
+        return cast(ubyte*) cmsg + _ALIGN( cmsghdr.sizeof );
+    }
+
+    extern (D) cmsghdr* CMSG_NXTHDR( msghdr* mhdr, cmsghdr* cmsg )
+    {
+        if( cmsg == null )
+        {
+           return CMSG_FIRSTHDR( mhdr );
+        }
+        else
+        {
+            if( cast(ubyte*) cmsg + _ALIGN( cmsg.cmsg_len ) + _ALIGN( cmsghdr.sizeof ) >
+                    cast(ubyte*) mhdr.msg_control + mhdr.msg_controllen )
+                return null;
+            else
+                return cast(cmsghdr*) (cast(ubyte*) cmsg + _ALIGN( cmsg.cmsg_len ));
+        }
+    }
+
+    extern (D) cmsghdr* CMSG_FIRSTHDR( msghdr* mhdr )
+    {
+        return mhdr.msg_controllen >= cmsghdr.sizeof ? cast(cmsghdr*) mhdr.msg_control : null;
+    }
+
+    struct linger
+    {
+        int l_onoff;    // option on/off
+        int l_linger;   // linger time
+    }
+
+    enum
+    {
+        SOCK_STREAM     = 1,    // stream socket
+        SOCK_DGRAM      = 2,    // datagram socket
+        SOCK_RDM        = 4,    // reliably-delivered message
+        SOCK_SEQPACKET  = 5,    // sequenced packet stream
+    }
+
+    enum : uint
+    {
+        SOL_SOCKET      = 0xffff
+    }
+
+    enum : uint
+    {
+        SO_DEBUG        = 0x0001,   // turn on debugging info recording
+        SO_ACCEPTCONN   = 0x0002,   // socket has had listen()
+        SO_REUSEADDR    = 0x0004,   // allow local address reuse
+        SO_KEEPALIVE    = 0x0008,   // keep connections alive
+        SO_DONTROUTE    = 0x0010,   // just use interface addresses
+        SO_BROADCAST    = 0x0020,   // permit sending of broadcast msgs
+        SO_USELOOKBACK  = 0x0040,   // bypass hardware when possible
+        SO_LINGER       = 0x0080,   // linger on close if data preset
+        SO_OOBINLINE    = 0x0100,   // leave received OOB data in line
+        SO_REUSEPORT    = 0x0200,   // allow local address & port reuse
+        SO_TIMESTAMP    = 0x0800,   // timestamp received dgram traffic
+        SO_BINDANY      = 0x1000,   // allow bind to any address
+        SO_ZEROIZE      = 0x2000,   // zero out all mbufs sent over socket
+        
+        SO_SNDBUF       = 0x1001,   // send buffer size
+        SO_RCVBUF       = 0x1002,   // receive buffer size
+        SO_SNDLOWAT     = 0x1003,   // send low-water mark
+        SO_RCVLOWAT     = 0x1004,   // receive low-water mark
+        SO_SNDTIMEO     = 0x1005,   // send timeout
+        SO_RCVTIMEO     = 0x1006,   // receive timeout
+        SO_ERROR        = 0x1007,   // get error status and clear
+        SO_TYPE         = 0x1008,   // get socket type
+        SO_NETPROC      = 0x1020,   // multiplex; network processing
+        SO_RTABLE       = 0x1021,   // routing table to be used
+        SO_PEERCRED     = 0x1022,   // get connect-time credentials
+        SO_SPLICE       = 0x1023,   // splice data to other socket
+    }
+
+    enum
+    {
+        SOMAXCONN       = 128
+    }
+
+    enum : uint
+    {
+        MSG_OOB             = 0x1,      // process out-of-band data
+        MSG_PEEK            = 0x2,      // peet at incoming message
+        MSG_DONTROUTE       = 0x4,      // send without using routing tables
+        MSG_EOR             = 0x8,      // data completes record
+        MSG_TRUNC           = 0x10,     // data discarded before delivery
+        MSG_CTRUNC          = 0x20,     // control data lost before deliver
+        MSG_WAITALL         = 0x40,     // wait for full request or error
+        MSG_DONTWAIT        = 0x80,     // this message should be nonblocking
+        MSG_BCAST           = 0x100,    // this message rec'd as broadcast
+        MSG_MCAST           = 0x200,    // this message rec'd as multicast
+        MSG_NOSIGNAL        = 0x400,    // do not send SIGPIPE
+        MSG_CMSG_CLOEXEC    = 0x800,    // set FD_CLOEXEC on received fds
+    }
+
+    enum
+    {
+		AF_UNSPEC	        = 0,    	/* unspecified */
+		AF_UNIX		        = 1,   		/* local to host */
+		AF_LOCAL	        = AF_UNIX,	/* draft POSIX compatibility */
+		AF_INET		        = 2, 		/* internetwork: UDP, TCP, etc. */
+		AF_IMPLINK	        = 3,		/* arpanet imp addresses */
+		AF_PUP		        = 4,		/* pup protocols: e.g. BSP */
+		AF_CHAOS	        = 5,		/* mit CHAOS protocols */
+		AF_NS		        = 6,		/* XEROX NS protocols */
+		AF_ISO		        = 7,		/* ISO protocols */
+		AF_OSI		        = AF_ISO,
+		AF_ECMA		        = 8,		/* european computer manufacturers */
+		AF_DATAKIT	        = 9,		/* datakit protocols */
+		AF_CCITT	        = 10,		/* CCITT protocols, X.25 etc */
+		AF_SNA		        = 11,		/* IBM SNA */
+		AF_DECnet	        = 12,		/* DECnet */
+		AF_DLI		        = 13,		/* DEC Direct data link interface */
+		AF_LAT		        = 14,		/* LAT */
+		AF_HYLINK	        = 15,		/* NSC Hyperchannel */
+		AF_APPLETALK	    = 16,		/* Apple Talk */
+		AF_ROUTE	        = 17,		/* Internal Routing Protocol */
+		AF_LINK		        = 18,		/* Link layer interface */
+		pseudo_AF_XTP	    = 19,		/* eXpress Transfer Protocol (no AF) */
+		AF_COIP		        = 20,		/* connection-oriented IP, aka ST II */
+		AF_CNT		        = 21,		/* Computer Network Technology */
+		pseudo_AF_RTIP	    = 22,		/* Help Identify RTIP packets */
+		AF_IPX		        = 23,		/* Novell Internet Protocol */
+		pseudo_AF_PIP	    = 25,		/* Help Identify PIP packets */
+		AF_ISDN		        = 26,		/* Integrated Services Digital Network*/
+		AF_E164		        = AF_ISDN,	/* CCITT E.164 recommendation */
+		AF_NATM		        = 27,		/* native ATM access */
+		AF_ENCAP	        = 28,
+		AF_SIP		        = 29,		/* Simple Internet Protocol */
+		AF_KEY		        = 30,
+		pseudo_AF_HDRCMPLT  = 31,		/* Used by BPF to not rewrite headers in interface output routine */
+		AF_BLUETOOTH	    = 32,		/* Bluetooth */
+		AF_MPLS             = 33,       /* MPLS */
+		pseudo_AF_PFLOW     = 34,		/* pflow */
+		pseudo_AF_PIPEX     = 35,		/* PIPEX */
+		AF_MAX              = 36,
+    }
+
+    enum
+    {
+        SHUT_RD = 0,
+        SHUT_WR = 1,
+        SHUT_RDWR = 2
+    }
+
+    int     accept(int, sockaddr*, socklen_t*);
+    int     bind(int, in sockaddr*, socklen_t);
+    int     connect(int, in sockaddr*, socklen_t);
+    int     getpeername(int, sockaddr*, socklen_t*);
+    int     getsockname(int, sockaddr*, socklen_t*);
+    int     getsockopt(int, int, int, void*, socklen_t*);
+    int     listen(int, int);
+    ssize_t recv(int, void*, size_t, int);
+    ssize_t recvfrom(int, void*, size_t, int, sockaddr*, socklen_t*);
+    ssize_t recvmsg(int, msghdr*, int);
+    ssize_t send(int, in void*, size_t, int);
+    ssize_t sendmsg(int, in msghdr*, int);
+    ssize_t sendto(int, in void*, size_t, int, in sockaddr*, socklen_t);
+    int     setsockopt(int, int, int, in void*, socklen_t);
+    int     shutdown(int, int);
+    int     socket(int, int, int);
+    int     sockatmark(int);
+    int     socketpair(int, int, int, ref int[2]); // ref int[2] needs verification
+}
 else version (DragonFlyBSD)
 {
     alias uint   socklen_t;
@@ -2085,6 +2301,10 @@ else version (NetBSD)
         AF_INET6    = 24
     }
 }
+else version (OpenBSD)
+{
+    enum AF_INET6	= 24;		/* IPv6 */
+}
 else version (DragonFlyBSD)
 {
     enum
@@ -2156,6 +2376,10 @@ else version (NetBSD)
     {
         SOCK_RAW    = 3
     }
+}
+else version (OpenBSD)
+{
+    enum SOCK_RAW   = 3;    // raw-protocol interface
 }
 else version (DragonFlyBSD)
 {
