@@ -144,6 +144,28 @@ else version (NetBSD)
     extern (D) int  WSTOPSIG( int status )     { return status >> 8;                     }
     extern (D) int  WTERMSIG( int status )     { return _WSTATUS( status );              }
 }
+else version (OpenBSD)
+{
+    enum WNOHANG        = 1;
+    enum WUNTRACED      = 2;
+
+    private
+    {
+        enum _WSTOPPED = 0x7F; // octal 0177
+    }
+
+    extern (D) int _WSTATUS(int status)         { return (status & 0x7F);           }
+    extern (D) int  WEXITSTATUS( int status )   { return (status >> 8) & 0xff;      }
+    extern (D) int  WIFCONTINUED( int status )  { return (status & 0xffff) == 0xFFFF;          } // 0177777
+    extern (D) bool WIFEXITED( int status )     { return _WSTATUS(status) == 0;     }
+    extern (D) bool WIFSIGNALED( int status )
+    {
+        return _WSTATUS( status ) != _WSTOPPED && _WSTATUS( status ) != 0;
+    }
+    extern (D) bool WIFSTOPPED( int status )   { return (status & 0xff) == _WSTOPPED;    }
+    extern (D) int  WSTOPSIG( int status )     { return (status >> 8) & 0xff;            }
+    extern (D) int  WTERMSIG( int status )     { return _WSTATUS( status );              }
+}
 else version (DragonFlyBSD)
 {
     enum WNOHANG        = 1;
@@ -311,6 +333,10 @@ else version (NetBSD)
     enum WSTOPPED       = WUNTRACED;
     //enum WCONTINUED     = 4;
     enum WNOWAIT        = 0x00010000;
+}
+else version (OpenBSD)
+{
+    enum WCONTINUED     = 8;
 }
 else version (DragonFlyBSD)
 {
