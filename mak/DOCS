@@ -15,6 +15,7 @@ DOCS=\
 	$(DOCDIR)\core_thread.html \
 	$(DOCDIR)\core_time.html \
 	$(DOCDIR)\core_vararg.html \
+	$(DOCDIR)\core_assoc_array.html \
 	\
 	$(DOCDIR)\core_stdc_assert_.html \
 	$(DOCDIR)\core_stdc_config.html \

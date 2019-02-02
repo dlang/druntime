@@ -16,6 +16,7 @@ SRCS=\
 	src\core\thread.d \
 	src\core\time.d \
 	src\core\vararg.d \
+	src\core\assoc_array.d \
 	\
 	src\core\internal\abort.d \
 	src\core\internal\arrayop.d \
@@ -399,7 +400,6 @@ SRCS=\
 	\
 	src\rt\aApply.d \
 	src\rt\aApplyR.d \
-	src\rt\aaA.d \
 	src\rt\adi.d \
 	src\rt\alloca.d \
 	src\rt\arrayassign.d \

@@ -3014,9 +3014,9 @@ class __cpp_type_info_ptr
 
 extern (C)
 {
-    // from druntime/src/rt/aaA.d
+    // from druntime/src/core/assoc_array.d
 
-    // size_t _aaLen(in void* p) pure nothrow @nogc;
+     size_t _aaLen(in void* aa) pure nothrow @nogc;
     private void* _aaGetY(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey) pure nothrow;
     private void* _aaGetX(void** paa, const TypeInfo_AssociativeArray ti, in size_t valuesize, in void* pkey, out bool found) pure nothrow;
     // inout(void)* _aaGetRvalueX(inout void* p, in TypeInfo keyti, in size_t valuesize, in void* pkey);
@@ -3056,6 +3056,26 @@ void* aaLiteral(Key, Value)(Key[] keys, Value[] values) @trusted pure
 }
 
 alias AssociativeArray(Key, Value) = Value[Key];
+
+//public template AssocArray(K, V)
+//{
+    //import core.assoc_array;
+    //alias AssocArray = core.assoc_array.AssocArray!(K, V);
+//}
+
+//size_t __aaLength(T, K)(const T[K] aa)
+//{
+    //return (cast(AssocArray!(void, void)*) aa).length;
+//}
+
+/*
+ * Calls to aa.lenth will be lowered to this function
+ */
+size_t __aaLength(K, V)(const K[V] aa)
+{
+    import core.assoc_array;
+    return (() @trusted => (_aaLen(cast(AssocArray!(void, void)*) aa)))();
+}
 
 /***********************************
  * Removes all remaining keys and values from an associative array.
