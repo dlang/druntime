@@ -108,3 +108,113 @@ version (OSX)
     enum uint SLIPDISC = 4;       // serial IP discipline
     enum uint PPPDISC  = 5;       // PPP discipline
 }
+else version (OpenBSD)
+{
+    struct winsize {
+        ushort  ws_row;     // rows, in characters
+        ushort  ws_col;     // columns, in characters
+        ushort  ws_xpixel;  // horizontal size, pixels
+        ushort  ws_ypixel;  // vertical size, pixels
+    }
+    
+    struct tstamps {
+        int     ts_set;     // TIOCM_CAR and/or TIOCM_CTS
+        int     ts_clr;
+    }
+
+    // Serial/TTY ioctl's
+    enum uint       TIOCM_LE  = 0x001;          // line enable
+    enum uint       TIOCM_DTR = 0x002;          // data terminal ready
+    enum uint       TIOCM_RTS = 0x004;          // request to send
+    enum uint       TIOCM_ST  = 0x008;          // secondary transmit
+    enum uint       TIOCM_SR  = 0x010;          // secondary receive
+    enum uint       TIOCM_CTS = 0x020;          // clear to send
+    enum uint       TIOCM_CAR = 0x040;          // carrier detect
+    enum uint       TIOCM_CD  = TIOCM_CAR;
+    enum uint       TIOCM_RNG = 0x080;          // ring
+    enum uint       TIOCM_RI  = TIOCM_RNG;
+    enum uint       TIOCM_DSR = 0x100;          // data set ready
+                            // 8-10 compat
+    enum uint TIOCEXCL  = _IO('t', 13);        // set exclusive use of tty
+    enum uint TIOCNXCL  = _IO('t', 14);        // reset exclusive use of tty
+                            // 15 unused
+    enum uint TIOCFLUSH = _IOW!(int)('t', 16); // flush buffers
+                            // 17-18 compat
+    enum uint TIOCGETA  = _IOR!(termios)('t', 19); // get termios struct
+    enum uint TIOCSETA  = _IOW!(termios)('t', 20); // set termios struct
+    enum uint TIOCSETAW = _IOW!(termios)('t', 21); // drain output, set
+    enum uint TIOCSETAF = _IOW!(termios)('t', 22); // drn out, fls in, set
+    enum uint TIOCGETD  = _IOR!(int)('t', 26); // get line discipline
+    enum uint TIOCSETD  = _IOW!(int)('t', 27); // set line discipline
+
+    enum uint TIOCSETVERAUTH = _IOW!(int)('t', 28); // set verified auth
+    enum uint TIOCCLRVERAUTH = _IO('t', 29);        // clear verified auth
+    enum uint TIOCCHKVERAUTH = _IO('t', 30);        // check verified auth
+
+                            // 127-124 compat
+    enum uint TIOCSBRK  = _IO('t', 123);       // set break bit
+    enum uint TIOCCBRK  = _IO('t', 122);       // clear break bit
+    enum uint TIOCSDTR  = _IO('t', 121);       // set data terminal ready
+    enum uint TIOCCDTR  = _IO('t', 120);       // clear data terminal ready
+    enum uint TIOCGPGRP = _IOR!(int)('t', 119); // get pgrp of tty
+    enum uint TIOCSPGRP = _IOW!(int)('t', 118); // set pgrp of tty
+                            // 117-116 compat
+    enum uint TIOCOUTQ  = _IOR!(int)('t', 115); // output queue size
+    enum uint TIOCNOTTY = _IO('t', 113);        // void tty association
+    enum uint TIOCPKT   = _IOW!(int)('t', 112); // pty: set/clear packet mode
+    enum uint   TIOCPKT_DATA       = 0x00;     // data packet
+    enum uint   TIOCPKT_FLUSHREAD  = 0x01;     // flush packet
+    enum uint   TIOCPKT_FLUSHWRITE = 0x02;     // flush packet
+    enum uint   TIOCPKT_STOP       = 0x04;     // stop output
+    enum uint   TIOCPKT_START      = 0x08;     // start output
+    enum uint   TIOCPKT_NOSTOP     = 0x10;     // no more ^S, ^Q
+    enum uint   TIOCPKT_DOSTOP     = 0x20;     // now do ^S ^Q
+    enum uint   TIOCPKT_IOCTL      = 0x40;     // state change of pty driver
+    enum uint TIOCSTOP   = _IO('t', 111);      // stop output, like ^S
+    enum uint TIOCSTART  = _IO('t', 110);      // start output, like ^Q
+    enum uint TIOCMSET   = _IOW!(int)('t', 109); // set all modem bits
+    enum uint TIOCMBIS   = _IOW!(int)('t', 108); // bis modem bits
+    enum uint TIOCMBIC   = _IOW!(int)('t', 107); // bic modem bits
+    enum uint TIOCMGET   = _IOR!(int)('t', 106); // get all modem bits
+    enum uint TIOCREMOTE = _IOW!(int)('t', 105); // remote input editing
+    enum uint TIOCGWINSZ = _IOR!(winsize)('t', 104);  // get window size
+    enum uint TIOCSWINSZ = _IOW!(winsize)('t', 103);  // set window size
+    enum uint TIOCUCNTL  = _IOW!(int)('t', 102); // pty: set/clr usr cntl mode
+    enum uint TIOCSTAT   = _IO('t', 101);      // simulate ^T status message
+    enum uint   UIOCCMD(n) = _IO('u', n);      // usr cntl op "n"
+    
+    enum uint   TIOCUCNTL_SBRK = (TIOCSBRK & 0xff); // set break bit, usr ctnl
+    enum uint   TIOCUCNTL_CBRK = (TIOCCBRK & 0xff); // clear break bit, usr ctnl
+   
+    enum uint TIOCSTAT  = _IOR!(int)('t', 99); // get sid of tty
+    enum uint TIOCCONS  = _IOW!(int)('t', 98); // become virtual console
+    enum uint TIOCSCTTY = _IO('t', 97);        // become controlling tty
+    enum uint TIOCEXT   = _IOW!(int)('t', 96); // pty: external processing
+    enum uint TIOCSIG   =   _IO('t', 95);      // pty: generate signal
+    enum uint TIOCDRAIN =   _IO('t', 94);      // wait till output drained
+
+    enum uint TIOCGFLAGS = _IOR!(int)('t', 93); // get device flags
+    enum uint TIOCSFLAGS = _IOW!(int)('t', 92); // set device flags
+
+    enum uint TIOCFLAG_SOFTCAR  = 0x01; // ignore hardware carrier
+    enum uint TIOCFLAG_CLOCAL   = 0x02; // set clocal on open
+    enum uint TIOCFLAG_CRTSCTS  = 0x04; // set crtscts on open
+    enum uint TIOCFLAG_MDMBUF   = 0x08; // set mdmbuf on open
+    enum uint TIOCFLAG_PPS      = 0x10; // call hardpps on carrier up
+
+    enum uint TIOCGTSTAMP       = _IOR!(timeval)('t', 91);  // get timestamp
+    enum uint TIOCSTSTAMP       = _IOW!(tstamps)('t', 90);  // timestamp reasons
+
+    // Backwards compatibility
+    enum uint TIOCMODG = TIOCMGET;
+    enum uint TIOCMODS = TIOCMSET;
+
+    enum uint TTYDISC       = 0;    // termios tty line discipline
+    enum uint TABLDISC      = 3;    // tablet discipline
+    enum uint SLIPDISC      = 4;    // serial IP discipline
+    enum uint PPPDISC       = 5;    // PPP discipline
+    enum uint STRIPDISC     = 6;    // metricom wireless IP discipline
+    enum uint NMEADISC      = 7;    // NMEA0183 discipline
+    enum uint MSTSDISC      = 8;    // Meinberg time string discipline
+    enum uint ENDRUNDISC    = 9;    // EndRun time format discipline
+}

@@ -66,3 +66,61 @@ version (OSX)
         return _IOC!(T)(IOC_INOUT, cast(uint)g, cast(uint)n, T.sizeof);
     }
 }
+else version (OpenBSD)
+{
+    /* OpenBSD's Ioctl has the command encoded in the lower word,
+     * and the size of any in or out parameters in the upper word.
+     * The high 3 bits of the upper word are used to encode the 
+     * in/out status of the parameter.
+     */
+    import core.sys.openbsd.sys.types : PAGE_SIZE;
+
+    enum uint IOCPARM_MASK = 0x1fff; // parameter length, at most 13 bits
+    uint IOCPARM_LEN(uint x) // to extract the encoded parameter length
+    {
+        return ((x >> 16) & IOCPARM_MASK);
+    }
+    uint IOCBASECMD(uint x) // to extract the encoded command
+    {
+        return (x & ~(IOCPARM_MASK << 16));
+    }
+    uint IOCGROUP(uint x) // to extract the encoded group
+    {
+        return ((x >> 8) & 0xff);
+    }
+
+    enum uint IOCPARM_MAX = PAGE_SIZE; // max size of ioctl args
+
+    enum uint IOC_VOID = 0x20000000; // no parameters
+    enum uint IOC_OUT = 0x40000000; // copy parameters back
+    enum uint IOC_IN = 0x80000000; // copy parameters into
+    enum uint IOC_INOUT = (IOC_IN | IOC_OUT); // copy parameter into and get back
+    enum uint IOC_DIRMASK = 0xe0000000; // mask to extract above direction parameters
+
+    // encode the ioctl info into 32 bits
+    uint _IOC(T=typeof(null))(uint inorout, uint group, uint num, size_t len)
+    {
+        return (inorout | ((len & IOCPARM_MASK) << 16) | (group << 8) | num);
+    }
+
+    // encode a command with no parameters
+    uint _IO(char g, int n)
+    {
+        return _IOC(IOC_VOID, cast(uint)g, cast(uint)n, cast(size_t)0);
+    }
+    // encode a command that returns info
+    uint _IOR(T)(char g, int n)
+    {
+        return _IOC!(T)(IOC_OUT, cast(uint)g, cast(uint)n, T.sizeof);
+    }
+    // encode a command that takes info
+    uint _IOW(T)(char g, int n)
+    {
+        return _IOC!(T)(IOC_IN, cast(uint)g, cast(uint)n, T.sizeof);
+    }
+    // encode a command that takes info and returns info
+    uint _IOWR(T)(char g, int n)
+    {
+        return _IOC!(T)(IOC_INOUT, cast(uint)g, cast(uint)n, T.sizeof);
+    }
+}

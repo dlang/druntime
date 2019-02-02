@@ -163,6 +163,38 @@ else version (NetBSD)
     int setitimer(int, in itimerval*, itimerval*);
     int utimes(in char*, ref const(timeval)[2]);
 }
+else version (OpenBSD)
+{
+    struct timeval
+    {
+        time_t      tv_sec;
+        suseconds_t tv_usec;
+    }
+
+    struct itimerval
+    {
+        timeval it_interval;
+        timeval it_value;
+    }
+
+    // non-standard
+    struct timezone
+    {
+        int tz_minuteswest;
+        int tz_dsttime;
+    }
+
+    // This probably isn't necessary but since FreeBSD and DragonFlyBSD
+    // use timezone_t instead of just timezone like OpenBSD, I thought
+    // it would be safer to alias, just in case...
+    // If unnecessary, feel free to remove...
+    alias timezone timezone_t;
+
+    int getitimer(int, itimerval*);
+    int gettimeofday(timeval*, timezone*); // timezone_t* is normally void*
+    int setitimer(int, in itimerval*, itimerval*);
+    int utimes(in char*, ref const(timeval)[2]);
+}
 else version (DragonFlyBSD)
 {
     struct timeval

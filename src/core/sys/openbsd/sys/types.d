@@ -20,20 +20,23 @@ version (OpenBSD):
     // https://github.com/openbsd/src/search?q=_MAX_PAGE_SHIFT&unscoped_q=_MAX_PAGE_SHIFT 
     version (SPARC64)
     {
-        enum _MAX_PAGE_SHIFT = 13;
+        enum PAGE_SHIFT = 13;
     }
     else version (Alpha)
     {
-        enum _MAX_PAGE_SHIFT = 13;
+        enum PAGE_SHIFT = 13;
     }
     else version (MIPS64)
     {
-        enum _MAX_PAGE_SHIFT = 14;
+        enum PAGE_SHIFT = 14;
     }
     else
     {
-        enum _MAX_PAGE_SHIFT = 12;
+        enum PAGE_SHIFT = 12;
     }
+    
+    enum _MAX_PAGE_SHIFT = PAGE_SHIFT;
+    enum PAGE_SIZE       = (1 << PAGE_SHIFT);
 
     // ALIGNBYTES & STACKALIGNBYTES definitions by platform
     // located in <machine/_types.h> OpenBSD src.
