@@ -51,6 +51,14 @@ else version (NetBSD)
 {
     enum TCP_NODELAY = 1;
 }
+else version (OpenBSD)
+{
+    enum TCP_NODELAY      = 0x01;  /* don't delay send to coalesce pkts */
+    enum TCP_MAXSEG       = 0x02;  /* set maximum segment size */
+    enum TCP_MD5SIG       = 0x04;  /* enable TCP MD5 signature option */
+    enum TCP_SACK_ENABLE  = 0x08;  /* enable SACKs (if disabled by def.) */
+    enum TCP_NOPUSH       = 0x10;  /* don't push last block of write */
+}
 else version (DragonFlyBSD)
 {
     enum TCP_NODELAY = 1;
