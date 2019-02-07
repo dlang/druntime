@@ -219,7 +219,7 @@ private void* allocEntry(in AssocArray!(void, void)* aa, in void* pkey)
     return res;
 }
 
-package void entryDtor(void* p, const TypeInfo_Struct sti)
+void entryDtor(void* p, const TypeInfo_Struct sti)
 {
     // key and value type info stored after the TypeInfo_Struct by tiEntry()
     auto sizeti = __traits(classInstanceSize, TypeInfo_Struct);
@@ -642,8 +642,7 @@ extern (C) void* _aaRehash(AssocArray!(void, void)** paa, in TypeInfo keyti) pur
 {
     if (!(*paa).empty)
         (*paa).resize(nextpow2(INIT_DEN * (*paa).length / INIT_NUM));
-    auto aa = *paa;
-    return *cast(void**)(aa);
+    return *(cast(void**) paa);
 }
 
 /// Return a GC allocated array of all values
