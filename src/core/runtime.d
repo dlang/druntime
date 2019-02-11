@@ -584,6 +584,8 @@ extern (C) UnitTestResult runModuleUnitTests()
         import core.sys.freebsd.execinfo;
     else version (NetBSD)
         import core.sys.netbsd.execinfo;
+    else version (OpenBSD)
+        import core.sys.openbsd.execinfo;
     else version (DragonFlyBSD)
         import core.sys.dragonflybsd.execinfo;
     else version (Windows)
@@ -702,6 +704,8 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         import core.sys.freebsd.execinfo;
     else version (NetBSD)
         import core.sys.netbsd.execinfo;
+    else version (OpenBSD)
+        import core.sys.openbsd.execinfo;
     else version (DragonFlyBSD)
         import core.sys.dragonflybsd.execinfo;
     else version (Windows)
@@ -906,6 +910,18 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
                     }
                 }
                 else version (NetBSD)
+                {
+                    // format is: 0x00000000 <_D6module4funcAFZv+0x78> at module
+                    auto bptr = cast(char*) memchr( buf.ptr, '<', buf.length );
+                    auto eptr = cast(char*) memchr( buf.ptr, '+', buf.length );
+
+                    if ( bptr++ && eptr )
+                    {
+                        symBeg = bptr - buf.ptr;
+                        symEnd = eptr - buf.ptr;
+                    }
+                }
+                else version (OpenBSD)
                 {
                     // format is: 0x00000000 <_D6module4funcAFZv+0x78> at module
                     auto bptr = cast(char*) memchr( buf.ptr, '<', buf.length );

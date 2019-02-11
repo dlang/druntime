@@ -46,6 +46,10 @@ version (NetBSD)
 {
     import core.stdc.fenv;
 }
+version (OpenBSD)
+{
+    import core.stdc.fenv;
+}
 version (DragonFlyBSD)
 {
     import core.stdc.fenv;

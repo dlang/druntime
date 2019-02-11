@@ -320,6 +320,17 @@ else version (NetBSD) enum ClockType
     precise = 3,
     second = 6,
 }
+else version(OpenBSD) enum ClockType
+{
+    normal = 0,
+    bootTime = 1,
+    coarse = 2,
+    precise = 3,
+    processCPUTime = 4,
+    second = 6,
+    threadCPUTime = 7,
+    uptime = 8,
+}
 else version (DragonFlyBSD) enum ClockType
 {
     normal = 0,
@@ -393,6 +404,21 @@ version (Posix)
             case coarse: return CLOCK_MONOTONIC;
             case normal: return CLOCK_MONOTONIC;
             case precise: return CLOCK_MONOTONIC;
+            case second: assert(0);
+            }
+        }
+        else version(OpenBSD)
+        {
+            import core.sys.openbsd.time;
+            with(ClockType) final switch(clockType)
+            {
+            case coarse: return CLOCK_MONOTONIC;
+            case normal: return CLOCK_MONOTONIC;
+            case precise: return CLOCK_MONOTONIC;
+            case uptime: return CLOCK_UPTIME;
+            case bootTime: return CLOCK_BOOTTIME;
+            case processCPUTime: return CLOCK_PROCESS_CPUTIME_ID;
+            case threadCPUTime: return CLOCK_THREAD_CPUTIME_ID;
             case second: assert(0);
             }
         }
