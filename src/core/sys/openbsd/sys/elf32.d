@@ -18,7 +18,7 @@ version (OpenBSD):
     alias int32_t  Elf32_Sword;     // Signed large integer
     alias uint64_t Elf32_Lword;     // Added to OpenBSD: 2019/1/22
     alias uint32_t Elf32_Addr;      // Unsigned program address
-    alias uint32_t Elf32_off;       // Unsigned file offset
+    alias uint32_t Elf32_Off;       // Unsigned file offset
 
     struct Elf32_Ehdr
     {

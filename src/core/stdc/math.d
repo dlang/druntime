@@ -2978,8 +2978,6 @@ else version (OpenBSD)
     ///
     real    logb2l(real x);
     ///
-    real    logbl(real x);
-    ///
     pure real    modfl(real value, real *iptr);
     ///
     real    scalbnl(real x, int n);
@@ -3166,6 +3164,14 @@ else version (OpenBSD)
     ///
     float   logbf(float x);
 
+    ///
+    real logl(real x);
+    ///
+    real log10l(real x);
+    ///
+    real log1pl(real x);
+    ///
+    real logbl(real x);
     ///
     pure double  modf(double value, double* iptr);
     ///

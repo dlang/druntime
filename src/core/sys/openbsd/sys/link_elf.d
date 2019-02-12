@@ -20,7 +20,7 @@ version (OpenBSD):
 
     template ElfW(string type)
     {
-        mixin("alias Elf"~__ELF_NATIVE_CLASS.stringof~"_"~type~" Elfw;");
+        mixin("alias Elf"~__ELF_NATIVE_CLASS.stringof~"_"~type~" ElfW;");
     }
 
     struct link_map

@@ -1480,24 +1480,28 @@ else version (NetBSD)
 else version (OpenBSD)
 {
     // No unsafe pointer manipulation.
-    @trusted
-    {
-        ///
-        void rewind(FILE*);
-    }
     @trusted private
     {
         ///
         pure void clearerr(FILE*);
-        alias __clearerr = clearerr;
         ///
         pure int  feof(FILE*);
-        alias __feof = feof;
         ///
         pure int  ferror(FILE*);
-        alias __ferror = ferror;
         ///
         int  fileno(FILE*);
+    }
+    @trusted
+    {
+        ///
+        void rewind(FILE*);
+        ///
+        alias __clearerr = clearerr;
+        ///
+        alias __feof = feof;
+        ///
+        alias __ferror = ferror;
+        ///
         alias __fileno = fileno;
     }
 
@@ -1520,7 +1524,7 @@ else version (OpenBSD)
 
     extern int __isthreaded;
 
-    extern (D)
+    extern (D) @trusted
     {
         void __sclearerr()(FILE* p)
         {
