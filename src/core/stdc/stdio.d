@@ -1480,8 +1480,10 @@ else version (NetBSD)
 else version (OpenBSD)
 {
     // No unsafe pointer manipulation.
-    @trusted private
+    @trusted
     {
+        ///
+        void rewind(FILE*);
         ///
         pure void clearerr(FILE*);
         ///
@@ -1490,19 +1492,6 @@ else version (OpenBSD)
         pure int  ferror(FILE*);
         ///
         int  fileno(FILE*);
-    }
-    @trusted
-    {
-        ///
-        void rewind(FILE*);
-        ///
-        alias __clearerr = clearerr;
-        ///
-        alias __feof = feof;
-        ///
-        alias __ferror = ferror;
-        ///
-        alias __fileno = fileno;
     }
 
     enum __SLBF = 0x0001;
@@ -1521,51 +1510,6 @@ else version (OpenBSD)
     enum __SMOD = 0x2000;
     enum __SALC = 0x4000;
     enum __SIGN = 0x8000;
-
-    extern int __isthreaded;
-
-    extern (D) @trusted
-    {
-        void __sclearerr()(FILE* p)
-        {
-            p._flags &= ~(__SERR|__SEOF);
-        }
-
-        int __sfeof()(FILE* p)
-        {
-            return (p._flags & __SEOF) != 0;
-        }
-
-        int __sferror()(FILE* p)
-        {
-            return (p._flags & __SERR) != 0;
-        }
-
-        int __sfileno()(FILE* p)
-        {
-            return p._file;
-        }
-
-        int clearerr()(FILE* file)
-        {
-            return !__isthreaded ? __sclearerr(file) : __clearerr(file);
-        }
-
-        int feof()(FILE* file)
-        {
-            return !__isthreaded ? __sfeof(file) : __feof(file);
-        }
-
-        int ferror()(FILE* file)
-        {
-            return !__isthreaded ? __sferror(file) : __ferror(file);
-        }
-
-        int fileno()(FILE* file)
-        {
-            return !__isthreaded ? __sfileno(file) : __fileno(file);
-        }
-    }
 
     ///
     int  snprintf(scope char* s, size_t n, scope const char* format, ...);
