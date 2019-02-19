@@ -790,6 +790,10 @@ void scanSegments(in ref dl_phdr_info info, DSO* pdso) nothrow @nogc
             {
                 // uClibc doesn't provide a 'dlpi_tls_modid' definition
             }
+            else version (OpenBSD) 
+            {
+                // OpenBSD doesn't provide a 'dlpi_tls_modid' definition
+            } 
             else
                 pdso._tlsMod = info.dlpi_tls_modid;
             pdso._tlsSize = phdr.p_memsz;

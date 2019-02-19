@@ -3295,6 +3295,14 @@ private void* getStackBottom() nothrow @nogc
             addr += size;
         return addr;
     }
+    else version (OpenBSD)
+    {
+        import core.sys.openbsd.pthread_np : pthread_stackseg_np;
+        stack_t stk;
+
+        pthread_stackseg_np(pthread_self(), &stk);
+        return stk.ss_sp;
+    }
     else version (DragonFlyBSD)
     {
         pthread_attr_t attr;
@@ -3660,8 +3668,17 @@ shared static this()
     }
     else version (Posix)
     {
-        PAGESIZE = cast(size_t)sysconf(_SC_PAGESIZE);
-        PTHREAD_STACK_MIN = cast(size_t)sysconf(_SC_THREAD_STACK_MIN);
+        version (OpenBSD)
+        {
+            static import core.sys.openbsd.sys.types;
+            PAGESIZE = cast(size_t)core.sys.openbsd.sys.types.PAGE_SIZE;
+            PTHREAD_STACK_MIN = cast(size_t)(1U << core.sys.openbsd.sys.types._MAX_PAGE_SHIFT);
+        }
+        else
+        {
+            PAGESIZE = cast(size_t)sysconf(_SC_PAGESIZE);
+            PTHREAD_STACK_MIN = cast(size_t)sysconf(_SC_THREAD_STACK_MIN);
+        }
     }
     else
     {
