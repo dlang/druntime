@@ -1,7 +1,7 @@
 /** 
   * D header file for OpenBSD
   *
-  * Path to online source file reference goes here
+  * https://github.com/openbsd/src/blob/master/include/link_elf.h
   */
 module core.sys.openbsd.sys.link_elf;
 
