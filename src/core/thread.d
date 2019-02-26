@@ -3666,19 +3666,16 @@ shared static this()
         PAGESIZE = info.dwPageSize;
         assert(PAGESIZE < int.max);
     }
+    else version (OpenBSD)
+    {
+        static import core.sys.openbsd.sys.types;
+        PAGESIZE = cast(size_t)core.sys.openbsd.sys.types.PAGE_SIZE;
+        PTHREAD_STACK_MIN = cast(size_t)(1U << core.sys.openbsd.sys.types._MAX_PAGE_SHIFT);
+    }
     else version (Posix)
     {
-        version (OpenBSD)
-        {
-            static import core.sys.openbsd.sys.types;
-            PAGESIZE = cast(size_t)core.sys.openbsd.sys.types.PAGE_SIZE;
-            PTHREAD_STACK_MIN = cast(size_t)(1U << core.sys.openbsd.sys.types._MAX_PAGE_SHIFT);
-        }
-        else
-        {
-            PAGESIZE = cast(size_t)sysconf(_SC_PAGESIZE);
-            PTHREAD_STACK_MIN = cast(size_t)sysconf(_SC_THREAD_STACK_MIN);
-        }
+        PAGESIZE = cast(size_t)sysconf(_SC_PAGESIZE);
+        PTHREAD_STACK_MIN = cast(size_t)sysconf(_SC_THREAD_STACK_MIN);
     }
     else
     {

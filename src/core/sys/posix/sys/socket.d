@@ -1121,8 +1121,8 @@ else version (NetBSD)
 }
 else version (OpenBSD)
 {
-    alias uint   socklen_t;
-    alias ubyte  sa_family_t;
+    alias socklen_t = uint;
+    alias sa_family_t = ubyte;
 
     struct sockaddr
     {
@@ -1268,45 +1268,45 @@ else version (OpenBSD)
 
     enum
     {
-		AF_UNSPEC	        = 0,    	/* unspecified */
-		AF_UNIX		        = 1,   		/* local to host */
-		AF_LOCAL	        = AF_UNIX,	/* draft POSIX compatibility */
-		AF_INET		        = 2, 		/* internetwork: UDP, TCP, etc. */
-		AF_IMPLINK	        = 3,		/* arpanet imp addresses */
-		AF_PUP		        = 4,		/* pup protocols: e.g. BSP */
-		AF_CHAOS	        = 5,		/* mit CHAOS protocols */
-		AF_NS		        = 6,		/* XEROX NS protocols */
-		AF_ISO		        = 7,		/* ISO protocols */
-		AF_OSI		        = AF_ISO,
-		AF_ECMA		        = 8,		/* european computer manufacturers */
-		AF_DATAKIT	        = 9,		/* datakit protocols */
-		AF_CCITT	        = 10,		/* CCITT protocols, X.25 etc */
-		AF_SNA		        = 11,		/* IBM SNA */
-		AF_DECnet	        = 12,		/* DECnet */
-		AF_DLI		        = 13,		/* DEC Direct data link interface */
-		AF_LAT		        = 14,		/* LAT */
-		AF_HYLINK	        = 15,		/* NSC Hyperchannel */
-		AF_APPLETALK	    = 16,		/* Apple Talk */
-		AF_ROUTE	        = 17,		/* Internal Routing Protocol */
-		AF_LINK		        = 18,		/* Link layer interface */
-		pseudo_AF_XTP	    = 19,		/* eXpress Transfer Protocol (no AF) */
-		AF_COIP		        = 20,		/* connection-oriented IP, aka ST II */
-		AF_CNT		        = 21,		/* Computer Network Technology */
-		pseudo_AF_RTIP	    = 22,		/* Help Identify RTIP packets */
-		AF_IPX		        = 23,		/* Novell Internet Protocol */
-		pseudo_AF_PIP	    = 25,		/* Help Identify PIP packets */
-		AF_ISDN		        = 26,		/* Integrated Services Digital Network*/
-		AF_E164		        = AF_ISDN,	/* CCITT E.164 recommendation */
-		AF_NATM		        = 27,		/* native ATM access */
-		AF_ENCAP	        = 28,
-		AF_SIP		        = 29,		/* Simple Internet Protocol */
-		AF_KEY		        = 30,
-		pseudo_AF_HDRCMPLT  = 31,		/* Used by BPF to not rewrite headers in interface output routine */
-		AF_BLUETOOTH	    = 32,		/* Bluetooth */
-		AF_MPLS             = 33,       /* MPLS */
-		pseudo_AF_PFLOW     = 34,		/* pflow */
-		pseudo_AF_PIPEX     = 35,		/* PIPEX */
-		AF_MAX              = 36,
+        AF_UNSPEC           = 0,        /* unspecified */
+        AF_UNIX             = 1,        /* local to host */
+        AF_LOCAL            = AF_UNIX,  /* draft POSIX compatibility */
+        AF_INET             = 2,        /* internetwork: UDP, TCP, etc. */
+        AF_IMPLINK          = 3,        /* arpanet imp addresses */
+        AF_PUP              = 4,        /* pup protocols: e.g. BSP */
+        AF_CHAOS            = 5,        /* mit CHAOS protocols */
+        AF_NS               = 6,        /* XEROX NS protocols */
+        AF_ISO              = 7,        /* ISO protocols */
+        AF_OSI              = AF_ISO,
+        AF_ECMA             = 8,        /* european computer manufacturers */
+        AF_DATAKIT          = 9,        /* datakit protocols */
+        AF_CCITT            = 10,       /* CCITT protocols, X.25 etc */
+        AF_SNA              = 11,       /* IBM SNA */
+        AF_DECnet           = 12,       /* DECnet */
+        AF_DLI              = 13,       /* DEC Direct data link interface */
+        AF_LAT              = 14,       /* LAT */
+        AF_HYLINK           = 15,       /* NSC Hyperchannel */
+        AF_APPLETALK        = 16,       /* Apple Talk */
+        AF_ROUTE            = 17,       /* Internal Routing Protocol */
+        AF_LINK             = 18,       /* Link layer interface */
+        pseudo_AF_XTP       = 19,       /* eXpress Transfer Protocol (no AF) */
+        AF_COIP             = 20,       /* connection-oriented IP, aka ST II */
+        AF_CNT              = 21,       /* Computer Network Technology */
+        pseudo_AF_RTIP      = 22,       /* Help Identify RTIP packets */
+        AF_IPX              = 23,       /* Novell Internet Protocol */
+        pseudo_AF_PIP       = 25,       /* Help Identify PIP packets */
+        AF_ISDN             = 26,       /* Integrated Services Digital Network*/
+        AF_E164             = AF_ISDN,  /* CCITT E.164 recommendation */
+        AF_NATM             = 27,       /* native ATM access */
+        AF_ENCAP            = 28,
+        AF_SIP              = 29,       /* Simple Internet Protocol */
+        AF_KEY              = 30,
+        pseudo_AF_HDRCMPLT  = 31,       /* Used by BPF to not rewrite headers in interface output routine */
+        AF_BLUETOOTH        = 32,       /* Bluetooth */
+        AF_MPLS             = 33,       /* MPLS */
+        pseudo_AF_PFLOW     = 34,       /* pflow */
+        pseudo_AF_PIPEX     = 35,       /* PIPEX */
+        AF_MAX              = 36,
     }
 
     enum
@@ -2303,7 +2303,7 @@ else version (NetBSD)
 }
 else version (OpenBSD)
 {
-    enum AF_INET6	= 24;		/* IPv6 */
+    enum AF_INET6   = 24;        /* IPv6 */
 }
 else version (DragonFlyBSD)
 {

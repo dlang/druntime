@@ -160,8 +160,8 @@ else version (NetBSD)
 }
 else version (OpenBSD)
 {
-    alias uint16_t in_port_t;
-    alias uint32_t in_addr_t;
+    alias in_port_t = uint16_t;
+    alias in_addr_t = uint32_t;
 
     struct in_addr
     {
@@ -172,10 +172,10 @@ else version (OpenBSD)
 
     @trusted pure
     {
-    uint32_t htonl(uint32_t);
-    uint16_t htons(uint16_t);
-    uint32_t ntohl(uint32_t);
-    uint16_t ntohs(uint16_t);
+        uint32_t htonl(uint32_t);
+        uint16_t htons(uint16_t);
+        uint32_t ntohl(uint32_t);
+        uint16_t ntohs(uint16_t);
     }
 
     in_addr_t       inet_addr(in char*);

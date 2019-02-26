@@ -110,14 +110,16 @@ version (OSX)
 }
 else version (OpenBSD)
 {
-    struct winsize {
+    struct winsize 
+    {
         ushort  ws_row;     // rows, in characters
         ushort  ws_col;     // columns, in characters
         ushort  ws_xpixel;  // horizontal size, pixels
         ushort  ws_ypixel;  // vertical size, pixels
     }
     
-    struct tstamps {
+    struct tstamps 
+    {
         int     ts_set;     // TIOCM_CAR and/or TIOCM_CTS
         int     ts_clr;
     }
