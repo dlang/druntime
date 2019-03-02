@@ -640,6 +640,12 @@ extern (C) void _aaClear(AA aa) pure nothrow
     }
 }
 
+/// Allocate new AA implementation.
+extern (C) void _aaInitialize(AA* paa, const TypeInfo_AssociativeArray ti)
+{
+    paa.impl = new Impl(ti);
+}
+
 /// Rehash AA
 extern (C) void* _aaRehash(AA* paa, in TypeInfo keyti) pure nothrow
 {

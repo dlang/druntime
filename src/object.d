@@ -3024,6 +3024,7 @@ extern (C)
     inout(void)[] _aaKeys(inout void* p, in size_t keysize, const TypeInfo tiKeyArray) pure nothrow;
     void* _aaRehash(void** pp, in TypeInfo keyti) pure nothrow;
     void _aaClear(void* p) pure nothrow;
+    void _aaInitialize(void* p, const TypeInfo_AssociativeArray ti);
 
     // alias _dg_t = extern(D) int delegate(void*);
     // int _aaApply(void* aa, size_t keysize, _dg_t dg);
@@ -3058,9 +3059,46 @@ void* aaLiteral(Key, Value)(Key[] keys, Value[] values) @trusted pure
 alias AssociativeArray(Key, Value) = Value[Key];
 
 /***********************************
+ * Allocate memory for an empty associative array.
+ * This is useful to avoid copying a null reference when each reference
+ * should point to the same associative array data.
+ * Without using this function, an associative array is initialized only
+ * when the first element is added.
+ * Params:
+ *      aa = The associative array.
+ * See_Also: $(LREF clear)
+ */
+void initialize(T : Value[Key], Value, Key)(ref T aa) @trusted
+{
+    _aaInitialize(cast(void*) &aa, typeid(T));
+}
+
+///
+@safe unittest
+{
+    int[int] aa;
+    auto b = aa;
+    assert(b is null);
+    aa.initialize;
+    assert(aa !is null);
+    auto c = aa;
+
+    aa[4] = 4;
+    assert(b != aa);
+    assert(c is aa);
+}
+
+/* ditto */
+void initialize(T : Value[Key], Value, Key)(T* aa) @safe
+{
+    _aaInitialize(*cast(void**) aa, typeid(T));
+}
+
+/***********************************
  * Removes all remaining keys and values from an associative array.
  * Params:
  *      aa =     The associative array.
+ * See_Also: $(LREF initialize)
  */
 void clear(T : Value[Key], Value, Key)(T aa)
 {
