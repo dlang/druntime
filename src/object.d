@@ -3091,7 +3091,7 @@ void initialize(T : Value[Key], Value, Key)(ref T aa) @trusted
 /* ditto */
 void initialize(T : Value[Key], Value, Key)(T* aa) @safe
 {
-    _aaInitialize(*cast(void**) aa, typeid(T));
+    _aaInitialize(cast(void*) aa, typeid(T));
 }
 
 /***********************************
