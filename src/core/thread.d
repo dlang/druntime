@@ -3566,7 +3566,10 @@ private
     version (D_InlineAsm_X86)
     {
         version (Windows)
+        {
             version = AsmX86_Windows;
+            version = X86_Windows;
+        }
         else version (Posix)
             version = AsmX86_Posix;
 
@@ -3578,6 +3581,7 @@ private
         version (Windows)
         {
             version = AsmX86_64_Windows;
+            version = X86_64_Windows;
             version = AlignFiberStackTo16Byte;
         }
         else version (Posix)
@@ -3712,6 +3716,8 @@ private
   {
       extern (C) void fiber_switchContext( void** oldp, void* newp ) nothrow @nogc;
       version (AArch64)
+          extern (C) void fiber_trampoline() nothrow;
+      else version (MinGW)
           extern (C) void fiber_trampoline() nothrow;
   }
   else
@@ -4698,7 +4704,7 @@ private:
             }
         }
 
-        version (AsmX86_Windows)
+        version (X86_Windows)
         {
             version (StackGrowsDown) {} else static assert( false );
 
@@ -4734,7 +4740,10 @@ private:
             enum sehChainEnd = cast(EXCEPTION_REGISTRATION*) 0xFFFFFFFF;
 
             __gshared static fp_t finalHandler = null;
-            if ( finalHandler is null )
+            // This requires native TLS, which GCC does not
+            // support on Windows
+            version (GNU) {}
+            else if ( finalHandler is null )
             {
                 static EXCEPTION_REGISTRATION* fs0() nothrow
                 {
@@ -4773,7 +4782,7 @@ private:
             push( cast(size_t) m_ctxt.bstack - m_size );            // FS:[8]
             push( 0x00000000 );                                     // EAX
         }
-        else version (AsmX86_64_Windows)
+        else version (X86_64_Windows)
         {
             // Using this trampoline instead of the raw fiber_entryPoint
             // ensures that during context switches, source and destination
@@ -4781,7 +4790,10 @@ private:
             // to be shifted by 8 bytes for the first call, as fiber_entryPoint
             // is an actual function expecting a stack which is not aligned
             // to 16 bytes.
-            static void trampoline()
+            version (GNU)
+            {
+            }
+            else static void fiber_trampoline()
             {
                 asm pure nothrow @nogc
                 {
@@ -4793,7 +4805,7 @@ private:
                 }
             }
 
-            push( cast(size_t) &trampoline );                       // RIP
+            push( cast(size_t) &fiber_trampoline );                 // RIP
             push( 0x00000000_00000000 );                            // RBP
             push( 0x00000000_00000000 );                            // R12
             push( 0x00000000_00000000 );                            // R13
