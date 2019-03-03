@@ -2634,8 +2634,8 @@ unittest
     }
 
     // associative arrays
-    import rt.aaA : entryDtor;
-    // throw away all existing AA entries with dtor
+    import core.assoc_array : entryDtor;
+    // throw away all existing AssocArray!(void, void)* entries with dtor
     GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
 
     S1[int] aa1;
