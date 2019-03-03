@@ -317,6 +317,8 @@ bool dll_fixTLS( HINSTANCE hInstance, void* tlsstart, void* tlsend, void* tls_ca
 {
     version (Win64)
         return true;                // fixed
+    else version (GNU)
+        return true;                // Using emutls
     else version (Win32)
     {
     /* If the OS has allocated a TLS slot for us, we don't have to do anything

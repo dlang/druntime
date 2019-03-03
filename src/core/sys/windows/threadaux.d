@@ -165,21 +165,39 @@ struct thread_aux
     {
         version (Win32)
         {
-            asm pure nothrow @nogc
+            version (GNU)
             {
-                naked;
-                mov EAX,FS:[0x18];
-                ret;
+                void** teb;
+                asm pure nothrow @nogc { "movl %%fs:0x18, %0;" : "=r" teb; }
+                return teb;
+            }
+            else
+            {
+                asm pure nothrow @nogc
+                {
+                    naked;
+                    mov EAX,FS:[0x18];
+                    ret;
+                }
             }
         }
         else version (Win64)
         {
-            asm pure nothrow @nogc
+            version (GNU)
             {
-                naked;
-                mov RAX,0x30;
-                mov RAX,GS:[RAX]; // immediate value causes fixup
-                ret;
+                void** teb;
+                asm pure nothrow @nogc { "movq %%gs:0x30, %0;" : "=r" teb; }
+                return teb;
+            }
+            else
+            {
+                asm pure nothrow @nogc
+                {
+                    naked;
+                    mov RAX,0x30;
+                    mov RAX,GS:[RAX]; // immediate value causes fixup
+                    ret;
+                }
             }
         }
         else

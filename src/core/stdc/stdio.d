@@ -1294,28 +1294,26 @@ size_t fwrite(scope const void* ptr, size_t size, size_t nmemb, FILE* stream);
 version (MinGW)
 {
   // No unsafe pointer manipulation.
-  extern (D) @trusted
+  @trusted
   {
     ///
-    void rewind()(FILE* stream)   { fseek(stream,0L,SEEK_SET); stream._flag = stream._flag & ~_IOERR; }
+    void rewind(FILE* stream);
     ///
-    pure void clearerr()(FILE* stream) { stream._flag = stream._flag & ~(_IOERR|_IOEOF); }
+    pure void clearerr(FILE* stream);
     ///
-    pure int  feof()(FILE* stream)     { return stream._flag&_IOEOF; }
+    pure int  feof(FILE* stream);
     ///
-    pure int  ferror()(FILE* stream)   { return stream._flag&_IOERR; }
+    pure int  ferror(FILE* stream);
+    ///
+    int  fileno(FILE *);
   }
-  ///
+
     int   __mingw_snprintf(scope char* s, size_t n, scope const char* fmt, ...);
-    ///
-    alias __mingw_snprintf _snprintf;
     ///
     alias __mingw_snprintf snprintf;
 
     ///
     int   __mingw_vsnprintf(scope char* s, size_t n, scope const char* format, va_list arg);
-    ///
-    alias __mingw_vsnprintf _vsnprintf;
     ///
     alias __mingw_vsnprintf vsnprintf;
 }
