@@ -19,43 +19,12 @@ private import rt.util.typeinfo;
 
 class TypeInfo_Af : TypeInfo_Array
 {
-    alias F = float;
-
-    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
-
-    override string toString() const { return (F[]).stringof; }
-
-    override size_t getHash(scope const void* p) @trusted const
-    {
-        return Array!F.hashOf(*cast(F[]*)p);
-    }
-
-    override bool equals(in void* p1, in void* p2) const
-    {
-        return Array!F.equals(*cast(F[]*)p1, *cast(F[]*)p2);
-    }
-
-    override int compare(in void* p1, in void* p2) const
-    {
-        return Array!F.compare(*cast(F[]*)p1, *cast(F[]*)p2);
-    }
-
-    override @property inout(TypeInfo) next() inout
-    {
-        return cast(inout)typeid(F);
-    }
+    mixin TypeInfo_A_T!float;
 }
 
 // ifloat[]
 
 class TypeInfo_Ao : TypeInfo_Af
 {
-    alias F = ifloat;
-
-    override string toString() const { return (F[]).stringof; }
-
-    override @property inout(TypeInfo) next() inout
-    {
-        return cast(inout)typeid(F);
-    }
+    mixin TypeInfo_A_T!ifloat;
 }

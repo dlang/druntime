@@ -19,29 +19,5 @@ private import rt.util.typeinfo;
 
 class TypeInfo_Ac : TypeInfo_Array
 {
-    alias F = creal;
-
-    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
-
-    override string toString() const { return (F[]).stringof; }
-
-    override size_t getHash(scope const void* p) @trusted const
-    {
-        return Array!F.hashOf(*cast(F[]*)p);
-    }
-
-    override bool equals(in void* p1, in void* p2) const
-    {
-        return Array!F.equals(*cast(F[]*)p1, *cast(F[]*)p2);
-    }
-
-    override int compare(in void* p1, in void* p2) const
-    {
-        return Array!F.compare(*cast(F[]*)p1, *cast(F[]*)p2);
-    }
-
-    override @property inout(TypeInfo) next() inout
-    {
-        return cast(inout)typeid(F);
-    }
+    mixin TypeInfo_A_T!creal;
 }

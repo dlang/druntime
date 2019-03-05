@@ -9,7 +9,8 @@ module rt.util.typeinfo;
 static import core.internal.hash;
 
 template Floating(T)
-if (is(T == float) || is(T == double) || is(T == real))
+if (is(T == float) || is(T == double) || is(T == real) ||
+    is(T == ifloat) || is(T == idouble) || is(T == ireal))
 {
   pure nothrow @safe:
 
@@ -65,9 +66,12 @@ if (is(T == cfloat) || is(T == cdouble) || is(T == creal))
     public alias hashOf = core.internal.hash.hashOf;
 }
 
+enum isFloatingTypeInfoT(T) = is(T ==  float) || is(T ==  double) || is(T ==  real) ||
+                              is(T == cfloat) || is(T == cdouble) || is(T == creal) ||
+                              is(T == ifloat) || is(T == idouble) || is(T == ireal);
+
 template Array(T)
-if (is(T ==  float) || is(T ==  double) || is(T ==  real) ||
-    is(T == cfloat) || is(T == cdouble) || is(T == creal))
+if (isFloatingTypeInfoT!T)
 {
   pure nothrow @safe:
 
@@ -102,6 +106,144 @@ if (is(T ==  float) || is(T ==  double) || is(T ==  real) ||
     }
 
     public alias hashOf = core.internal.hash.hashOf;
+}
+
+enum isIntegralTypeInfoT(T) = is(T == int) || is(T == uint) || is(T == dchar) ||
+        is(T == long) || is(T == ulong) ||
+        is(T == short) || is(T == ushort) || is(T == wchar) ||
+        is(T == byte) || is(T == ubyte) || is(T == void) || is(T == bool) ||
+        is(T == char) || is(T == immutable(char)) || is(T == const(char));
+
+template Array(T)
+if (isIntegralTypeInfoT!T)
+{
+    bool equals(T[] s1, T[] s2)
+    {
+        import core.stdc.string;
+        alias U = equalsBaseType!T;
+
+        auto len = s1.length;
+        return len == s2.length &&
+               memcmp(cast(U*) s1, cast(U*) s2, len * U.sizeof) == 0;
+    }
+
+    int compare(T[] ss1, T[] ss2)
+    {
+        alias U = compareBaseType!T;
+        U[] s1 = cast(U[]) ss1;
+        U[] s2 = cast(U[]) ss2;
+
+        static if (is(U == char))
+        {
+            import core.internal.string;
+            return dstrcmp(s1, s2);
+        }
+        else
+        {
+            size_t len1 = s1.length;
+            size_t len2 = s2.length;
+            size_t minLen = len1 < len2 ? len1 : len2;
+
+            for (size_t u = 0; u < minLen; u++)
+            {
+                if (s1[u] < s2[u])
+                    return -1;
+                else if (s1[u] > s2[u])
+                    return 1;
+            }
+            if (len1 < len2)
+                return -1;
+            else if (len1 > len2)
+                return 1;
+            return 0;
+        }
+    }
+
+    public alias hashOf = core.internal.hash.hashOf;
+}
+
+mixin template TypeInfo_A_T(T)
+if (isFloatingTypeInfoT!T || isIntegralTypeInfoT!T)
+{
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
+
+    override string toString() const { return (T[]).stringof; }
+
+    override size_t getHash(scope const void* p) @trusted const
+    {
+        static if (isFloatingTypeInfoT!T)
+        {
+            return Array!T.hashOf(*cast(T[]*)p);
+        }
+        else
+        {
+            alias U = hashBaseType!T;
+            static if (is(U == char))
+                U[] s = *cast(U[]*)p;
+            else
+                const s = *cast(const U[]*)p;
+            return hashOf(s);
+        }
+    }
+
+    override bool equals(in void* p1, in void* p2) const
+    {
+        return Array!T.equals(*cast(T[]*)p1, *cast(T[]*)p2);
+    }
+
+    override int compare(in void* p1, in void* p2) const
+    {
+        return Array!T.compare(*cast(T[]*)p1, *cast(T[]*)p2);
+    }
+
+    override @property inout(TypeInfo) next() inout
+    {
+        return cast(inout)typeid(T);
+    }
+}
+
+template hashBaseType(T)
+{
+    static if (is(T == int) || is(T == uint) || is(T == dchar))
+        alias hashBaseType = uint;
+    else static if (is(T == long) || is(T == ulong))
+        alias hashBaseType = ulong;
+    else static if (is(T == short) || is(T == ushort) || is(T == wchar))
+        alias hashBaseType = ushort;
+    else static if(is(T == byte) || is(T == ubyte) || is(T == void) || is(T == bool))
+        alias hashBaseType = void;
+    else static if (is(T == char) || is(T == immutable(char)) || is(T == const(char)))
+        alias hashBaseType = char;
+    else
+        alias hashBaseType = T;
+}
+
+template equalsBaseType(T)
+{
+    static if (is(T == int) || is(T == uint) || is(T == dchar))
+        alias equalsBaseType = int;
+    else static if (is(T == long) || is(T == ulong))
+        alias equalsBaseType = long;
+    else static if (is(T == short) || is(T == ushort) || is(T == wchar))
+        alias equalsBaseType = short;
+    else static if(is(T == byte) || is(T == ubyte) || is(T == void) || is(T == bool) ||
+                   is(T == char) || is(T == immutable(char)) || is(T == const(char)))
+        alias equalsBaseType = byte;
+    else
+        alias equalsBaseType = T;
+}
+
+template compareBaseType(T)
+{
+    static if (is(T == ubyte) || is(T == void) || is(T == bool) ||
+               is(T == char) || is(T == immutable(char)) || is(T == const(char)))
+        alias compareBaseType = char;
+    else static if (is(T == ushort) || is(T == wchar))
+        alias compareBaseType = ushort;
+    else static if (is(T == uint) || is(T == dchar))
+        alias compareBaseType = uint;
+    else // byte || short || int || long || ulong
+        alias compareBaseType = T;
 }
 
 version (unittest)

@@ -14,6 +14,7 @@
 module rt.typeinfo.ti_Aint;
 
 private import core.stdc.string;
+private import rt.util.typeinfo;
 
 extern (C) void[] _adSort(void[] a, TypeInfo ti);
 
@@ -21,52 +22,7 @@ extern (C) void[] _adSort(void[] a, TypeInfo ti);
 
 class TypeInfo_Ai : TypeInfo_Array
 {
-    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
-
-    override string toString() const { return "int[]"; }
-
-    override size_t getHash(scope const void* p) @trusted const
-    {
-        // Hash as if unsigned.
-        const s = *cast(const uint[]*)p;
-        return hashOf(s);
-    }
-
-    override bool equals(in void* p1, in void* p2) const
-    {
-        int[] s1 = *cast(int[]*)p1;
-        int[] s2 = *cast(int[]*)p2;
-
-        return s1.length == s2.length &&
-               memcmp(cast(void *)s1, cast(void *)s2, s1.length * int.sizeof) == 0;
-    }
-
-    override int compare(in void* p1, in void* p2) const
-    {
-        int[] s1 = *cast(int[]*)p1;
-        int[] s2 = *cast(int[]*)p2;
-        size_t len = s1.length;
-
-        if (s2.length < len)
-            len = s2.length;
-        for (size_t u = 0; u < len; u++)
-        {
-            if (s1[u] < s2[u])
-                return -1;
-            else if (s1[u] > s2[u])
-                return 1;
-        }
-        if (s1.length < s2.length)
-            return -1;
-        else if (s1.length > s2.length)
-            return 1;
-        return 0;
-    }
-
-    override @property inout(TypeInfo) next() inout
-    {
-        return cast(inout)typeid(int);
-    }
+    mixin TypeInfo_A_T!int;
 }
 
 unittest
@@ -94,34 +50,7 @@ unittest
 
 class TypeInfo_Ak : TypeInfo_Ai
 {
-    override string toString() const { return "uint[]"; }
-
-    override int compare(in void* p1, in void* p2) const
-    {
-        uint[] s1 = *cast(uint[]*)p1;
-        uint[] s2 = *cast(uint[]*)p2;
-        size_t len = s1.length;
-
-        if (s2.length < len)
-            len = s2.length;
-        for (size_t u = 0; u < len; u++)
-        {
-            if (s1[u] < s2[u])
-                return -1;
-            else if (s1[u] > s2[u])
-                return 1;
-        }
-        if (s1.length < s2.length)
-            return -1;
-        else if (s1.length > s2.length)
-            return 1;
-        return 0;
-    }
-
-    override @property inout(TypeInfo) next() inout
-    {
-        return cast(inout)typeid(uint);
-    }
+    mixin TypeInfo_A_T!uint;
 }
 
 unittest
@@ -142,10 +71,5 @@ unittest
 
 class TypeInfo_Aw : TypeInfo_Ak
 {
-    override string toString() const { return "dchar[]"; }
-
-    override @property inout(TypeInfo) next() inout
-    {
-        return cast(inout)typeid(dchar);
-    }
+    mixin TypeInfo_A_T!dchar;
 }
