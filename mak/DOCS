@@ -114,16 +114,7 @@ DOCS=\
     $(DOCDIR)\rt_trace.html \
     $(DOCDIR)\rt_tracegc.html \
 	\
-    $(DOCDIR)\rt_typeinfo_ti_Acdouble.html \
-    $(DOCDIR)\rt_typeinfo_ti_Acfloat.html \
-    $(DOCDIR)\rt_typeinfo_ti_Acreal.html \
-    $(DOCDIR)\rt_typeinfo_ti_Adouble.html \
-    $(DOCDIR)\rt_typeinfo_ti_Afloat.html \
-    $(DOCDIR)\rt_typeinfo_ti_Ag.html \
-    $(DOCDIR)\rt_typeinfo_ti_Aint.html \
-    $(DOCDIR)\rt_typeinfo_ti_Along.html \
-    $(DOCDIR)\rt_typeinfo_ti_Areal.html \
-    $(DOCDIR)\rt_typeinfo_ti_Ashort.html \
+    $(DOCDIR)\rt_typeinfo_ti_A.html \
     $(DOCDIR)\rt_typeinfo_ti_byte.html \
     $(DOCDIR)\rt_typeinfo_ti_C.html \
     $(DOCDIR)\rt_typeinfo_ti_cdouble.html \
