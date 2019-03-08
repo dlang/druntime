@@ -38,6 +38,68 @@ alias dstring = immutable(dchar)[];
 
 version (D_ObjectiveC) public import core.attribute : selector;
 
+// Size used to store the TypeInfo at the end of an allocation for structs that
+// have a destructor
+private size_t structTypeInfoSize(T)() pure nothrow @nogc
+{
+    // can't use because it's in rt.lifetime
+    //if (!callStructDtorsDuringGC)
+        //return 0;
+
+    static if (is(T == struct) && is(typeof({ T t; t.__xdtor; })))
+        return size_t.sizeof;
+    return 0;
+}
+
+/*
+ * Allocate an uninitialized non-array item.
+ * This is an optimization to avoid things needed for arrays like the __arrayPad(size).
+ */
+private T* ___d_newitemU(T)()
+{
+    import core.memory;
+    import core.internal.traits : Unqual;
+
+    auto ti = typeid(Unqual!T);
+    auto flags = !(ti.flags & 1) ? GC.BlkAttr.NO_SCAN : 0;
+    enum tiSize = structTypeInfoSize!T();
+    enum size = T.sizeof + tiSize;
+
+    static if (is(T == struct))
+    {
+        if (tiSize)
+            flags |= GC.BlkAttr.STRUCTFINAL | GC.BlkAttr.FINALIZE;
+    }
+    auto blkInf = GC.qalloc(size, flags, ti);
+    auto p = blkInf.base;
+
+    static if (is(T == struct))
+    {
+        if (tiSize)
+            *cast(TypeInfo*)(p + blkInf.size - tiSize) = cast() ti;
+    }
+    return cast(T*) p;
+}
+
+// Same as above, for item with non-zero initializer.
+T* ___d_newitemT(T)()
+{
+    import core.stdc.string;
+    auto p = ___d_newitemU!T();
+    memset(p, 0, T.sizeof);
+    return p;
+}
+
+// Same as above, for item with non-zero initializer.
+T* ___d_newitemiT(T)()
+{
+    import core.stdc.string;
+    auto p = ___d_newitemU!T();
+    auto init = T.init;
+    memcpy(p, &init, T.sizeof);
+    return p;
+}
+
 int __cmp(T)(scope const T[] lhs, scope const T[] rhs) @trusted
     if (__traits(isScalar, T))
 {
