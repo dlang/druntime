@@ -85,18 +85,17 @@ private T* ___d_newitemU(T)()
 T* ___d_newitemT(T)()
 {
     import core.stdc.string;
-    auto p = ___d_newitemU!T();
-    memset(p, 0, T.sizeof);
-    return p;
-}
-
-// Same as above, for item with non-zero initializer.
-T* ___d_newitemiT(T)()
-{
-    import core.stdc.string;
-    auto p = ___d_newitemU!T();
-    auto init = T.init;
-    memcpy(p, &init, T.sizeof);
+    import core.internal.traits : Unqual;
+    auto p = (() @trusted => ___d_newitemU!T())();
+    static if (__traits(isZeroInit, T))
+    {
+        () @trusted { memset(cast(Unqual!T *) p, 0, T.sizeof); }();
+    }
+    else
+    {
+        auto init = T.init;
+        () @trusted { memcpy(cast(Unqual!T *) p, &init, T.sizeof); }();
+    }
     return p;
 }
 
