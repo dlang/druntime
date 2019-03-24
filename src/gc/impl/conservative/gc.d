@@ -59,7 +59,6 @@ alias currTime = MonoTime.currTime;
 __gshared Duration prepTime;
 __gshared Duration markTime;
 __gshared Duration sweepTime;
-__gshared Duration recoverTime;
 __gshared Duration pauseTime;
 __gshared Duration maxPauseTime;
 __gshared Duration maxCollectionTime;
@@ -1060,7 +1059,7 @@ class ConservativeGC : GC
         typeof(return) ret;
 
         ret.numCollections = numCollections;
-        ret.totalCollectionTime = prepTime + markTime + sweepTime + recoverTime;
+        ret.totalCollectionTime = prepTime + markTime + sweepTime;
         ret.totalPauseTime = pauseTime;
         ret.maxCollectionTime = maxCollectionTime;
         ret.maxPauseTime = maxPauseTime;
@@ -1234,11 +1233,9 @@ struct Gcx
                    markTime.total!("msecs"));
             printf("\tTotal sweep time:  %lld milliseconds\n",
                    sweepTime.total!("msecs"));
-            printf("\tTotal page recovery time:  %lld milliseconds\n",
-                   recoverTime.total!("msecs"));
             long maxPause = maxPauseTime.total!("msecs");
             printf("\tMax Pause Time:  %lld milliseconds\n", maxPause);
-            long gcTime = (recoverTime + sweepTime + markTime + prepTime).total!("msecs");
+            long gcTime = (sweepTime + markTime + prepTime).total!("msecs");
             printf("\tGrand total GC time:  %lld milliseconds\n", gcTime);
             long pauseTime = (markTime + prepTime).total!("msecs");
 
@@ -2177,9 +2174,16 @@ struct Gcx
     size_t sweep() nothrow
     {
         // Free up everything not marked
-        debug(COLLECT_PRINTF) printf("\tfree'ing\n");
+        debug(COLLECT_PRINTF) printf("\tsweeping\n");
         size_t freedLargePages;
+        size_t freedSmallPages;
         size_t freed;
+
+        // init tail list to rebuild free lists
+        List**[B_NUMSMALL] tail = void;
+        foreach (i, ref next; tail)
+            next = &bucket[i];
+
         for (size_t n = 0; n < npools; n++)
         {
             size_t pn;
@@ -2290,86 +2294,52 @@ struct Gcx
 
                         if (freeBits)
                             pool.freePageBits(pn, toFree);
+
+                        size_t bitbase = pn * (PAGESIZE / 16);
+                        size_t bittop = bitbase + (PAGESIZE / 16) - bitstride + 1;
+
+                        size_t biti = bitbase;
+                        for (biti = bitbase; biti < bittop; biti += bitstride)
+                        {
+                            if (!pool.freebits.test(biti))
+                                goto Lnotfree;
+                        }
+                        pool.pagetable[pn] = B_FREE;
+                        if (pn < pool.searchStart) pool.searchStart = pn;
+                        pool.freepages++;
+                        freedSmallPages++;
+                        continue;
+
+                    Lnotfree:
+                        p = pool.baseAddr + pn * PAGESIZE;
+                        const top = PAGESIZE - size + 1; // ensure <size> bytes available even if unaligned
+                        for (uint u = 0; u < top; u += size)
+                        {
+                            biti = bitbase + u / 16;
+                            if (!pool.freebits.test(biti))
+                                continue;
+                            auto elem = cast(List *)(p + u);
+                            elem.pool = pool;
+                            *tail[bin] = elem;
+                            tail[bin] = &elem.next;
+                        }
                     }
                 }
             }
         }
 
-        assert(freedLargePages <= usedLargePages);
-        usedLargePages -= freedLargePages;
-        debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u pages from %u pools\n", freed, freedLargePages, npools);
-        return freedLargePages;
-    }
-
-    // collection step 4: recover pages with no live objects, rebuild free lists
-    size_t recover() nothrow
-    {
-        // init tail list
-        List**[B_NUMSMALL] tail = void;
-        foreach (i, ref next; tail)
-            next = &bucket[i];
-
-        // Free complete pages, rebuild free list
-        debug(COLLECT_PRINTF) printf("\tfree complete pages\n");
-        size_t freedSmallPages;
-        for (size_t n = 0; n < npools; n++)
-        {
-            size_t pn;
-            Pool* pool = pooltable[n];
-
-            if (pool.isLargeObject)
-                continue;
-
-            for (pn = 0; pn < pool.npages; pn++)
-            {
-                Bins   bin = cast(Bins)pool.pagetable[pn];
-                size_t biti;
-                size_t u;
-
-                if (bin < B_PAGE)
-                {
-                    size_t size = binsize[bin];
-                    size_t bitstride = size / 16;
-                    size_t bitbase = pn * (PAGESIZE / 16);
-                    size_t bittop = bitbase + (PAGESIZE / 16) - bitstride + 1;
-                    void*  p;
-
-                    biti = bitbase;
-                    for (biti = bitbase; biti < bittop; biti += bitstride)
-                    {
-                        if (!pool.freebits.test(biti))
-                            goto Lnotfree;
-                    }
-                    pool.pagetable[pn] = B_FREE;
-                    if (pn < pool.searchStart) pool.searchStart = pn;
-                    pool.freepages++;
-                    freedSmallPages++;
-                    continue;
-
-                Lnotfree:
-                    p = pool.baseAddr + pn * PAGESIZE;
-                    const top = PAGESIZE - size + 1; // ensure <size> bytes available even if unaligned
-                    for (u = 0; u < top; u += size)
-                    {
-                        biti = bitbase + u / 16;
-                        if (!pool.freebits.test(biti))
-                            continue;
-                        auto elem = cast(List *)(p + u);
-                        elem.pool = pool;
-                        *tail[bin] = elem;
-                        tail[bin] = &elem.next;
-                    }
-                }
-            }
-        }
         // terminate tail list
         foreach (ref next; tail)
             *next = null;
 
         assert(freedSmallPages <= usedSmallPages);
         usedSmallPages -= freedSmallPages;
-        debug(COLLECT_PRINTF) printf("\trecovered pages = %d\n", freedSmallPages);
-        return freedSmallPages;
+        debug(COLLECT_PRINTF) printf("\trecovered small pages = %d\n", freedSmallPages);
+
+        assert(freedLargePages <= usedLargePages);
+        usedLargePages -= freedLargePages;
+        debug(COLLECT_PRINTF) printf("\tfree'd %u bytes, %u large pages from %u pools\n", freed, freedLargePages, npools);
+        return freedLargePages + freedSmallPages;
     }
 
     /**
@@ -2432,21 +2402,16 @@ struct Gcx
         start = stop;
 
         ConservativeGC._inFinalizer = true;
-        size_t freedLargePages=void;
+        size_t freedPages = void;
         {
             scope (failure) ConservativeGC._inFinalizer = false;
-            freedLargePages = sweep();
+            freedPages = sweep();
             ConservativeGC._inFinalizer = false;
         }
 
         stop = currTime;
         sweepTime += (stop - start);
-        start = stop;
 
-        immutable freedSmallPages = recover();
-
-        stop = currTime;
-        recoverTime += (stop - start);
         Duration collectionTime = stop - begin;
         if (collectionTime > maxCollectionTime)
             maxCollectionTime = collectionTime;
@@ -2455,7 +2420,7 @@ struct Gcx
 
         updateCollectThresholds();
 
-        return freedLargePages + freedSmallPages;
+        return freedPages;
     }
 
     /**
