@@ -2278,79 +2278,91 @@ struct Gcx
 
             if (bin < B_PAGE)
             {
-                immutable size = binsize[bin];
-                void *p = pool.baseAddr + pn * PAGESIZE;
-                immutable base = pn * (PAGESIZE/16);
-                immutable bitstride = size / 16;
-
-                bool freeBits;
-                PageBits toFree;
-
-                // ensure that there are at least <size> bytes for every address
-                //  below ptop even if unaligned
-                void *ptop = p + PAGESIZE - size + 1;
-                for (size_t i; p < ptop; p += size, i += bitstride)
+                if (sweepSmallPage(pool, pn, bin))
                 {
-                    immutable biti = base + i;
-
-                    if (!pool.mark.test(biti))
-                    {
-                        void* q = sentinel_add(p);
-                        sentinel_Invariant(q);
-
-                        if (pool.finals.nbits && pool.finals.test(biti))
-                            rt_finalizeFromGC(q, sentinel_size(q, size), pool.getBits(biti));
-
-                        freeBits = true;
-                        toFree.set(i);
-
-                        debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
-                        leakDetector.log_free(sentinel_add(p));
-
-                        debug (MEMSTOMP) memset(p, 0xF3, size);
-                    }
+                    pool.pagetable[pn] = B_FREE;
+                    if (pn < pool.searchStart) pool.searchStart = pn;
+                    pool.freepages++;
+                    freedSmallPages++;
                 }
-
-                if (freeBits)
-                    pool.freePageBits(pn, toFree);
-
-                size_t bitbase = pn * (PAGESIZE / 16);
-                size_t bittop = bitbase + (PAGESIZE / 16) - bitstride + 1;
-
-                size_t biti = bitbase;
-                for (biti = bitbase; biti < bittop; biti += bitstride)
-                {
-                    if (!pool.freebits.test(biti))
-                        goto Lnotfree;
-                }
-                pool.pagetable[pn] = B_FREE;
-                if (pn < pool.searchStart) pool.searchStart = pn;
-                pool.freepages++;
-                freedSmallPages++;
-                continue;
-
-            Lnotfree:
-                // prepend to buckets, but with forward addresses inside the page
-                List* bucketHead = bucket[bin];
-                List** bucketTail = &bucket[bin];
-
-                p = pool.baseAddr + pn * PAGESIZE;
-                const top = PAGESIZE - size + 1; // ensure <size> bytes available even if unaligned
-                for (uint u = 0; u < top; u += size)
-                {
-                    biti = bitbase + u / 16;
-                    if (!pool.freebits.test(biti))
-                        continue;
-                    auto elem = cast(List *)(p + u);
-                    elem.pool = &pool.base;
-                    *bucketTail = elem;
-                    bucketTail = &elem.next;
-                }
-                *bucketTail = bucketHead;
             }
         }
 
         return freedSmallPages;
+    }
+
+    // return true if full page can be recovered
+    bool sweepSmallPage(SmallObjectPool* pool, size_t pn, Bins bin) nothrow
+    {
+        immutable size = binsize[bin];
+        void *p = pool.baseAddr + pn * PAGESIZE;
+        immutable base = pn * (PAGESIZE/16);
+        immutable bitstride = size / 16;
+
+        bool freeBits;
+        PageBits toFree;
+
+        // ensure that there are at least <size> bytes for every address
+        //  below ptop even if unaligned
+        void *ptop = p + PAGESIZE - size + 1;
+        for (size_t i; p < ptop; p += size, i += bitstride)
+        {
+            immutable biti = base + i;
+
+            if (!pool.mark.test(biti))
+            {
+                void* q = sentinel_add(p);
+                sentinel_Invariant(q);
+
+                if (pool.finals.nbits && pool.finals.test(biti))
+                    rt_finalizeFromGC(q, sentinel_size(q, size), pool.getBits(biti));
+
+                freeBits = true;
+                toFree.set(i);
+
+                debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
+                leakDetector.log_free(sentinel_add(p));
+
+                debug (MEMSTOMP) memset(p, 0xF3, size);
+            }
+        }
+
+        if (freeBits)
+            pool.freePageBits(pn, toFree);
+
+        // recover
+        enum wordsPerPage = PAGESIZE / 16 / GCBits.BITS_PER_WORD;
+        auto freebitsdata = pool.freebits.data + pn * wordsPerPage;
+
+        static foreach (w; 0 .. wordsPerPage)
+            if (freebitsdata[w] != ~GCBits.BITS_0)
+                goto Lnotfree;
+
+        debug(COLLECT_PRINTF) printf("\trecovering bin %d page %p\n", bin, p);
+
+        return true;
+
+    Lnotfree:
+        debug(COLLECT_PRINTF) printf("\tfilling bucket[%d] from page %p\n", bin, p);
+
+        // prepend to buckets, but with forward addresses inside the page
+        List* bucketHead = bucket[bin];
+        List** bucketTail = &bucket[bin];
+
+        p = pool.baseAddr + pn * PAGESIZE;
+        const top = PAGESIZE - size + 1; // ensure <size> bytes available even if unaligned
+        for (uint u = 0; u < top; u += size)
+        {
+            immutable biti = base + u / 16;
+            if (!pool.freebits.test(biti))
+                continue;
+            auto elem = cast(List *)(p + u);
+            elem.pool = &pool.base;
+            *bucketTail = elem;
+            bucketTail = &elem.next;
+        }
+        *bucketTail = bucketHead;
+        return false;
     }
 
     /**
