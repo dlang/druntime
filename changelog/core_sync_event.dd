@@ -2,32 +2,3 @@ New module core.sync.event
 
 This module provides a cross-platform interface for lightweight signaling of other threads.
 It can be used to start execution of multiple waiting threads simultaneously.
----
-import core.sync.event, core.thread, std.file;
-
-struct ProcessFile
-{
-    ThreadGroup group;
-    Event event;
-    void[] buffer;
-
-    void doProcess()
-    {
-        event.wait();
-        // process buffer
-    }
-
-    void process(string filename)
-    {
-        event.initialize(true, false);
-        group = new ThreadGroup;
-        for (int i = 0; i < 10; ++i)
-            group.create(&doProcess);
-
-        buffer = std.file.read(filename);
-        event.set();
-        group.joinAll();
-        event.terminate();
-    }
-}
----

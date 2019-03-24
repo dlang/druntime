@@ -37,6 +37,35 @@ import core.internal.abort : abort;
  *
  * Implemented using `pthread_mutex` and `pthread_condition` on Posix and
  * `CreateEvent` and `SetEvent` on Windows.
+---
+import core.sync.event, core.thread, std.file;
+
+struct ProcessFile
+{
+    ThreadGroup group;
+    Event event;
+    void[] buffer;
+
+    void doProcess()
+    {
+        event.wait();
+        // process buffer
+    }
+
+    void process(string filename)
+    {
+        event.initialize(true, false);
+        group = new ThreadGroup;
+        for (int i = 0; i < 10; ++i)
+            group.create(&doProcess);
+
+        buffer = std.file.read(filename);
+        event.set();
+        group.joinAll();
+        event.terminate();
+    }
+}
+---
  */
 struct Event
 {
