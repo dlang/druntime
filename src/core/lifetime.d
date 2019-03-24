@@ -1771,12 +1771,10 @@ void moveEmplace(T)(ref T source, ref T target) @system
     import core.stdc.string : memcpy, memset;
     import core.internal.traits;
 
-    // TODO: this assert pulls in half of phobos. we need to work out an alternative assert strategy.
-//    static if (!is(T == class) && hasAliasing!T) if (!__ctfe)
-//    {
-//        import std.exception : doesPointTo;
-//        assert(!doesPointTo(source, source), "Cannot move object with internal pointer.");
-//    }
+    static if (!is(T == class) && hasAliasing!T) if (!__ctfe)
+    {
+        assert(!doesPointTo(source, source), "Cannot move object with internal pointer.");
+    }
 
     static if (is(T == struct))
     {
