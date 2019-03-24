@@ -1732,8 +1732,6 @@ struct Gcx
      */
     Pool *newPool(size_t npages, bool isLargeObject) nothrow
     {
-        //debug(PRINTF) printf("************Gcx::newPool(npages = %d)****************\n", npages);
-
         // Minimum of POOLSIZE
         size_t minPages = (config.minPoolSize << 20) / PAGESIZE;
         if (npages < minPages)
@@ -1770,6 +1768,8 @@ struct Gcx
                 return null;
             }
         }
+
+        debug(PRINTF) printf("************Gcx::newPool(npages = %d, baseAddr = %p)****************\n", npages, pool.baseAddr);
 
         mappedPages += npages;
 
@@ -2177,15 +2177,12 @@ struct Gcx
         debug(COLLECT_PRINTF) printf("\tsweeping\n");
         size_t freedLargePages;
         size_t freedSmallPages;
-        size_t freed;
 
         // init bucket list to rebuild free lists
-        foreach (ref b; bucket)
-            b = null;
+        bucket[] = null;
 
         for (size_t n = 0; n < npools; n++)
         {
-            size_t pn;
             Pool* pool = pooltable[n];
 
             if (pool.isLargeObject)
@@ -2247,9 +2244,6 @@ struct Gcx
                 numFree += npages;
 
                 debug (MEMSTOMP) memset(p, 0xF3, npages * PAGESIZE);
-                // Don't need to update searchStart here because
-                // pn is guaranteed to be greater than last time
-                // we updated it.
 
                 pool.largestFree = pool.freepages; // invalidate
             }
@@ -2294,8 +2288,8 @@ struct Gcx
     // return true if full page can be recovered
     bool sweepSmallPage(SmallObjectPool* pool, size_t pn, Bins bin) nothrow
     {
-        immutable size = binsize[bin];
-        void *p = pool.baseAddr + pn * PAGESIZE;
+        immutable size_t size = binsize[bin];
+        void* p = pool.baseAddr + pn * PAGESIZE;
         immutable base = pn * (PAGESIZE/16);
         immutable bitstride = size / 16;
 
@@ -2304,14 +2298,14 @@ struct Gcx
 
         // ensure that there are at least <size> bytes for every address
         //  below ptop even if unaligned
-        void *ptop = p + PAGESIZE - size + 1;
-        for (size_t i; p < ptop; p += size, i += bitstride)
+        const top = PAGESIZE - size + 1;
+        for (size_t u, i; u < top; u += size, i += bitstride)
         {
             immutable biti = base + i;
 
             if (!pool.mark.test(biti))
             {
-                void* q = sentinel_add(p);
+                void* q = sentinel_add(p + u);
                 sentinel_Invariant(q);
 
                 if (pool.finals.nbits && pool.finals.test(biti))
@@ -2320,10 +2314,10 @@ struct Gcx
                 freeBits = true;
                 toFree.set(i);
 
-                debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p);
+                debug(COLLECT_PRINTF) printf("\tcollecting %p\n", p + u);
                 leakDetector.log_free(sentinel_add(p));
 
-                debug (MEMSTOMP) memset(p, 0xF3, size);
+                debug (MEMSTOMP) memset(p + u, 0xF3, size);
             }
         }
 
@@ -2349,11 +2343,9 @@ struct Gcx
         List* bucketHead = bucket[bin];
         List** bucketTail = &bucket[bin];
 
-        p = pool.baseAddr + pn * PAGESIZE;
-        const top = PAGESIZE - size + 1; // ensure <size> bytes available even if unaligned
-        for (uint u = 0; u < top; u += size)
+        size_t biti = base;
+        for (size_t u = 0; u < top; u += size, biti += bitstride)
         {
-            immutable biti = base + u / 16;
             if (!pool.freebits.test(biti))
                 continue;
             auto elem = cast(List *)(p + u);
