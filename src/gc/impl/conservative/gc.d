@@ -2275,9 +2275,11 @@ struct Gcx
                 if (sweepSmallPage(pool, pn, bin))
                 {
                     pool.pagetable[pn] = B_FREE;
-                    if (pn < pool.searchStart) pool.searchStart = pn;
                     pool.freepages++;
                     freedSmallPages++;
+                    // add to free chain
+                    pool.binPageChain[pn] = cast(uint) pool.searchStart;
+                    pool.searchStart = pn;
                 }
             }
         }
@@ -2518,6 +2520,10 @@ struct Pool
     //  only for the first and the last page.
     uint* bPageOffsets;
 
+    // The small object pool uses the same array to keep a chain of free pages
+    // (searchStart is first free page)
+    alias binPageChain = bPageOffsets;
+
     // precise GC: TypeInfo.rtInfo for allocation (LargeObjectPool only)
     immutable(size_t)** rtinfo;
 
@@ -2586,14 +2592,23 @@ struct Pool
         if (!pagetable)
             onOutOfMemoryErrorNoGC();
 
-        if (isLargeObject && npages > 0)
+        if (npages > 0)
         {
             bPageOffsets = cast(uint*)cstdlib.malloc(npages * uint.sizeof);
             if (!bPageOffsets)
                 onOutOfMemoryErrorNoGC();
 
-            bPageOffsets[0] = cast(uint)npages;
-            bPageOffsets[npages-1] = cast(uint)npages;
+            if (isLargeObject)
+            {
+                bPageOffsets[0] = cast(uint)npages;
+                bPageOffsets[npages-1] = cast(uint)npages;
+            }
+            else
+            {
+                // all pages free
+                foreach (n; 0..npages)
+                    binPageChain[n] = cast(uint)(n + 1);
+            }
         }
 
         memset(pagetable, B_FREE, npages);
@@ -3199,16 +3214,10 @@ struct LargeObjectPool
 
             clrBits(biti, ~BlkAttr.NONE);
 
-            if (pn < searchStart)
-                searchStart = pn;
-
             debug(COLLECT_PRINTF) printf("\tcollecting big %p\n", p);
             //log_free(sentinel_add(p));
 
-            size_t n = 1;
-            for (; pn + n < npages; ++n)
-                if (pagetable[pn + n] != B_PAGEPLUS)
-                    break;
+            size_t n = bPageOffsets[pn];
             debug (MEMSTOMP) memset(baseAddr + pn * PAGESIZE, 0xF3, n * PAGESIZE);
             freePages(pn, n);
             mergeFreePageOffsets!(true, true)(pn, n);
@@ -3221,6 +3230,19 @@ struct SmallObjectPool
 {
     Pool base;
     alias base this;
+
+    debug(INVARIANT)
+    void Invariant()
+    {
+        //base.Invariant();
+        uint cntFree = 0;
+        for (auto pn = searchStart; pn < npages; pn = binPageChain[pn])
+        {
+            assert(pagetable[pn] == B_FREE);
+            cntFree++;
+        }
+        assert(cntFree == freepages);
+    }
 
     /**
     * Get size of pointer p in pool.
@@ -3320,15 +3342,14 @@ struct SmallObjectPool
     */
     List* allocPage(Bins bin) nothrow
     {
-        size_t pn;
-        for (pn = searchStart; pn < npages; pn++)
-            if (pagetable[pn] == B_FREE)
-                goto L1;
+        if (searchStart >= npages)
+            return null;
 
-        return null;
+        assert(pagetable[searchStart] == B_FREE);
 
     L1:
-        searchStart = pn + 1;
+        size_t pn = searchStart;
+        searchStart = binPageChain[searchStart];
         pagetable[pn] = cast(ubyte)bin;
         freepages--;
 
