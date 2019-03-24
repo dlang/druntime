@@ -40,7 +40,6 @@ import core.internal.abort : abort;
  */
 struct Event
 {
-    // Posix version inspired by http://www.it.uu.se/katalog/larme597/win32eoposix
 nothrow @nogc:
     /**
      * Creates an event object.
@@ -74,8 +73,10 @@ nothrow @nogc:
         {
             if (m_initalized)
                 return;
-            !pthread_mutex_init(cast(pthread_mutex_t*) &m_mutex, null) ||
+            pthread_mutex_init(cast(pthread_mutex_t*) &m_mutex, null) == 0 ||
                 abort("Error: pthread_mutex_init failed.");
+            pthread_cond_init(&m_cond, null) == 0 ||
+                abort("Error: pthread_cond_init failed.");
             m_state = initialState;
             m_manualReset = manualReset;
             m_initalized = true;
@@ -107,9 +108,10 @@ nothrow @nogc:
         {
             if (m_initalized)
             {
-                assert(!m_waiter);
                 pthread_mutex_destroy(&m_mutex) == 0 ||
                     abort("Error: pthread_mutex_destroy failed.");
+                pthread_cond_destroy(&m_cond) == 0 ||
+                    abort("Error: pthread_cond_destroy failed.");
                 m_initalized = false;
             }
         }
@@ -130,12 +132,7 @@ nothrow @nogc:
             {
                 pthread_mutex_lock(&m_mutex);
                 m_state = true;
-                for (auto waiter = m_waiter; waiter != null; waiter = waiter.next)
-                {
-                    pthread_mutex_lock(&waiter.mutex);
-                    pthread_cond_signal(&waiter.cond);
-                    pthread_mutex_unlock(&waiter.mutex);
-                }
+                pthread_cond_broadcast(&m_cond);
                 pthread_mutex_unlock(&m_mutex);
             }
         }
@@ -216,18 +213,9 @@ nothrow @nogc:
             int result = 0;
             if (!m_state)
             {
-                list_element le;
-                pthread_mutex_init(&le.mutex, null) == 0 ||
-                    abort("Error: pthread_mutex_init failed.");
-                pthread_cond_init(&le.cond, null) == 0 ||
-                    abort("Error: pthread_cond_init failed.");
-
-                addWaiter(&le);
-                pthread_mutex_unlock(&m_mutex);
-
                 if (tmout == Duration.max)
                 {
-                    result = pthread_cond_wait(&le.cond, &le.mutex);
+                    result = pthread_cond_wait(&m_cond, &m_mutex);
                 }
                 else
                 {
@@ -236,14 +224,8 @@ nothrow @nogc:
                     timespec t = void;
                     mktspec(t, tmout);
 
-                    result = pthread_cond_timedwait(&le.cond, &le.mutex, &t);
+                    result = pthread_cond_timedwait(&m_cond, &m_mutex, &t);
                 }
-
-                pthread_mutex_lock(&m_mutex);
-                removeWaiter(&le);
-
-                pthread_mutex_destroy(&le.mutex);
-                pthread_cond_destroy(&le.cond);
             }
             if (result == 0 && !m_manualReset)
                 m_state = false;
@@ -262,34 +244,10 @@ private:
     else version (Posix)
     {
         pthread_mutex_t m_mutex;
-        list_element* m_waiter;
+        pthread_cond_t m_cond;
         bool m_initalized;
         bool m_state;
         bool m_manualReset;
-
-        static struct list_element
-        {
-            pthread_mutex_t mutex;  // mutex for the conditional wait
-            pthread_cond_t cond;
-            list_element *next;
-        }
-
-        void addWaiter(list_element* le)
-        {
-            le.next = m_waiter;
-            m_waiter = le;
-        }
-
-        void removeWaiter(list_element* le)
-        {
-            for (auto pwaiter = &m_waiter; *pwaiter; pwaiter = &(*pwaiter).next)
-                if (*pwaiter == le)
-                {
-                    *pwaiter = le.next;
-                    return;
-                }
-            assert(false);
-        }
     }
 }
 
@@ -313,14 +271,16 @@ private:
 
 unittest
 {
-    import core.thread;
+    import core.thread, core.atomic;
 
     auto event      = new Event(true, false);
     int  numThreads = 10;
+    shared int numRunning = 0;
 
     void testFn()
     {
         event.wait(8.dur!"seconds"); // timeout below limit for druntime test_runner
+        numRunning.atomicOp!"+="(1);
     }
 
     auto group = new ThreadGroup;
@@ -329,9 +289,12 @@ unittest
         group.create(&testFn);
 
     auto start = MonoTime.currTime;
+    assert(numRunning == 0);
 
     event.set();
     group.joinAll();
+
+    assert(numRunning == numThreads);
 
     assert(MonoTime.currTime - start < 5.dur!"seconds");
 
