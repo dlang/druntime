@@ -59,6 +59,7 @@ alias currTime = MonoTime.currTime;
 __gshared Duration prepTime;
 __gshared Duration markTime;
 __gshared Duration sweepTime;
+__gshared Duration recoverTime;
 __gshared Duration pauseTime;
 __gshared Duration maxPauseTime;
 __gshared Duration maxCollectionTime;
@@ -1059,7 +1060,7 @@ class ConservativeGC : GC
         typeof(return) ret;
 
         ret.numCollections = numCollections;
-        ret.totalCollectionTime = prepTime + markTime + sweepTime;
+        ret.totalCollectionTime = prepTime + markTime + sweepTime + recoverTime;
         ret.totalPauseTime = pauseTime;
         ret.maxCollectionTime = maxCollectionTime;
         ret.maxPauseTime = maxPauseTime;
@@ -1233,9 +1234,11 @@ struct Gcx
                    markTime.total!("msecs"));
             printf("\tTotal sweep time:  %lld milliseconds\n",
                    sweepTime.total!("msecs"));
+            printf("\tTotal page recovery time:  %lld milliseconds\n",
+                   recoverTime.total!("msecs"));
             long maxPause = maxPauseTime.total!("msecs");
             printf("\tMax Pause Time:  %lld milliseconds\n", maxPause);
-            long gcTime = (sweepTime + markTime + prepTime).total!("msecs");
+            long gcTime = (recoverTime + sweepTime + markTime + prepTime).total!("msecs");
             printf("\tGrand total GC time:  %lld milliseconds\n", gcTime);
             long pauseTime = (markTime + prepTime).total!("msecs");
 
@@ -2178,9 +2181,6 @@ struct Gcx
         size_t freedLargePages;
         size_t freedSmallPages;
 
-        // init bucket list to rebuild free lists
-        bucket[] = null;
-
         for (size_t n = 0; n < npools; n++)
         {
             Pool* pool = pooltable[n];
@@ -2274,6 +2274,8 @@ struct Gcx
             {
                 if (sweepSmallPage(pool, pn, bin))
                 {
+                    debug(COLLECT_PRINTF) printf("\trecovering bin %d page %p\n", bin, pool.baseAddr + pn * PAGESIZE);
+
                     pool.pagetable[pn] = B_FREE;
                     pool.freepages++;
                     freedSmallPages++;
@@ -2326,37 +2328,61 @@ struct Gcx
         if (freeBits)
             pool.freePageBits(pn, toFree);
 
-        // recover
+        // recover?
         enum wordsPerPage = PAGESIZE / 16 / GCBits.BITS_PER_WORD;
         auto freebitsdata = pool.freebits.data + pn * wordsPerPage;
 
         static foreach (w; 0 .. wordsPerPage)
             if (freebitsdata[w] != ~GCBits.BITS_0)
-                goto Lnotfree;
-
-        debug(COLLECT_PRINTF) printf("\trecovering bin %d page %p\n", bin, p);
+                return false;
 
         return true;
+    }
 
-    Lnotfree:
-        debug(COLLECT_PRINTF) printf("\tfilling bucket[%d] from page %p\n", bin, p);
+    // collection step 4: rebuild free lists
+    void recover() nothrow
+    {
+        // init bucket list to rebuild free lists
+        bucket[] = null;
 
-        // prepend to buckets, but with forward addresses inside the page
-        List* bucketHead = bucket[bin];
-        List** bucketTail = &bucket[bin];
-
-        size_t biti = base;
-        for (size_t u = 0; u < top; u += size, biti += bitstride)
+        // Free complete pages, rebuild free list
+        for (size_t n = 0; n < npools; n++)
         {
-            if (!pool.freebits.test(biti))
+            Pool* pool = pooltable[n];
+
+            if (pool.isLargeObject)
                 continue;
-            auto elem = cast(List *)(p + u);
-            elem.pool = &pool.base;
-            *bucketTail = elem;
-            bucketTail = &elem.next;
+
+            for (size_t pn = 0; pn < pool.npages; pn++)
+            {
+                Bins bin = cast(Bins)pool.pagetable[pn];
+
+                if (bin < B_PAGE)
+                {
+                    void* p = pool.baseAddr + pn * PAGESIZE;
+                    debug(COLLECT_PRINTF) printf("\tfilling bucket[%d] from page %p\n", bin, p);
+
+                    // prepend to buckets, but with forward addresses inside the page
+                    List* bucketHead = bucket[bin];
+                    List** bucketTail = &bucket[bin];
+
+                    size_t size = binsize[bin];
+                    size_t bitstride = size / 16;
+                    const top = PAGESIZE - size + 1;
+                    size_t biti = pn * (PAGESIZE / 16);
+                    for (size_t u = 0; u < top; u += size, biti += bitstride)
+                    {
+                        if (!pool.freebits.test(biti))
+                            continue;
+                        auto elem = cast(List *)(p + u);
+                        elem.pool = pool;
+                        *bucketTail = elem;
+                        bucketTail = &elem.next;
+                    }
+                    *bucketTail = bucketHead;
+                }
+            }
         }
-        *bucketTail = bucketHead;
-        return false;
     }
 
     /**
@@ -2428,7 +2454,12 @@ struct Gcx
 
         stop = currTime;
         sweepTime += (stop - start);
+        start = stop;
 
+        recover();
+
+        stop = currTime;
+        recoverTime += (stop - start);
         Duration collectionTime = stop - begin;
         if (collectionTime > maxCollectionTime)
             maxCollectionTime = collectionTime;
