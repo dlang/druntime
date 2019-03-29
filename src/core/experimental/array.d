@@ -671,10 +671,10 @@ struct rcarray(T)
         payload = rhs.payload;
         support = rhs.support;
         //isShared = rhs.isShared;
-        setIsShared(support, rhs.isShared);
 
         if (support !is null)
         {
+            setIsShared(support, rhs.isShared);
             addRef(support);
         }
     };
