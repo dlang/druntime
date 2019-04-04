@@ -3621,20 +3621,33 @@ public:
         assert(FracSec.from!"usecs"(0) == FracSec(0));
         assert(FracSec.from!"hnsecs"(0) == FracSec(0));
 
+        // workaround for https://issues.dlang.org/show_bug.cgi?id=19789
+        void _assertThrown(T : Throwable = Exception, E)
+                                            (lazy E expression,
+                                             string msg = null)
+        {
+            bool thrown = false;
+            try
+                expression();
+            catch (T t)
+                thrown = true;
+            assert(thrown, "No exception was thrown.");
+        }
+
         foreach (sign; [1, -1])
         {
-            //_assertThrown!TimeException(from!"msecs"(1000 * sign));
+            _assertThrown!TimeException(from!"msecs"(1000 * sign));
 
             assert(FracSec.from!"msecs"(1 * sign) == FracSec(10_000 * sign));
             assert(FracSec.from!"msecs"(999 * sign) == FracSec(9_990_000 * sign));
 
-            //_assertThrown!TimeException(from!"usecs"(1_000_000 * sign));
+            _assertThrown!TimeException(from!"usecs"(1_000_000 * sign));
 
             assert(FracSec.from!"usecs"(1 * sign) == FracSec(10 * sign));
             assert(FracSec.from!"usecs"(999 * sign) == FracSec(9990 * sign));
             assert(FracSec.from!"usecs"(999_999 * sign) == FracSec(9999_990 * sign));
 
-            //_assertThrown!TimeException(from!"hnsecs"(10_000_000 * sign));
+            _assertThrown!TimeException(from!"hnsecs"(10_000_000 * sign));
 
             assert(FracSec.from!"hnsecs"(1 * sign) == FracSec(1 * sign));
             assert(FracSec.from!"hnsecs"(999 * sign) == FracSec(999 * sign));
