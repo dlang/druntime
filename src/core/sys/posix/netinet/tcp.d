@@ -67,3 +67,7 @@ else version (linux)
 {
     enum TCP_NODELAY = 1;
 }
+else version (WebAssembly)
+{
+    enum TCP_NODELAY = 1;
+}

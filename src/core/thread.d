@@ -24,6 +24,9 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
+version (WebAssembly) {
+  import core.sys.wasi.sys.types;
+}
 private
 {
     // interface to rt.tlsgc
@@ -2512,6 +2515,10 @@ else
 
                 mov sp[RBP], RSP;
             }
+        }
+        else version (WebAssembly)
+        {
+            // TODO: noop
         }
         else
         {
@@ -5649,6 +5656,9 @@ version (Windows)
     alias ThreadID = uint;
 else
 version (Posix)
+    alias ThreadID = pthread_t;
+else
+version (WebAssembly)
     alias ThreadID = pthread_t;
 
 ///////////////////////////////////////////////////////////////////////////////
