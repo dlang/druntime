@@ -1,0 +1,18 @@
+Added `initialize` function for associative arrays
+
+This function allocates memory for an empty associative array (AA). It
+is useful to avoid copying a null AA reference. Then
+when AA elements are added through the original reference, the copied
+reference will still point to the same AA:
+---
+int[int] aa;
+auto b = aa;
+assert(b is null);
+aa.initialize;
+assert(aa !is null);
+auto c = aa;
+
+aa[4] = 4;
+assert(b != aa);
+assert(c is aa);
+---
