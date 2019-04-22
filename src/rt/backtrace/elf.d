@@ -4,23 +4,113 @@
  * Reference: http://www.dwarfstd.org/
  *
  * Copyright: Copyright Digital Mars 2015 - 2015.
- * License:   $(WEB www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+ * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Yazan Dabain
- * Source: $(DRUNTIMESRC src/rt/backtrace/elf.d)
+ * Source: $(DRUNTIMESRC rt/backtrace/elf.d)
  */
 
 module rt.backtrace.elf;
 
-version(linux) version = linux_or_freebsd;
-else version(FreeBSD) version = linux_or_freebsd;
+version (linux) version = linux_or_bsd;
+else version (FreeBSD) version = linux_or_bsd;
+else version (DragonFlyBSD) version = linux_or_bsd;
 
-version(linux_or_freebsd):
+version (linux_or_bsd):
 
 import core.sys.posix.fcntl;
 import core.sys.posix.unistd;
 
-version(linux) public import core.sys.linux.elf;
-version(FreeBSD) public import core.sys.freebsd.sys.elf;
+version (linux) import core.sys.linux.elf;
+version (FreeBSD) import core.sys.freebsd.sys.elf;
+version (DragonFlyBSD) import core.sys.dragonflybsd.sys.elf;
+
+struct Image
+{
+    private ElfFile file;
+
+    static Image openSelf()
+    {
+        Image image;
+
+        if (!ElfFile.openSelf(&image.file))
+            image.file = ElfFile.init;
+
+        return image;
+    }
+
+    @property bool isValid()
+    {
+        return file != ElfFile.init;
+    }
+
+    const(ubyte)[] getDebugLineSectionData()
+    {
+        auto stringSectionHeader = ElfSectionHeader(&file, file.ehdr.e_shstrndx);
+        auto stringSection = ElfSection(&file, &stringSectionHeader);
+
+        auto dbgSectionIndex = findSectionByName(&file, &stringSection, ".debug_line");
+        if (dbgSectionIndex != -1)
+        {
+            auto dbgSectionHeader = ElfSectionHeader(&file, dbgSectionIndex);
+            // we don't support compressed debug sections
+            if ((dbgSectionHeader.shdr.sh_flags & SHF_COMPRESSED) != 0)
+                return null;
+            // debug_line section found and loaded
+            return ElfSection(&file, &dbgSectionHeader);
+        }
+
+        return null;
+    }
+
+    @property size_t baseAddress()
+    {
+        version (linux)
+        {
+            import core.sys.linux.link;
+            import core.sys.linux.elf;
+        }
+        else version (FreeBSD)
+        {
+            import core.sys.freebsd.sys.link_elf;
+            import core.sys.freebsd.sys.elf;
+        }
+        else version (DragonFlyBSD)
+        {
+            import core.sys.dragonflybsd.sys.link_elf;
+            import core.sys.dragonflybsd.sys.elf;
+        }
+
+        static struct ElfAddress
+        {
+            size_t begin;
+            bool set;
+        }
+        ElfAddress elfAddress;
+
+        // the DWARF addresses for DSOs are relative
+        const isDynamicSharedObject = (file.ehdr.e_type == ET_DYN);
+        if (!isDynamicSharedObject)
+            return 0;
+
+        extern(C) int dl_iterate_phdr_cb_ngc_tracehandler(dl_phdr_info* info, size_t, void* elfObj) @nogc
+        {
+            auto obj = cast(ElfAddress*) elfObj;
+            // only take the first address as this will be the main binary
+            if (obj.set)
+                return 0;
+
+            obj.set = true;
+
+            // use the base address of the object file
+            obj.begin = info.dlpi_addr;
+            return 0;
+        }
+        dl_iterate_phdr(&dl_iterate_phdr_cb_ngc_tracehandler, &elfAddress);
+        return elfAddress.begin;
+    }
+}
+
+private:
 
 struct ElfFile
 {
@@ -35,6 +125,10 @@ struct ElfFile
             char[1024] selfPathBuffer = void;
             auto selfPath = getFreeBSDExePath(selfPathBuffer[]);
             if (selfPath is null) return false;
+        }
+        else version (DragonFlyBSD)
+        {
+            auto selfPath = "/proc/curproc/file".ptr;
         }
 
         file.fd = open(selfPath, O_RDONLY);
@@ -207,13 +301,55 @@ struct MMapRegion(T)
     void* mptr;
 }
 
-version(X86)
+version (X86)
 {
     alias Elf_Ehdr = Elf32_Ehdr;
     alias Elf_Shdr = Elf32_Shdr;
     enum ELFCLASS = ELFCLASS32;
 }
-else version(X86_64)
+else version (X86_64)
+{
+    alias Elf_Ehdr = Elf64_Ehdr;
+    alias Elf_Shdr = Elf64_Shdr;
+    enum ELFCLASS = ELFCLASS64;
+}
+else version (ARM)
+{
+    alias Elf_Ehdr = Elf32_Ehdr;
+    alias Elf_Shdr = Elf32_Shdr;
+    enum ELFCLASS = ELFCLASS32;
+}
+else version (AArch64)
+{
+    alias Elf_Ehdr = Elf64_Ehdr;
+    alias Elf_Shdr = Elf64_Shdr;
+    enum ELFCLASS = ELFCLASS64;
+}
+else version (PPC)
+{
+    alias Elf_Ehdr = Elf32_Ehdr;
+    alias Elf_Shdr = Elf32_Shdr;
+    enum ELFCLASS = ELFCLASS32;
+}
+else version (PPC64)
+{
+    alias Elf_Ehdr = Elf64_Ehdr;
+    alias Elf_Shdr = Elf64_Shdr;
+    enum ELFCLASS = ELFCLASS64;
+}
+else version (MIPS)
+{
+    alias Elf_Ehdr = Elf32_Ehdr;
+    alias Elf_Shdr = Elf32_Shdr;
+    enum ELFCLASS = ELFCLASS32;
+}
+else version (MIPS64)
+{
+    alias Elf_Ehdr = Elf64_Ehdr;
+    alias Elf_Shdr = Elf64_Shdr;
+    enum ELFCLASS = ELFCLASS64;
+}
+else version (SystemZ)
 {
     alias Elf_Ehdr = Elf64_Ehdr;
     alias Elf_Shdr = Elf64_Shdr;
@@ -224,11 +360,11 @@ else
     static assert(0, "unsupported architecture");
 }
 
-version(LittleEndian)
+version (LittleEndian)
 {
     alias ELFDATA = ELFDATA2LSB;
 }
-else version(BigEndian)
+else version (BigEndian)
 {
     alias ELFDATA = ELFDATA2MSB;
 }
