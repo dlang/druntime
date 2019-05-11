@@ -15,6 +15,7 @@ __gshared Config config;
 struct Config
 {
     bool disable;            // start disabled
+    bool fork = false;            // optional concurrent behaviour
     ubyte profile;           // enable profiling with summary when terminating program
     string gc = "conservative"; // select gc implementation conservative|precise|manual
 
@@ -39,6 +40,7 @@ struct Config
 
         printf("GC options are specified as white space separated assignments:
     disable:0|1    - start disabled (%d)
+    fork:0|1    - set fork behaviour (disabled by default) (%d)
     profile:0|1|2  - enable profiling with summary when terminating program (%d)
     gc:".ptr, disable, profile);
         foreach (i, entry; registeredGCFactories)
