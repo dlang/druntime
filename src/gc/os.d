@@ -49,6 +49,48 @@ else version (Posix)
     version (CRuntime_UClibc) import core.sys.linux.sys.mman : MAP_ANON;
     import core.stdc.stdlib;
 
+
+    /**
+     * Possible results for the wait_pid() function.
+     */
+    enum WRes
+    {
+     DONE, /// The process has finished successfully
+     RUNNING, /// The process is still running
+     ERROR /// There was an error waiting for the process
+    }
+
+    /**
+     * Wait for a process with PID pid to finish.
+     *
+     * If block is false, this function will not block, and return WRes.RUNNING if
+     * the process is still running. Otherwise it will return always WRes.DONE
+     * (unless there is an error, in which case WRes.ERROR is returned).
+     */
+    WRes wait_pid(pid_t pid, bool block = true) nothrow @nogc
+    {
+        int status = void;
+        pid_t waited_pid = void;
+        // In the case where we are blocking, we need to consider signals
+        // arriving while we wait, and resume the waiting if EINTR is returned
+        do {
+            errno = 0;
+            waited_pid = waitpid(pid, &status, block ? 0 : WNOHANG);
+        }
+        while (waited_pid == -1 && errno == EINTR);
+        if (waited_pid == 0)
+            return WRes.RUNNING;
+        assert (waited_pid == pid);
+        assert (status == 0);
+        if (waited_pid != pid || status != 0)
+            return WRes.ERROR;
+        return WRes.DONE;
+    }
+
+    public import core.sys.posix.unistd: pid_t, fork;
+    import core.sys.posix.sys.wait: waitpid, WNOHANG;
+    import core.stdc.errno: errno, EINTR;
+
     //version = GC_Use_Alloc_MMap;
 }
 else
@@ -69,9 +111,18 @@ else static if (is(typeof(malloc)))
     version = GC_Use_Alloc_Malloc;
 else static assert(false, "No supported allocation methods available.");
 +/
+/**
+ * Indicates if an implementation support fork().
+ *
+ * The value shown here is just demostrative, the real value is defined based
+ * on the OS it's being compiled in.
+ * enum HAVE_FORK = true;
+*/
 
 static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
 {
+    enum { HAVE_FORK = false }
+
     /**
      * Map memory.
      */
@@ -95,10 +146,13 @@ static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
 }
 else static if (is(typeof(mmap)))  // else version (GC_Use_Alloc_MMap)
 {
-    void *os_mem_map(size_t nbytes) nothrow
+    enum { HAVE_FORK = true }
+
+    void *os_mem_map(size_t nbytes, bool share = false) nothrow @nogc
     {   void *p;
 
-        p = mmap(null, nbytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        auto map_f = share ? MAP_SHARED : MAP_PRIVATE;
+        p = mmap(null, nbytes, PROT_READ | PROT_WRITE, map_f | MAP_ANON, -1, 0);
         return (p == MAP_FAILED) ? null : p;
     }
 
@@ -110,7 +164,9 @@ else static if (is(typeof(mmap)))  // else version (GC_Use_Alloc_MMap)
 }
 else static if (is(typeof(valloc))) // else version (GC_Use_Alloc_Valloc)
 {
-    void *os_mem_map(size_t nbytes) nothrow
+    enum { HAVE_FORK = false }
+
+    void *os_mem_map(size_t nbytes) nothrow @nogc
     {
         return valloc(nbytes);
     }
@@ -129,6 +185,7 @@ else static if (is(typeof(malloc))) // else version (GC_Use_Alloc_Malloc)
     //       to PAGESIZE alignment, there will be space for a void* at the end
     //       after PAGESIZE bytes used by the GC.
 
+    enum { HAVE_FORK = false }
 
     import gc.gc;
 

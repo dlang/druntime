@@ -43,6 +43,7 @@ import core.gc.gcinterface;
 import rt.util.container.treap;
 
 import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
+import core.stdc.stdio : fflush;
 import core.stdc.string : memcpy, memset, memmove;
 import core.bitop;
 import core.thread;
@@ -55,6 +56,11 @@ else                   import core.stdc.stdio : sprintf, printf; // needed to ou
 
 import core.time;
 alias currTime = MonoTime.currTime;
+
+extern (C) nothrow @nogc
+{
+    void _Exit(int);
+}
 
 // Track total time spent preparing for GC,
 // marking, sweeping and recovering pages.

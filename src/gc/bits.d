@@ -13,6 +13,7 @@
  */
 module gc.bits;
 
+import gc.os : os_mem_map, os_mem_unmap;
 
 import core.bitop;
 import core.stdc.string;
@@ -33,6 +34,7 @@ struct GCBits
     enum BITS_MASK = (BITS_PER_WORD - 1);
     enum BITS_0 = cast(wordtype)0;
     enum BITS_1 = cast(wordtype)1;
+    bool mmap;
     enum BITS_2 = cast(wordtype)2;
 
     wordtype* data;
@@ -42,17 +44,24 @@ struct GCBits
     {
         if (data)
         {
-            free(data);
+            if (mmap)
+                os_mem_unmap(data, nwords * data[0].sizeof);
+            else
+                free(data);
             data = null;
         }
     }
 
-    void alloc(size_t nbits) nothrow
+    void alloc(size_t nbits, bool mmap = false) nothrow
     {
         this.nbits = nbits;
-        data = cast(typeof(data[0])*)calloc(nwords, data[0].sizeof);
+        if (mmap)
+          data = cast(typeof(data[0])*)os_mem_map(nwords * data[0].sizeof, true); // Allocate as MAP_SHARED
+        else
+            data = cast(typeof(data[0])*)calloc(nwords, data[0].sizeof);
         if (!data)
             onOutOfMemoryError();
+        this.mmap = mmap;
     }
 
     wordtype test(size_t i) const nothrow @nogc
@@ -437,7 +446,12 @@ struct GCBits
         memset(data, 0, nwords * wordtype.sizeof);
     }
 
-    void copy(GCBits *f) nothrow
+    void setAll() nothrow @nogc
+    {
+        memset(data, 0xFF, nwords * wordtype.sizeof);
+    }
+
+    void copy(GCBits *f) nothrow @nogc
     in
     {
         assert(nwords == f.nwords);
