@@ -1003,6 +1003,7 @@ class ConservativeGC : GC
 
     /**
      * Do full garbage collection.
+     The collection is done concurrently only if block is false.
      * Return number of pages free'd.
      */
     size_t fullCollect() nothrow
@@ -1013,7 +1014,7 @@ class ConservativeGC : GC
         // when collecting.
         static size_t go(Gcx* gcx) nothrow
         {
-            return gcx.fullcollect();
+            return gcx.fullcollect(false, true); // standard stop the world
         }
         immutable result = runLocked!go(gcx);
 
@@ -1040,7 +1041,7 @@ class ConservativeGC : GC
         // when collecting.
         static size_t go(Gcx* gcx) nothrow
         {
-            return gcx.fullcollect(true);
+            return gcx.fullcollect(true, true); // standard stop the world
         }
         runLocked!go(gcx);
     }
@@ -1230,6 +1231,8 @@ struct Gcx
     auto rangesLock = shared(AlignedSpinLock)(SpinLock.Contention.brief);
     Treap!Root roots;
     Treap!Range ranges;
+    private pid_t markProcPid = 0;
+    private bool doMinimize = false;
 
     debug(INVARIANT) bool initialized;
     debug(INVARIANT) bool inCollection;
@@ -1372,6 +1375,11 @@ struct Gcx
                 }
             }
         }
+    }
+
+    @property bool collectInProgress() const nothrow
+    {
+        return markProcPid != 0;
     }
 
 
@@ -1648,7 +1656,7 @@ struct Gcx
                 if (!newPool(1, false))
                 {
                     // out of memory => try to free some memory
-                    fullcollect();
+                    fullcollect(false, true); // stop the worlds
                     if (lowMem)
                         minimize();
                     recoverNextPage(bin);
@@ -1671,8 +1679,10 @@ struct Gcx
         // Return next item from free list
         bucket[bin] = (cast(List*)p).next;
         auto pool = (cast(List*)p).pool;
+
         auto biti = (p - pool.baseAddr) >> pool.shiftBy;
         assert(pool.freebits.test(biti));
+        pool.mark.set(biti); // be sure that the child is aware of the page being used
         pool.freebits.clear(biti);
         if (bits)
             pool.setBits(biti, bits);
@@ -1735,14 +1745,14 @@ struct Gcx
                 if (!tryAllocNewPool())
                 {
                     // disabled but out of memory => try to free some memory
-                    fullcollect();
-                    minimize();
+                    doMinimize = true;
+                    fullcollect(false, true);
                 }
             }
             else
             {
+                doMinimize = true;
                 fullcollect();
-                minimize();
             }
             // If alloc didn't yet succeed retry now that we collected/minimized
             if (!pool && !tryAlloc() && !tryAllocNewPool())
@@ -1752,7 +1762,12 @@ struct Gcx
         assert(pool);
 
         debug(PRINTF) printFreeInfo(&pool.base);
+        pool.pagetable[pn] = B_PAGE;
+        if (npages > 1)
+            memset(&pool.pagetable[pn + 1], B_PAGEPLUS, npages - 1);
+        pool.mark.set(pn);
         usedLargePages += npages;
+        pool.freepages -= npages;
 
         debug(PRINTF) printFreeInfo(&pool.base);
 
@@ -1820,6 +1835,8 @@ struct Gcx
         if (pool)
         {
             pool.initialize(npages, isLargeObject);
+            if (collectInProgress)
+                pool.mark.setAll();
             if (!pool.baseAddr || !pooltable.insert(pool))
             {
                 pool.Dtor();
@@ -2563,11 +2580,17 @@ struct Gcx
         return recoverPool[bin] = poolIndex < npools ? cast(SmallObjectPool*)pool : null;
     }
 
+    void disableFork() nothrow
+    {
+        config.fork = false;
+        markProcPid = 0;
+    }
+
 
     /**
      * Return number of full pages free'd.
      */
-    size_t fullcollect(bool nostack = false) nothrow
+    size_t fullcollect(bool nostack = false, bool block = false) nothrow
     {
         // It is possible that `fullcollect` will be called from a thread which
         // is not yet registered in runtime (because allocating `new Thread` is
@@ -2581,9 +2604,54 @@ struct Gcx
         begin = start = currTime;
 
         debug(COLLECT_PRINTF) printf("Gcx.fullcollect()\n");
+        bool doFork = config.fork;
+        version (COLLECT_PARALLEL)
+            bool doParallel = config.parallel > 0;
+        else
+            enum doParallel = false;
+
+        assert(!(doFork && doParallel), "No reason in mixing threads and fork");
         //printf("\tpool address range = %p .. %p\n", minAddr, maxAddr);
 
+        // If there is a mark process running, check if it already finished.
+        // If that is the case, we move to the sweep phase.
+        // If it's still running, either we block until the mark phase is
+        // done (and then sweep to finish the collection), or in case of error
+        // we redo the mark phase without forking.
+        if (collectInProgress && doFork)
         {
+            WRes rc = wait_pid(markProcPid, block);
+            switch (rc)
+            {
+                case WRes.DONE:
+                    debug(COLLECT_PRINTF) printf("\t\tmark proc DONE (block=%d)\n",
+                                                  cast(int) block);
+                    markProcPid = 0;
+                    // process GC marks then sweep
+                    thread_suspendAll();
+                    thread_processGCMarks(&isMarked);
+                    thread_resumeAll();
+                    break;
+                case WRes.RUNNING:
+                    debug(COLLECT_PRINTF) printf("\t\tmark proc RUNNING\n");
+                    if (!block)
+                        return 0;
+                    // Something went wrong, if block is true, wait() should never
+                    // returned RUNNING.
+                    goto case WRes.ERROR;
+                case WRes.ERROR:
+                    debug(COLLECT_PRINTF) printf("\t\tmark proc ERROR\n");
+                    // Try to keep going without forking
+                    // and do the marking in this thread
+                    disableFork();
+                    goto Lmark;
+                default:
+                    assert(false, "Unknown wait_pid() result");
+            }
+        }
+        else
+        {
+Lmark:
             // lock roots and ranges around suspending threads b/c they're not reentrant safe
             rangesLock.lock();
             rootsLock.lock();
@@ -2602,12 +2670,65 @@ struct Gcx
             prepTime += (stop - start);
             start = stop;
 
-            version (COLLECT_PARALLEL)
-                bool doParallel = config.parallel > 0;
-            else
-                enum doParallel = false;
-
-            if (doParallel)
+            // Forking is enabled, so we fork() and start a new concurrent mark phase
+            // in the child. If the collection should not block, the parent process
+            // tells the caller no memory could be recycled immediately (if this collection
+            // was triggered by an allocation, the caller should allocate more memory
+            // to fulfill the request).
+            // If the collection should block, the parent will wait for the mark phase
+            // to finish before returning control to the mutator,
+            // but other threads are restarted and may run in parallel with the mark phase
+            // (unless they allocate or use the GC themselves, in which case
+            // the global GC lock will stop them).
+            if (doFork)
+            {
+                // fork now and sweep later
+                fflush(null); // avoid duplicated FILE* output
+                auto pid = fork();
+                assert(pid != -1); // TODO handle case
+                switch (pid)
+                {
+                    case -1: // fork() failed, retry without forking
+                        disableFork();
+                        goto Lmark;
+                    case 0: // child process
+                        if (ConservativeGC.isPrecise)
+                            markAll!markPrecise(nostack);
+                        else
+                            markAll!markConservative(nostack);
+                        _Exit(0);
+						break; // bogus
+					default: // the parent
+                        thread_resumeAll();
+                        if (!block)
+                        {
+                          markProcPid = pid;
+                          // update profiling informations
+                          stop = currTime;
+                          markTime += (stop - start);
+                          Duration pause = stop - begin;
+                          if (pause > maxPauseTime)
+                              maxPauseTime = pause;
+                          pauseTime += pause;
+                          return 0;
+                        }
+                        WRes r = wait_pid(pid); // block until marking is done
+                        assert(r == WRes.DONE);
+                        assert(r != WRes.RUNNING);
+                        if (r == WRes.ERROR)
+                        {
+                            thread_suspendAll();
+                            // there was an error
+                            // do the marking in this thread
+							disableFork();
+                            if (ConservativeGC.isPrecise)
+                                markAll!markPrecise(nostack);
+                            else
+                                markAll!markConservative(nostack);
+                        }
+                }
+            }
+            else if (doParallel)
             {
                 version (COLLECT_PARALLEL)
                     markParallel(nostack);
@@ -2620,9 +2741,18 @@ struct Gcx
                     markAll!markConservative(nostack);
             }
 
+            // if we get here, forking failed and a standard STW collection got issued
+            // threads were suspended again, restart them
+            if(doFork)
+                thread_suspendAll();
+
             thread_processGCMarks(&isMarked);
             thread_resumeAll();
         }
+
+        // If we reach here, the child process has finished the marking phase
+        // or block == true and we are using standard stop the world collection.
+        // It is time to sweep
 
         stop = currTime;
         markTime += (stop - start);
@@ -2640,6 +2770,14 @@ struct Gcx
             ConservativeGC._inFinalizer = false;
         }
 
+        // minimize() should be called only after a call to fullcollect
+        // terminates with a sweep
+        if (doMinimize || lowMem)
+        {
+            doMinimize = false;
+            minimize();
+        }
+
         // init bucket lists
         bucket[] = null;
         foreach (Bins bin; 0..B_NUMSMALL)
@@ -2655,7 +2793,6 @@ struct Gcx
         ++numCollections;
 
         updateCollectThresholds();
-
         return freedPages;
     }
 
@@ -2991,7 +3128,7 @@ struct Pool
         topAddr = baseAddr + poolsize;
         auto nbits = cast(size_t)poolsize >> shiftBy;
 
-        mark.alloc(nbits);
+        mark.alloc(nbits, true);
         if (ConservativeGC.isPrecise)
         {
             if (isLargeObject)
@@ -3015,6 +3152,7 @@ struct Pool
             freebits.alloc(nbits);
             freebits.setRange(0, nbits);
         }
+        freebits.setAll();
 
         noscan.alloc(nbits);
         appendable.alloc(nbits);
@@ -3825,6 +3963,9 @@ struct SmallObjectPool
         // Convert page to free list
         size_t size = binsize[bin];
         void* p = baseAddr + pn * PAGESIZE;
+        size_t biti = pn * (PAGESIZE / 16);
+        base.freebits.set(biti);
+
         auto first = cast(List*) p;
 
         // ensure 2 <size> bytes blocks are available below ptop, one
