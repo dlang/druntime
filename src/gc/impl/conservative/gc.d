@@ -2743,7 +2743,7 @@ Lmark:
 
             // if we get here, forking failed and a standard STW collection got issued
             // threads were suspended again, restart them
-            if(doFork)
+            if (doFork)
                 thread_suspendAll();
 
             thread_processGCMarks(&isMarked);
