@@ -75,7 +75,7 @@ static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
     /**
      * Map memory.
      */
-    void *os_mem_map(size_t nbytes) nothrow
+    void *os_mem_map(size_t nbytes) nothrow @nogc
     {
         return VirtualAlloc(null, nbytes, MEM_RESERVE | MEM_COMMIT,
                 PAGE_READWRITE);
@@ -88,7 +88,7 @@ static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
      *      0       success
      *      !=0     failure
      */
-    int os_mem_unmap(void *base, size_t nbytes) nothrow
+    int os_mem_unmap(void *base, size_t nbytes) nothrow @nogc
     {
         return cast(int)(VirtualFree(base, 0, MEM_RELEASE) == 0);
     }
@@ -103,7 +103,7 @@ else static if (is(typeof(mmap)))  // else version (GC_Use_Alloc_MMap)
     }
 
 
-    int os_mem_unmap(void *base, size_t nbytes) nothrow
+    int os_mem_unmap(void *base, size_t nbytes) nothrow @nogc
     {
         return munmap(base, nbytes);
     }
@@ -116,7 +116,7 @@ else static if (is(typeof(valloc))) // else version (GC_Use_Alloc_Valloc)
     }
 
 
-    int os_mem_unmap(void *base, size_t nbytes) nothrow
+    int os_mem_unmap(void *base, size_t nbytes) nothrow @nogc
     {
         free(base);
         return 0;
@@ -136,7 +136,7 @@ else static if (is(typeof(malloc))) // else version (GC_Use_Alloc_Malloc)
     const size_t PAGE_MASK = PAGESIZE - 1;
 
 
-    void *os_mem_map(size_t nbytes) nothrow
+    void *os_mem_map(size_t nbytes) nothrow @nogc
     {   byte *p, q;
         p = cast(byte *) malloc(nbytes + PAGESIZE);
         q = p + ((PAGESIZE - ((cast(size_t) p & PAGE_MASK))) & PAGE_MASK);
@@ -145,7 +145,7 @@ else static if (is(typeof(malloc))) // else version (GC_Use_Alloc_Malloc)
     }
 
 
-    int os_mem_unmap(void *base, size_t nbytes) nothrow
+    int os_mem_unmap(void *base, size_t nbytes) nothrow @nogc
     {
         free( *cast(void**)( cast(byte*) base + nbytes ) );
         return 0;
