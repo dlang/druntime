@@ -74,47 +74,21 @@ version (CoreUnittest)
     }
 
     private @nogc nothrow pure
-    void pureDeallocate(T)(T[] b)
+    void* pureDeallocate(T)(T[] b)
     {
-        return (cast(void function(T[]) @nogc nothrow pure)(&_deallocate!(T)))(b);
+        return (cast(void* function(T[]) @nogc nothrow pure)(&_deallocate!(T)))(b);
     }
 
     private @nogc nothrow
-    void _deallocate(T)(T[] b)
+    void* _deallocate(T)(T[] b)
     {
         allocator.deallocate(b);
+        return null;
     }
 }
 
 struct __RefCount
 {
-    private static struct __mutable(T)
-    {
-        private union
-        {
-            T _unused;
-            size_t _ref = cast(size_t) null;
-        }
-
-        @nogc nothrow pure @trusted
-        this(T val) const
-        {
-            _ref = cast(size_t) val;
-        }
-
-        @nogc nothrow pure @trusted
-        this(shared T val) const
-        {
-            _ref = cast(size_t) val;
-        }
-
-        @nogc nothrow pure @trusted
-        T unwrap() const
-        {
-            return cast(T) _ref;
-        }
-    }
-
     version(CoreUnittest) {} else
     {
         import core.memory : pureMalloc, pureFree;
@@ -122,21 +96,22 @@ struct __RefCount
         private alias pureAllocate = pureMalloc;
 
         @nogc nothrow pure
-        private static void pureDeallocate(T)(T[] b)
+        private static void* pureDeallocate(T)(T[] b)
         {
             pureFree(b.ptr);
+            return null;
         }
     }
     import core.atomic : atomicOp;
 
     alias CounterType = uint;
-    private __mutable!(CounterType*) rc;
+    private CounterType* rc = null;
 
     @nogc nothrow pure @safe scope
     bool isShared() const
     {
-        // Faster than ((cast(size_t) rc.unwrap) % 8) == 0;
-        return !((cast(size_t) rc.unwrap) & 7);
+        // Faster than ((cast(size_t) rc) % 8) == 0;
+        return !((cast(size_t) rc) & 7);
     }
 
     @nogc nothrow pure @trusted scope
@@ -144,33 +119,34 @@ struct __RefCount
     {
         if (isShared())
         {
-            return cast(CounterType)(atomicOp!op(*(cast(shared CounterType*) rc.unwrap), val));
+            return cast(CounterType)(atomicOp!op(*(cast(shared CounterType*) rc), val));
         }
         else
         {
-            mixin("return cast(CounterType)(*(cast(CounterType*) rc.unwrap)" ~ op ~ "val);");
+            mixin("return cast(CounterType)(*(cast(CounterType*) rc)" ~ op ~ "val);");
         }
     }
 
     @nogc nothrow pure @trusted scope
     this(this Q)(int) const
     {
-        CounterType* t = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
+        CounterType* support = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
         static if (is(Q == immutable))
         {
-            rc = cast(shared CounterType*) t;
+            *support = 0;
+            rc = cast(immutable CounterType*) support;
         }
         else
         {
-            rc = cast(CounterType*) (t + 1);
+            *(support + 1) = 0;
+            rc = cast(CounterType*) (support + 1);
         }
-        *rc.unwrap = 0;
         addRef();
     }
 
     private enum copyCtorIncRef = q{
         rc = rhs.rc;
-        assert(rc.unwrap == rhs.rc.unwrap);
+        assert(rc == rhs.rc);
         if (rhs.isInitialized())
         {
             assert(isShared() == rhs.isShared());
@@ -205,23 +181,23 @@ struct __RefCount
     // } Get a const obj
 
     // { Get an immutable obj
-    @nogc nothrow pure @safe scope
+    @nogc nothrow pure @trusted scope
     this(return scope ref typeof(this) rhs) immutable
     {
         // Can't have an immutable ref to a mutable. Create a new RC
-        rc = (() @trusted => cast(shared CounterType*) pureAllocate(2 * CounterType.sizeof))();
-        *rc.unwrap = 0;
+        CounterType* support = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
+        *support = 0;
+        rc = cast(immutable CounterType*) support;
         addRef();
     }
 
-    @nogc nothrow pure @safe scope
+    @nogc nothrow pure @trusted scope
     this(return scope const ref typeof(this) rhs) immutable
     {
         if (rhs.isShared())
         {
             // By implementation, only immutable RC is shared, so it's ok to inc ref
-            //rc = (() @trusted => cast(shared int *) rhs.rc.unwrap)();
-            rc = (() @trusted => cast(immutable) rhs.rc)();
+            rc = cast(immutable) rhs.rc;
             if (isInitialized())
             {
                 addRef();
@@ -230,8 +206,9 @@ struct __RefCount
         else
         {
             // Can't have an immutable ref to a mutable. Create a new RC
-            rc = (() @trusted => cast(shared CounterType*) pureAllocate(2 * CounterType.sizeof))();
-            *rc.unwrap = 0;
+            CounterType* support = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
+            *support = 0;
+            rc = cast(immutable CounterType*) support;
             addRef();
         }
     }
@@ -246,7 +223,7 @@ struct __RefCount
     @nogc nothrow pure @safe scope
     ref __RefCount opAssign(return scope ref typeof(this) rhs)
     {
-        if (rhs.isInitialized() && rc.unwrap == rhs.rc.unwrap)
+        if (rhs.isInitialized() && rc == rhs.rc)
         {
             return rhs;
             //return this;
@@ -278,21 +255,21 @@ struct __RefCount
         assert(isInitialized());
         if (rcOp!"=="(1) || (rcOp!"-="(1) == 0))
         {
-            deallocate();
+            return deallocate();
         }
         return null;
     }
 
     @nogc nothrow pure @system scope
-    private void deallocate() const
+    private void* deallocate() const
     {
         if (isShared())
         {
-            pureDeallocate(rc.unwrap[0 .. 2]);
+            return pureDeallocate((cast(CounterType*) rc)[0 .. 2]);
         }
         else
         {
-            pureDeallocate((rc.unwrap - 1)[0 .. 2]);
+            return pureDeallocate((cast(CounterType*) (rc - 1))[0 .. 2]);
         }
     }
 
@@ -315,13 +292,13 @@ struct __RefCount
     pure nothrow @safe @nogc scope
     bool isInitialized() const
     {
-        return rc.unwrap !is null;
+        return rc !is null;
     }
 
     pure nothrow @nogc @system
     CounterType* getUnsafeValue() const
     {
-        return rc.unwrap;
+        return cast(CounterType*) rc;
     }
 }
 
