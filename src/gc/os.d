@@ -50,24 +50,22 @@ else version (Posix)
     import core.stdc.stdlib;
 
 
-    /**
-     * Possible results for the wait_pid() function.
-     */
-    enum WRes
+    /// Possible results for the wait_pid() function.
+    enum ChildStatus
     {
-     DONE, /// The process has finished successfully
-     RUNNING, /// The process is still running
-     ERROR /// There was an error waiting for the process
+     done, /// The process has finished successfully
+     running, /// The process is still running
+     error /// There was an error waiting for the process
     }
 
     /**
      * Wait for a process with PID pid to finish.
      *
-     * If block is false, this function will not block, and return WRes.RUNNING if
-     * the process is still running. Otherwise it will return always WRes.DONE
-     * (unless there is an error, in which case WRes.ERROR is returned).
+     * If block is false, this function will not block, and return ChildStatus.RUNNING if
+     * the process is still running. Otherwise it will return always ChildStatus.DONE
+     * (unless there is an error, in which case ChildStatus.ERROR is returned).
      */
-    WRes wait_pid(pid_t pid, bool block = true) nothrow @nogc
+    ChildStatus wait_pid(pid_t pid, bool block = true) nothrow @nogc
     {
         int status = void;
         pid_t waited_pid = void;
@@ -79,12 +77,12 @@ else version (Posix)
         }
         while (waited_pid == -1 && errno == EINTR);
         if (waited_pid == 0)
-            return WRes.RUNNING;
+            return ChildStatus.running;
         assert (waited_pid == pid);
         assert (status == 0);
         if (waited_pid != pid || status != 0)
-            return WRes.ERROR;
-        return WRes.DONE;
+            return ChildStatus.error;
+        return ChildStatus.done;
     }
 
     public import core.sys.posix.unistd: pid_t, fork;
@@ -116,12 +114,12 @@ else static assert(false, "No supported allocation methods available.");
  *
  * The value shown here is just demostrative, the real value is defined based
  * on the OS it's being compiled in.
- * enum HAVE_FORK = true;
+ * enum HaveFork = true;
 */
 
 static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
 {
-    enum { HAVE_FORK = false }
+    enum HaveFork = false;
 
     /**
      * Map memory.
@@ -146,7 +144,7 @@ static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
 }
 else static if (is(typeof(mmap)))  // else version (GC_Use_Alloc_MMap)
 {
-    enum { HAVE_FORK = true }
+    enum HaveFork = true;
 
     void *os_mem_map(size_t nbytes, bool share = false) nothrow @nogc
     {   void *p;
@@ -164,7 +162,7 @@ else static if (is(typeof(mmap)))  // else version (GC_Use_Alloc_MMap)
 }
 else static if (is(typeof(valloc))) // else version (GC_Use_Alloc_Valloc)
 {
-    enum { HAVE_FORK = false }
+    enum HaveFork = false;
 
     void *os_mem_map(size_t nbytes) nothrow @nogc
     {
@@ -185,7 +183,7 @@ else static if (is(typeof(malloc))) // else version (GC_Use_Alloc_Malloc)
     //       to PAGESIZE alignment, there will be space for a void* at the end
     //       after PAGESIZE bytes used by the GC.
 
-    enum { HAVE_FORK = false }
+    enum HaveFork = false;
 
     import gc.gc;
 
