@@ -2580,6 +2580,98 @@ struct Gcx
         markProcPid = 0;
     }
 
+    ChildStatus collectFork(bool block) nothrow
+    {
+        typeof(return) rc = wait_pid(markProcPid, block);
+        final switch (rc)
+        {
+            case ChildStatus.done:
+                debug(COLLECT_PRINTF) printf("\t\tmark proc DONE (block=%d)\n",
+                                                cast(int) block);
+                markProcPid = 0;
+                // process GC marks then sweep
+                thread_suspendAll();
+                thread_processGCMarks(&isMarked);
+                thread_resumeAll();
+                break;
+            case ChildStatus.running:
+                debug(COLLECT_PRINTF) printf("\t\tmark proc RUNNING\n");
+                if (!block)
+                    break;
+                // Something went wrong, if block is true, wait() should never
+                // return RUNNING.
+                goto case ChildStatus.error;
+            case ChildStatus.error:
+                debug(COLLECT_PRINTF) printf("\t\tmark proc ERROR\n");
+                // Try to keep going without forking
+                // and do the marking in this thread
+                break;
+        }
+        return rc;
+    }
+
+    ChildStatus markFork(bool nostack, bool block, const MonoTime begin, ref MonoTime start, ref MonoTime stop, ref Duration markTime) nothrow
+    {
+        // Forking is enabled, so we fork() and start a new concurrent mark phase
+        // in the child. If the collection should not block, the parent process
+        // tells the caller no memory could be recycled immediately (if this collection
+        // was triggered by an allocation, the caller should allocate more memory
+        // to fulfill the request).
+        // If the collection should block, the parent will wait for the mark phase
+        // to finish before returning control to the mutator,
+        // but other threads are restarted and may run in parallel with the mark phase
+        // (unless they allocate or use the GC themselves, in which case
+        // the global GC lock will stop them).
+        // fork now and sweep later
+        import core.stdc.stdio;
+        import core.stdc.stdlib : _Exit; // TODO VERSION COLLECT_FORK
+        
+        fflush(null); // avoid duplicated FILE* output
+        auto pid = fork();
+        assert(pid != -1); // TODO handle case
+        switch (pid)
+        {
+            case -1: // fork() failed, retry without forking
+                return ChildStatus.error;
+            case 0: // child process
+                if (ConservativeGC.isPrecise)
+                    markAll!markPrecise(nostack);
+                else
+                    markAll!markConservative(nostack);
+                _Exit(0);
+                return ChildStatus.done; // bogus
+            default: // the parent
+                thread_resumeAll();
+                if (!block)
+                {
+                    markProcPid = pid;
+                    // update profiling informations
+                    stop = currTime;
+                    markTime += (stop - start);
+                    Duration pause = stop - begin;
+                    if (pause > maxPauseTime)
+                        maxPauseTime = pause;
+                    pauseTime += pause;
+
+                    return ChildStatus.running;
+                }
+                ChildStatus r = wait_pid(pid); // block until marking is done
+                assert(r == ChildStatus.done);
+                assert(r != ChildStatus.running);
+                if (r == ChildStatus.error)
+                {
+                    thread_suspendAll();
+                    // there was an error
+                    // do the marking in this thread
+                    disableFork();
+                    if (ConservativeGC.isPrecise)
+                        markAll!markPrecise(nostack);
+                    else
+                        markAll!markConservative(nostack);
+                }
+        }
+        return ChildStatus.done; // waited for the child
+    }
 
     /**
      * Return number of full pages free'd.
@@ -2614,33 +2706,16 @@ struct Gcx
         // we redo the mark phase without forking.
         if (collectInProgress && doFork)
         {
-            WRes rc = wait_pid(markProcPid, block);
-            switch (rc)
+            ChildStatus rc = collectFork(block);
+            final switch (rc)
             {
-                case WRes.DONE:
-                    debug(COLLECT_PRINTF) printf("\t\tmark proc DONE (block=%d)\n",
-                                                  cast(int) block);
-                    markProcPid = 0;
-                    // process GC marks then sweep
-                    thread_suspendAll();
-                    thread_processGCMarks(&isMarked);
-                    thread_resumeAll();
+                case ChildStatus.done:
                     break;
-                case WRes.RUNNING:
-                    debug(COLLECT_PRINTF) printf("\t\tmark proc RUNNING\n");
-                    if (!block)
-                        return 0;
-                    // Something went wrong, if block is true, wait() should never
-                    // returned RUNNING.
-                    goto case WRes.ERROR;
-                case WRes.ERROR:
-                    debug(COLLECT_PRINTF) printf("\t\tmark proc ERROR\n");
-                    // Try to keep going without forking
-                    // and do the marking in this thread
+                case ChildStatus.running:
+                    return 0;
+                case ChildStatus.error:
                     disableFork();
                     goto Lmark;
-                default:
-                    assert(false, "Unknown wait_pid() result");
             }
         }
         else
@@ -2664,62 +2739,18 @@ Lmark:
             prepTime += (stop - start);
             start = stop;
 
-            // Forking is enabled, so we fork() and start a new concurrent mark phase
-            // in the child. If the collection should not block, the parent process
-            // tells the caller no memory could be recycled immediately (if this collection
-            // was triggered by an allocation, the caller should allocate more memory
-            // to fulfill the request).
-            // If the collection should block, the parent will wait for the mark phase
-            // to finish before returning control to the mutator,
-            // but other threads are restarted and may run in parallel with the mark phase
-            // (unless they allocate or use the GC themselves, in which case
-            // the global GC lock will stop them).
             if (doFork)
             {
-                // fork now and sweep later
-                fflush(null); // avoid duplicated FILE* output
-                auto pid = fork();
-                assert(pid != -1); // TODO handle case
-                switch (pid)
+                auto forkResult = markFork(nostack, block, begin, start, stop, markTime);
+                final switch (forkResult)
                 {
-                    case -1: // fork() failed, retry without forking
+                    case ChildStatus.error:
                         disableFork();
                         goto Lmark;
-                    case 0: // child process
-                        if (ConservativeGC.isPrecise)
-                            markAll!markPrecise(nostack);
-                        else
-                            markAll!markConservative(nostack);
-                        _Exit(0);
-                        break; // bogus
-                    default: // the parent
-                        thread_resumeAll();
-                        if (!block)
-                        {
-                          markProcPid = pid;
-                          // update profiling informations
-                          stop = currTime;
-                          markTime += (stop - start);
-                          Duration pause = stop - begin;
-                          if (pause > maxPauseTime)
-                              maxPauseTime = pause;
-                          pauseTime += pause;
-                          return 0;
-                        }
-                        WRes r = wait_pid(pid); // block until marking is done
-                        assert(r == WRes.DONE);
-                        assert(r != WRes.RUNNING);
-                        if (r == WRes.ERROR)
-                        {
-                            thread_suspendAll();
-                            // there was an error
-                            // do the marking in this thread
-                            disableFork();
-                            if (ConservativeGC.isPrecise)
-                                markAll!markPrecise(nostack);
-                            else
-                                markAll!markConservative(nostack);
-                        }
+                    case ChildStatus.running:
+                        return 0;
+                    case ChildStatus.done:
+                        break;
                 }
             }
             else if (doParallel)
