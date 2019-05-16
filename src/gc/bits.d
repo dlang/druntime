@@ -55,12 +55,11 @@ struct GCBits
     {
         this.nbits = nbits;
         if (mmap)
-          data = cast(typeof(data[0])*)os_mem_map(nwords * data[0].sizeof, true); // Allocate as MAP_SHARED
+            data = cast(typeof(data[0])*)os_mem_map(nwords * data[0].sizeof, true); // Allocate as MAP_SHARED
         else
             data = cast(typeof(data[0])*)calloc(nwords, data[0].sizeof);
         if (!data)
             onOutOfMemoryError();
-        this.mmap = mmap;
     }
 
     wordtype test(size_t i) const nothrow @nogc
