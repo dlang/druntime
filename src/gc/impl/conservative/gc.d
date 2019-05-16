@@ -57,11 +57,6 @@ else                   import core.stdc.stdio : sprintf, printf; // needed to ou
 import core.time;
 alias currTime = MonoTime.currTime;
 
-extern (C) nothrow @nogc
-{
-    void _Exit(int);
-}
-
 // Track total time spent preparing for GC,
 // marking, sweeping and recovering pages.
 __gshared Duration prepTime;
