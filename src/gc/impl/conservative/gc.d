@@ -3213,26 +3213,26 @@ struct Pool
             bPageOffsets = null;
         }
 
-        mark.Dtor();
+        mark.Dtor(true);
         if (ConservativeGC.isPrecise)
         {
             if (isLargeObject)
                 cstdlib.free(rtinfo);
             else
-                is_pointer.Dtor();
+                is_pointer.Dtor(false);
         }
         if (isLargeObject)
         {
-            nointerior.Dtor();
+            nointerior.Dtor(true);
         }
         else
         {
-            freebits.Dtor();
+            freebits.Dtor(true);
         }
-        finals.Dtor();
-        structFinals.Dtor();
-        noscan.Dtor();
-        appendable.Dtor();
+        finals.Dtor(false);
+        structFinals.Dtor(false);
+        noscan.Dtor(false);
+        appendable.Dtor(false);
     }
 
     /**
