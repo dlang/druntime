@@ -998,7 +998,7 @@ class ConservativeGC : GC
 
     /**
      * Do full garbage collection.
-     The collection is done concurrently only if block is false.
+     * The collection is done concurrently only if block is false.
      * Return number of pages free'd.
      */
     size_t fullCollect() nothrow
@@ -1651,7 +1651,7 @@ struct Gcx
                 if (!newPool(1, false))
                 {
                     // out of memory => try to free some memory
-                    fullcollect(false, true); // stop the worlds
+                    fullcollect(false, true); // stop the world
                     if (lowMem)
                         minimize();
                     recoverNextPage(bin);
