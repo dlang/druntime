@@ -34,13 +34,12 @@ struct GCBits
     enum BITS_MASK = (BITS_PER_WORD - 1);
     enum BITS_0 = cast(wordtype)0;
     enum BITS_1 = cast(wordtype)1;
-    bool mmap;
     enum BITS_2 = cast(wordtype)2;
 
     wordtype* data;
     size_t nbits;
 
-    void Dtor() nothrow @nogc
+    void Dtor(bool mmap) nothrow @nogc
     {
         if (data)
         {
