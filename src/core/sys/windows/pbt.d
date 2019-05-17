@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_pbt.d)
  */
 module core.sys.windows.pbt;
-version (Windows):
 
 private import core.sys.windows.windef;
 

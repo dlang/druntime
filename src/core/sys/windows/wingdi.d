@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_wingdi.d)
  */
 module core.sys.windows.wingdi;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "gdi32");
+version (Windows) pragma(lib, "gdi32");
 
 // FIXME: clean up Windows version support
 

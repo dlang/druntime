@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_mmsystem.d)
  */
 module core.sys.windows.mmsystem;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "winmm");
+version (Windows) pragma(lib, "winmm");
 
 /*  The #defines MAKEFOURCC, mmioFOURCC, sndAlias are used to define
  *  compile-time constants, so they are implemented as templates.

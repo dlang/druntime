@@ -7,8 +7,7 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_lmaccess.d)
  */
 module core.sys.windows.lmaccess;
-version (Windows):
-pragma(lib, "netapi32");
+version (Windows) pragma(lib, "netapi32");
 
 /**
  Changes relative to MinGW:

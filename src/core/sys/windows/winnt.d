@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winnt.d)
  */
 module core.sys.windows.winnt;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_lmerrlog.d)
  */
 module core.sys.windows.lmerrlog;
-version (Windows):
 
 // COMMENT: This appears to be only for Win16. All functions are deprecated.
 

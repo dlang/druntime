@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_snmp.d)
  */
 module core.sys.windows.snmp;
-version (Windows):
 
 private import core.sys.windows.basetsd /+: HANDLE+/;
 private import core.sys.windows.windef /+: BOOL, BYTE, DWORD, INT, LONG, UINT, ULONG+/;

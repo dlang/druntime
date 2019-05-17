@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_sqltypes.d)
  */
 module core.sys.windows.sqltypes;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

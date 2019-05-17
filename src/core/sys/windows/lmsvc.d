@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_lmsvc.d)
  */
 module core.sys.windows.lmsvc;
-version (Windows):
 
 // FIXME: Is this file deprecated? All of the functions are only for Win16.
 /**

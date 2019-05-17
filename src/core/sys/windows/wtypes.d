@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_wtypes.d)
  */
 module core.sys.windows.wtypes;
-version (Windows):
 
 import core.sys.windows.rpc, core.sys.windows.rpcndr;
 private import core.sys.windows.windef;

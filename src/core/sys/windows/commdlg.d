@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_commdlg.d)
  */
 module core.sys.windows.commdlg;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "comdlg32");
+version (Windows) pragma(lib, "comdlg32");
 
 private import core.sys.windows.w32api;
 import core.sys.windows.windef, core.sys.windows.winuser;

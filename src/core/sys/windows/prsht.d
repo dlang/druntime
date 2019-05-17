@@ -8,10 +8,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_prsht.d)
  */
 module core.sys.windows.prsht;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "comctl32");
+version (Windows) pragma(lib, "comctl32");
 
 private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.winuser;
 
@@ -364,6 +363,8 @@ version (Unicode) {
     alias CreatePropertySheetPageA CreatePropertySheetPage;
     alias PropertySheetA           PropertySheet;
 }
+
+version (Windows):
 
 BOOL PropSheet_SetCurSel(HWND hPropSheetDlg, HPROPSHEETPAGE hpage,
       HPROPSHEETPAGE index) {

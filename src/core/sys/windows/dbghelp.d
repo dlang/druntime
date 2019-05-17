@@ -10,7 +10,6 @@
  */
 
 module core.sys.windows.dbghelp;
-version (Windows):
 
 import core.sys.windows.winbase /+: FreeLibrary, GetProcAddress, LoadLibraryA+/;
 import core.sys.windows.windef;
@@ -44,6 +43,8 @@ extern(System)
     alias BOOL         function(HANDLE hProcess, PSYMBOL_REGISTERED_CALLBACK64 CallbackFunction, ulong UserContext) SymRegisterCallback64Func;
     alias API_VERSION* function() ImagehlpApiVersionFunc;
 }
+
+version (Windows):
 
 struct DbgHelp
 {

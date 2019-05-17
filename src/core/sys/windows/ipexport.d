@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_ipexport.d)
  */
 module core.sys.windows.ipexport;
-version (Windows):
 
 private import core.sys.windows.windef;
 

@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_nspapi.d)
  */
 module core.sys.windows.nspapi;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

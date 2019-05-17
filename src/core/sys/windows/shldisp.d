@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_shldisp.d)
  */
 module core.sys.windows.shldisp;
-version (Windows):
 
 private import core.sys.windows.unknwn, core.sys.windows.windef, core.sys.windows.wtypes;
 

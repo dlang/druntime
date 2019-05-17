@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_errorrep.d)
  */
 module core.sys.windows.errorrep;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

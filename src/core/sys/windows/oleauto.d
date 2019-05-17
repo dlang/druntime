@@ -7,8 +7,7 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_oleauto.d)
  */
 module core.sys.windows.oleauto;
-version (Windows):
-pragma(lib, "oleaut32");
+version (Windows) pragma(lib, "oleaut32");
 
 import core.sys.windows.oaidl;
 private import core.sys.windows.basetyps, core.sys.windows.unknwn, core.sys.windows.windef, core.sys.windows.wtypes;

@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_reason.d)
  */
 module core.sys.windows.reason;
-version (Windows):
 
 private import core.sys.windows.w32api, core.sys.windows.windef;
 

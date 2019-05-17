@@ -7,8 +7,7 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_tlhelp32.d)
  */
 module core.sys.windows.tlhelp32;
-version (Windows):
-pragma(lib, "kernel32");
+version (Windows) pragma(lib, "kernel32");
 
 version (ANSI) {} else version = Unicode;
 

@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_accctrl.d)
  */
 module core.sys.windows.accctrl;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

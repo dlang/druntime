@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winbase.d)
  */
 module core.sys.windows.winbase;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "kernel32");
+version (Windows) pragma(lib, "kernel32");
 
 /**
 Translation Notes:
@@ -1909,7 +1908,7 @@ WINBASEAPI DWORD WINAPI GetCurrentThreadId(void);
     UINT GlobalGetAtomNameA(ATOM, LPSTR, int);
     UINT GlobalGetAtomNameW(ATOM, LPWSTR, int);
 
-    bool HasOverlappedIoCompleted(LPOVERLAPPED lpOverlapped) {
+    extern(D) bool HasOverlappedIoCompleted(LPOVERLAPPED lpOverlapped) {
         return lpOverlapped.Internal != STATUS_PENDING;
     }
 
@@ -2474,7 +2473,7 @@ WINBASEAPI BOOL WINAPI SetEvent(HANDLE);
 }
 
 // For compatibility with old core.sys.windows.windows:
-version (LittleEndian) nothrow @nogc
+version (Windows) version (LittleEndian) nothrow @nogc
 {
     BOOL QueryPerformanceCounter(long* lpPerformanceCount) { return QueryPerformanceCounter(cast(PLARGE_INTEGER)lpPerformanceCount); }
     BOOL QueryPerformanceFrequency(long* lpFrequency) { return QueryPerformanceFrequency(cast(PLARGE_INTEGER)lpFrequency); }

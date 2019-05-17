@@ -8,10 +8,9 @@
  */
 
 module core.sys.windows.vfw;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "vfw32");
+version (Windows) pragma(lib, "vfw32");
 
 private import
     core.sys.windows.commdlg,
@@ -382,6 +381,8 @@ enum {
 enum ICMF_CONFIGURE_QUERY  = 0x00000001;
 enum ICMF_ABOUT_QUERY      = 0x00000001;
 
+version (Windows) {
+
 DWORD ICQueryAbout(HIC hic) {
     return ICSendMessage(hic, ICM_ABOUT, -1, ICMF_ABOUT_QUERY) == ICERR_OK;
 }
@@ -631,6 +632,8 @@ HIC ICDrawOpen(DWORD fccType, DWORD fccHandler, LPBITMAPINFOHEADER lpbiIn) {
     return ICLocate(fccType, fccHandler, lpbiIn, null, ICMODE_DRAW);
 }
 
+} // version (Windows)
+
 extern (Windows) {
     HIC ICLocate(DWORD fccType, DWORD fccHandler, LPBITMAPINFOHEADER lpbiIn, LPBITMAPINFOHEADER lpbiOut, WORD wFlags);
     HIC ICGetDisplayFormat(HIC hic, LPBITMAPINFOHEADER lpbiIn, LPBITMAPINFOHEADER lpbiOut, int BitDepth, int dx, int dy);
@@ -717,6 +720,7 @@ extern (Windows) {
         LPVOID lpBits, int xSrc, int ySrc, int dxSrc, int dySrc, UINT wFlags);
 }
 
+version (Windows)
 BOOL DrawDibUpdate(HDRAWDIB hdd, HDC hdc, int x, int y) {
     return DrawDibDraw(hdd, hdc, x, y, 0, 0, null, null, 0, 0, 0, 0, DDF_UPDATE);
 }
@@ -1555,6 +1559,8 @@ enum {
 
 // can macros
 
+version (Windows) {
+
 BOOL MCIWndCanPlay(HWND hwnd)
     { return cast(BOOL)SendMessage(hwnd, MCIWNDM_CAN_PLAY, 0, 0); }
 BOOL MCIWndCanRecord(HWND hwnd)
@@ -1695,6 +1701,8 @@ LONG MCIWndOpenInterface(HWND hwnd, LPUNKNOWN pUnk)
     { return cast(LONG) SendMessage(hwnd, MCIWNDM_OPENINTERFACE, 0, cast(LPARAM)cast(void*)pUnk); }
 LONG MCIWndSetOwner(HWND hwnd, HWND hwndP)
     { return cast(LONG) SendMessage(hwnd, MCIWNDM_SETOWNER, cast(WPARAM)hwndP, 0); }
+
+} // version (Windows)
 
 enum {
     MCIWNDM_GETDEVICEID         = WM_USER + 100,
@@ -1966,6 +1974,7 @@ enum {
  * AVICap window class
  */
 
+version (Windows)
 LRESULT AVICapSM(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (IsWindow(hWnd)) {
         return SendMessage(hWnd, msg, wParam, lParam);
@@ -2115,6 +2124,8 @@ enum {
  * message wrapper
  */
 
+version (Windows) {
+
 BOOL capSetCallbackOnError(HWND hWnd, LPVOID fpProc)                { return cast(BOOL)AVICapSM(hWnd, WM_CAP_SET_CALLBACK_ERROR, 0, cast(LPARAM)fpProc); }
 BOOL capSetCallbackOnStatus(HWND hWnd, LPVOID fpProc)               { return cast(BOOL)AVICapSM(hWnd, WM_CAP_SET_CALLBACK_STATUS, 0, cast(LPARAM)fpProc); }
 BOOL capSetCallbackOnYield(HWND hWnd, LPVOID fpProc)                { return cast(BOOL)AVICapSM(hWnd, WM_CAP_SET_CALLBACK_YIELD, 0, cast(LPARAM)fpProc); }
@@ -2184,6 +2195,8 @@ BOOL capPaletteSave(HWND hWnd, LPTSTR szName)                       { return cas
 BOOL capPalettePaste(HWND hWnd)                                     { return cast(BOOL)AVICapSM(hWnd, WM_CAP_PAL_PASTE, 0, 0); }
 BOOL capPaletteAuto(HWND hWnd, WPARAM iFrames, LPARAM iColors)      { return cast(BOOL)AVICapSM(hWnd, WM_CAP_PAL_AUTOCREATE, iFrames, iColors); }
 BOOL capPaletteManual(HWND hWnd, WPARAM fGrab, LPARAM iColors)      { return cast(BOOL)AVICapSM(hWnd, WM_CAP_PAL_MANUALCREATE, fGrab, iColors); }
+
+} // version (Windows)
 
 /**
  * structs

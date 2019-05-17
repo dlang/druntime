@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_mapi.d)
  */
 module core.sys.windows.mapi;
-version (Windows):
 
 private import core.sys.windows.windef;
 

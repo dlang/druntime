@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_shlwapi.d)
  */
 module core.sys.windows.shlwapi;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "shlwapi");
+version (Windows) pragma(lib, "shlwapi");
 
 /* Changes compared to MinGW:
 wnsprintf functions are not included.
@@ -128,44 +127,55 @@ extern (Windows)
     alias HRESULT function (DLLVERSIONINFO *) DLLGETVERSIONPROC;
 }
 
+BOOL IntlStrEqNA(LPCSTR pStr1, LPCSTR pStr2, int nChar);
+BOOL IntlStrEqNW(LPCWSTR pStr1, LPCWSTR pStr2, int nChar);
+BOOL IntlStrEqNIA(LPCSTR pStr1, LPCSTR pStr2, int nChar);
+BOOL IntlStrEqNIW(LPCWSTR pStr1, LPCWSTR pStr2, int nChar);
+BOOL UrlIsFileUrlA(LPCSTR pszURL);
+BOOL UrlIsFileUrlW(LPCWSTR pszURL);
+HRESULT UrlUnescapeInPlaceA(LPSTR pszUrl, DWORD dwFlags);
+HRESULT UrlUnescapeInPlaceW(LPWSTR pszUrl, DWORD dwFlags);
 
-BOOL IntlStrEqNA(LPCSTR pStr1, LPCSTR pStr2, int nChar)
+version (Windows)
 {
-    return IntlStrEqWorkerA(TRUE, pStr1, pStr2, nChar);
-}
+    BOOL IntlStrEqNA(LPCSTR pStr1, LPCSTR pStr2, int nChar)
+    {
+        return IntlStrEqWorkerA(TRUE, pStr1, pStr2, nChar);
+    }
 
-BOOL IntlStrEqNW(LPCWSTR pStr1, LPCWSTR pStr2, int nChar)
-{
-    return IntlStrEqWorkerW(TRUE, pStr1, pStr2, nChar);
-}
+    BOOL IntlStrEqNW(LPCWSTR pStr1, LPCWSTR pStr2, int nChar)
+    {
+        return IntlStrEqWorkerW(TRUE, pStr1, pStr2, nChar);
+    }
 
-BOOL IntlStrEqNIA(LPCSTR pStr1, LPCSTR pStr2, int nChar)
-{
-    return IntlStrEqWorkerA(FALSE, pStr1, pStr2, nChar);
-}
+    BOOL IntlStrEqNIA(LPCSTR pStr1, LPCSTR pStr2, int nChar)
+    {
+        return IntlStrEqWorkerA(FALSE, pStr1, pStr2, nChar);
+    }
 
-BOOL IntlStrEqNIW(LPCWSTR pStr1, LPCWSTR pStr2, int nChar)
-{
-    return IntlStrEqWorkerW(FALSE, pStr1, pStr2, nChar);
-}
+    BOOL IntlStrEqNIW(LPCWSTR pStr1, LPCWSTR pStr2, int nChar)
+    {
+        return IntlStrEqWorkerW(FALSE, pStr1, pStr2, nChar);
+    }
 
-BOOL UrlIsFileUrlA(LPCSTR pszURL)
-{
-    return UrlIsA(pszURL, URLIS.URLIS_FILEURL);
-}
+    BOOL UrlIsFileUrlA(LPCSTR pszURL)
+    {
+        return UrlIsA(pszURL, URLIS.URLIS_FILEURL);
+    }
 
-BOOL UrlIsFileUrlW(LPCWSTR pszURL)
-{
-    return UrlIsW(pszURL, URLIS.URLIS_FILEURL);
-}
+    BOOL UrlIsFileUrlW(LPCWSTR pszURL)
+    {
+        return UrlIsW(pszURL, URLIS.URLIS_FILEURL);
+    }
 
-HRESULT UrlUnescapeInPlaceA(LPSTR pszUrl, DWORD dwFlags)
-{
-    return UrlUnescapeA(pszUrl, null, null, dwFlags | URL_UNESCAPE_INPLACE);
-}
-HRESULT UrlUnescapeInPlaceW(LPWSTR pszUrl, DWORD dwFlags)
-{
-    return UrlUnescapeW(pszUrl, null, null, dwFlags | URL_UNESCAPE_INPLACE);
+    HRESULT UrlUnescapeInPlaceA(LPSTR pszUrl, DWORD dwFlags)
+    {
+        return UrlUnescapeA(pszUrl, null, null, dwFlags | URL_UNESCAPE_INPLACE);
+    }
+    HRESULT UrlUnescapeInPlaceW(LPWSTR pszUrl, DWORD dwFlags)
+    {
+        return UrlUnescapeW(pszUrl, null, null, dwFlags | URL_UNESCAPE_INPLACE);
+    }
 }
 
 extern (Windows):

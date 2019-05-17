@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_commctrl.d)
  */
 module core.sys.windows.commctrl;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "comctl32");
+version (Windows) pragma(lib, "comctl32");
 
 private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.winuser;
 private import core.sys.windows.winbase; // for SYSTEMTIME
@@ -4982,6 +4981,8 @@ ubyte FOURTH_IPADDRESS(LPARAM x) {
     return cast(ubyte) x;
 }
 
+version (Windows) {
+
 HWND Animate_Create(HWND hwndP, UINT id, DWORD dwStyle,
       HINSTANCE hInstance) {
     return CreateWindow(cast(TCHAR*)ANIMATE_CLASS.ptr, null, dwStyle, 0, 0, 0, 0, hwndP,
@@ -5014,6 +5015,8 @@ BOOL Animate_Seek(HWND hwnd, int frame) {
     return Animate_Play(hwnd, frame, frame, 1);
 }
 
+} // version (Windows)
+
 extern (Windows) {
     HBITMAP CreateMappedBitmap(HINSTANCE, INT_PTR, UINT, LPCOLORMAP, int);
     HWND CreateStatusWindowA(LONG, LPCSTR, HWND, UINT);
@@ -5023,6 +5026,8 @@ extern (Windows) {
     HWND CreateUpDownControl(DWORD, int, int, int, int, HWND, int, HINSTANCE,
       HWND, int, int, int);
 }
+
+version (Windows) {
 
 HWND DateTime_GetMonthCal(HWND hwnd) {
     return cast(HWND) SendMessage(hwnd, DTM_GETMONTHCAL, 0, 0);
@@ -5068,12 +5073,16 @@ BOOL DateTime_SetSystemtime(HWND hwnd, WPARAM flag, LPSYSTEMTIME lpSysTime) {
       cast(LPARAM) lpSysTime);
 }
 
+} // version (Windows)
+
 extern (Windows) {
     void DrawInsert(HWND, HWND, int);
     void DrawStatusTextA(HDC, LPRECT, LPCSTR, UINT);
     void DrawStatusTextW(HDC, LPRECT, LPCWSTR, UINT);
     void GetEffectiveClientRect(HWND, LPRECT, LPINT);
 }
+
+version (Windows) {
 
 int Header_GetItemCount(HWND w) {
     return cast(int) SendMessage(w, HDM_GETITEMCOUNT, 0, 0);
@@ -5141,6 +5150,8 @@ static if (_WIN32_IE >= 0x400) {
         return cast(BOOL) SendMessage(w, HDM_SETUNICODEFORMAT, fUnicode, 0);
     }
 }
+
+} // version (Windows)
 
 extern (Windows) {
     HDSA DSA_Create(INT, INT);
@@ -5240,6 +5251,8 @@ extern (Windows) {
 
     int LBItemFromPt(HWND, POINT, BOOL);
 }
+
+version (Windows) {
 
 int ImageList_AddIcon(HIMAGELIST himl, HICON hicon) {
     return ImageList_ReplaceIcon(himl, -1, hicon);
@@ -6254,6 +6267,7 @@ static if (_WIN32_IE >= 0x500) {
     }
 }
 
+} // version (Windows)
 
 //#ifdef _WIN32_WCE               // these are PPC only
 /+

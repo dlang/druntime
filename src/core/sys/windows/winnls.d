@@ -8,10 +8,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winnls.d)
  */
 module core.sys.windows.winnls;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "kernel32");
+version (Windows) pragma(lib, "kernel32");
 
 private import core.sys.windows.basetsd, core.sys.windows.w32api, core.sys.windows.winbase, core.sys.windows.windef;
 

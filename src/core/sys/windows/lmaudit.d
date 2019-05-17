@@ -8,7 +8,6 @@
  */
 // COMMENT: This file may be deprecated.
 module core.sys.windows.lmaudit;
-version (Windows):
 
 private import core.sys.windows.lmcons, core.sys.windows.windef;
 
