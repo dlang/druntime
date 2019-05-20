@@ -221,12 +221,11 @@ struct __RefCount
     // } Get an immutable obj
 
     @nogc nothrow pure @safe scope
-    ref __RefCount opAssign(return scope ref typeof(this) rhs)
+    ref __RefCount opAssign(return scope ref typeof(this) rhs) return
     {
         if (rhs.isInitialized() && rc == rhs.rc)
         {
-            return rhs;
-            //return this;
+            return this;
         }
         if (rhs.isInitialized())
         {
@@ -237,8 +236,7 @@ struct __RefCount
             delRef();
         }
         () @trusted { rc = rhs.rc; }();
-        return rhs;
-        //return this;
+        return this;
     }
 
     @nogc nothrow pure @safe scope
@@ -461,12 +459,11 @@ unittest
         // } Get an immutable obj
 
         @nogc nothrow pure @safe scope
-        ref TestRC opAssign(return ref typeof(this) rhs)
+        ref TestRC opAssign(return ref typeof(this) rhs) return
         {
             if (payload is rhs.payload)
             {
-                return rhs;
-                //return this;
+                return this;
             }
             if (rc.isInitialized && rc.isUnique)
             {
@@ -474,8 +471,7 @@ unittest
             }
             payload = rhs.payload;
             rc = rhs.rc;
-            return rhs;
-            //return this;
+            return this;
         }
 
         @nogc nothrow pure @trusted scope
