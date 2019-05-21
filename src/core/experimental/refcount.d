@@ -208,8 +208,8 @@ struct _RefCount
     }
 }
 
-version(CoreUnittest)
-unittest
+version (CoreUnittest)
+@safe unittest
 {
     () @safe @nogc pure nothrow
     {
@@ -256,8 +256,8 @@ unittest
     assert(allocator.bytesUsed == 0, "_RefCount leakes memory");
 }
 
-version(CoreUnittest)
-unittest
+version (CoreUnittest)
+@safe unittest
 {
     () @safe @nogc pure nothrow scope
     {
@@ -274,8 +274,8 @@ unittest
     assert(allocator.bytesUsed == 0, "_RefCount leakes memory");
 }
 
-version(CoreUnittest)
-unittest
+version (CoreUnittest)
+@safe unittest
 {
     struct TestRC
     {
@@ -452,7 +452,7 @@ version (CoreUnittest)
 {
     private struct StatsAllocator
     {
-        version(CoreUnittest) size_t bytesUsed;
+        version (CoreUnittest) size_t bytesUsed;
 
         @trusted @nogc nothrow pure
         void* allocate(size_t bytes) shared
