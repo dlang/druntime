@@ -193,6 +193,15 @@ struct _RefCount
         return rc !is null;
     }
 
+    version (CoreUnittest)
+    {
+        pure nothrow @nogc @trusted scope
+        bool isValueEq(uint val) const
+        {
+            return *getUnsafeValue == val;
+        }
+    }
+
     pure nothrow @nogc @system
     CounterType* getUnsafeValue() const
     {
@@ -214,28 +223,28 @@ unittest
 
         // A const reference will increase the ref count
         const c_cp_a = a;
-        assert((() @trusted => *cast(int*)a.getUnsafeValue() == 2)());
+        assert(a.isValueEq(2));
         const c_cp_ca = ca;
-        assert((() @trusted => *cast(int*)ca.getUnsafeValue() == 2)());
+        assert(ca.isValueEq(2));
         const c_cp_ia = ia;
-        assert((() @trusted => *cast(int*)ia.getUnsafeValue() == 2)());
+        assert(ia.isValueEq(2));
 
         // An immutable from a mutable reference will create a copy
         immutable i_cp_a = a;
-        assert((() @trusted => *cast(int*)a.getUnsafeValue() == 2)());
-        assert((() @trusted => *cast(int*)i_cp_a.getUnsafeValue() == 1)());
+        assert(a.isValueEq(2));
+        assert(i_cp_a.isValueEq(1));
         // An immutable from a const to a mutable reference will create a copy
         immutable i_cp_ca = ca;
-        assert((() @trusted => *cast(int*)ca.getUnsafeValue() == 2)());
-        assert((() @trusted => *cast(int*)i_cp_ca.getUnsafeValue() == 1)());
+        assert(ca.isValueEq(2));
+        assert(i_cp_ca.isValueEq(1));
         // An immutable from an immutable reference will increase the ref count
         immutable i_cp_ia = ia;
-        assert((() @trusted => *cast(int*)ia.getUnsafeValue() == 3)());
-        assert((() @trusted => *cast(int*)i_cp_ia.getUnsafeValue() == 3)());
+        assert(ia.isValueEq(3));
+        assert(i_cp_ia.isValueEq(3));
         // An immutable from a const to an immutable reference will increase the ref count
         immutable i_cp_c_cp_ia = c_cp_ia;
-        assert((() @trusted => *cast(int*)c_cp_ia.getUnsafeValue() == 4)());
-        assert((() @trusted => *cast(int*)i_cp_c_cp_ia.getUnsafeValue() == 4)());
+        assert(c_cp_ia.isValueEq(4));
+        assert(i_cp_c_cp_ia.isValueEq(4));
         assert((() @trusted => i_cp_c_cp_ia.getUnsafeValue() == c_cp_ia.getUnsafeValue())());
 
         _RefCount t;
@@ -256,10 +265,10 @@ unittest
         _RefCount a = _RefCount(1);
         assert(a.isUnique);
         _RefCount a2 = a;
-        assert((() @trusted => *cast(int*)a.getUnsafeValue() == 2)());
+        assert(a.isValueEq(2));
         _RefCount a3 = _RefCount(1);
         a2 = a3;
-        assert((() @trusted => *cast(int*)a.getUnsafeValue() == 1)());
+        assert(a.isValueEq(1));
         assert(a.isUnique);
     }();
 
@@ -396,34 +405,34 @@ unittest
 
         // A const reference will increase the ref count
         const c_cp_t = t;
-        assert((() @trusted => *cast(int*)t.rc.getUnsafeValue() == 2)());
+        assert(t.rc.isValueEq(2));
         assert(t.payload is c_cp_t.payload);
         const c_cp_ct = ct;
-        assert((() @trusted => *cast(int*)ct.rc.getUnsafeValue() == 2)());
+        assert(ct.rc.isValueEq(2));
         assert(ct.payload is c_cp_ct.payload);
         const c_cp_it = it;
-        assert((() @trusted => *cast(int*)it.rc.getUnsafeValue() == 2)());
+        assert(it.rc.isValueEq(2));
         assert(it.payload is c_cp_it.payload);
 
         // An immutable from a mutable reference will create a copy
         immutable i_cp_t = immutable TestRC(t);
-        assert((() @trusted => *cast(int*)t.rc.getUnsafeValue() == 2)());
-        assert((() @trusted => *cast(int*)i_cp_t.rc.getUnsafeValue() == 1)());
+        assert(t.rc.isValueEq(2));
+        assert(i_cp_t.rc.isValueEq(1));
         assert(t.payload !is i_cp_t.payload);
         // An immutable from a const to a mutable reference will create a copy
         immutable i_cp_ct = immutable TestRC(ct);
-        assert((() @trusted => *cast(int*)ct.rc.getUnsafeValue() == 2)());
-        assert((() @trusted => *cast(int*)i_cp_ct.rc.getUnsafeValue() == 1)());
+        assert(ct.rc.isValueEq(2));
+        assert(i_cp_ct.rc.isValueEq(1));
         assert(ct.payload !is i_cp_ct.payload);
         // An immutable from an immutable reference will increase the ref count
         immutable i_cp_it = it;
-        assert((() @trusted => *cast(int*)it.rc.getUnsafeValue() == 3)());
-        assert((() @trusted => *cast(int*)i_cp_it.rc.getUnsafeValue() == 3)());
+        assert(it.rc.isValueEq(3));
+        assert(i_cp_it.rc.isValueEq(3));
         assert(it.payload is i_cp_it.payload);
         // An immutable from a const to an immutable reference will increase the ref count
         immutable i_cp_c_cp_it = c_cp_it;
-        assert((() @trusted => *cast(int*)c_cp_it.rc.getUnsafeValue() == 4)());
-        assert((() @trusted => *cast(int*)i_cp_c_cp_it.rc.getUnsafeValue() == 4)());
+        assert(c_cp_it.rc.isValueEq(4));
+        assert(i_cp_c_cp_it.rc.isValueEq(4));
         assert((() @trusted => i_cp_c_cp_it.rc.getUnsafeValue() == c_cp_it.rc.getUnsafeValue())());
         assert(c_cp_it.payload is i_cp_c_cp_it.payload);
 
