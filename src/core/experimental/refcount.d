@@ -1,6 +1,6 @@
 /**
   This module provides a composable reference count implementation in the form
-  of `_RefCount`.
+  of `__RefCount`.
 */
 module core.experimental.refcount;
 
@@ -9,15 +9,15 @@ module core.experimental.refcount;
  * defined types that desire to implement manual memory management by means of
  * reference counting. Note to user: The internal implementation uses malloc/free.
  *
- * `_RefCount` was designed to be composed as a field inside the user defined type.
- * The user is responsible to initialize the `_RefCount` in the constructor of his
+ * `__RefCount` was designed to be composed as a field inside the user defined type.
+ * The user is responsible to initialize the `__RefCount` in the constructor of his
  * type. The user will call the `isUnique()` method to decide if this is the last
  * reference to his type so he can safely deallocate his own managed memory.
  *
- * `Important`: the `_RefCount` must be initialized through a call to the
+ * `Important`: the `__RefCount` must be initialized through a call to the
  * constructor before being used.
  */
-struct _RefCount
+struct __RefCount
 {
     import core.atomic : atomicOp;
 
@@ -60,7 +60,7 @@ struct _RefCount
     }
 
     /**
-     * Creates a new `_RefCount` instance. It's memory is internally managed with
+     * Creates a new `__RefCount` instance. It's memory is internally managed with
      * malloc/free.
      *
      * Params:
@@ -72,7 +72,7 @@ struct _RefCount
     {
         /* We allocate a `size_t` chunk that will save as our support. We
          * logically split the chunk into two `uint`s, using only one of the
-         * two as our counter, depending if we are creating an immutable `_RefCount`
+         * two as our counter, depending if we are creating an immutable `__RefCount`
          * or not. The logic is as follows:
          *  - if we are creating an immutable RC, then a pointer to the first
          *    `uint` (aligned at 8) will serve as the reference count. On this
@@ -106,7 +106,7 @@ struct _RefCount
     };
 
     /**
-     * Copy constructs a mutable `_RefCount` from a mutable reference, `rhs`.
+     * Copy constructs a mutable `__RefCount` from a mutable reference, `rhs`.
      * This increases the reference count.
      */
     @nogc nothrow pure @safe scope
@@ -118,7 +118,7 @@ struct _RefCount
     // { Get a const obj
 
     /**
-     * Copy constructs a const `_RefCount` from a mutable reference, `rhs`.
+     * Copy constructs a const `__RefCount` from a mutable reference, `rhs`.
      * This increases the reference count.
      */
     @nogc nothrow pure @safe scope
@@ -128,7 +128,7 @@ struct _RefCount
     }
 
     /**
-     * Copy constructs a const `_RefCount` from a const reference, `rhs`.
+     * Copy constructs a const `__RefCount` from a const reference, `rhs`.
      * This increases the reference count.
      */
     @nogc nothrow pure @safe scope
@@ -138,7 +138,7 @@ struct _RefCount
     }
 
     /**
-     * Copy constructs a const `_RefCount` from an immutable reference, `rhs`.
+     * Copy constructs a const `__RefCount` from an immutable reference, `rhs`.
      * This increases the reference count.
      */
     @nogc nothrow pure @safe scope
@@ -151,7 +151,7 @@ struct _RefCount
     // { Get an immutable obj
 
     /**
-     * Creates a new immutable `_RefCount`. This is because we cannot have an
+     * Creates a new immutable `__RefCount`. This is because we cannot have an
      * immutable reference to a mutable reference, `rhs`.
      */
     @nogc nothrow pure @trusted scope
@@ -170,9 +170,9 @@ struct _RefCount
      * or not.
      *
      * If `rhs` is a const reference to an immutable object, this will copy
-     * construct an immutable `_RefCount`, increasing the reference count.
+     * construct an immutable `__RefCount`, increasing the reference count.
      *
-     * Otherwise, this creates a new immutable `_RefCount`. This is because
+     * Otherwise, this creates a new immutable `__RefCount`. This is because
      * we cannot have an immutable reference to a mutable/const reference.
      */
     @nogc nothrow pure @trusted scope
@@ -198,7 +198,7 @@ struct _RefCount
     }
 
     /*
-     * Copy construct an immutable `_RefCount` from an immutable reference, `rhs`.
+     * Copy construct an immutable `__RefCount` from an immutable reference, `rhs`.
      * This increases the reference count.
      */
     @nogc nothrow pure @safe scope
@@ -209,13 +209,13 @@ struct _RefCount
     // } Get an immutable obj
 
     /*
-     * Assign a `_RefCount` object into this. This will decrement the old reference
+     * Assign a `__RefCount` object into this. This will decrement the old reference
      * count before assigning the new one. If the old reference was the last one,
      * this will trigger the deallocation of the old ref. This increases the
      * reference count of `rhs`.
      *
      * Params:
-     *      rhs = the `_RefCount` object to be assigned.
+     *      rhs = the `__RefCount` object to be assigned.
      *
      * Returns:
      *      A reference to `this`.
@@ -224,7 +224,7 @@ struct _RefCount
      *      $(BIGOH 1).
      */
     @nogc nothrow pure @safe scope
-    ref _RefCount opAssign(return scope ref typeof(this) rhs) return
+    ref __RefCount opAssign(return scope ref typeof(this) rhs) return
     {
         if (rhs.isInitialized() && rc == rhs.rc)
         {
@@ -243,7 +243,7 @@ struct _RefCount
     }
 
     /*
-     * Increase the reference count. This asserts that `_RefCount` is initialized.
+     * Increase the reference count. This asserts that `__RefCount` is initialized.
      *
      * Returns:
      *      This returns a `void*` so the compiler won't optimize away the call
@@ -252,14 +252,14 @@ struct _RefCount
     @nogc nothrow pure @safe scope
     private void* addRef() const
     {
-        assert(isInitialized(), "[_RefCount.addRef] _RefCount is uninitialized");
+        assert(isInitialized(), "[__RefCount.addRef] __RefCount is uninitialized");
         cast(void) rcOp!"+="(1);
         return null;
     }
 
     /*
      * Decrease the reference count. If this was the last reference, `free` the
-     * support. This asserts that `_RefCount` is initialized.
+     * support. This asserts that `__RefCount` is initialized.
      *
      * Returns:
      *      This returns a `void*` so the compiler won't optimize away the call
@@ -268,7 +268,7 @@ struct _RefCount
     @nogc nothrow pure @trusted scope
     private void* delRef() const
     {
-        assert(isInitialized(), "[_RefCount.delRef] _RefCount is uninitialized");
+        assert(isInitialized(), "[__RefCount.delRef] __RefCount is uninitialized");
         /*
          * This is an optimization. Most likely, most of the time, the refcount
          * is `1`, so we don't want to make more ops to update that value only
@@ -307,7 +307,7 @@ struct _RefCount
     }
 
     /**
-     * Destruct the `_RefCount`. If it's initialized, decrement the refcount.
+     * Destruct the `__RefCount`. If it's initialized, decrement the refcount.
      */
     @nogc nothrow pure @trusted scope
     ~this()
@@ -322,7 +322,7 @@ struct _RefCount
      * Return a boolean value denoting if this is the only reference to this object.
      *
      * Returns:
-     *      `true` if this reference count is unique; `false` if this `_RefCount`
+     *      `true` if this reference count is unique; `false` if this `__RefCount`
      *      object is uninitialized or there are multiple references to it.
      *
      * Complexity:
@@ -335,7 +335,7 @@ struct _RefCount
     }
 
     /**
-     * Return a boolean value denoting if this `_RefCount` object is initialized.
+     * Return a boolean value denoting if this `__RefCount` object is initialized.
      *
      * Returns:
      *      `true` if initialized; `false` otherwise
@@ -385,12 +385,12 @@ unittest
     {
     @nogc nothrow:
 
-        private _RefCount rc;
+        private __RefCount rc;
         int[] payload;
 
         this(int sz)
         {
-            rc = _RefCount(1);
+            rc = __RefCount(1);
             payload = (cast(int*) malloc(sz * int.sizeof))[0 .. sz];
         }
 
@@ -448,11 +448,11 @@ version (CoreUnittest)
 {
     () @safe @nogc pure nothrow
     {
-        _RefCount a = _RefCount(1);
+        __RefCount a = __RefCount(1);
         assert(a.isUnique);
-        const _RefCount ca = const _RefCount(1);
+        const __RefCount ca = const __RefCount(1);
         assert(ca.isUnique);
-        immutable _RefCount ia = immutable _RefCount(1);
+        immutable __RefCount ia = immutable __RefCount(1);
         assert(ia.isUnique);
 
         // A const reference will increase the ref count
@@ -481,14 +481,14 @@ version (CoreUnittest)
         assert(i_cp_c_cp_ia.isValueEq(4));
         assert((() @trusted => i_cp_c_cp_ia.getUnsafeValue() == c_cp_ia.getUnsafeValue())());
 
-        _RefCount t;
+        __RefCount t;
         assert(!t.isInitialized());
-        _RefCount t2 = t;
+        __RefCount t2 = t;
         assert(!t.isInitialized());
         assert(!t2.isInitialized());
     }();
 
-    assert(allocator.bytesUsed == 0, "_RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
 }
 
 version (CoreUnittest)
@@ -496,17 +496,17 @@ version (CoreUnittest)
 {
     () @safe @nogc pure nothrow scope
     {
-        _RefCount a = _RefCount(1);
+        __RefCount a = __RefCount(1);
         assert(a.isUnique);
-        _RefCount a2 = a;
+        __RefCount a2 = a;
         assert(a.isValueEq(2));
-        _RefCount a3 = _RefCount(1);
+        __RefCount a3 = __RefCount(1);
         a2 = a3;
         assert(a.isValueEq(1));
         assert(a.isUnique);
     }();
 
-    assert(allocator.bytesUsed == 0, "_RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
 }
 
 version (CoreUnittest)
@@ -514,7 +514,7 @@ version (CoreUnittest)
 {
     struct TestRC
     {
-        private _RefCount rc;
+        private __RefCount rc;
         int[] payload;
 
         @nogc nothrow pure @trusted scope
@@ -522,12 +522,12 @@ version (CoreUnittest)
         {
             static if (is(Q == immutable))
             {
-                rc = immutable _RefCount(1);
+                rc = immutable __RefCount(1);
                 payload = (cast(immutable int*) pureAllocate(sz * int.sizeof))[0 .. sz];
             }
             else
             {
-                rc = _RefCount(1);
+                rc = __RefCount(1);
                 payload = (cast(int*) pureAllocate(sz * int.sizeof))[0 .. sz];
             }
         }
@@ -680,7 +680,7 @@ version (CoreUnittest)
         t2 = t3;
     }();
 
-    assert(allocator.bytesUsed == 0, "_RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
 }
 
 version (CoreUnittest)
