@@ -1,107 +1,7 @@
 module core.experimental.refcount;
 
-private struct StatsAllocator
+struct _RefCount
 {
-    version(CoreUnittest) size_t bytesUsed;
-
-    @trusted @nogc nothrow pure
-    void* allocate(size_t bytes) shared
-    {
-        import core.memory : pureMalloc;
-        if (!bytes) return null;
-
-        auto p = pureMalloc(bytes);
-        if (p is null) return null;
-        enum alignment = size_t.sizeof;
-        assert(cast(size_t) p % alignment == 0);
-
-        version (CoreUnittest)
-        {
-            static if (is(typeof(this) == shared))
-            {
-                import core.atomic : atomicOp;
-                atomicOp!"+="(bytesUsed, bytes);
-            }
-            else
-            {
-                bytesUsed += bytes;
-            }
-        }
-        return p;
-    }
-
-    @system @nogc nothrow pure
-    bool deallocate(void[] b) shared
-    {
-        import core.memory : pureFree;
-        assert(b !is null);
-
-        version (CoreUnittest)
-        {
-            static if (is(typeof(this) == shared))
-            {
-                import core.atomic : atomicOp;
-                assert(atomicOp!">="(bytesUsed, b.length));
-                atomicOp!"-="(bytesUsed, b.length);
-            }
-            else
-            {
-                assert(bytesUsed >= b.length);
-                bytesUsed -= b.length;
-            }
-        }
-        pureFree(b.ptr);
-        return true;
-    }
-
-    static shared StatsAllocator instance;
-}
-
-version (CoreUnittest)
-{
-    private shared StatsAllocator allocator;
-
-    private @nogc nothrow pure @trusted
-    void* pureAllocate(size_t n)
-    {
-        return (cast(void* function(size_t) @nogc nothrow pure)(&_allocate))(n);
-    }
-
-    private @nogc nothrow @safe
-    void* _allocate(size_t n)
-    {
-        return allocator.allocate(n);
-    }
-
-    private @nogc nothrow pure
-    void* pureDeallocate(T)(T[] b)
-    {
-        return (cast(void* function(T[]) @nogc nothrow pure)(&_deallocate!(T)))(b);
-    }
-
-    private @nogc nothrow
-    void* _deallocate(T)(T[] b)
-    {
-        allocator.deallocate(b);
-        return null;
-    }
-}
-
-struct __RefCount
-{
-    version(CoreUnittest) {} else
-    {
-        import core.memory : pureMalloc, pureFree;
-
-        private alias pureAllocate = pureMalloc;
-
-        @nogc nothrow pure
-        private static void* pureDeallocate(T)(T[] b)
-        {
-            pureFree(b.ptr);
-            return null;
-        }
-    }
     import core.atomic : atomicOp;
 
     alias CounterType = uint;
@@ -221,7 +121,7 @@ struct __RefCount
     // } Get an immutable obj
 
     @nogc nothrow pure @safe scope
-    ref __RefCount opAssign(return scope ref typeof(this) rhs) return
+    ref _RefCount opAssign(return scope ref typeof(this) rhs) return
     {
         if (rhs.isInitialized() && rc == rhs.rc)
         {
@@ -283,7 +183,7 @@ struct __RefCount
     pure nothrow @safe @nogc scope
     bool isUnique() const
     {
-        assert(isInitialized(), "[__RefCount.isUnique] __RefCount is uninitialized");
+        assert(isInitialized(), "[_RefCount.isUnique] _RefCount is uninitialized");
         return !!rcOp!"=="(1);
     }
 
@@ -305,11 +205,11 @@ unittest
 {
     () @safe @nogc pure nothrow
     {
-        __RefCount a = __RefCount(1);
+        _RefCount a = _RefCount(1);
         assert(a.isUnique);
-        const __RefCount ca = const __RefCount(1);
+        const _RefCount ca = const _RefCount(1);
         assert(ca.isUnique);
-        immutable __RefCount ia = immutable __RefCount(1);
+        immutable _RefCount ia = immutable _RefCount(1);
         assert(ia.isUnique);
 
         // A const reference will increase the ref count
@@ -338,14 +238,14 @@ unittest
         assert((() @trusted => *cast(int*)i_cp_c_cp_ia.getUnsafeValue() == 4)());
         assert((() @trusted => i_cp_c_cp_ia.getUnsafeValue() == c_cp_ia.getUnsafeValue())());
 
-        __RefCount t;
+        _RefCount t;
         assert(!t.isInitialized());
-        __RefCount t2 = t;
+        _RefCount t2 = t;
         assert(!t.isInitialized());
         assert(!t2.isInitialized());
     }();
 
-    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "_RefCount leakes memory");
 }
 
 version(CoreUnittest)
@@ -353,17 +253,17 @@ unittest
 {
     () @safe @nogc pure nothrow scope
     {
-        __RefCount a = __RefCount(1);
+        _RefCount a = _RefCount(1);
         assert(a.isUnique);
-        __RefCount a2 = a;
+        _RefCount a2 = a;
         assert((() @trusted => *cast(int*)a.getUnsafeValue() == 2)());
-        __RefCount a3 = __RefCount(1);
+        _RefCount a3 = _RefCount(1);
         a2 = a3;
         assert((() @trusted => *cast(int*)a.getUnsafeValue() == 1)());
         assert(a.isUnique);
     }();
 
-    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "_RefCount leakes memory");
 }
 
 version(CoreUnittest)
@@ -371,7 +271,7 @@ unittest
 {
     struct TestRC
     {
-        private __RefCount rc;
+        private _RefCount rc;
         int[] payload;
 
         @nogc nothrow pure @trusted scope
@@ -379,12 +279,12 @@ unittest
         {
             static if (is(Q == immutable))
             {
-                rc = immutable __RefCount(1);
+                rc = immutable _RefCount(1);
                 payload = (cast(immutable int*) pureAllocate(sz * int.sizeof))[0 .. sz];
             }
             else
             {
-                rc = __RefCount(1);
+                rc = _RefCount(1);
                 payload = (cast(int*) pureAllocate(sz * int.sizeof))[0 .. sz];
             }
         }
@@ -537,5 +437,103 @@ unittest
         t2 = t3;
     }();
 
-    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "_RefCount leakes memory");
+}
+
+version (CoreUnittest)
+{
+    private struct StatsAllocator
+    {
+        version(CoreUnittest) size_t bytesUsed;
+
+        @trusted @nogc nothrow pure
+        void* allocate(size_t bytes) shared
+        {
+            import core.memory : pureMalloc;
+            if (!bytes) return null;
+
+            auto p = pureMalloc(bytes);
+            if (p is null) return null;
+            enum alignment = size_t.sizeof;
+            assert(cast(size_t) p % alignment == 0);
+
+            version (CoreUnittest)
+            {
+                static if (is(typeof(this) == shared))
+                {
+                    import core.atomic : atomicOp;
+                    atomicOp!"+="(bytesUsed, bytes);
+                }
+                else
+                {
+                    bytesUsed += bytes;
+                }
+            }
+            return p;
+        }
+
+        @system @nogc nothrow pure
+        bool deallocate(void[] b) shared
+        {
+            import core.memory : pureFree;
+            assert(b !is null);
+
+            version (CoreUnittest)
+            {
+                static if (is(typeof(this) == shared))
+                {
+                    import core.atomic : atomicOp;
+                    assert(atomicOp!">="(bytesUsed, b.length));
+                    atomicOp!"-="(bytesUsed, b.length);
+                }
+                else
+                {
+                    assert(bytesUsed >= b.length);
+                    bytesUsed -= b.length;
+                }
+            }
+            pureFree(b.ptr);
+            return true;
+        }
+    }
+
+    private shared StatsAllocator allocator;
+
+    private @nogc nothrow pure @trusted
+    void* pureAllocate(size_t n)
+    {
+        return (cast(void* function(size_t) @nogc nothrow pure)(&_allocate))(n);
+    }
+
+    private @nogc nothrow @safe
+    void* _allocate(size_t n)
+    {
+        return allocator.allocate(n);
+    }
+
+    private @nogc nothrow pure
+    void* pureDeallocate(T)(T[] b)
+    {
+        return (cast(void* function(T[]) @nogc nothrow pure)(&_deallocate!(T)))(b);
+    }
+
+    private @nogc nothrow
+    void* _deallocate(T)(T[] b)
+    {
+        allocator.deallocate(b);
+        return null;
+    }
+}
+else
+{
+    import core.memory : pureMalloc, pureFree;
+
+    private alias pureAllocate = pureMalloc;
+
+    @nogc nothrow pure
+    private static void* pureDeallocate(T)(T[] b)
+    {
+        pureFree(b.ptr);
+        return null;
+    }
 }
