@@ -142,7 +142,7 @@ struct _RefCount
     @nogc nothrow pure @safe scope
     private void* addRef() const
     {
-        assert(isInitialized());
+        assert(isInitialized(), "[_RefCount.addRef] _RefCount is uninitialized");
         cast(void) rcOp!"+="(1);
         return null;
     }
@@ -150,7 +150,7 @@ struct _RefCount
     @nogc nothrow pure @trusted scope
     private void* delRef() const
     {
-        assert(isInitialized());
+        assert(isInitialized(), "[_RefCount.delRef] _RefCount is uninitialized");
         if (rcOp!"=="(1) || (rcOp!"-="(1) == 0))
         {
             return deallocate();
@@ -183,8 +183,7 @@ struct _RefCount
     pure nothrow @safe @nogc scope
     bool isUnique() const
     {
-        assert(isInitialized(), "[_RefCount.isUnique] _RefCount is uninitialized");
-        return !!rcOp!"=="(1);
+        return isInitialized() && (!!rcOp!"=="(1));
     }
 
     pure nothrow @safe @nogc scope
@@ -374,7 +373,7 @@ unittest
             {
                 return this;
             }
-            if (rc.isInitialized && rc.isUnique)
+            if (rc.isUnique)
             {
                 () @trusted { pureDeallocate(payload); }();
             }
@@ -386,7 +385,7 @@ unittest
         @nogc nothrow pure @trusted scope
         ~this()
         {
-            if (rc.isInitialized() && rc.isUnique())
+            if (rc.isUnique())
             {
                 pureDeallocate(cast(int[]) payload);
             }
@@ -438,10 +437,10 @@ unittest
 
         // Ensure uninitialized structs don't crash
         TestRC t1;
-        assert(!t1.rc.isInitialized);
+        assert(!t1.rc.isUnique);
         TestRC t2 = t1;
-        assert(!t1.rc.isInitialized);
-        assert(!t2.rc.isInitialized);
+        assert(!t1.rc.isUnique);
+        assert(!t2.rc.isUnique);
         TestRC t3 = TestRC(numElem);
         t2 = t3;
     }();
