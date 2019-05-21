@@ -1,5 +1,22 @@
+/**
+  This module provides a composable reference count implementation in the form
+  of `_RefCount`.
+*/
 module core.experimental.refcount;
 
+/**
+ * A qualified reference counted struct that is intended to be composed by user
+ * defined types that desire to implement manual memory management by means of
+ * reference counting. Note to user: The internal implementation uses malloc/free.
+ *
+ * `_RefCount` was designed to be composed as a field inside the user defined type.
+ * The user is responsible to initialize the `_RefCount` in the constructor of his
+ * type. The user will call the `isUnique()` method to decide if this is the last
+ * reference to his type so he can safely deallocate his own managed memory.
+ *
+ * `Important`: the `_RefCount` must be initialized through a call to the
+ * constructor before being used.
+ */
 struct _RefCount
 {
     import core.atomic : atomicOp;
@@ -7,6 +24,15 @@ struct _RefCount
     alias CounterType = uint;
     private CounterType* rc = null;
 
+    /**
+     * Return a boolean value denoting if this can be used in a shared context.
+     *
+     * Returns:
+     *      `true` if this started off as an immutable object; `false` otherwise.
+     *
+     * Complexity:
+     *      $(BIGOH 1).
+     */
     @nogc nothrow pure @safe scope
     bool isShared() const
     {
@@ -14,6 +40,12 @@ struct _RefCount
         return !((cast(size_t) rc) & 7);
     }
 
+    /*
+     * Perform `rc op val` operation. Use atomics if this is shared.
+     *
+     * Returns:
+     *      The result of the operation.
+     */
     @nogc nothrow pure @trusted scope
     private CounterType rcOp(string op)(CounterType val) const
     {
@@ -27,9 +59,28 @@ struct _RefCount
         }
     }
 
+    /**
+     * Creates a new `_RefCount` instance. It's memory is internally managed with
+     * malloc/free.
+     *
+     * Params:
+     *      _ = an unused int value; required because structs don't have a
+     *          user defined default constructor
+     */
     @nogc nothrow pure @trusted scope
     this(this Q)(int)
     {
+        /* We allocate a `size_t` chunk that will save as our support. We
+         * logically split the chunk into two `uint`s, using only one of the
+         * two as our counter, depending if we are creating an immutable `_RefCount`
+         * or not. The logic is as follows:
+         *  - if we are creating an immutable RC, then a pointer to the first
+         *    `uint` (aligned at 8) will serve as the reference count. On this
+         *     counter we will only perform atomic operations, as immutable can
+         *     be used in shared contextes.
+         *  - if we are creating a const/mutable RC, then a pointer to the second
+         *    `uint` (aligned at 4) will serve as the reference count.
+         */
         CounterType* support = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
         static if (is(Q == immutable))
         {
@@ -54,6 +105,10 @@ struct _RefCount
         }
     };
 
+    /**
+     * Copy constructs a mutable `_RefCount` from a mutable reference, `rhs`.
+     * This increases the reference count.
+     */
     @nogc nothrow pure @safe scope
     this(return scope ref typeof(this) rhs)
     {
@@ -61,18 +116,31 @@ struct _RefCount
     }
 
     // { Get a const obj
+
+    /**
+     * Copy constructs a const `_RefCount` from a mutable reference, `rhs`.
+     * This increases the reference count.
+     */
     @nogc nothrow pure @safe scope
     this(return scope ref typeof(this) rhs) const
     {
         mixin(copyCtorIncRef);
     }
 
+    /**
+     * Copy constructs a const `_RefCount` from a const reference, `rhs`.
+     * This increases the reference count.
+     */
     @nogc nothrow pure @safe scope
     this(return scope const ref typeof(this) rhs) const
     {
         mixin(copyCtorIncRef);
     }
 
+    /**
+     * Copy constructs a const `_RefCount` from an immutable reference, `rhs`.
+     * This increases the reference count.
+     */
     @nogc nothrow pure @safe scope
     this(return scope immutable ref typeof(this) rhs) const
     {
@@ -81,6 +149,11 @@ struct _RefCount
     // } Get a const obj
 
     // { Get an immutable obj
+
+    /**
+     * Creates a new immutable `_RefCount`. This is because we cannot have an
+     * immutable reference to a mutable reference, `rhs`.
+     */
     @nogc nothrow pure @trusted scope
     this(return scope ref typeof(this) rhs) immutable
     {
@@ -91,6 +164,17 @@ struct _RefCount
         addRef();
     }
 
+    /**
+     * By means of internal implementation details we can deduce, at runtime,
+     * if the const reference `rhs` comes from an original immutable object
+     * or not.
+     *
+     * If `rhs` is a const reference to an immutable object, this will copy
+     * construct an immutable `_RefCount`, increasing the reference count.
+     *
+     * Otherwise, this creates a new immutable `_RefCount`. This is because
+     * we cannot have an immutable reference to a mutable/const reference.
+     */
     @nogc nothrow pure @trusted scope
     this(return scope const ref typeof(this) rhs) immutable
     {
@@ -113,6 +197,10 @@ struct _RefCount
         }
     }
 
+    /*
+     * Copy construct an immutable `_RefCount` from an immutable reference, `rhs`.
+     * This increases the reference count.
+     */
     @nogc nothrow pure @safe scope
     this(return scope immutable ref typeof(this) rhs) immutable
     {
@@ -120,6 +208,21 @@ struct _RefCount
     }
     // } Get an immutable obj
 
+    /*
+     * Assign a `_RefCount` object into this. This will decrement the old reference
+     * count before assigning the new one. If the old reference was the last one,
+     * this will trigger the deallocation of the old ref. This increases the
+     * reference count of `rhs`.
+     *
+     * Params:
+     *      rhs = the `_RefCount` object to be assigned.
+     *
+     * Returns:
+     *      A reference to `this`.
+     *
+     * Complexity:
+     *      $(BIGOH 1).
+     */
     @nogc nothrow pure @safe scope
     ref _RefCount opAssign(return scope ref typeof(this) rhs) return
     {
@@ -139,6 +242,13 @@ struct _RefCount
         return this;
     }
 
+    /*
+     * Increase the reference count. This asserts that `_RefCount` is initialized.
+     *
+     * Returns:
+     *      This returns a `void*` so the compiler won't optimize away the call
+     *      to this `const pure` function.
+     */
     @nogc nothrow pure @safe scope
     private void* addRef() const
     {
@@ -147,10 +257,26 @@ struct _RefCount
         return null;
     }
 
+    /*
+     * Decrease the reference count. If this was the last reference, `free` the
+     * support. This asserts that `_RefCount` is initialized.
+     *
+     * Returns:
+     *      This returns a `void*` so the compiler won't optimize away the call
+     *      to this `const pure` function.
+     */
     @nogc nothrow pure @trusted scope
     private void* delRef() const
     {
         assert(isInitialized(), "[_RefCount.delRef] _RefCount is uninitialized");
+        /*
+         * This is an optimization. Most likely, most of the time, the refcount
+         * is `1`, so we don't want to make more ops to update that value only
+         * to free it afterwards. This is why we first check if the value is `1`.
+         * The `or` part decrements and checks for `0` in the case that we had
+         * two threads that both questioned at the same time if the value was `1`;
+         * they both will decrement, but only one will have the final value `0`.
+         */
         if (rcOp!"=="(1) || (rcOp!"-="(1) == 0))
         {
             return deallocate();
@@ -158,6 +284,15 @@ struct _RefCount
         return null;
     }
 
+    /*
+     * `free` the support. This checks if this isShared or not in order to
+     * correctly offset the pointer value for the `free` operation; this is
+     * done by performing the opposite pointer arithmetics that the ctor does.
+     *
+     * Returns:
+     *      This returns a `void*` so the compiler won't optimize away the call
+     *      to this `const pure` function.
+     */
     @nogc nothrow pure @system scope
     private void* deallocate() const
     {
@@ -171,6 +306,9 @@ struct _RefCount
         }
     }
 
+    /**
+     * Destruct the `_RefCount`. If it's initialized, decrement the refcount.
+     */
     @nogc nothrow pure @trusted scope
     ~this()
     {
@@ -180,12 +318,31 @@ struct _RefCount
         }
     }
 
+    /**
+     * Return a boolean value denoting if this is the only reference to this object.
+     *
+     * Returns:
+     *      `true` if this reference count is unique; `false` if this `_RefCount`
+     *      object is uninitialized or there are multiple references to it.
+     *
+     * Complexity:
+     *      $(BIGOH 1).
+     */
     pure nothrow @safe @nogc scope
     bool isUnique() const
     {
         return isInitialized() && (!!rcOp!"=="(1));
     }
 
+    /**
+     * Return a boolean value denoting if this `_RefCount` object is initialized.
+     *
+     * Returns:
+     *      `true` if initialized; `false` otherwise
+     *
+     * Complexity:
+     *      $(BIGOH 1).
+     */
     pure nothrow @safe @nogc scope
     bool isInitialized() const
     {
@@ -195,17 +352,95 @@ struct _RefCount
     version (CoreUnittest)
     {
         pure nothrow @nogc @trusted scope
-        bool isValueEq(uint val) const
+        private bool isValueEq(uint val) const
         {
             return *getUnsafeValue == val;
         }
     }
 
+    /**
+     * Return a raw pointer to the underlying reference count pointer.
+     * This is unsafe and may lead to dangling pointers to invalid memory.
+     *
+     * Returns:
+     *      A raw pointer to the reference count.
+     *
+     * Complexity:
+     *      $(BIGOH 1).
+     */
     pure nothrow @nogc @system
     CounterType* getUnsafeValue() const
     {
         return cast(CounterType*) rc;
     }
+}
+
+///
+@system @nogc nothrow
+unittest
+{
+    import core.stdc.stdlib;
+
+    struct rcarray
+    {
+    @nogc nothrow:
+
+        private _RefCount rc;
+        int[] payload;
+
+        this(int sz)
+        {
+            rc = _RefCount(1);
+            payload = (cast(int*) malloc(sz * int.sizeof))[0 .. sz];
+        }
+
+        void opAssign(ref rcarray rhs)
+        {
+            if (rc.isUnique)
+            {
+                // If this was the last reference to the payload,
+                // we can safely free
+                free(payload.ptr);
+            }
+
+            // This will update the reference count
+            rc = rhs.rc;
+            // Update the payload
+            payload = rhs.payload;
+        }
+
+        /* Implement copy ctors */
+        this(return scope ref typeof(this) rhs)
+        {
+            rc = rhs.rc;
+            payload = rhs.payload;
+        }
+
+        ~this()
+        {
+            if (rc.isUnique)
+            {
+                // If this was the last reference to the payload,
+                // we can safely free
+                free(payload.ptr);
+            }
+        }
+    }
+
+    auto a = rcarray(42);
+    assert(a.rc.isUnique);
+    {
+        auto a2 = a; // Construct a2 by Copy Ctor
+        assert(!a.rc.isUnique);
+        auto a3 = rcarray(4242);
+        a2 = a3; // Assign a3 into a2; a's ref count drops
+        assert(a.rc.isUnique);
+        a3 = a; // Assign a into a3; a's ref count increases
+        assert(!a.rc.isUnique);
+        // a2 and a3 go out of scope here
+        // a2 is the last ref to arr(4242) -> gets freed
+    }
+    assert(a.rc.isUnique);
 }
 
 version (CoreUnittest)
