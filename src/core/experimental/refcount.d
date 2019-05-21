@@ -28,7 +28,7 @@ struct _RefCount
     }
 
     @nogc nothrow pure @trusted scope
-    this(this Q)(int) const
+    this(this Q)(int)
     {
         CounterType* support = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
         static if (is(Q == immutable))
