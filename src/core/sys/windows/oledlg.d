@@ -8,6 +8,7 @@
  */
 module core.sys.windows.oledlg;
 
+version (Windows):
 version (ANSI) {} else version = Unicode;
 
 import core.sys.windows.commdlg, core.sys.windows.dlgs, core.sys.windows.ole2, core.sys.windows.prsht, core.sys.windows.shellapi;

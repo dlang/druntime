@@ -8,8 +8,9 @@
  */
 module core.sys.windows.commdlg;
 
+version (Windows):
 version (ANSI) {} else version = Unicode;
-version (Windows) pragma(lib, "comdlg32");
+pragma(lib, "comdlg32");
 
 private import core.sys.windows.w32api;
 import core.sys.windows.windef, core.sys.windows.winuser;
