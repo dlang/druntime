@@ -3667,7 +3667,7 @@ extern (Windows) nothrow @nogc {
 
 } // extern (Windows)
 
-nothrow @nogc {
+version (Windows) nothrow @nogc {
     HCURSOR CopyCursor(HCURSOR c) {
         return cast(HCURSOR)CopyIcon(cast(HICON)c);
     }
@@ -4423,9 +4423,9 @@ int BroadcastSystemMessageW(DWORD, LPDWORD, UINT, WPARAM, LPARAM);
 UINT SendInput(UINT, LPINPUT, int);
 BOOL EnumDisplayMonitors(HDC, LPCRECT, MONITORENUMPROC, LPARAM);
 BOOL GetMonitorInfoA(HMONITOR, LPMONITORINFO);
-extern(D) BOOL GetMonitorInfoA(HMONITOR m, LPMONITORINFOEXA mi) { return GetMonitorInfoA(m, cast(LPMONITORINFO)mi); }
+version (Windows) extern(D) BOOL GetMonitorInfoA(HMONITOR m, LPMONITORINFOEXA mi) { return GetMonitorInfoA(m, cast(LPMONITORINFO)mi); }
 BOOL GetMonitorInfoW(HMONITOR, LPMONITORINFO);
-extern(D) BOOL GetMonitorInfoW(HMONITOR m, LPMONITORINFOEXW mi) { return GetMonitorInfoW(m, cast(LPMONITORINFO)mi); }
+version (Windows) extern(D) BOOL GetMonitorInfoW(HMONITOR m, LPMONITORINFOEXW mi) { return GetMonitorInfoW(m, cast(LPMONITORINFO)mi); }
 HMONITOR MonitorFromPoint(POINT, DWORD);
 HMONITOR MonitorFromRect(LPCRECT, DWORD);
 HMONITOR MonitorFromWindow(HWND, DWORD);
@@ -4521,7 +4521,33 @@ version (Unicode) {
     alias MONITORINFOEXW MONITORINFOEX;
     alias ICONMETRICSW ICONMETRICS;
     alias NONCLIENTMETRICSW NONCLIENTMETRICS;
+} else { // ANSI
+    alias EDITWORDBREAKPROCA EDITWORDBREAKPROC;
+    alias PROPENUMPROCA PROPENUMPROC;
+    alias PROPENUMPROCEXA PROPENUMPROCEX;
+    alias DESKTOPENUMPROCA DESKTOPENUMPROC;
+    alias WINSTAENUMPROCA WINSTAENUMPROC;
+    alias MAKEINTRESOURCEA MAKEINTRESOURCE;
 
+    alias WNDCLASSA WNDCLASS;
+    alias WNDCLASSEXA WNDCLASSEX;
+    alias MENUITEMINFOA MENUITEMINFO;
+    alias LPCMENUITEMINFOA LPCMENUITEMINFO;
+    alias MSGBOXPARAMSA MSGBOXPARAMS;
+    alias HIGHCONTRASTA HIGHCONTRAST;
+    alias SERIALKEYSA SERIALKEYS;
+    alias SOUNDSENTRYA SOUNDSENTRY;
+    alias CREATESTRUCTA CREATESTRUCT;
+    alias CBT_CREATEWNDA CBT_CREATEWND;
+    alias MDICREATESTRUCTA MDICREATESTRUCT;
+    alias MULTIKEYHELPA MULTIKEYHELP;
+    alias MONITORINFOEXA MONITORINFOEX;
+    alias ICONMETRICSA ICONMETRICS;
+    alias NONCLIENTMETRICSA NONCLIENTMETRICS;
+
+}
+
+version (Windows) { version (Unicode) {
     alias AppendMenuW AppendMenu;
     alias BroadcastSystemMessageW BroadcastSystemMessage;
     static if (_WIN32_WINNT >= 0x501) {
@@ -4670,29 +4696,6 @@ version (Unicode) {
 
 } else { // ANSI
 
-    alias EDITWORDBREAKPROCA EDITWORDBREAKPROC;
-    alias PROPENUMPROCA PROPENUMPROC;
-    alias PROPENUMPROCEXA PROPENUMPROCEX;
-    alias DESKTOPENUMPROCA DESKTOPENUMPROC;
-    alias WINSTAENUMPROCA WINSTAENUMPROC;
-    alias MAKEINTRESOURCEA MAKEINTRESOURCE;
-
-    alias WNDCLASSA WNDCLASS;
-    alias WNDCLASSEXA WNDCLASSEX;
-    alias MENUITEMINFOA MENUITEMINFO;
-    alias LPCMENUITEMINFOA LPCMENUITEMINFO;
-    alias MSGBOXPARAMSA MSGBOXPARAMS;
-    alias HIGHCONTRASTA HIGHCONTRAST;
-    alias SERIALKEYSA SERIALKEYS;
-    alias SOUNDSENTRYA SOUNDSENTRY;
-    alias CREATESTRUCTA CREATESTRUCT;
-    alias CBT_CREATEWNDA CBT_CREATEWND;
-    alias MDICREATESTRUCTA MDICREATESTRUCT;
-    alias MULTIKEYHELPA MULTIKEYHELP;
-    alias MONITORINFOEXA MONITORINFOEX;
-    alias ICONMETRICSA ICONMETRICS;
-    alias NONCLIENTMETRICSA NONCLIENTMETRICS;
-
     alias AppendMenuA AppendMenu;
     alias BroadcastSystemMessageA BroadcastSystemMessage;
     static if (_WIN32_WINNT >= 0x501) {
@@ -4838,7 +4841,7 @@ version (Unicode) {
     alias EnumDisplaySettingsA EnumDisplaySettings;
     alias EnumDisplaySettingsExA EnumDisplaySettingsEx;
     alias EnumDisplayDevicesA EnumDisplayDevices;
-}
+} }
 
 alias WNDCLASS* LPWNDCLASS, PWNDCLASS;
 alias WNDCLASSEX* LPWNDCLASSEX, PWNDCLASSEX;
