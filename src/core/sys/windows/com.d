@@ -2,7 +2,6 @@ module core.sys.windows.com;
 
 version (Windows) pragma(lib,"uuid");
 
-import core.atomic;
 import core.sys.windows.windef /+: HRESULT, LONG, ULONG+/;
 //import std.string;
 
@@ -54,6 +53,10 @@ alias COINIT_DISABLE_OLE1DDE     = COINIT.COINIT_DISABLE_OLE1DDE  ;
 alias COINIT_SPEED_OVER_MEMORY   = COINIT.COINIT_SPEED_OVER_MEMORY;
 
 public import core.sys.windows.uuid;
+
+version (Windows):
+
+import core.atomic;
 
 extern (System)
 {
