@@ -365,7 +365,7 @@ struct fd_set_custom(uint SETSIZE)
 alias fd_set = fd_set_custom!FD_SETSIZE;
 
 // Removes.
-void FD_CLR(SOCKET fd, fd_set* set) pure @nogc
+extern(D) void FD_CLR(SOCKET fd, fd_set* set) pure @nogc
 {
     uint c = set.fd_count;
     SOCKET* start = set.fd_array.ptr;
@@ -389,7 +389,7 @@ void FD_CLR(SOCKET fd, fd_set* set) pure @nogc
 
 
 // Tests.
-int FD_ISSET(SOCKET fd, const(fd_set)* set) pure @nogc
+extern(D) int FD_ISSET(SOCKET fd, const(fd_set)* set) pure @nogc
 {
 const(SOCKET)* start = set.fd_array.ptr;
 const(SOCKET)* stop = start + set.fd_count;
@@ -404,7 +404,7 @@ const(SOCKET)* stop = start + set.fd_count;
 
 
 // Adds.
-void FD_SET(SOCKET fd, fd_set* set)     pure @nogc
+extern(D) void FD_SET(SOCKET fd, fd_set* set)     pure @nogc
 {
     uint c = set.fd_count;
     set.fd_array.ptr[c] = fd;
@@ -413,14 +413,14 @@ void FD_SET(SOCKET fd, fd_set* set)     pure @nogc
 
 
 // Resets to zero.
-void FD_ZERO(fd_set* set) pure @nogc
+extern(D) void FD_ZERO(fd_set* set) pure @nogc
 {
     set.fd_count = 0;
 }
 
 
 /// Creates a new $(D fd_set) with the specified capacity.
-fd_set* FD_CREATE(uint capacity) pure
+extern(D) fd_set* FD_CREATE(uint capacity) pure
 {
     // Take into account alignment (SOCKET may be 64-bit and require 64-bit alignment on 64-bit systems)
     size_t size = (fd_set_custom!1).sizeof - SOCKET.sizeof + (SOCKET.sizeof * capacity);
@@ -692,7 +692,7 @@ struct hostent
     char** h_addr_list;
 
 
-    char* h_addr() @safe pure nothrow @nogc
+    extern(D) char* h_addr() @safe pure nothrow @nogc
     {
         return h_addr_list[0];
     }
