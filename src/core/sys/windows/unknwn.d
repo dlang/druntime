@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_unknwn.d)
  */
 module core.sys.windows.unknwn;
-version (Windows):
 
 import core.sys.windows.objfwd, core.sys.windows.windef, core.sys.windows.wtypes;
 private import core.sys.windows.basetyps;

@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winldap.d)
  */
 module core.sys.windows.winldap;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

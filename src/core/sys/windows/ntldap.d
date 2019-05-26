@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_ntldap.d)
  */
 module core.sys.windows.ntldap;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_intshcut.d)
  */
 module core.sys.windows.intshcut;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

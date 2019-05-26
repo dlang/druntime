@@ -8,10 +8,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_wininet.d)
  */
 module core.sys.windows.wininet;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "wininet");
+version (Windows) pragma(lib, "wininet");
 
 // FIXME: check types and grouping of constants
 

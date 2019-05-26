@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_cderr.d)
  */
 module core.sys.windows.cderr;
-version (Windows):
 
 enum {
     CDERR_DIALOGFAILURE    = 0xFFFF,

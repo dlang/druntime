@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_iprtrmib.d)
  */
 module core.sys.windows.iprtrmib;
-version (Windows):
 
 import core.sys.windows.ipifcons;
 private import core.sys.windows.windef;

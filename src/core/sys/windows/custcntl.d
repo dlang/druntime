@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_custcntl.d)
  */
 module core.sys.windows.custcntl;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

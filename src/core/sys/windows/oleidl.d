@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_oleidl.d)
  */
 module core.sys.windows.oleidl;
-version (Windows):
 
 // DAC: This is defined in ocidl !!
 // what is it doing in here?

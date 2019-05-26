@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_richole.d)
  */
 module core.sys.windows.richole;
-version (Windows):
 
 private import core.sys.windows.objfwd, core.sys.windows.objidl, core.sys.windows.ole2, core.sys.windows.unknwn,
   core.sys.windows.windef;

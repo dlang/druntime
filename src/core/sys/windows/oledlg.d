@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_oledlg.d)
  */
 module core.sys.windows.oledlg;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

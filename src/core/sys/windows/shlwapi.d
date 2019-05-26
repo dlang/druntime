@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_shlwapi.d)
  */
 module core.sys.windows.shlwapi;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "shlwapi");
+version (Windows) pragma(lib, "shlwapi");
 
 /* Changes compared to MinGW:
 wnsprintf functions are not included.

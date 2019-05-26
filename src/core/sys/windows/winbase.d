@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winbase.d)
  */
 module core.sys.windows.winbase;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "kernel32");
+version (Windows) pragma(lib, "kernel32");
 
 /**
 Translation Notes:

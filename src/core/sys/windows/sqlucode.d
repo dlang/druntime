@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_sqlucode.d)
  */
 module core.sys.windows.sqlucode;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

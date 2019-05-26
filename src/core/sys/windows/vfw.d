@@ -8,10 +8,9 @@
  */
 
 module core.sys.windows.vfw;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "vfw32");
+version (Windows) pragma(lib, "vfw32");
 
 private import
     core.sys.windows.commdlg,

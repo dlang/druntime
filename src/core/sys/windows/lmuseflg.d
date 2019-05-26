@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_lmuseflg.d)
  */
 module core.sys.windows.lmuseflg;
-version (Windows):
 
 enum : uint {
     USE_NOFORCE = 0,

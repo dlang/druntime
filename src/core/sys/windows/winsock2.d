@@ -5,9 +5,8 @@
 
 
 module core.sys.windows.winsock2;
-version (Windows):
 
-pragma(lib, "ws2_32");
+version (Windows) pragma(lib, "ws2_32");
 
 extern(Windows):
 nothrow:

@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_exdispid.d)
  */
 module core.sys.windows.exdispid;
-version (Windows):
 
 enum : int {
     DISPID_STATUSTEXTCHANGE = 102,

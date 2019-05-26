@@ -8,7 +8,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_imagehlp.d)
  */
 module core.sys.windows.imagehlp;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
 

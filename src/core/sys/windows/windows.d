@@ -7,7 +7,6 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_windows.d)
  */
 module core.sys.windows.windows;
-version (Windows):
 
 /*
     windows.h - main header file for the Win32 API
