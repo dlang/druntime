@@ -2473,7 +2473,7 @@ WINBASEAPI BOOL WINAPI SetEvent(HANDLE);
 }
 
 // For compatibility with old core.sys.windows.windows:
-version (LittleEndian) nothrow @nogc
+version (Windows) version (LittleEndian) nothrow @nogc
 {
     BOOL QueryPerformanceCounter(long* lpPerformanceCount) { return QueryPerformanceCounter(cast(PLARGE_INTEGER)lpPerformanceCount); }
     BOOL QueryPerformanceFrequency(long* lpFrequency) { return QueryPerformanceFrequency(cast(PLARGE_INTEGER)lpFrequency); }
