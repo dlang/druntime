@@ -1,0 +1,10 @@
+$(D core.sys.windows) modules are now usable on POSIX
+
+Many Windows API bindings in Druntime contain declarations which are useful on other platforms.
+This includes struct and enum declarations which describe file formats,
+such as BMP (Windows Bitmap, an image format)
+and PE (Portable Executable, used in .NET / CLR, UEFI, and other applications).
+
+Previously, the contents of the Windows API bindings were not usable on other platforms
+due to a `version (Windows):` guard at the top of each file.
+This has now been removed, making the declarations available on all platforms.
