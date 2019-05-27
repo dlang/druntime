@@ -1916,7 +1916,7 @@ WINBASEAPI DWORD WINAPI GetCurrentThreadId(void);
     UINT GlobalGetAtomNameA(ATOM, LPSTR, int);
     UINT GlobalGetAtomNameW(ATOM, LPWSTR, int);
 
-    bool HasOverlappedIoCompleted(LPOVERLAPPED lpOverlapped) {
+    extern(D) bool HasOverlappedIoCompleted(LPOVERLAPPED lpOverlapped) {
         return lpOverlapped.Internal != STATUS_PENDING;
     }
 
