@@ -7,10 +7,9 @@
  * Source: $(DRUNTIMESRC src/core/sys/windows/_winuser.d)
  */
 module core.sys.windows.winuser;
-version (Windows):
 
 version (ANSI) {} else version = Unicode;
-pragma(lib, "user32");
+version (Windows) pragma(lib, "user32");
 
 // Conversion Notes:
 // The following macros were for win16 only, and are not included in this file:
