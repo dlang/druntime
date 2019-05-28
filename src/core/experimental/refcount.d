@@ -462,7 +462,7 @@ unittest
 
         this(int sz)
         {
-            rc = __RefCount(1);
+            rc = __RefCount.make!__RefCount();
             payload = (cast(int*) malloc(sz * int.sizeof))[0 .. sz];
         }
 
@@ -521,11 +521,11 @@ version (CoreUnittest)
     @safe @nogc pure nothrow
     void test(MutRC, ConstRC, ImmRC)()
     {
-        MutRC a = MutRC(1);
+        MutRC a = __RefCount.make!MutRC();
         assert(a.isUnique);
-        ConstRC ca = ConstRC(1);
+        ConstRC ca = __RefCount.make!ConstRC();
         assert(ca.isUnique);
-        ImmRC ia = ImmRC(1);
+        ImmRC ia = __RefCount.make!ImmRC();
         assert(ia.isUnique);
 
         // A const reference will increase the ref count
@@ -546,7 +546,7 @@ version (CoreUnittest)
         assert(i_cp_ia.isValueEq(3));
 
         // Check opAssign
-        MutRC a2 = MutRC(1);
+        MutRC a2 = __RefCount.make!MutRC();
         a2 = a;
         assert(a.isValueEq(3));
 
@@ -562,7 +562,7 @@ version (CoreUnittest)
     assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
 }
 
-version(none)
+version (none)
 @safe unittest
 {
     () @safe @nogc pure nothrow scope
@@ -574,16 +574,14 @@ version(none)
     assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
 }
 
-//version (none)
 version (CoreUnittest)
 @system unittest
 {
-    import std.parallelism;
     import core.stdc.stdio;
 
     ()
     {
-        auto x = shared __RefCount(1);
+        auto x = __RefCount.make!(shared __RefCount)();
         static void fun(shared __RefCount * rc)
         {
             static void bar(shared __RefCount lrc)
@@ -598,6 +596,9 @@ version (CoreUnittest)
         }
         fun(&x);
 
+        version (none)
+        {
+        import std.parallelism;
         alias TaskT = typeof(task!fun(&x));
         TaskT[] taskArr;
         foreach (i; 0 .. 100)
@@ -613,6 +614,9 @@ version (CoreUnittest)
             //t.executeInNewThread();
             //t.spinForce();
         //debug printf("Ja %d\n", *(cast(uint*) x.getUnsafeValue()));
+        }
+        else
+        {
 
         import core.thread;
         Thread[] threadArr;
@@ -626,6 +630,8 @@ version (CoreUnittest)
             threadArr[i].join();
         }
 
+        }
+
         assert(x.isValueEq(1));
     }();
 
@@ -637,11 +643,11 @@ version (CoreUnittest)
 {
     () @safe @nogc pure nothrow scope
     {
-        __RefCount a = __RefCount(1);
+        __RefCount a = __RefCount.make!__RefCount();
         assert(a.isUnique);
         __RefCount a2 = a;
         assert(a.isValueEq(2));
-        __RefCount a3 = __RefCount(1);
+        __RefCount a3 = __RefCount.make!__RefCount();
         a2 = a3;
         assert(a.isValueEq(1));
         assert(a.isUnique);
@@ -663,12 +669,12 @@ version (CoreUnittest)
         {
             static if (is(Q == immutable))
             {
-                rc = immutable __RefCount(1);
+                rc = __RefCount.make!(immutable __RefCount)();
                 payload = (cast(immutable int*) pureAllocate(sz * int.sizeof))[0 .. sz];
             }
             else
             {
-                rc = __RefCount(1);
+                rc = __RefCount.make!__RefCount();
                 payload = (cast(int*) pureAllocate(sz * int.sizeof))[0 .. sz];
             }
         }
@@ -709,7 +715,7 @@ version (CoreUnittest)
         this(return scope ref typeof(this) rhs) immutable
         {
             // Can't have an immutable ref to a mutable. Create a new RC
-            rc = immutable __RefCount(1);
+            rc = __RefCount.make!(immutable __RefCount)();
             auto sz = rhs.payload.length;
             int[] tmp = (cast(int*) pureAllocate(sz * int.sizeof))[0 .. sz];
             tmp[] = rhs.payload[];
@@ -719,7 +725,7 @@ version (CoreUnittest)
         @nogc nothrow pure @safe scope
         this(return scope const ref typeof(this) rhs) immutable
         {
-            rc = immutable __RefCount(1);
+            rc = __RefCount.make!(immutable __RefCount)();
             // Can't have an immutable ref to a mutable. Create a new RC
             auto sz = rhs.payload.length;
             int[] tmp = (() @trusted => (cast(int*) pureAllocate(sz * int.sizeof))[0 .. sz])();
