@@ -5,16 +5,16 @@
 module core.experimental.refcount;
 
 /**
- * A qualified reference counted struct that is intended to be composed by user
- * defined types that desire to implement manual memory management by means of
- * reference counting. Note to user: The internal implementation uses malloc/free.
+ * A qualified reference counted `struct` that is intended to be composed by
+ * user-defined types that desire to implement manual memory management by means of
+ * reference counting. Note to user: The internal implementation uses `malloc`/`free`.
  *
- * `__RefCount` was designed to be composed as a field inside the user defined type.
- * The user is responsible to initialize the `__RefCount` in the constructor of his
- * type. The user will call the `isUnique()` method to decide if this is the last
- * reference to his type so he can safely deallocate his own managed memory.
+ * `__RefCount` was designed to be composed as a field inside a user-defined type.
+ * The user is responsible to initialize the `__RefCount` in that type's constructors.
+ * The user will call the `isUnique()` method to decide if this is the last
+ * reference to the enclosing type so memory can be safely deallocated.
  *
- * `Important`: the `__RefCount` must be initialized through a call to the
+ * $(B Important:) the `__RefCount` member must be initialized through a call to it's
  * constructor before being used.
  */
 struct __RefCount
@@ -24,17 +24,17 @@ struct __RefCount
     alias CounterType = uint;
     private CounterType* rc = null;
 
-    /**
-     * Return a boolean value denoting if this can be used in a shared context.
+    /*
+     * Returns a Boolean value denoting if this can be used in a shared context.
      *
      * Returns:
-     *      `true` if this started off as an immutable object; `false` otherwise.
+     *      `true` if this started off as an immutable or shared object; `false` otherwise.
      *
      * Complexity:
      *      $(BIGOH 1).
      */
     @nogc nothrow pure @safe scope
-    bool isShared() const
+    private bool isShared(this Q)() const
     {
         // Faster than ((cast(size_t) rc) % 8) == 0;
         return !((cast(size_t) rc) & 7);
@@ -47,7 +47,7 @@ struct __RefCount
      *      The result of the operation.
      */
     @nogc nothrow pure @trusted scope
-    private CounterType rcOp(string op)(CounterType val) const
+    private CounterType rcOp(this Q, string op)(CounterType val) const
     {
         if (isShared())
         {
@@ -60,7 +60,7 @@ struct __RefCount
     }
 
     /**
-     * Creates a new `__RefCount` instance. It's memory is internally managed with
+     * Creates a new `__RefCount` instance. Its memory is internally managed with
      * malloc/free.
      *
      * Params:
@@ -70,7 +70,7 @@ struct __RefCount
     @nogc nothrow pure @trusted scope
     this(this Q)(int)
     {
-        /* We allocate a `size_t` chunk that will save as our support. We
+        /* We allocate a `size_t` chunk that will serve as our support. We
          * logically split the chunk into two `uint`s, using only one of the
          * two as our counter, depending if we are creating an immutable `__RefCount`
          * or not. The logic is as follows:
@@ -82,10 +82,11 @@ struct __RefCount
          *    `uint` (aligned at 4) will serve as the reference count.
          */
         CounterType* support = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
-        static if (is(Q == immutable))
+        static if (is(Q == immutable) || is(Q == shared))
         {
             *support = 0;
-            rc = cast(immutable CounterType*) support;
+            //rc = cast(immutable CounterType*) support;
+            rc = cast(typeof(rc)) support;
         }
         else
         {
@@ -115,6 +116,13 @@ struct __RefCount
         mixin(copyCtorIncRef);
     }
 
+    ///
+    @nogc nothrow pure @safe scope
+    this(return scope ref shared typeof(this) rhs) shared
+    {
+        mixin(copyCtorIncRef);
+    }
+
     // { Get a const obj
 
     /**
@@ -123,6 +131,13 @@ struct __RefCount
      */
     @nogc nothrow pure @safe scope
     this(return scope ref typeof(this) rhs) const
+    {
+        mixin(copyCtorIncRef);
+    }
+
+    ///
+    @nogc nothrow pure @safe scope
+    this(return scope ref shared typeof(this) rhs) const shared
     {
         mixin(copyCtorIncRef);
     }
@@ -137,6 +152,12 @@ struct __RefCount
         mixin(copyCtorIncRef);
     }
 
+    @nogc nothrow pure @safe scope
+    this(return scope const shared ref typeof(this) rhs) const shared
+    {
+        mixin(copyCtorIncRef);
+    }
+
     /**
      * Copy constructs a const `__RefCount` from an immutable reference, `rhs`.
      * This increases the reference count.
@@ -146,9 +167,18 @@ struct __RefCount
     {
         mixin(copyCtorIncRef);
     }
+
+    @nogc nothrow pure @safe scope
+    this(return scope immutable shared ref typeof(this) rhs) const shared
+    {
+        mixin(copyCtorIncRef);
+    }
     // } Get a const obj
 
     // { Get an immutable obj
+
+    version (none)
+    { // Allow only immutable from immutable
 
     /**
      * Creates a new immutable `__RefCount`. This is because we cannot have an
@@ -197,6 +227,8 @@ struct __RefCount
         }
     }
 
+    } // Allow only immutable from immutable
+
     /*
      * Copy construct an immutable `__RefCount` from an immutable reference, `rhs`.
      * This increases the reference count.
@@ -242,6 +274,25 @@ struct __RefCount
         return this;
     }
 
+    @nogc nothrow pure @safe scope
+    ref shared(__RefCount) opAssign(return scope shared ref typeof(this) rhs) return shared
+    {
+        if (rhs.isInitialized() && rc == rhs.rc)
+        {
+            return this;
+        }
+        if (rhs.isInitialized())
+        {
+            rhs.addRef();
+        }
+        if (isInitialized())
+        {
+            delRef();
+        }
+        () @trusted { rc = rhs.rc; }();
+        return this;
+    }
+
     /*
      * Increase the reference count. This asserts that `__RefCount` is initialized.
      *
@@ -250,10 +301,10 @@ struct __RefCount
      *      to this `const pure` function.
      */
     @nogc nothrow pure @safe scope
-    private void* addRef() const
+    private void* addRef(this Q)() const
     {
         assert(isInitialized(), "[__RefCount.addRef] __RefCount is uninitialized");
-        cast(void) rcOp!"+="(1);
+        cast(void) rcOp!(Q, "+=")(1);
         return null;
     }
 
@@ -266,7 +317,7 @@ struct __RefCount
      *      to this `const pure` function.
      */
     @nogc nothrow pure @trusted scope
-    private void* delRef() const
+    private void* delRef(this Q)() const
     {
         assert(isInitialized(), "[__RefCount.delRef] __RefCount is uninitialized");
         /*
@@ -277,7 +328,7 @@ struct __RefCount
          * two threads that both questioned at the same time if the value was `1`;
          * they both will decrement, but only one will have the final value `0`.
          */
-        if (rcOp!"=="(1) || (rcOp!"-="(1) == 0))
+        if (rcOp!(Q, "==")(1) || (rcOp!(Q, "-=")(1) == 0))
         {
             return deallocate();
         }
@@ -294,7 +345,7 @@ struct __RefCount
      *      to this `const pure` function.
      */
     @nogc nothrow pure @system scope
-    private void* deallocate() const
+    private void* deallocate(this Q)() const
     {
         if (isShared())
         {
@@ -329,9 +380,9 @@ struct __RefCount
      *      $(BIGOH 1).
      */
     pure nothrow @safe @nogc scope
-    bool isUnique() const
+    bool isUnique(this Q)() const
     {
-        return isInitialized() && (!!rcOp!"=="(1));
+        return isInitialized() && (!!rcOp!(Q, "==")(1));
     }
 
     /**
@@ -344,7 +395,7 @@ struct __RefCount
      *      $(BIGOH 1).
      */
     pure nothrow @safe @nogc scope
-    bool isInitialized() const
+    bool isInitialized(this Q)() const
     {
         return rc !is null;
     }
@@ -352,7 +403,7 @@ struct __RefCount
     version (CoreUnittest)
     {
         pure nothrow @nogc @trusted scope
-        private bool isValueEq(uint val) const
+        private bool isValueEq(this Q)(uint val) const
         {
             return *getUnsafeValue == val;
         }
@@ -369,7 +420,7 @@ struct __RefCount
      *      $(BIGOH 1).
      */
     pure nothrow @nogc @system
-    CounterType* getUnsafeValue() const
+    CounterType* getUnsafeValue(this Q)() const
     {
         return cast(CounterType*) rc;
     }
@@ -446,49 +497,72 @@ unittest
 version (CoreUnittest)
 @safe unittest
 {
-    () @safe @nogc pure nothrow
+    @safe @nogc pure nothrow
+    void test(MutRC, ConstRC, ImmRC)()
     {
-        __RefCount a = __RefCount(1);
+        MutRC a = MutRC(1);
         assert(a.isUnique);
-        const __RefCount ca = const __RefCount(1);
+        ConstRC ca = ConstRC(1);
         assert(ca.isUnique);
-        immutable __RefCount ia = immutable __RefCount(1);
+        ImmRC ia = ImmRC(1);
         assert(ia.isUnique);
 
         // A const reference will increase the ref count
-        const c_cp_a = a;
+        ConstRC c_cp_a = a;
         assert(a.isValueEq(2));
-        const c_cp_ca = ca;
+        ConstRC c_cp_ca = ca;
         assert(ca.isValueEq(2));
-        const c_cp_ia = ia;
+        ConstRC c_cp_ia = ia;
         assert(ia.isValueEq(2));
 
-        // An immutable from a mutable reference will create a copy
-        immutable i_cp_a = a;
-        assert(a.isValueEq(2));
-        assert(i_cp_a.isValueEq(1));
-        // An immutable from a const to a mutable reference will create a copy
-        immutable i_cp_ca = ca;
-        assert(ca.isValueEq(2));
-        assert(i_cp_ca.isValueEq(1));
+        // An immutable from a mutable reference won't compile
+        static assert(!__traits(compiles, { ImmRC i_cp_a = a; }));
+        // An immutable from a const to a mutable reference won't compile
+        static assert(!__traits(compiles, { ImmRC i_cp_ca = ca; }));
         // An immutable from an immutable reference will increase the ref count
-        immutable i_cp_ia = ia;
+        ImmRC i_cp_ia = ia;
         assert(ia.isValueEq(3));
         assert(i_cp_ia.isValueEq(3));
-        // An immutable from a const to an immutable reference will increase the ref count
-        immutable i_cp_c_cp_ia = c_cp_ia;
-        assert(c_cp_ia.isValueEq(4));
-        assert(i_cp_c_cp_ia.isValueEq(4));
-        assert((() @trusted => i_cp_c_cp_ia.getUnsafeValue() == c_cp_ia.getUnsafeValue())());
 
-        __RefCount t;
+        // Check opAssign
+        MutRC a2 = MutRC(1);
+        a2 = a;
+        assert(a.isValueEq(3));
+
+        MutRC t;
         assert(!t.isInitialized());
-        __RefCount t2 = t;
+        MutRC t2 = t;
         assert(!t.isInitialized());
         assert(!t2.isInitialized());
+    }
+
+    test!(__RefCount, const __RefCount, immutable __RefCount)();
+    test!(shared __RefCount, const shared __RefCount, immutable shared __RefCount)();
+    assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
+}
+
+version (none)
+unittest
+{
+    import std.parallelism;
+    import core.stdc.stdio;
+
+    ()
+    {
+        auto x = shared __RefCount(1);
+        static void fun(shared __RefCount rc)
+        {
+            debug printf("Ja %d\n", *(cast(uint*) rc.getUnsafeValue()));
+        }
+        fun(x);
+
+        auto t = task!fun(x);
+        t.executeInNewThread();
+        t.spinForce();
+        debug printf("Ja %d\n", *(cast(uint*) x.getUnsafeValue()));
     }();
 
-    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
 }
 
 version (CoreUnittest)
@@ -506,7 +580,7 @@ version (CoreUnittest)
         assert(a.isUnique);
     }();
 
-    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
 }
 
 version (CoreUnittest)
@@ -518,7 +592,7 @@ version (CoreUnittest)
         int[] payload;
 
         @nogc nothrow pure @trusted scope
-        this(this Q)(int sz) const
+        this(this Q)(int sz)
         {
             static if (is(Q == immutable))
             {
@@ -543,7 +617,7 @@ version (CoreUnittest)
             mixin(copyCtorIncRef);
         }
 
-        // { Get a const obj
+        // { Create a const obj
         @nogc nothrow pure @safe scope
         this(return scope ref typeof(this) rhs) const
         {
@@ -561,14 +635,14 @@ version (CoreUnittest)
         {
             mixin(copyCtorIncRef);
         }
-        // } Get a const obj
+        // } Create a const obj
 
-        // { Get an immutable obj
+        // { Create an immutable obj
         @nogc nothrow pure @trusted scope
         this(return scope ref typeof(this) rhs) immutable
         {
             // Can't have an immutable ref to a mutable. Create a new RC
-            rc = rhs.rc;
+            rc = immutable __RefCount(1);
             auto sz = rhs.payload.length;
             int[] tmp = (cast(int*) pureAllocate(sz * int.sizeof))[0 .. sz];
             tmp[] = rhs.payload[];
@@ -578,20 +652,12 @@ version (CoreUnittest)
         @nogc nothrow pure @safe scope
         this(return scope const ref typeof(this) rhs) immutable
         {
-            rc = rhs.rc;
-            if (rhs.rc.isShared)
-            {
-                // By implementation, only immutable RC is shared, so it's ok to inc ref
-                payload = (() @trusted => cast(immutable) rhs.payload)();
-            }
-            else
-            {
-                // Can't have an immutable ref to a mutable. Create a new RC
-                auto sz = rhs.payload.length;
-                int[] tmp = (() @trusted => (cast(int*) pureAllocate(sz * int.sizeof))[0 .. sz])();
-                tmp[] = rhs.payload[];
-                payload = (() @trusted => cast(immutable) tmp)();
-            }
+            rc = immutable __RefCount(1);
+            // Can't have an immutable ref to a mutable. Create a new RC
+            auto sz = rhs.payload.length;
+            int[] tmp = (() @trusted => (cast(int*) pureAllocate(sz * int.sizeof))[0 .. sz])();
+            tmp[] = rhs.payload[];
+            payload = (() @trusted => cast(immutable) tmp)();
         }
 
         @nogc nothrow pure @safe scope
@@ -599,7 +665,7 @@ version (CoreUnittest)
         {
             mixin(copyCtorIncRef);
         }
-        // } Get an immutable obj
+        // } Create an immutable obj
 
         @nogc nothrow pure @safe scope
         ref TestRC opAssign(return ref typeof(this) rhs) return
@@ -649,12 +715,12 @@ version (CoreUnittest)
         assert(it.payload is c_cp_it.payload);
 
         // An immutable from a mutable reference will create a copy
-        immutable i_cp_t = immutable TestRC(t);
+        immutable i_cp_t = t;
         assert(t.rc.isValueEq(2));
         assert(i_cp_t.rc.isValueEq(1));
         assert(t.payload !is i_cp_t.payload);
         // An immutable from a const to a mutable reference will create a copy
-        immutable i_cp_ct = immutable TestRC(ct);
+        immutable i_cp_ct = ct;
         assert(ct.rc.isValueEq(2));
         assert(i_cp_ct.rc.isValueEq(1));
         assert(ct.payload !is i_cp_ct.payload);
@@ -680,7 +746,7 @@ version (CoreUnittest)
         t2 = t3;
     }();
 
-    assert(allocator.bytesUsed == 0, "__RefCount leakes memory");
+    assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
 }
 
 version (CoreUnittest)
