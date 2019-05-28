@@ -14,7 +14,7 @@ module core.experimental.refcount;
  * The user will call the `isUnique()` method to decide if this is the last
  * reference to the enclosing type so memory can be safely deallocated.
  *
- * $(B Important:) the `__RefCount` member must be initialized through a call to it's
+ * $(B Important:) the `__RefCount` member must be initialized through a call to its
  * constructor before being used.
  */
 struct __RefCount
@@ -81,6 +81,7 @@ struct __RefCount
          *  - if we are creating a const/mutable RC, then a pointer to the second
          *    `uint` (aligned at 4) will serve as the reference count.
          */
+
         CounterType* support = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
         static if (is(Q == immutable) || is(Q == shared))
         {
@@ -424,6 +425,26 @@ struct __RefCount
     {
         return cast(CounterType*) rc;
     }
+
+    /**
+     * A factory function that creates and returns a new instance of a qualified
+     * `__RefCount`.
+     *
+     * Params:
+     *      QualifiedRefCount = a template parameter that is a qualified
+     *      `__RefCount` type.
+     *
+     * Returns:
+     *      A new instance of `QualifiedRefCount`.
+     *
+     * Complexity:
+     *      $(BIGOH 1).
+     */
+    static pure nothrow @nogc @safe
+    auto make(QualifiedRefCount)()
+    {
+        return QualifiedRefCount(1);
+    }
 }
 
 ///
@@ -541,8 +562,21 @@ version (CoreUnittest)
     assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
 }
 
-version (none)
-unittest
+version(none)
+@safe unittest
+{
+    () @safe @nogc pure nothrow scope
+    {
+        immutable __RefCount rc = __RefCount.make!__RefCount();
+        assert(rc.isShared(), "OOPS!");
+    }();
+
+    assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
+}
+
+//version (none)
+version (CoreUnittest)
+@system unittest
 {
     import std.parallelism;
     import core.stdc.stdio;
@@ -550,16 +584,49 @@ unittest
     ()
     {
         auto x = shared __RefCount(1);
-        static void fun(shared __RefCount rc)
+        static void fun(shared __RefCount * rc)
         {
-            debug printf("Ja %d\n", *(cast(uint*) rc.getUnsafeValue()));
-        }
-        fun(x);
+            static void bar(shared __RefCount lrc)
+            {
+                shared cp = lrc;
+                //debug printf("Ja %d\n", *(cast(uint*) cp.getUnsafeValue()));
+                assert(*(cast(uint*) cp.getUnsafeValue()) > 0);
+            }
 
-        auto t = task!fun(x);
-        t.executeInNewThread();
-        t.spinForce();
-        debug printf("Ja %d\n", *(cast(uint*) x.getUnsafeValue()));
+            auto x = *rc;
+            bar(x);
+        }
+        fun(&x);
+
+        alias TaskT = typeof(task!fun(&x));
+        TaskT[] taskArr;
+        foreach (i; 0 .. 100)
+        {
+            taskArr ~= task!fun(&x);
+            taskArr[$ - 1].executeInNewThread();
+        }
+        foreach (i; 0 .. 100)
+        {
+            taskArr[i].spinForce();
+        }
+            //auto t = task!fun(&x);
+            //t.executeInNewThread();
+            //t.spinForce();
+        //debug printf("Ja %d\n", *(cast(uint*) x.getUnsafeValue()));
+
+        import core.thread;
+        Thread[] threadArr;
+        foreach (i; 0 .. 100)
+        {
+            threadArr ~= new Thread({fun(&x);});
+            threadArr[$ - 1].start();
+        }
+        foreach (i; 0 .. 100)
+        {
+            threadArr[i].join();
+        }
+
+        assert(x.isValueEq(1));
     }();
 
     assert(allocator.bytesUsed == 0, "__RefCount leaked memory");
