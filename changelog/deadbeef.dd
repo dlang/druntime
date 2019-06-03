@@ -1,0 +1,5 @@
+Add core.deadbeef module to druntime.
+
+The core.deadbeef.clobberRegisters() function clobbers register contents with 0xDEADBEEF
+data. Suitable for testing code generation and preventing leakage of
+register information up and down the call stack via scratch registers.

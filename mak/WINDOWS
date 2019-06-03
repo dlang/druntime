@@ -77,6 +77,9 @@ $(IMPDIR)\core\checkedint.d : src\core\checkedint.d
 $(IMPDIR)\core\cpuid.d : src\core\cpuid.d
 	copy $** $@
 
+$(IMPDIR)\core\deadbeef.d : src\core\deadbeef.d
+	copy $** $@
+
 $(IMPDIR)\core\demangle.d : src\core\demangle.d
 	copy $** $@
 

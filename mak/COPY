@@ -10,6 +10,7 @@ COPY=\
 	$(IMPDIR)\core\bitop.d \
 	$(IMPDIR)\core\checkedint.d \
 	$(IMPDIR)\core\cpuid.d \
+	$(IMPDIR)\core\deadbeef.d \
 	$(IMPDIR)\core\demangle.d \
 	$(IMPDIR)\core\exception.d \
 	$(IMPDIR)\core\lifetime.d \
