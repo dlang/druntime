@@ -22,7 +22,7 @@ struct __RefCount
     import core.atomic : atomicOp;
 
     alias CounterType = uint;
-    private CounterType* rc = null;
+    private shared CounterType* rc = null;
 
     /*
      * Returns a Boolean value denoting if this can be used in a shared context.
@@ -49,14 +49,7 @@ struct __RefCount
     @nogc nothrow pure @trusted scope
     private CounterType rcOp(this Q, string op)(CounterType val) const
     {
-        if (isShared())
-        {
-            return cast(CounterType)(atomicOp!op(*(cast(shared CounterType*) rc), val));
-        }
-        else
-        {
-            mixin("return cast(CounterType)(*(cast(CounterType*) rc)" ~ op ~ "val);");
-        }
+        return cast(CounterType)(atomicOp!op(*(cast(shared CounterType*) rc), val));
     }
 
     /**
@@ -82,18 +75,9 @@ struct __RefCount
          *    `uint` (aligned at 4) will serve as the reference count.
          */
 
-        CounterType* support = cast(CounterType*) pureAllocate(2 * CounterType.sizeof);
-        static if (is(Q == immutable) || is(Q == shared))
-        {
-            *support = 0;
-            //rc = cast(immutable CounterType*) support;
-            rc = cast(typeof(rc)) support;
-        }
-        else
-        {
-            *(support + 1) = 0;
-            rc = cast(CounterType*) (support + 1);
-        }
+        shared CounterType* support = cast(shared CounterType*) pureAllocate(CounterType.sizeof);
+        *support = 0;
+        rc = cast(typeof(rc)) support;
         addRef();
     }
 
@@ -102,7 +86,6 @@ struct __RefCount
         assert(rc == rhs.rc);
         if (rhs.isInitialized())
         {
-            assert(isShared() == rhs.isShared());
             addRef();
         }
     };
@@ -348,14 +331,7 @@ struct __RefCount
     @nogc nothrow pure @system scope
     private void* deallocate(this Q)() const
     {
-        if (isShared())
-        {
-            return pureDeallocate((cast(CounterType*) rc)[0 .. 2]);
-        }
-        else
-        {
-            return pureDeallocate((cast(CounterType*) (rc - 1))[0 .. 2]);
-        }
+        return pureDeallocate((cast(CounterType*) rc)[0 .. 1]);
     }
 
     /**
