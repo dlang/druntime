@@ -111,20 +111,6 @@ int __cmp(T)(scope const T[] lhs, scope const T[] rhs) @trusted
     }
 }
 
-// Compare class and interface objects for ordering.
-private int __cmp(Obj)(Obj lhs, Obj rhs)
-if (is(Obj : Object))
-{
-    if (lhs is rhs)
-        return 0;
-    // Regard null references as always being "less than"
-    if (!lhs)
-        return -1;
-    if (!rhs)
-        return 1;
-    return lhs.opCmp(rhs);
-}
-
 // This function is called by the compiler when dealing with array
 // comparisons in the semantic analysis phase of CmpExp. The ordering
 // comparison is lowered to a call to this template.
@@ -305,11 +291,6 @@ if (!__traits(isScalar, T1) && !__traits(isScalar, T2))
 
     auto c1 = new C(1);
     auto c2 = new C(2);
-    assert(__cmp(c1, null) > 0);
-    assert(__cmp(null, c1) < 0);
-    assert(__cmp(c1, c1) == 0);
-    assert(__cmp(c1, c2) < 0);
-    assert(__cmp(c2, c1) > 0);
 
     assert(__cmp([c1, c1][], [c2, c2][]) < 0);
     assert(__cmp([c2, c2], [c1, c1]) > 0);
