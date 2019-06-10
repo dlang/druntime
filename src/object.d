@@ -127,6 +127,68 @@ if (is(Obj : Object))
     assert(a <  "я");
 }
 
+void __move_post_blt(S)(ref S newLocation, ref S oldLocation) nothrow
+    if (is(S == struct))
+{
+    static foreach (memberName; __traits(allMembers, S))
+    {
+        static if (is(typeof(__traits(getMember, S, memberName)) == struct))
+        {
+            __move_post_blt(__traits(getMember, newLocation, memberName), __traits(getMember, oldLocation, memberName));
+        }
+    }
+
+    static if (__traits(hasMember, S, "opPostMove"))
+    {
+        import core.internal.traits : lvalueOf, rvalueOf;
+        static assert( is(typeof(S.init.opPostMove(lvalueOf!S))) &&
+                      !is(typeof(S.init.opPostMove(rvalueOf!S))),
+                "`" ~ S.stringof ~ ".opPostMove` must take exactly one argument of type `" ~ S.stringof ~ "` by reference");
+
+        newLocation.opPostMove(oldLocation);
+    }
+}
+
+@safe nothrow unittest
+{
+    struct A
+    {
+        bool movedInto;
+        void opPostMove(const ref A oldLocation)
+        {
+            movedInto = true;
+        }
+    }
+    A src, dest;
+    __move_post_blt(dest, src);
+    assert(dest.movedInto);
+}
+
+@safe nothrow unittest
+{
+    struct A
+    {
+        bool movedInto;
+        void opPostMove(const ref A oldLocation)
+        {
+            movedInto = true;
+        }
+    }
+    struct B
+    {
+        A a;
+
+        bool movedInto;
+        void opPostMove(const ref B oldLocation)
+        {
+            movedInto = true;
+        }
+    }
+    B src, dest;
+    __move_post_blt(dest, src);
+    assert(dest.movedInto && dest.a.movedInto);
+}
+
 /**
 Destroys the given object and optionally resets to initial state. It's used to
 _destroy an object, calling its destructor or finalizer so it no longer
