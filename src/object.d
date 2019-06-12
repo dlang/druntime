@@ -37,6 +37,7 @@ alias wstring = immutable(wchar)[];
 alias dstring = immutable(dchar)[];
 
 version (D_ObjectiveC) public import core.attribute : selector;
+version (Posix) public import core.attribute : gnuAbiTag;
 
 /// See $(REF __cmp, rt,array,comparison)
 public import rt.array.comparison : __cmp;

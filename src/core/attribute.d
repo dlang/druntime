@@ -15,6 +15,18 @@
  */
 module core.attribute;
 
+version (Posix)
+    version = UdaGNUAbiTag;
+
+version (D_ObjectiveC)
+    version = UdaSelector;
+
+version (CoreDdoc)
+{
+    version = UdaGNUAbiTag;
+    version = UdaSelector;
+}
+
 /**
  * Use this attribute to attach an Objective-C selector to a method.
  *
@@ -51,7 +63,67 @@ module core.attribute;
  * }
  * ---
  */
-version (D_ObjectiveC) struct selector
+version (UdaSelector) struct selector
 {
     string selector;
+}
+
+/**
+ * Use this attribute to declare an ABI tag on a C++ symbol.
+ *
+ * ABI tag is an attribute introduced by the GNU C++ compiler.
+ * It modifies the mangled name of the symbol to incorporate the tag name,
+ * in order to distinguish from an earlier version with a different ABI.
+ * See: $(LINK2 https://gcc.gnu.org/onlinedocs/gcc/C_002b_002b-Attributes.html, GCC attributes documentation).
+ *
+ * This is a special compiler recognized attribute, it has a few
+ * requirements, which all will be enforced by the compiler:
+ *
+ * $(UL
+ *  $(LI
+ *      The attribute can only be attached to an $(D_CODE extern(C++)).
+ *  ),
+ *
+ *  $(LI
+ *      The string arguments must only contain valid characters
+ *      for C++ name mangling which currently include alphanumerics
+ *      and the underscore character.
+ *  ),
+ * )
+ *
+ * Note: Unlike other attributes, when applied to a namespace,
+ * this attribute applies to the namespace itself not the symbols under it.
+ *
+ * Examples:
+ * ---
+ * @gnuAbiTag("bar")
+ * extern (C++, "Foo")
+ * class A
+ * {
+ *     @gnuAbiTag("C")
+ *     void method() {}
+ * }
+ * pragma(msg, __traits(getAttributes, A)); // tuple()
+ *
+ * extern(C++)
+ * @gnuAbiTag("B")
+ * __gshared A var;
+ *
+ * extern(C++)
+ * @gnuAbiTag("E", "N", "M")
+ * enum ABC { a, b, c }
+ * ---
+ */
+version (UdaGNUAbiTag) struct gnuAbiTag
+{
+    string tag;
+    string[] tags;
+
+    @disable this();
+
+    this(string tag, string[] tags...)
+    {
+        this.tag = tag;
+        this.tags = tags;
+    }
 }
