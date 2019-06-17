@@ -53,17 +53,17 @@ else version (Posix)
     /// Possible results for the wait_pid() function.
     enum ChildStatus
     {
-     done, /// The process has finished successfully
-     running, /// The process is still running
-     error /// There was an error waiting for the process
+        done, /// The process has finished successfully
+        running, /// The process is still running
+        error /// There was an error waiting for the process
     }
 
     /**
      * Wait for a process with PID pid to finish.
      *
-     * If block is false, this function will not block, and return ChildStatus.RUNNING if
-     * the process is still running. Otherwise it will return always ChildStatus.DONE
-     * (unless there is an error, in which case ChildStatus.ERROR is returned).
+     * If block is false, this function will not block, and return ChildStatus.running if
+     * the process is still running. Otherwise it will return always ChildStatus.done
+     * (unless there is an error, in which case ChildStatus.error is returned).
      */
     ChildStatus wait_pid(pid_t pid, bool block = true) nothrow @nogc
     {
@@ -98,27 +98,27 @@ else
     //version = GC_Use_Alloc_Malloc;
 }
 
-/+
-static if (is(typeof(VirtualAlloc)))
-    version = GC_Use_Alloc_Win32;
-else static if (is(typeof(mmap)))
-    version = GC_Use_Alloc_MMap;
-else static if (is(typeof(valloc)))
-    version = GC_Use_Alloc_Valloc;
-else static if (is(typeof(malloc)))
-    version = GC_Use_Alloc_Malloc;
-else static assert(false, "No supported allocation methods available.");
-+/
-/**
- * Indicates if an implementation support fork().
- *
- * The value shown here is just demostrative, the real value is defined based
- * on the OS it's being compiled in.
- * enum HaveFork = true;
-*/
 
 static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
 {
+    /+
+    static if (is(typeof(VirtualAlloc)))
+        version = GC_Use_Alloc_Win32;
+    else static if (is(typeof(mmap)))
+        version = GC_Use_Alloc_MMap;
+    else static if (is(typeof(valloc)))
+        version = GC_Use_Alloc_Valloc;
+    else static if (is(typeof(malloc)))
+        version = GC_Use_Alloc_Malloc;
+    else static assert(false, "No supported allocation methods available.");
+    +/
+    /**
+    * Indicates if an implementation supports fork().
+    *
+    * The value shown here is just demostrative, the real value is defined based
+    * on the OS it's being compiled in.
+    * enum HaveFork = true;
+    */
     enum HaveFork = false;
 
     /**
