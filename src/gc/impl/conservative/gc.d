@@ -164,9 +164,10 @@ class ConservativeGC : GC
 
     this()
     {
+        import core.exception : onConfigurationError;
         //config is assumed to have already been initialized
         if (config.fork && config.parallel > 0)
-            throw new Error("No reason in mixing threads and fork");
+            onConfigurationError("Can't mix threads and fork strategies for GC marking");
 
         gcx = cast(Gcx*)cstdlib.calloc(1, Gcx.sizeof);
         if (!gcx)
