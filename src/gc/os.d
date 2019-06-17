@@ -67,6 +67,8 @@ else version (Posix)
      */
     ChildStatus wait_pid(pid_t pid, bool block = true) nothrow @nogc
     {
+        import core.exception : onForkError;
+
         int status = void;
         pid_t waited_pid = void;
         // In the case where we are blocking, we need to consider signals
@@ -78,10 +80,11 @@ else version (Posix)
         while (waited_pid == -1 && errno == EINTR);
         if (waited_pid == 0)
             return ChildStatus.running;
-        assert (waited_pid == pid);
-        assert (status == 0);
         if (waited_pid != pid || status != 0)
+        {
+            onForkError();
             return ChildStatus.error;
+        }
         return ChildStatus.done;
     }
 

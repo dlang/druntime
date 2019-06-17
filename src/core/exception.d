@@ -595,6 +595,21 @@ extern (C) void onInvalidMemoryOperationError(void* pretend_sideffect = null) @t
 }
 
 /**
+ * A callback for errors in the case of a failed fork in D.  A $(LREF ForkError) will be thrown.
+ *
+ * Params:
+ *  file = The name of the file that signaled this error.
+ *  line = The line number on which this error occurred.
+ *
+ * Throws:
+ *  $(LREF ConfigurationError).
+ */
+extern (C) void onForkError( string file = __FILE__, size_t line = __LINE__ ) @trusted pure nothrow @nogc
+{
+    throw staticError!ForkError( file, line, null );
+}
+
+/**
  * A callback for unicode errors in D.  A $(LREF UnicodeException) will be thrown.
  *
  * Params:
