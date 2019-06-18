@@ -101,20 +101,20 @@ else
     //version = GC_Use_Alloc_Malloc;
 }
 
+/+
+static if (is(typeof(VirtualAlloc)))
+    version = GC_Use_Alloc_Win32;
+else static if (is(typeof(mmap)))
+    version = GC_Use_Alloc_MMap;
+else static if (is(typeof(valloc)))
+    version = GC_Use_Alloc_Valloc;
+else static if (is(typeof(malloc)))
+    version = GC_Use_Alloc_Malloc;
+else static assert(false, "No supported allocation methods available.");
++/
 
 static if (is(typeof(VirtualAlloc))) // version (GC_Use_Alloc_Win32)
 {
-    /+
-    static if (is(typeof(VirtualAlloc)))
-        version = GC_Use_Alloc_Win32;
-    else static if (is(typeof(mmap)))
-        version = GC_Use_Alloc_MMap;
-    else static if (is(typeof(valloc)))
-        version = GC_Use_Alloc_Valloc;
-    else static if (is(typeof(malloc)))
-        version = GC_Use_Alloc_Malloc;
-    else static assert(false, "No supported allocation methods available.");
-    +/
     /**
     * Indicates if an implementation supports fork().
     *
