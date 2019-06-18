@@ -13,7 +13,7 @@
  */
 module gc.bits;
 
-import gc.os : os_mem_map, os_mem_unmap;
+import gc.os : os_mem_map, os_mem_unmap, HaveFork;
 
 import core.bitop;
 import core.stdc.string;
@@ -43,7 +43,7 @@ struct GCBits
     {
         if (data)
         {
-            if (mmap)
+        if (HaveFork && share)
                 os_mem_unmap(data, nwords * data[0].sizeof);
             else
                 free(data);
@@ -54,7 +54,7 @@ struct GCBits
     void alloc(size_t nbits, bool share = false) nothrow
     {
         this.nbits = nbits;
-        if (mmap)
+        if (HaveFork && share)
             data = cast(typeof(data[0])*)os_mem_map(nwords * data[0].sizeof, true); // Allocate as MAP_SHARED
         else
             data = cast(typeof(data[0])*)calloc(nwords, data[0].sizeof);
