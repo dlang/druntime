@@ -1231,7 +1231,7 @@ struct Gcx
     auto rangesLock = shared(AlignedSpinLock)(SpinLock.Contention.brief);
     Treap!Root roots;
     Treap!Range ranges;
-    private bool doMinimize = false;
+    private bool minimizeAfterNextCollection = false;
     version (COLLECT_FORK)
     {
         private pid_t markProcPid = 0;
@@ -1755,13 +1755,13 @@ struct Gcx
                 if (!tryAllocNewPool())
                 {
                     // disabled but out of memory => try to free some memory
-                    doMinimize = true;
+                    minimizeAfterNextCollection = true;
                     fullcollect(false, true);
                 }
             }
             else
             {
-                doMinimize = true;
+                minimizeAfterNextCollection = true;
                 fullcollect();
             }
             // If alloc didn't yet succeed retry now that we collected/minimized
@@ -2825,9 +2825,9 @@ Lmark:
 
         // minimize() should be called only after a call to fullcollect
         // terminates with a sweep
-        if (doMinimize || lowMem)
+        if (minimizeAfterNextCollection || lowMem)
         {
-            doMinimize = false;
+            minimizeAfterNextCollection = false;
             minimize();
         }
 
