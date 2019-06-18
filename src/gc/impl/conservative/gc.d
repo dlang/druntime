@@ -2642,9 +2642,8 @@ struct Gcx
         // (unless they allocate or use the GC themselves, in which case
         // the global GC lock will stop them).
         // fork now and sweep later
-        import core.stdc.stdio;
-        version (COLLECT_FORK)
-            import core.stdc.stdlib : _Exit;
+        import core.stdc.stdio : fflush;
+        import core.stdc.stdlib : _Exit;
         
         fflush(null); // avoid duplicated FILE* output
         auto pid = fork();
