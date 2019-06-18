@@ -3183,7 +3183,7 @@ struct Pool
         auto nbits = cast(size_t)poolsize >> shiftBy;
 
         version (COLLECT_FORK)
-            mark.alloc(nbits, true);
+            mark.alloc(nbits, config.fork);
         else
             mark.alloc(nbits);
         if (ConservativeGC.isPrecise)
@@ -3275,7 +3275,7 @@ struct Pool
             bPageOffsets = null;
         }
 
-        mark.Dtor(true);
+        mark.Dtor(config.fork);
         if (ConservativeGC.isPrecise)
         {
             if (isLargeObject)
@@ -3291,10 +3291,10 @@ struct Pool
         {
             freebits.Dtor();
         }
-        finals.Dtor(false);
-        structFinals.Dtor(false);
-        noscan.Dtor(false);
-        appendable.Dtor(false);
+        finals.Dtor();
+        structFinals.Dtor();
+        noscan.Dtor();
+        appendable.Dtor();
     }
 
     /**
