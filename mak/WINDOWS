@@ -119,6 +119,9 @@ $(IMPDIR)\core\gc\registry.d : src\core\gc\registry.d
 $(IMPDIR)\core\experimental\refcount.d : src\core\experimental\refcount.d
 	copy $** $@
 
+$(IMPDIR)\core\experimental\array.d : src\core\experimental\array.d
+	copy $** $@
+
 $(IMPDIR)\core\internal\abort.d : src\core\internal\abort.d
 	copy $** $@
 

@@ -22,6 +22,7 @@ COPY=\
 	$(IMPDIR)\core\vararg.d \
 	\
 	$(IMPDIR)\core\experimental\refcount.d \
+	$(IMPDIR)\core\experimental\array.d \
 	\
 	$(IMPDIR)\core\internal\abort.d \
 	$(IMPDIR)\core\internal\arrayop.d \

@@ -21,6 +21,7 @@ DOCS=\
 	$(DOCDIR)\core_gc_registry.html \
 	\
 	$(DOCDIR)\core_experimental_refcount.html \
+	$(DOCDIR)\core_experimental_array.html \
 	\
 	$(DOCDIR)\core_stdc_assert_.html \
 	$(DOCDIR)\core_stdc_config.html \
