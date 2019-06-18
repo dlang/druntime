@@ -3208,8 +3208,6 @@ struct Pool
             freebits.alloc(nbits);
             freebits.setRange(0, nbits);
         }
-        else
-            freebits.setAll();
 
         noscan.alloc(nbits);
         appendable.alloc(nbits);
