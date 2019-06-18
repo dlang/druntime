@@ -23,18 +23,6 @@ void __switch_errorT()(string file = __FILE__, size_t line = __LINE__) @trusted
 /**
  * Thrown on a configuration error.
  */
-class ConfigurationError : Error
-{
-    this( string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null ) @nogc nothrow pure @safe
-    {
-        super( msg, file, line, next );
-    }
-}
-
-
-/**
- * Thrown on a configuration error.
- */
 class ForkError : Error
 {
     this( string file = __FILE__, size_t line = __LINE__, Throwable next = null ) @nogc nothrow pure @safe
@@ -617,23 +605,6 @@ extern (C) void onInvalidMemoryOperationError(void* pretend_sideffect = null) @t
     // The same restriction applies as for onOutOfMemoryError. The GC is in an
     // undefined state, thus no allocation must occur while generating this object.
     throw staticError!InvalidMemoryOperationError();
-}
-
-
-/**
- * A callback for runtime configuration errors in D.  A $(LREF ConfigurationError) will be thrown.
- *
- * Params:
- *  msg = information about the error
- *  file = The name of the file that signaled this error.
- *  line = The line number on which this error occurred.
- *
- * Throws:
- *  $(LREF ConfigurationError).
- */
-extern (C) void onConfigurationError( string msg, string file = __FILE__, size_t line = __LINE__ ) @trusted pure nothrow @nogc
-{
-    throw staticError!ConfigurationError( msg, file, line, null );
 }
 
 
