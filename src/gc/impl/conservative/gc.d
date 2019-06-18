@@ -36,7 +36,6 @@ module gc.impl.conservative.gc;
 version = COLLECT_PARALLEL;  // parallel scanning
 version (Posix)
     version = COLLECT_FORK;
-version = COLLECT_FORK;
 
 import gc.bits;
 import gc.os;
