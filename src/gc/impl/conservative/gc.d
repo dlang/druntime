@@ -2629,7 +2629,6 @@ struct Gcx
 
     version (COLLECT_FORK)
     ChildStatus markFork(bool nostack, bool block) nothrow
-
     {
         // Forking is enabled, so we fork() and start a new concurrent mark phase
         // in the child. If the collection should not block, the parent process
