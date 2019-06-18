@@ -2640,7 +2640,6 @@ struct Gcx
         // fork now and sweep later
         import core.stdc.stdio : fflush;
         import core.stdc.stdlib : _Exit;
-        
         fflush(null); // avoid duplicated FILE* output
         auto pid = fork();
         assert(pid != -1);
