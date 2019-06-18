@@ -2628,7 +2628,7 @@ struct Gcx
     }
 
     version (COLLECT_FORK)
-    ChildStatus markFork(bool nostack, bool block, const MonoTime begin, ref MonoTime start, ref MonoTime stop) nothrow
+    ChildStatus markFork(bool nostack, bool block) nothrow
 
     {
         // Forking is enabled, so we fork() and start a new concurrent mark phase
@@ -2664,14 +2664,6 @@ struct Gcx
                 if (!block)
                 {
                     markProcPid = pid;
-                    // update profiling informations
-                    stop = currTime;
-                    markTime += (stop - start);
-                    Duration pause = stop - begin;
-                    if (pause > maxPauseTime)
-                        maxPauseTime = pause;
-                    pauseTime += pause;
-
                     return ChildStatus.running;
                 }
                 ChildStatus r = wait_pid(pid); // block until marking is done
@@ -2768,13 +2760,21 @@ Lmark:
             {
                 version (COLLECT_FORK)
                 {
-                    auto forkResult = markFork(nostack, block, begin, start, stop);
+                    auto forkResult = markFork(nostack, block);
                     final switch (forkResult)
                     {
                         case ChildStatus.error:
                             disableFork();
                             goto Lmark;
                         case ChildStatus.running:
+                            // update profiling informations
+                            stop = currTime;
+                            markTime += (stop - start);
+                            Duration pause = stop - begin;
+                            if (pause > maxPauseTime)
+                                maxPauseTime = pause;
+                            pauseTime += pause;
+
                             return 0;
                         case ChildStatus.done:
                             break;
