@@ -23,6 +23,34 @@ private template ElementType(R)
         alias ElementType = void;
 }
 
+
+/**
+ * Create an empty (qualified) `rcarray`.
+ *
+ * Returns:
+ *      an empty `rcarray`
+ */
+auto make(Q : rcarray!T, T)(size_t initialCapacity = 0)
+{
+    return Q(initialCapacity);
+}
+
+///
+unittest
+{
+    auto a = make!(rcarray!int);
+    assert(a.capacity == 0);
+    assert(is(typeof(a) == rcarray!int));
+
+    auto ca = make!(const rcarray!int);
+    assert(ca.capacity == 0);
+    assert(is(typeof(ca) == const(rcarray!int)));
+
+    auto ia = make!(immutable rcarray!int);
+    assert(ia.capacity == 0);
+    assert(is(typeof(ia) == immutable(rcarray!int)));
+}
+
 /**
  * Array type with deterministic control of memory, through reference counting,
  * that mimics the behaviour of built-in dynamic arrays. Memory is automatically
@@ -425,7 +453,7 @@ struct rcarray(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = rcarray!int(0);
+        auto a = make!(rcarray!int);
         assert(a.length == 0);
 
         a.insert(1);
@@ -870,7 +898,7 @@ struct rcarray(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = rcarray!int(0);
+        auto a = make!(rcarray!int);
         auto a2 = rcarray!int(1, 2);
 
         a = a2; // this will free the old `a`
@@ -917,7 +945,7 @@ struct rcarray(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = rcarray!int(0);
+        auto a = make!(rcarray!int);
         auto a2 = rcarray!int(4, 5);
 
         a ~= 1;
@@ -1054,7 +1082,7 @@ struct rcarray(T)
             assert(arr1.toHash == rcarray!int(1, 2).toHash);
             arr1 ~= 3;
             assert(arr1.toHash == rcarray!int(1, 2, 3).toHash);
-            assert(rcarray!int(0).toHash == rcarray!int(0).toHash);
+            assert(make!(rcarray!int).toHash == make!(rcarray!int).toHash);
         }
     }
 }
@@ -1065,7 +1093,7 @@ version (CoreUnittest)
     void testConcatAndAppend()
     {
         auto a = rcarray!(int)(1, 2, 3);
-        rcarray!(int) a2 = rcarray!(int)(1);
+        auto a2 = make!(rcarray!int);
 
         auto a3 = a ~ a2;
         assert(a3 == [1, 2, 3]);
@@ -1085,7 +1113,7 @@ version (CoreUnittest)
 
         a3 ~= a3;
         assert(a3 == [1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]);
-        rcarray!int a5 = rcarray!(int)(1);
+        auto a5 = make!(rcarray!int);
         a5 ~= [1, 2, 3];
         assert(a5 == [1, 2, 3]);
         auto a6 = a5;
@@ -1200,7 +1228,7 @@ version (CoreUnittest)
         assert(aFromList == [2, 3]);
         assert(aFromRange == [1, 2, 3]);
 
-        rcarray!int aInsFromRange = rcarray!int(0);
+        auto aInsFromRange = make!(rcarray!int);
         aInsFromRange.insert(aFromList);
         aFromList = aFromList[1 .. $];
         assert(aFromList == [3]);
