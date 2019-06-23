@@ -6,21 +6,6 @@ import core.experimental.refcount;
 import core.internal.traits : Unqual;
 
 /**
-Returns the size in bytes of the state that needs to be allocated to hold an
-object of type `T`. `stateSize!T` is zero for `struct`s that are not
-nested and have no nonstatic member variables.
- */
-private template stateSize(T)
-{
-    static if (is(T == class) || is(T == interface))
-        enum stateSize = __traits(classInstanceSize, T);
-    else static if (is(T == void))
-        enum size_t stateSize = 0;
-    else
-        enum stateSize = T.sizeof;
-}
-
-/**
 The element type of `R`. `R` does not have to be a range. The element type is
 determined as the type yielded by `r[0]` for an object `r` of type `R`.
  */
@@ -326,7 +311,7 @@ struct rcarray(T)
 
         if (n <= capacity) { return; }
 
-        Unqual!T[] tmpSupport = (() @trusted pure => (cast(Unqual!T*)(pureAllocate(n * stateSize!T)))[0 .. n])();
+        Unqual!T[] tmpSupport = (() @trusted pure => (cast(Unqual!T*)(pureAllocate(n * T.sizeof)))[0 .. n])();
         assert(tmpSupport !is null);
 
         for (size_t i = 0; i < tmpSupport.length; i++)
@@ -438,19 +423,22 @@ struct rcarray(T)
         return q{
         size_t stuffLength = } ~ stuff ~ q{.length;
 
-        void[] tmpSupport = (() @trusted => pureAllocate(stuffLength * stateSize!T)[0 .. stuffLength * stateSize!T])();
+        void[] tmpSupport = (() @trusted => pureAllocate(stuffLength * T.sizeof)[0 .. stuffLength * T.sizeof])();
 
         assert(stuffLength == 0 || (stuffLength > 0 && tmpSupport !is null));
         for (size_t i = 0; i < stuffLength; ++i)
         } ~ "{" ~ q{
             alias E = ElementType!(typeof(payload));
 
-            size_t s = i * stateSize!E;
-            size_t e = (i + 1) * stateSize!E;
+            size_t s = i * E.sizeof;
+            size_t e = (i + 1) * E.sizeof;
             void[] tmp = tmpSupport[s .. e];
 
             import core.lifetime : emplace;
-            (() @trusted => emplace!E(tmp, } ~ stuff ~ q{[i]))();
+            static if (is(T == class) || is(T == interface))
+                (() @trusted => emplace(cast(Unqual!E*)tmp.ptr, cast(Unqual!E)} ~ stuff ~ q{[i]))();
+            else
+                (() @trusted => emplace!E(tmp, } ~ stuff ~ q{[i]))();
         } ~ "}"
         ~ q{
 
@@ -1246,10 +1234,6 @@ version (CoreUnittest)
         {
             int x;
             this(int x) { this.x = x; }
-
-            this(ref typeof(this) rhs) immutable { x = rhs.x; }
-
-            this(const ref typeof(this) rhs) immutable { x = rhs.x; }
         }
 
         MyClass c = new MyClass(10);
@@ -1258,6 +1242,11 @@ version (CoreUnittest)
             assert(a[0].x == 10);
             assert(a[0] is c);
             a[0].x = 20;
+
+            auto ia = immutable rcarray!MyClass(a);
+            assert(ia[0].x == 20);
+            assert(ia[0] is c);
+            static assert(!__traits(compiles, { ia[0].x = 30; }));
         }
         assert(c.x == 20);
     }
@@ -1265,7 +1254,7 @@ version (CoreUnittest)
     @safe unittest
     {
         () nothrow pure @safe {
-            //testWithClass();
+            testWithClass();
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
