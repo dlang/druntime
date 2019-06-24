@@ -1,11 +1,17 @@
-///
+/**
+ * This module provides `rcarray`, a dynamic _array type using reference
+ * counting for automatic memory management not reliant on the GC, with
+ * semantics equivalent to built-in arrays.
+ *
+ * Source: $(DRUNTIMESRC core/experimental/array.d)
+ */
 module core.experimental.array;
 
 import core.experimental.refcount;
 
 import core.internal.traits : Unqual;
 
-/**
+/*
 The element type of `R`. `R` does not have to be a range. The element type is
 determined as the type yielded by `r[0]` for an object `r` of type `R`.
  */
@@ -17,19 +23,37 @@ private template ElementType(R)
         alias ElementType = void;
 }
 
-///
+/**
+ * Array type with deterministic control of memory, through reference counting,
+ * that mimics the behaviour of built-in dynamic arrays. Memory is automatically
+ * reclaimed when the last reference to the array is destroyed; there is no
+ * reliance on the garbage collector.
+ *
+ * Note:
+ *
+ * `rcarray` does not currently provide a range interface.
+ */
 struct rcarray(T)
 {
+    // TODO: Use no memory to 'store' structs without member fields?
+
     private T[] payload;
     private Unqual!T[] support;
 
     private __RefCount rc;
 
+    // Factor to grow the array capacity by
     private enum growthFactor = 1.5;
 
-    //default construction leaves __RefCount uninitialised
+    // Default construction leaves `__RefCount` uninitialised
     @disable this();
 
+    /**
+     * Creates an empty array with an initial capacity.
+     *
+     * Params:
+     *  initialCapacity = The initial capacity for the array.
+     */
     this(size_t initialCapacity)
     {
         rc = __RefCount.make!__RefCount();
@@ -49,6 +73,14 @@ struct rcarray(T)
         assert(a.capacity == 3);
     }
 
+
+    /**
+     * Creates an array out of the given _items.
+     *
+     * Params:
+     *  items = Any number of _items, in the form of a list of values, or a
+     *          built-in (static or dynamic) array.
+     */
     this(U, this Q)(U[] items...)
     if (!is(Q == shared) && is(U : T))
     {
@@ -78,21 +110,22 @@ struct rcarray(T)
             auto a = rcarray!int([1, 2, 3]);
             assert(a == [1, 2, 3]);
         }
-        // Create a list from a list from an input range
-        {
-            auto a = rcarray!int(1, 2, 3);
-            auto a2 = rcarray!int(a);
-            assert(a2 == [1, 2, 3]);
-        }
     }
 
     private enum copyCtorIncRef = q{
+        // If we're not creating an immutable copy from non-immutable, we use
+        // the same underlying memory and increase the reference count (through
+        // the copy constructor of `__RefCount`)
+
         rc = rhs.rc;
         support = rhs.support;
         payload = rhs.payload;
     };
 
     private enum copyCtorAlloc = q{
+        // If we are creating an immutable copy from non-immutable, we create a
+        // copy of the underlying memory and start a new reference count
+
         rc = __RefCount.make!(immutable __RefCount)();
 
         mixin(immutableInsert!(typeof(rhs.payload), "rhs.payload")());
@@ -145,7 +178,7 @@ struct rcarray(T)
     {
         if (rc.isUnique && support !is null)
         {
-            // If this was the last reference to the payload,
+            // If this was the last reference to the underlying memory,
             // we can safely free
             () @trusted { pureDeallocate(support); }();
         }
@@ -190,12 +223,15 @@ struct rcarray(T)
         static assert(!__traits(compiles, () nothrow { auto s = immutable rcarray!ThrowsDtor(ThrowsDtor(1)); }));
     }
 
+    // Length of the part of the support array before the payload
+    // (after slicing an array starting from an index > 0)
     private @nogc nothrow pure @trusted scope
     size_t slackFront() const
     {
         return payload.ptr - support.ptr;
     }
 
+    // Length of the unused capacity at the back of the support array
     private @nogc nothrow pure @trusted scope
     size_t slackBack() const
     {
@@ -225,7 +261,6 @@ struct rcarray(T)
     {
         auto a = rcarray!int(1, 2, 3);
         assert(a.length == 3);
-        assert(a[$ - 1] == 3);
     }
 
     /**
@@ -267,11 +302,11 @@ struct rcarray(T)
     }
 
     /**
-     * Get the available capacity of the `array`; this is equal to `length` of
+     * Get the available capacity of the array; this is equal to `length` of
      * the array plus the available pre-allocated, free, space.
      *
      * Returns:
-     *      a positive integer denoting the capacity.
+     *      a positive integer denoting the _capacity.
      *
      * Complexity: $(BIGOH 1).
      */
@@ -285,19 +320,16 @@ struct rcarray(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto a = rcarray!int(1, 2, 3);
-        a.reserve(10);
+        auto a = rcarray!int(10);
         assert(a.capacity == 10);
     }
 
     /**
-     * Reserve enough memory from the allocator to store `n` elements.
-     * If the current `capacity` exceeds `n` nothing will happen.
-     * If `n` exceeds the current `capacity`, an attempt to `expand` the
-     * current array is made. If `expand` is successful, all the expanded
-     * elements are default initialized to `T.init`. If the `expand` fails
-     * a new buffer will be allocated, the old elements of the array will be
-     * copied and the new elements will be default initialized to `T.init`.
+     * Reserve enough memory to store `n` elements.
+     * If the current `capacity` exceeds `n`, nothing will happen.
+     * If `n` exceeds the current `capacity`, a new buffer will be allocated,
+     * the old elements of the array will be copied and the new elements will
+     * be default initialized to `T.init`.
      *
      * Params:
      *      n = a positive integer
@@ -320,10 +352,12 @@ struct rcarray(T)
 
             if (i < payload.length)
             {
+                // Copy the existing items
                 emplace(&tmpSupport[i], payload[i]);
             }
             else
             {
+                // Default initialise the remaining memory
                 emplace(&tmpSupport[i]);
             }
         }
@@ -355,19 +389,18 @@ struct rcarray(T)
     static if (is(T == int))
     @safe unittest
     {
-        auto stuff = [1, 2, 3];
-        auto a = rcarray!int(0);
-        a.reserve(stuff.length);
-        a ~= stuff;
-        assert(a == stuff);
+        auto a = rcarray!int(1, 2, 3);
+        a.reserve(10);
+        assert(a.capacity == 10);
+        assert(a.length == 3);
     }
 
     /**
-     * Inserts the elements of an array, or a built-in array or an element
+     * Inserts the elements of an `rcarray`, or a built-in array or an element
      * at the back of the array.
      *
      * Params:
-     *      stuff = an element, or an array, or built-in array of elements that
+     *      stuff = an element, or an `rcarray`, or built-in array of elements that
      *              are implitictly convertible to `T`
      *
      * Returns:
@@ -416,8 +449,9 @@ struct rcarray(T)
             while (newCapacity < capacity + stuff.length)
             {
                 newCapacity = newCapacity * growthFactor;
+                assert(cast(size_t)newCapacity > capacity);
             }
-            reserve((() @trusted => cast(size_t)(newCapacity))());
+            reserve((() @trusted => cast(size_t)newCapacity)());
         }
 
         // Can't use below, because it doesn't do opAssign, but memcpy
@@ -455,7 +489,7 @@ struct rcarray(T)
         } ~ "}"
         ~ q{
 
-        // In order to support D_BetterC, we need to cast the `void[]` to `T.ptr`
+        // In order to support `-betterC`, we need to cast the `void[]` to `T.ptr`
         // and then manually pass the length information again. This way we avoid
         // calling druntime's `_d_arraycast`, which is called whenever we cast between
         // two dynamic arrays.
@@ -664,15 +698,15 @@ struct rcarray(T)
     }
 
     /**
-     Assign `elem` to all element in the array.
-
-     Returns:
-          a reference to itself
-
-     Params:
-          elem = an element that is implicitly convertible to `T`
-
-     Complexity: $(BIGOH n).
+     * Assign `elem` to all element in the array.
+     *
+     * Returns:
+     *      a reference to itself
+     *
+     * Params:
+     *      elem = an element that is implicitly convertible to `T`
+     *
+     * Complexity: $(BIGOH n).
      */
     auto ref opIndexAssign(U)(U elem)
     if (is(U : T))
@@ -691,18 +725,19 @@ struct rcarray(T)
     }
 
     /**
-    Assign `elem` to the element at `idx` in the array.
-    `idx` must be less than `length`.
-
-    Returns:
-         a reference to the element found at `idx`.
-
-    Params:
-         elem = an element that is implicitly convertible to `T`
-         indices = a positive integer
-
-    Complexity: $(BIGOH n).
-    */
+     * Assign `elem` to the element at `idx` in the array.
+     * `idx` must be less than `length`.
+     *
+     * Returns:
+     *      a reference to the element found at `idx`.
+     *
+     * Params:
+     *      elem = an element that is implicitly convertible to `T`
+     *      start = a positive integer
+     *      end = a positive integer
+     *
+     * Complexity: $(BIGOH n).
+     */
     auto opSliceAssign(U)(U elem, size_t start, size_t end)
     if (is(U : T))
     {
@@ -754,8 +789,8 @@ struct rcarray(T)
      * with `rhs`.
      *
      * Params:
-     *      rhs = can be an element that is implicitly convertible to `T`, an
-     *            input range of such elements, or another `Array`
+     *      rhs = an element that is implicitly convertible to `T`, an
+     *            input range of such elements, or another `rcarray`
      *
      * Returns:
      *      the newly created array
@@ -799,8 +834,8 @@ struct rcarray(T)
     /**
      * Assign `rhs` to this array. The current array will now become another
      * reference to `rhs`, unless `rhs` is `null`, in which case the current
-     * array will become empty. If `rhs` refers to the current array nothing will
-     * happen.
+     * array will become empty. If `rhs` refers to the current array, nothing
+     * will happen.
      *
      * If there are no more references to the previous array, the previous
      * array will be destroyed; this leads to a $(BIGOH n) complexity.
@@ -817,7 +852,7 @@ struct rcarray(T)
     {
         if (rc.isUnique && support !is null)
         {
-            // If this was the last reference to the payload,
+            // If this was the last reference to the underlying memory,
             // we can safely free
             () @trusted { pureDeallocate(support); }();
         }
@@ -838,7 +873,7 @@ struct rcarray(T)
         auto a = rcarray!int(0);
         auto a2 = rcarray!int(1, 2);
 
-        a = a2; // this will free the old a
+        a = a2; // this will free the old `a`
         assert(a == [1, 2]);
         a[0] = 0;
         assert(a2 == [0, 2]);
@@ -858,12 +893,10 @@ struct rcarray(T)
     /**
      * Append the elements of `rhs` at the end of the array.
      *
-     * If no allocator was provided when the list was created, the
-     * $(REF, GCAllocator, std,experimental,allocator,gc_allocator) will be used.
      *
      * Params:
-     *      rhs = can be an element that is implicitly convertible to `T`, an
-     *            input range of such elements, or another `Array`
+     *      rhs = an element that is implicitly convertible to `T`, an
+     *            input range of such elements, or another `rcarray`
      *
      * Returns:
      *      a reference to this array
@@ -886,7 +919,6 @@ struct rcarray(T)
     {
         auto a = rcarray!int(0);
         auto a2 = rcarray!int(4, 5);
-        assert(a.length == 0);
 
         a ~= 1;
         a ~= [2, 3];
@@ -989,6 +1021,7 @@ struct rcarray(T)
         assert(arr3 > arr4);
     }
 
+    ///
     static if (is(T == int))
     @safe unittest
     {

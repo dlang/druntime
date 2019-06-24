@@ -45,7 +45,7 @@ struct __RefCount
      *          user defined default constructor
      */
     @nogc nothrow pure @trusted scope
-    this(this Q)(int)
+    this(this Q)(int _)
     {
         // We are required to always use a shared support as the result of a `pure`
         // function is implicitly convertible to `immutable`.
