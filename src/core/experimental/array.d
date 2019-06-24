@@ -330,11 +330,24 @@ struct rcarray(T)
 
         if (support !is null)
         {
-            () @trusted { pureDeallocate(support); }();
+            if (rc.isUnique)
+            {
+                //if we had a non-empty array and we hold the only reference to it,
+                //then we can free the original (smaller) array
+                () @trusted { pureDeallocate(support); }();
+            }
+            else
+            {
+                //if there are others holding references to the original array,
+                //then we make a new reference count for the new (larger) array
+                auto newrc = __RefCount.make!(typeof(rc));
+                rc = newrc;
+            }
         }
 
         support = tmpSupport;
         payload = (() @trusted => cast(T[])(support[0 .. payload.length]))();
+
         assert(capacity >= n);
     }
 
