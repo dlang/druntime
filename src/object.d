@@ -38,9 +38,16 @@ alias dstring = immutable(dchar)[];
 
 version (D_ObjectiveC) public import core.attribute : selector;
 
-public import rt.array.comparison : __cmp;
-public import rt.array.equality : __ArrayEq, __equals;
-public import rt.array.casting: __ArrayCast;
+version (CoreDdoc)
+{ }
+else
+{
+    // These are lowerings intended only for use by the compiler,
+    // so we remove them from the user documentation.
+    public import rt.array.comparison : __cmp;
+    public import rt.array.equality : __ArrayEq, __equals;
+    public import rt.array.casting: __ArrayCast;
+}
 
 /// See $(REF capacity, rt,array,capacity)
 public import rt.array.capacity: capacity;
