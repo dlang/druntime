@@ -58,7 +58,7 @@ struct GCBits
         this.nbits = nbits;
         static if (!HaveFork)
             data = cast(typeof(data[0])*)calloc(nwords, data[0].sizeof);
-        if (share)
+        else if (share)
             data = cast(typeof(data[0])*)os_mem_map(nwords * data[0].sizeof, true); // Allocate as MAP_SHARED
         else
             data = cast(typeof(data[0])*)calloc(nwords, data[0].sizeof);
