@@ -294,7 +294,7 @@ template Fields(T)
         alias Fields = TypeTuple!T;
 }
 
-// std.traits.hasElaborateMove
+/// See $(REF hasElaborateMove, std,traits)
 template hasElaborateMove(S)
 {
     static if (__traits(isStaticArray, S) && S.length)

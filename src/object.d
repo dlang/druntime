@@ -127,6 +127,23 @@ if (is(Obj : Object))
     assert(a <  "я");
 }
 
+/**
+ * Recursively calls the `opPostMove` callbacks of a struct and its members if
+ * they're defined.
+ *
+ * When moving a struct instance, the compiler emits a call to this function
+ * after blitting the instance and before releasing the original instance's
+ * memory.
+ *
+ * Params:
+ *      newLocation = reference to struct instance being moved into
+ *      oldLocation = reference to the original instance
+ *
+ * Note:
+ *      This function is tentatively defined as `nothrow` to prevent
+ *      `opPostMove` from being defined without `nothrow`, which would allow
+ *      for possibly confusing changes in program flow.
+ */
 void __move_post_blt(S)(ref S newLocation, ref S oldLocation) nothrow
     if (is(S == struct))
 {
