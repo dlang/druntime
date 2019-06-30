@@ -1195,3 +1195,6 @@ $(IMPDIR)\rt\array\casting.d : src\rt\array\casting.d
 
 $(IMPDIR)\rt\array\capacity.d : src\rt\array\capacity.d
 	copy $** $@
+
+$(IMPDIR)\rt\array\concatenation.d : src\rt\array\concatenation.d
+	copy $** $@
