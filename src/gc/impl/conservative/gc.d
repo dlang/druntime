@@ -1228,7 +1228,7 @@ struct Gcx
     auto rangesLock = shared(AlignedSpinLock)(SpinLock.Contention.brief);
     Treap!Root roots;
     Treap!Range ranges;
-    private bool minimizeAfterNextCollection = false;
+    bool minimizeAfterNextCollection = false;
     version (COLLECT_FORK)
     {
         private pid_t markProcPid = 0;
