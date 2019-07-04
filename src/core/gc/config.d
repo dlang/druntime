@@ -40,7 +40,7 @@ struct Config
 
         printf("GC options are specified as white space separated assignments:
     disable:0|1    - start disabled (%d)
-    fork:0|1       - set fork behaviour (disabled by default) (%d)
+    fork:0|1       - set fork behaviour (%d)
     profile:0|1|2  - enable profiling with summary when terminating program (%d)
     gc:".ptr, disable, profile);
         foreach (i, entry; registeredGCFactories)
