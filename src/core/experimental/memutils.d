@@ -130,108 +130,111 @@ version (GNU)
 }
 else
 {
-    // NOTE(stefanos): I could not a GDC respective of the intrinsics.
-    void Dmemset(void *d, const uint val, size_t n)
+    version (D_SIMD)
     {
-        import core.simd: int4;
-        version (LDC)
+        // NOTE(stefanos): I could not GDC respective intrinsics.
+        void Dmemset(void *d, const uint val, size_t n)
         {
-            import ldc.simd: loadUnaligned, storeUnaligned;
-        }
-        else
-        version (DigitalMars)
-        {
-            import core.simd: void16, loadUnaligned, storeUnaligned;
-        }
-        else
-        {
-            static assert(0, "Only DMD / LDC are supported");
-        }
-        // TODO(stefanos): Is there a way to make them @safe?
-        // (The problem is that for LDC, they could take int* or float* pointers
-        // but the cast to void16 for DMD is necessary anyway).
-        void store32i_sse(void *dest, int4 reg)
-        {
+            import core.simd: int4;
             version (LDC)
             {
-                storeUnaligned!int4(reg, cast(int*)dest);
-                storeUnaligned!int4(reg, cast(int*)(dest+0x10));
+                import ldc.simd: loadUnaligned, storeUnaligned;
+            }
+            else
+            version (DigitalMars)
+            {
+                import core.simd: void16, loadUnaligned, storeUnaligned;
             }
             else
             {
-                storeUnaligned(cast(void16*)dest, reg);
-                storeUnaligned(cast(void16*)(dest+0x10), reg);
+                static assert(0, "Only DMD / LDC are supported");
             }
-        }
-        void store16i_sse(void *dest, int4 reg)
-        {
-            version (LDC)
+            // TODO(stefanos): Is there a way to make them @safe?
+            // (The problem is that for LDC, they could take int* or float* pointers
+            // but the cast to void16 for DMD is necessary anyway).
+            void store32i_sse(void *dest, int4 reg)
             {
-                storeUnaligned!int4(reg, cast(int*)dest);
+                version (LDC)
+                {
+                    storeUnaligned!int4(reg, cast(int*)dest);
+                    storeUnaligned!int4(reg, cast(int*)(dest+0x10));
+                }
+                else
+                {
+                    storeUnaligned(cast(void16*)dest, reg);
+                    storeUnaligned(cast(void16*)(dest+0x10), reg);
+                }
             }
-            else
+            void store16i_sse(void *dest, int4 reg)
             {
-                storeUnaligned(cast(void16*)dest, reg);
+                version (LDC)
+                {
+                    storeUnaligned!int4(reg, cast(int*)dest);
+                }
+                else
+                {
+                    storeUnaligned(cast(void16*)dest, reg);
+                }
             }
-        }
-        // TODO(stefanos): Can we broadcast an int in a float4? That would be useful
-        // because then we would use only the float versions.
-        void broadcast_int(ref int4 xmm, int v)
-        {
-            xmm[0] = v;
-            xmm[1] = v;
-            xmm[2] = v;
-            xmm[3] = v;
-        }
-        const uint v = val * 0x01010101;            // Broadcast c to all 4 bytes
-        // NOTE(stefanos): I use the naive version, which in my benchmarks was slower
-        // than the previous classic switch. BUT. Using the switch had a significant
-        // drop in the rest of the sizes. It's not the branch that is responsible for the drop,
-        // but the fact that it's more difficult to optimize it as part of the rest of the code.
-        if (n <= 16)
-        {
-            Dmemset_naive(cast(ubyte*)d, cast(ubyte)val, n);
-            return;
-        }
-        void *temp = d + n - 0x10;                  // Used for the last 32 bytes
-        int4 xmm0;
-        // Broadcast v to all bytes.
-        broadcast_int(xmm0, v);
-        ubyte rem = cast(ulong)d & 15;              // Remainder from the previous 16-byte boundary.
-        // Store 16 bytes, from which some will possibly overlap on a future store.
-        // For example, if the `rem` is 7, we want to store 16 - 7 = 9 bytes unaligned,
-        // add 16 - 7 = 9 to `d` and start storing aligned. Since 16 - `rem` can be at most
-        // 16, we store 16 bytes anyway.
-        store16i_sse(d, xmm0);
-        d += 16 - rem;
-        n -= 16 - rem;
-        // Move in blocks of 32.
-        // TODO(stefanos): Experiment with differnt sizes.
-        if (n >= 32)
-        {
-            // Align to (previous) multiple of 32. That does something invisible to the code,
-            // but a good optimizer will avoid a `cmp` instruction inside the loop. With a
-            // multiple of 32, the end of the loop can be (if we assume that `n` is in RDX):
-            // sub RDX, 32;
-            // jge START_OF_THE_LOOP.
-            // Without that, it has to be:
-            // sub RDX, 32;
-            // cmp RDX, 32;
-            // jge START_OF_THE_LOOP
-            // NOTE, that we align on a _previous_ multiple (for 37, we will go to 32). That means
-            // we have somehow to compensate for that, which is done at the end of this function.
-            n &= -32;
-            do
+            // TODO(stefanos): Can we broadcast an int in a float4? That would be useful
+            // because then we would use only the float versions.
+            void broadcast_int(ref int4 xmm, int v)
             {
-                store32i_sse(d, xmm0);
-                // NOTE(stefanos): I tried avoiding this operation on `d` by combining
-                // `d` and `n` in the above loop and going backwards. It was slower in my benchs.
-                d += 32;
-                n -= 32;
-            } while (n >= 32);
+                xmm[0] = v;
+                xmm[1] = v;
+                xmm[2] = v;
+                xmm[3] = v;
+            }
+            const uint v = val * 0x01010101;            // Broadcast c to all 4 bytes
+            // NOTE(stefanos): I use the naive version, which in my benchmarks was slower
+            // than the previous classic switch. BUT. Using the switch had a significant
+            // drop in the rest of the sizes. It's not the branch that is responsible for the drop,
+            // but the fact that it's more difficult to optimize it as part of the rest of the code.
+            if (n <= 16)
+            {
+                Dmemset_naive(cast(ubyte*)d, cast(ubyte)val, n);
+                return;
+            }
+            void *temp = d + n - 0x10;                  // Used for the last 32 bytes
+            int4 xmm0;
+            // Broadcast v to all bytes.
+            broadcast_int(xmm0, v);
+            ubyte rem = cast(ulong)d & 15;              // Remainder from the previous 16-byte boundary.
+            // Store 16 bytes, from which some will possibly overlap on a future store.
+            // For example, if the `rem` is 7, we want to store 16 - 7 = 9 bytes unaligned,
+            // add 16 - 7 = 9 to `d` and start storing aligned. Since 16 - `rem` can be at most
+            // 16, we store 16 bytes anyway.
+            store16i_sse(d, xmm0);
+            d += 16 - rem;
+            n -= 16 - rem;
+            // Move in blocks of 32.
+            // TODO(stefanos): Experiment with differnt sizes.
+            if (n >= 32)
+            {
+                // Align to (previous) multiple of 32. That does something invisible to the code,
+                // but a good optimizer will avoid a `cmp` instruction inside the loop. With a
+                // multiple of 32, the end of the loop can be (if we assume that `n` is in RDX):
+                // sub RDX, 32;
+                // jge START_OF_THE_LOOP.
+                // Without that, it has to be:
+                // sub RDX, 32;
+                // cmp RDX, 32;
+                // jge START_OF_THE_LOOP
+                // NOTE, that we align on a _previous_ multiple (for 37, we will go to 32). That means
+                // we have somehow to compensate for that, which is done at the end of this function.
+                n &= -32;
+                do
+                {
+                    store32i_sse(d, xmm0);
+                    // NOTE(stefanos): I tried avoiding this operation on `d` by combining
+                    // `d` and `n` in the above loop and going backwards. It was slower in my benchs.
+                    d += 32;
+                    n -= 32;
+                } while (n >= 32);
+            }
+            // Compensate for the last (at most) 32 bytes.
+            store32i_sse(temp-0x10, xmm0);
         }
-        // Compensate for the last (at most) 32 bytes.
-        store32i_sse(temp-0x10, xmm0);
     }
 }
 
