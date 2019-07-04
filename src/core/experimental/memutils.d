@@ -252,7 +252,7 @@ void Dmemset(T)(ref T dst, const ubyte val)
 {
     import std.traits;
     const uint v = cast(uint)val;
-    version (X86_64)
+    version (D_SIMD)
     {
         static if (isArray!T)
         {
