@@ -116,6 +116,9 @@ $(IMPDIR)\core\gc\gcinterface.d : src\core\gc\gcinterface.d
 $(IMPDIR)\core\gc\registry.d : src\core\gc\registry.d
 	copy $** $@
 
+$(IMPDIR)\core\experimental\memutils.d : src\core\experimental\memutils.d
+	copy $** $@
+
 $(IMPDIR)\core\internal\abort.d : src\core\internal\abort.d
 	copy $** $@
 
