@@ -1,9 +1,7 @@
 /**
  * Pure D replacement of the C Standard Library basic memory building blocks of string.h
- *
  * Source: $(DRUNTIMESRC core/experimental/memutils.d)
  */
-
 module core.experimental.memutils;
 
 unittest
@@ -20,7 +18,7 @@ unittest
     Dmemset_testStaticType!(double)(5);
     Dmemset_testStaticType!(real)(5);
     Dmemset_testDynamicArray!(ubyte)(5, 3);
-    static foreach(i; 1..10) {
+    static foreach (i; 1..10) {
         Dmemset_testDynamicArray!(ubyte)(5, 2^^i);
         Dmemset_testStaticArray!(ubyte, 2^^i)(5);
     }
@@ -51,12 +49,12 @@ unittest
 // From a very good Chandler Carruth video on benchmarking: https://www.youtube.com/watch?v=nXaxk27zwlk
 void escape(void* p)
 {
-    version(LDC)
+    version (LDC)
     {
         import ldc.llvmasm;
         __asm("", "r,~{memory}", p);
     }
-    version(GNU)
+    version (GNU)
     {
         asm { "" : : "g" p : "memory"; }
     }
@@ -65,7 +63,7 @@ void escape(void* p)
 void Dmemset_verifyArray(T)(int j, const ref T[] a, const ubyte v)
 {
     const ubyte *p = cast(const ubyte *) a.ptr;
-    for(size_t i = 0; i < a.length * T.sizeof; i++)
+    for (size_t i = 0; i < a.length * T.sizeof; i++)
     {
         assert(p[i] == v);
     }
@@ -74,7 +72,7 @@ void Dmemset_verifyArray(T)(int j, const ref T[] a, const ubyte v)
 void Dmemset_verifyStaticType(T)(const ref T t, const ubyte v)
 {
     const ubyte *p = cast(const ubyte *) &t;
-    for(size_t i = 0; i < T.sizeof; i++)
+    for (size_t i = 0; i < T.sizeof; i++)
     {
         assert(p[i] == v);
     }
@@ -88,7 +86,7 @@ void Dmemset_testDynamicArray(T)(const ubyte v, size_t n)
     enum alignments = 32;
     size_t len = n;
 
-    foreach(i; 0..alignments)
+    foreach (i; 0..alignments)
     {
         auto d = buf[i..i+n];
 
@@ -105,7 +103,7 @@ void Dmemset_testStaticArray(T, size_t n)(const ubyte v)
     enum alignments = 32;
     size_t len = n;
 
-    foreach(i; 0..alignments)
+    foreach (i; 0..alignments)
     {
         auto d = buf[i..i+n];
 
@@ -149,13 +147,9 @@ else
         {
             static assert(0, "Only DMD / LDC are supported");
         }
-        
         // TODO(stefanos): Is there a way to make them @safe?
         // (The problem is that for LDC, they could take int* or float* pointers
         // but the cast to void16 for DMD is necessary anyway).
-
-        /// Integer ///
-
         void store32i_sse(void *dest, int4 reg)
         {
             version (LDC)
@@ -169,7 +163,6 @@ else
                 storeUnaligned(cast(void16*)(dest+0x10), reg);
             }
         }
-        
         void store16i_sse(void *dest, int4 reg)
         {
             version (LDC)
@@ -181,7 +174,6 @@ else
                 storeUnaligned(cast(void16*)dest, reg);
             }
         }
-        
         // TODO(stefanos): Can we broadcast an int in a float4? That would be useful
         // because then we would use only the float versions.
         void broadcast_int(ref int4 xmm, int v)
@@ -192,7 +184,6 @@ else
             xmm[3] = v;
         }
         const uint v = val * 0x01010101;            // Broadcast c to all 4 bytes
-    
         // NOTE(stefanos): I use the naive version, which in my benchmarks was slower
         // than the previous classic switch. BUT. Using the switch had a significant
         // drop in the rest of the sizes. It's not the branch that is responsible for the drop,
@@ -203,11 +194,9 @@ else
             return;
         }
         void *temp = d + n - 0x10;                  // Used for the last 32 bytes
-    
         int4 xmm0;
         // Broadcast v to all bytes.
         broadcast_int(xmm0, v);
-    
         ubyte rem = cast(ulong)d & 15;              // Remainder from the previous 16-byte boundary.
         // Store 16 bytes, from which some will possibly overlap on a future store.
         // For example, if the `rem` is 7, we want to store 16 - 7 = 9 bytes unaligned,
@@ -216,7 +205,6 @@ else
         store16i_sse(d, xmm0);
         d += 16 - rem;
         n -= 16 - rem;
-    
         // Move in blocks of 32.
         // TODO(stefanos): Experiment with differnt sizes.
         if (n >= 32)
@@ -240,7 +228,7 @@ else
                 // `d` and `n` in the above loop and going backwards. It was slower in my benchs.
                 d += 32;
                 n -= 32;
-            } while(n >= 32);
+            } while (n >= 32);
         }
         // Compensate for the last (at most) 32 bytes.
         store32i_sse(temp-0x10, xmm0);
