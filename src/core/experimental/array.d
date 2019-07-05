@@ -158,36 +158,25 @@ struct rcarray(T)
         mixin(immutableInsert!(typeof(rhs.payload), "rhs.payload")());
     };
 
+    //Copy construct mutable from mutable
     this(return scope ref typeof(this) rhs)
     {
         mixin(copyCtorIncRef);
     }
 
-    this(return scope ref typeof(this) rhs) const
+    //Copy construct const from inout
+    this(return scope inout ref typeof(this) rhs) const
     {
         mixin(copyCtorIncRef);
     }
 
-    this(return scope const ref typeof(this) rhs) const
-    {
-        mixin(copyCtorIncRef);
-    }
-
-    this(return scope immutable ref typeof(this) rhs) const
-    {
-        mixin(copyCtorIncRef);
-    }
-
-    this(return scope ref typeof(this) rhs) immutable
+    //Copy construct immutable from mutable/const
+    this(return scope inout ref typeof(this) rhs) immutable
     {
         mixin(copyCtorAlloc);
     }
 
-    this(return scope const ref typeof(this) rhs) immutable
-    {
-        mixin(copyCtorAlloc);
-    }
-
+    //Copy construct immutable from immutable
     this(return scope immutable ref typeof(this) rhs) immutable
     {
         mixin(copyCtorIncRef);
