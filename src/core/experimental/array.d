@@ -1,10 +1,10 @@
 /**
- * This module provides `rcarray`, a dynamic _array type using reference
- * counting for automatic memory management not reliant on the GC, with
- * semantics equivalent to built-in arrays.
- *
- * Source: $(DRUNTIMESRC core/experimental/array.d)
- */
+This module provides `rcarray`, a dynamic _array type using reference
+counting for automatic memory management not reliant on the GC, with
+semantics equivalent to built-in arrays.
+
+Source: $(DRUNTIMESRC core/experimental/array.d)
+*/
 module core.experimental.array;
 
 import core.experimental.refcount;
@@ -14,7 +14,7 @@ import core.internal.traits : Unqual;
 /*
 The element type of `R`. `R` does not have to be a range. The element type is
 determined as the type yielded by `r[0]` for an object `r` of type `R`.
- */
+*/
 private template ElementType(R)
 {
     static if (is(typeof(R.init[0].init) T))
@@ -23,13 +23,12 @@ private template ElementType(R)
         alias ElementType = void;
 }
 
-
 /**
- * Create an empty (qualified) `rcarray`.
- *
- * Returns:
- *      an empty `rcarray`
- */
+Create an empty (qualified) `rcarray`.
+
+Returns:
+     an empty `rcarray`
+*/
 auto make(Q : rcarray!T, T)(size_t initialCapacity = 0)
 {
     return Q(initialCapacity);
@@ -52,15 +51,15 @@ unittest
 }
 
 /**
- * Array type with deterministic control of memory, through reference counting,
- * that mimics the behaviour of built-in dynamic arrays. Memory is automatically
- * reclaimed when the last reference to the array is destroyed; there is no
- * reliance on the garbage collector.
- *
- * Note:
- *
- * `rcarray` does not currently provide a range interface.
- */
+Array type with deterministic control of memory, through reference counting,
+that mimics the behaviour of built-in dynamic arrays. Memory is automatically
+reclaimed when the last reference to the array is destroyed; there is no
+reliance on the garbage collector.
+
+Note:
+
+`rcarray` does not currently provide a range interface.
+*/
 struct rcarray(T)
 {
     // TODO: Use no memory to 'store' structs without member fields?
@@ -77,11 +76,11 @@ struct rcarray(T)
     @disable this();
 
     /**
-     * Creates an empty array with an initial capacity.
-     *
-     * Params:
-     *  initialCapacity = The initial capacity for the array.
-     */
+    Creates an empty array with an initial capacity.
+
+    Params:
+        initialCapacity = The initial capacity for the array.
+    */
     this(size_t initialCapacity)
     {
         rc = __RefCount.make!__RefCount();
@@ -103,12 +102,12 @@ struct rcarray(T)
 
 
     /**
-     * Creates an array out of the given _items.
-     *
-     * Params:
-     *  items = Any number of _items, in the form of a list of values, or a
-     *          built-in (static or dynamic) array.
-     */
+    Creates an array out of the given _items.
+
+    Params:
+        items = Any number of _items, in the form of a list of values, or a
+                built-in (static or dynamic) array.
+    */
     this(U, this Q)(U[] items...)
     if (!is(Q == shared) && is(U : T))
     {
@@ -194,12 +193,12 @@ struct rcarray(T)
         mixin(copyCtorIncRef);
     }
 
-    private this(RCQual, SuppQual, PaylQual, this Qualified)(RCQual _rc, SuppQual _support, PaylQual _payload)
-        if (is(typeof(support) : typeof(_support)))
+    private this(RCQual, SuppQual, PaylQual, this Qualified)(RCQual rc, SuppQual support, PaylQual payload)
+    if (is(typeof(this.support) : typeof(support)))
     {
-        rc = _rc;
-        support = _support;
-        payload = _payload;
+        this.rc = rc;
+        this.support = support;
+        this.payload = payload;
     }
 
     ~this()
@@ -267,12 +266,12 @@ struct rcarray(T)
     }
 
     /**
-     * Return the number of elements in the array.
-     *
-     * Returns:
-     *      the length of the array.
-     *
-     * Complexity: $(BIGOH 1).
+    Return the number of elements in the array.
+
+    Returns:
+        the length of the array.
+
+    Complexity: $(BIGOH 1).
      */
     @nogc nothrow pure @safe scope
     size_t length() const
@@ -292,17 +291,17 @@ struct rcarray(T)
     }
 
     /**
-     * Set the length of the array to `len`. If `len` exceeds the available
-     * `capacity` of the array, an attempt to extend the array in place is made.
-     * If extending is not possible, a reallocation will occur; if the new
-     * length of the array is longer than `len`, the remainder will be default
-     * initialized.
-     *
-     * Params:
-     *      len = a positive integer
-     *
-     * Complexity: $(BIGOH n).
-     */
+    Set the length of the array to `len`. If `len` exceeds the available
+    `capacity` of the array, an attempt to extend the array in place is made.
+    If extending is not possible, a reallocation will occur; if the new
+    length of the array is longer than `len`, the remainder will be default
+    initialized.
+
+    Params:
+        len = a positive integer
+
+    Complexity: $(BIGOH n).
+    */
     void length(size_t len)
     {
         if (capacity < len)
@@ -330,14 +329,14 @@ struct rcarray(T)
     }
 
     /**
-     * Get the available capacity of the array; this is equal to `length` of
-     * the array plus the available pre-allocated, free, space.
-     *
-     * Returns:
-     *      a positive integer denoting the _capacity.
-     *
-     * Complexity: $(BIGOH 1).
-     */
+    Get the available capacity of the array; this is equal to `length` of
+    the array plus the available pre-allocated, free, space.
+
+    Returns:
+        a positive integer denoting the _capacity.
+
+    Complexity: $(BIGOH 1).
+    */
     @nogc nothrow pure @safe scope
     size_t capacity() const
     {
@@ -353,17 +352,17 @@ struct rcarray(T)
     }
 
     /**
-     * Reserve enough memory to store `n` elements.
-     * If the current `capacity` exceeds `n`, nothing will happen.
-     * If `n` exceeds the current `capacity`, a new buffer will be allocated,
-     * the old elements of the array will be copied and the new elements will
-     * be default initialized to `T.init`.
-     *
-     * Params:
-     *      n = a positive integer
-     *
-     * Complexity: $(BIGOH max(length, n)).
-     */
+    Reserve enough memory to store `n` elements.
+    If the current `capacity` exceeds `n`, nothing will happen.
+    If `n` exceeds the current `capacity`, a new buffer will be allocated,
+    the old elements of the array will be copied and the new elements will
+    be default initialized to `T.init`.
+
+    Params:
+        n = a positive integer
+
+    Complexity: $(BIGOH max(length, n)).
+    */
     void reserve(size_t n)
     {
         // Will be optimized away, but the type system infers T's safety
@@ -374,7 +373,7 @@ struct rcarray(T)
         Unqual!T[] tmpSupport = (() @trusted pure => (cast(Unqual!T*)(pureAllocate(n * T.sizeof)))[0 .. n])();
         assert(tmpSupport !is null);
 
-        for (size_t i = 0; i < tmpSupport.length; i++)
+        foreach (i; 0 .. tmpSupport.length)
         {
             import core.lifetime : emplace;
 
@@ -424,19 +423,19 @@ struct rcarray(T)
     }
 
     /**
-     * Inserts the elements of an `rcarray`, or a built-in array or an element
-     * at the back of the array.
-     *
-     * Params:
-     *      stuff = an element, or an `rcarray`, or built-in array of elements that
-     *              are implitictly convertible to `T`
-     *
-     * Returns:
-     *      the number of elements inserted
-     *
-     * Complexity: $(BIGOH max(length, m)), where `m` is the number of
-     *             elements in the range.
-     */
+    Inserts the elements of an `rcarray`, or a built-in array or an element
+    at the back of the array.
+
+    Params:
+        stuff = an element, or an `rcarray`, or built-in array of elements that
+                are implitictly convertible to `T`
+
+    Returns:
+        the number of elements inserted
+
+    Complexity: $(BIGOH max(length, m)), where `m` is the number of
+                elements in the range.
+    */
     size_t insert(Stuff)(auto ref Stuff stuff)
     if (is(Stuff == rcarray!T))
     {
@@ -527,16 +526,16 @@ struct rcarray(T)
     }
 
     /**
-     * Perform an immutable copy of the array. This will create a new array that
-     * will copy the elements of the current array. This will `NOT` call `dup` on
-     * the elements of the array, regardless if `T` defines it or not. If the array
-     * is already immutable, this will just create a new reference to it.
-     *
-     * Returns:
-     *      an immutable array.
-     *
-     * Complexity: $(BIGOH n).
-     */
+    Perform an immutable copy of the array. This will create a new array that
+    will copy the elements of the current array. This will `NOT` call `dup` on
+    the elements of the array, regardless if `T` defines it or not. If the array
+    is already immutable, this will just create a new reference to it.
+
+    Returns:
+        an immutable array.
+
+    Complexity: $(BIGOH n).
+    */
     immutable(rcarray!T) idup(this Q)()
     {
         static if (is(Q == immutable))
@@ -573,15 +572,15 @@ struct rcarray(T)
     }
 
     /**
-     * Perform a copy of the array. This will create a new array that will copy
-     * the elements of the current array. This will `NOT` call `dup` on the
-     * elements of the array, regardless if `T` defines it or not.
-     *
-     * Returns:
-     *      a new mutable array.
-     *
-     * Complexity: $(BIGOH n).
-     */
+    Perform a copy of the array. This will create a new array that will copy
+    the elements of the current array. This will `NOT` call `dup` on the
+    elements of the array, regardless if `T` defines it or not.
+
+    Returns:
+        a new mutable array.
+
+    Complexity: $(BIGOH n).
+    */
     auto ref dup()() const
     {
         return rcarray!T(payload);
@@ -601,33 +600,33 @@ struct rcarray(T)
     }
 
     /**
-     * Return a slice to the current array. This is equivalent to performing
-     * a shallow copy of the array.
-     *
-     * Returns:
-     *      an array that references the current array.
-     *
-     * Complexity: $(BIGOH 1)
-     */
+    Return a slice to the current array. This is equivalent to performing
+    a shallow copy of the array.
+
+    Returns:
+        an array that references the current array.
+
+    Complexity: $(BIGOH 1)
+    */
     auto ref opSlice() inout
     {
         return this;
     }
 
     /**
-     * Return a slice to the current array that is bounded by `start` and `end`.
-     * `start` must be less than or equal to `end` and `end` must be less than
-     * or equal to `length`.
-     *
-     * Returns:
-     *      an array that references the current array.
-     *
-     * Params:
-     *      start = a positive integer
-     *      end = a positive integer
-     *
-     * Complexity: $(BIGOH 1)
-     */
+    Return a slice to the current array that is bounded by `start` and `end`.
+    `start` must be less than or equal to `end` and `end` must be less than
+    or equal to `length`.
+
+    Returns:
+        an array that references the current array.
+
+    Params:
+        start = a positive integer
+        end = a positive integer
+
+    Complexity: $(BIGOH 1)
+    */
     auto opSlice(this Qualified)(size_t start, size_t end)
     {
         return typeof(this)(rc, support, payload[start .. end]);
@@ -644,17 +643,17 @@ struct rcarray(T)
     }
 
     /**
-     * Provide access to the element at `idx` in the array.
-     * `idx` must be less than `length`.
-     *
-     * Returns:
-     *      a reference to the element found at `idx`.
-     *
-     * Params:
-     *      idx = a positive integer
-     *
-     * Complexity: $(BIGOH 1).
-     */
+    Provide access to the element at `idx` in the array.
+    `idx` must be less than `length`.
+
+    Returns:
+        a reference to the element found at `idx`.
+
+    Params:
+        idx = a positive integer
+
+    Complexity: $(BIGOH 1).
+    */
     auto ref opIndex(size_t idx) inout
     {
         return payload[idx];
@@ -669,17 +668,17 @@ struct rcarray(T)
     }
 
     /**
-     * Apply an unary operation to the element at `idx` in the array.
-     * `idx` must be less than `length`.
-     *
-     * Returns:
-     *      a reference to the element found at `idx`.
-     *
-     * Params:
-     *      idx = a positive integer
-     *
-     * Complexity: $(BIGOH 1).
-     */
+    Apply an unary operation to the element at `idx` in the array.
+    `idx` must be less than `length`.
+
+    Returns:
+        a reference to the element found at `idx`.
+
+    Params:
+        idx = a positive integer
+
+    Complexity: $(BIGOH 1).
+    */
     auto ref opIndexUnary(string op)(size_t idx)
     {
         mixin("return " ~ op ~ "payload[idx];");
@@ -696,18 +695,18 @@ struct rcarray(T)
     }
 
     /**
-     * Assign `elem` to the element at `idx` in the array.
-     * `idx` must be less than `length`.
-     *
-     * Returns:
-     *      a reference to the element found at `idx`.
-     *
-     * Params:
-     *      elem = an element that is implicitly convertible to `T`
-     *      idx = a positive integer
-     *
-     * Complexity: $(BIGOH 1).
-     */
+    Assign `elem` to the element at `idx` in the array.
+    `idx` must be less than `length`.
+
+    Returns:
+        a reference to the element found at `idx`.
+
+    Params:
+        elem = an element that is implicitly convertible to `T`
+        idx = a positive integer
+
+    Complexity: $(BIGOH 1).
+    */
     auto ref opIndexAssign(U)(U elem, size_t idx)
     if (is(U : T))
     {
@@ -726,16 +725,16 @@ struct rcarray(T)
     }
 
     /**
-     * Assign `elem` to all element in the array.
-     *
-     * Returns:
-     *      a reference to itself
-     *
-     * Params:
-     *      elem = an element that is implicitly convertible to `T`
-     *
-     * Complexity: $(BIGOH n).
-     */
+    Assign `elem` to all element in the array.
+
+    Returns:
+        a reference to itself
+
+    Params:
+        elem = an element that is implicitly convertible to `T`
+
+    Complexity: $(BIGOH n).
+    */
     auto ref opIndexAssign(U)(U elem)
     if (is(U : T))
     {
@@ -753,19 +752,19 @@ struct rcarray(T)
     }
 
     /**
-     * Assign `elem` to the element at `idx` in the array.
-     * `idx` must be less than `length`.
-     *
-     * Returns:
-     *      a reference to the element found at `idx`.
-     *
-     * Params:
-     *      elem = an element that is implicitly convertible to `T`
-     *      start = a positive integer
-     *      end = a positive integer
-     *
-     * Complexity: $(BIGOH n).
-     */
+    Assign `elem` to the element at `idx` in the array.
+    `idx` must be less than `length`.
+
+    Returns:
+        a reference to the element found at `idx`.
+
+    Params:
+        elem = an element that is implicitly convertible to `T`
+        start = a positive integer
+        end = a positive integer
+
+    Complexity: $(BIGOH n).
+    */
     auto opSliceAssign(U)(U elem, size_t start, size_t end)
     if (is(U : T))
     {
@@ -782,19 +781,19 @@ struct rcarray(T)
     }
 
     /**
-     * Assign to the element at `idx` in the array the result of
-     * $(D a[idx] op elem).
-     * `idx` must be less than `length`.
-     *
-     * Returns:
-     *      a reference to the element found at `idx`.
-     *
-     * Params:
-     *      elem = an element that is implicitly convertible to `T`
-     *      idx = a positive integer
-     *
-     * Complexity: $(BIGOH 1).
-     */
+    Assign to the element at `idx` in the array the result of
+    $(D a[idx] op elem).
+    `idx` must be less than `length`.
+
+    Returns:
+        a reference to the element found at `idx`.
+
+    Params:
+        elem = an element that is implicitly convertible to `T`
+        idx = a positive integer
+
+    Complexity: $(BIGOH 1).
+    */
     auto ref opIndexOpAssign(string op, U)(U elem, size_t idx)
     if (is(U : T))
     {
@@ -813,24 +812,24 @@ struct rcarray(T)
     }
 
     /**
-     * Create a new array that results from the concatenation of this array
-     * with `rhs`.
-     *
-     * Params:
-     *      rhs = an element that is implicitly convertible to `T`, an
-     *            input range of such elements, or another `rcarray`
-     *
-     * Returns:
-     *      the newly created array
-     *
-     * Complexity: $(BIGOH n + m), where `m` is the number of elements in `rhs`.
-     */
+    Create a new array that results from the concatenation of this array
+    with `rhs`.
+
+    Params:
+        rhs = an element that is implicitly convertible to `T`, an
+              input range of such elements, or another `rcarray`
+
+    Returns:
+        the newly created array
+
+    Complexity: $(BIGOH n + m), where `m` is the number of elements in `rhs`.
+    */
     auto ref opBinary(string op, U)(auto ref U rhs)
-        if (op == "~" &&
-            (is (U : const typeof(this))
-             || is (U : T)
-             || (is (U == V[], V) && is(V : T))
-            ))
+    if (op == "~" &&
+        (is (U : const typeof(this))
+            || is (U : T)
+            || (is (U == V[], V) && is(V : T))
+        ))
     {
         auto newArray = this.dup();
         static if (is(U : const typeof(this)))
@@ -859,23 +858,35 @@ struct rcarray(T)
         assert(a2 == [1, 2]);
     }
 
+    ///
+    static if (is(T == int))
+    @safe unittest
+    {
+        auto a = rcarray!int([1]);
+        auto a2 = a ~ rcarray!int([2]);
+
+        assert(a2 == [1, 2]);
+        a[0] = 0;
+        assert(a2 == [1, 2]);
+    }
+
     /**
-     * Assign `rhs` to this array. The current array will now become another
-     * reference to `rhs`, unless `rhs` is `null`, in which case the current
-     * array will become empty. If `rhs` refers to the current array, nothing
-     * will happen.
-     *
-     * If there are no more references to the previous array, the previous
-     * array will be destroyed; this leads to a $(BIGOH n) complexity.
-     *
-     * Params:
-     *      rhs = a reference to an array
-     *
-     * Returns:
-     *      a reference to this array
-     *
-     * Complexity: $(BIGOH n).
-     */
+    Assign `rhs` to this array. The current array will now become another
+    reference to `rhs`, unless `rhs` is `null`, in which case the current
+    array will become empty. If `rhs` refers to the current array, nothing
+    will happen.
+
+    If there are no more references to the previous array, the previous
+    array will be destroyed; this leads to a $(BIGOH n) complexity.
+
+    Params:
+        rhs = a reference to an array
+
+    Returns:
+        a reference to this array
+
+    Complexity: $(BIGOH n).
+    */
     auto ref opAssign()(auto ref typeof(this) rhs)
     {
         if (rc.isUnique && support !is null)
@@ -919,24 +930,24 @@ struct rcarray(T)
     }
 
     /**
-     * Append the elements of `rhs` at the end of the array.
-     *
-     *
-     * Params:
-     *      rhs = an element that is implicitly convertible to `T`, an
-     *            input range of such elements, or another `rcarray`
-     *
-     * Returns:
-     *      a reference to this array
-     *
-     * Complexity: $(BIGOH n + m), where `m` is the number of elements in `rhs`.
-     */
+    Append the elements of `rhs` at the end of the array.
+
+
+    Params:
+        rhs = an element that is implicitly convertible to `T`, an
+              input range of such elements, or another `rcarray`
+
+    Returns:
+        a reference to this array
+
+    Complexity: $(BIGOH n + m), where `m` is the number of elements in `rhs`.
+    */
     auto ref opOpAssign(string op, U)(auto ref U rhs)
-        if (op == "~" &&
-            (is (U == typeof(this))
-             || is (U : T)
-             || (is (U == V[], V) && is(V : T))
-            ))
+    if (op == "~" &&
+        (is (U == typeof(this))
+            || is (U : T)
+            || (is (U == V[], V) && is(V : T))
+        ))
     {
         return opAssign(this ~ rhs);
     }
