@@ -21,6 +21,8 @@ SRCS=\
 	src\core\gc\gcinterface.d \
 	src\core\gc\registry.d \
 	\
+	src\core\experimental\refcount.d \
+	\
 	src\core\internal\abort.d \
 	src\core\internal\arrayop.d \
 	src\core\internal\convert.d \
