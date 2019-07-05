@@ -123,20 +123,20 @@ struct rcarray(T)
         }
     }
 
-    ///
+    /// Create an rcarray from a list of ints
     static if (is(T == int))
     @safe unittest
     {
-        // Create a list from a list of ints
-        {
-            auto a = rcarray!int(1, 2, 3);
-            assert(a == [1, 2, 3]);
-        }
-        // Create a list from an array of ints
-        {
-            auto a = rcarray!int([1, 2, 3]);
-            assert(a == [1, 2, 3]);
-        }
+        auto a = rcarray!int(1, 2, 3);
+        assert(a == [1, 2, 3]);
+    }
+
+    /// Create an rcarray from an array of ints
+    static if (is(T == int))
+    @safe unittest
+    {
+        auto a = rcarray!int([1, 2, 3]);
+        assert(a == [1, 2, 3]);
     }
 
     private enum copyCtorIncRef = q{
@@ -552,23 +552,25 @@ struct rcarray(T)
     static if (is(T == int))
     @safe unittest
     {
-        {
-            auto a = rcarray!int(1, 2, 3);
-            auto a2 = a.idup();
-            static assert (is(typeof(a2) == immutable));
-        }
+        auto a = rcarray!int(1, 2, 3);
+        auto a2 = a.idup();
+        static assert (is(typeof(a2) == immutable));
+    }
 
-        {
-            auto a = const rcarray!int(1, 2, 3);
-            auto a2 = a.idup();
-            static assert (is(typeof(a2) == immutable));
-        }
+    static if (is(T == int))
+    @safe unittest
+    {
+        auto a = const rcarray!int(1, 2, 3);
+        auto a2 = a.idup();
+        static assert (is(typeof(a2) == immutable));
+    }
 
-        {
-            auto a = immutable rcarray!int(1, 2, 3);
-            auto a2 = a.idup();
-            static assert (is(typeof(a2) == immutable));
-        }
+    static if (is(T == int))
+    @safe unittest
+    {
+        auto a = immutable rcarray!int(1, 2, 3);
+        auto a2 = a.idup();
+        static assert (is(typeof(a2) == immutable));
     }
 
     /**
@@ -1100,318 +1102,281 @@ struct rcarray(T)
 
 version (CoreUnittest)
 {
-    private nothrow pure @safe
-    void testConcatAndAppend()
-    {
-        auto a = rcarray!(int)(1, 2, 3);
-        auto a2 = make!(rcarray!int);
-
-        auto a3 = a ~ a2;
-        assert(a3 == [1, 2, 3]);
-
-        auto a4 = a3;
-        a3 = a3 ~ 4;
-        assert(a3 == [1, 2, 3, 4]);
-        a3 = a3 ~ [5];
-        assert(a3 == [1, 2, 3, 4, 5]);
-        assert(a4 == [1, 2, 3]);
-
-        a4 = a3;
-        a3 ~= 6;
-        assert(a3 == [1, 2, 3, 4, 5, 6]);
-        a3 ~= [7];
-        assert(a3 == [1, 2, 3, 4, 5, 6, 7]);
-
-        a3 ~= a3;
-        assert(a3 == [1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]);
-        auto a5 = make!(rcarray!int);
-        a5 ~= [1, 2, 3];
-        assert(a5 == [1, 2, 3]);
-        auto a6 = a5;
-        a5 = a5;
-        a5[0] = 10;
-        assert(a5 == a6);
-
-        // Test concat with mixed qualifiers
-        auto a7 = immutable rcarray!(int)(a5);
-        assert(a7[0] == 10);
-        a5[0] = 1;
-        assert(a7[0] == 10);
-        auto a8 = a5 ~ a7;
-        assert(a8 == [1, 2, 3, 10, 2, 3]);
-
-        auto a9 = const rcarray!(int)(a5);
-        auto a10 = a5 ~ a9;
-        assert(a10 == [1, 2, 3, 1, 2, 3]);
-    }
-
+    //Test concat and append
     @safe unittest
     {
         () nothrow pure @safe {
-            testConcatAndAppend();
+            auto a = rcarray!(int)(1, 2, 3);
+            auto a2 = make!(rcarray!int);
+
+            auto a3 = a ~ a2;
+            assert(a3 == [1, 2, 3]);
+
+            auto a4 = a3;
+            a3 = a3 ~ 4;
+            assert(a3 == [1, 2, 3, 4]);
+            a3 = a3 ~ [5];
+            assert(a3 == [1, 2, 3, 4, 5]);
+            assert(a4 == [1, 2, 3]);
+
+            a4 = a3;
+            a3 ~= 6;
+            assert(a3 == [1, 2, 3, 4, 5, 6]);
+            a3 ~= [7];
+            assert(a3 == [1, 2, 3, 4, 5, 6, 7]);
+
+            a3 ~= a3;
+            assert(a3 == [1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7]);
+            auto a5 = make!(rcarray!int);
+            a5 ~= [1, 2, 3];
+            assert(a5 == [1, 2, 3]);
+            auto a6 = a5;
+            a5 = a5;
+            a5[0] = 10;
+            assert(a5 == a6);
+
+            // Test concat with mixed qualifiers
+            auto a7 = immutable rcarray!(int)(a5);
+            assert(a7[0] == 10);
+            a5[0] = 1;
+            assert(a7[0] == 10);
+            auto a8 = a5 ~ a7;
+            assert(a8 == [1, 2, 3, 10, 2, 3]);
+
+            auto a9 = const rcarray!(int)(a5);
+            auto a10 = a5 ~ a9;
+            assert(a10 == [1, 2, 3, 1, 2, 3]);
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
     }
 
-    private nothrow pure @safe
-    void testSimple()
-    {
-        auto a = rcarray!int(3);
-        assert(a.capacity == 3);
-        assert(a.length == 0);
-
-        a.insert(1, 2, 3);
-        assert(a[0] == 1);
-        assert(a == a);
-        assert(a == [1, 2, 3]);
-
-        a = a[1 .. $];
-        assert(a[0] == 2);
-        assert(a == [2, 3]);
-
-        a.insert([4, 5, 6]);
-        a.insert(7);
-        a.insert([8]);
-        assert(a == [2, 3, 4, 5, 6, 7, 8]);
-
-        a[0] = 9;
-        assert(a == [9, 3, 4, 5, 6, 7, 8]);
-
-        auto aTail = a[1 .. $];
-        assert(aTail[0] == 3);
-        aTail[0] = 8;
-        assert(aTail[0] == 8);
-
-        assert(a[1 .. $][0] == 8);
-    }
-
+    //Basic tests
     @safe unittest
     {
         () nothrow pure @safe {
-            testSimple();
+            auto a = rcarray!int(3);
+            assert(a.capacity == 3);
+            assert(a.length == 0);
+
+            a.insert(1, 2, 3);
+            assert(a[0] == 1);
+            assert(a == a);
+            assert(a == [1, 2, 3]);
+
+            a = a[1 .. $];
+            assert(a[0] == 2);
+            assert(a == [2, 3]);
+
+            a.insert([4, 5, 6]);
+            a.insert(7);
+            a.insert([8]);
+            assert(a == [2, 3, 4, 5, 6, 7, 8]);
+
+            a[0] = 9;
+            assert(a == [9, 3, 4, 5, 6, 7, 8]);
+
+            auto aTail = a[1 .. $];
+            assert(aTail[0] == 3);
+            aTail[0] = 8;
+            assert(aTail[0] == 8);
+
+            assert(a[1 .. $][0] == 8);
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
     }
 
-    private nothrow pure @safe
-    void testSimpleImmutable()
-    {
-        auto a = rcarray!(immutable int)(1);
-        assert(a.length == 0);
-
-        a.insert(1, 2, 3);
-        assert(a[0] == 1);
-        assert(a == a);
-        assert(a == [1, 2, 3]);
-
-        a = a[1 .. $];
-        assert(a[0] == 2);
-        assert(a == [2, 3]);
-        assert(a[1 .. $][0] == 3);
-
-        a.insert([4, 5, 6]);
-        a.insert(7);
-        assert(a == [2, 3, 4, 5, 6, 7]);
-
-        // Cannot modify immutable values
-        static assert(!__traits(compiles, { a[0] = 9; }));
-    }
-
+    //Basic immutable tests
     @safe unittest
     {
         () nothrow pure @safe {
-            testSimpleImmutable();
+            auto a = rcarray!(immutable int)(1);
+            assert(a.length == 0);
+
+            a.insert(1, 2, 3);
+            assert(a[0] == 1);
+            assert(a == a);
+            assert(a == [1, 2, 3]);
+
+            a = a[1 .. $];
+            assert(a[0] == 2);
+            assert(a == [2, 3]);
+            assert(a[1 .. $][0] == 3);
+
+            a.insert([4, 5, 6]);
+            a.insert(7);
+            assert(a == [2, 3, 4, 5, 6, 7]);
+
+            // Cannot modify immutable values
+            static assert(!__traits(compiles, { a[0] = 9; }));
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
     }
 
-    private nothrow pure @safe
-    void testCopyAndRef()
-    {
-        auto aFromList = rcarray!int(1, 2, 3);
-        auto aFromRange = rcarray!int(aFromList);
-        assert(aFromList == aFromRange);
-
-        aFromList = aFromList[1 .. $];
-        assert(aFromList == [2, 3]);
-        assert(aFromRange == [1, 2, 3]);
-
-        auto aInsFromRange = make!(rcarray!int);
-        aInsFromRange.insert(aFromList);
-        aFromList = aFromList[1 .. $];
-        assert(aFromList == [3]);
-        assert(aInsFromRange == [2, 3]);
-
-        auto aFromRef = aInsFromRange;
-        auto aFromDup = aInsFromRange.dup;
-        assert(aInsFromRange[0] == 2);
-        aFromRef[0] = 5;
-        assert(aInsFromRange[0] == 5);
-        assert(aFromDup[0] == 2);
-    }
-
+    //Test copying and reference semantics
     @safe unittest
     {
         () nothrow pure @safe {
-            testCopyAndRef();
+            auto aFromList = rcarray!int(1, 2, 3);
+            auto aFromRange = rcarray!int(aFromList);
+            assert(aFromList == aFromRange);
+
+            aFromList = aFromList[1 .. $];
+            assert(aFromList == [2, 3]);
+            assert(aFromRange == [1, 2, 3]);
+
+            auto aInsFromRange = make!(rcarray!int);
+            aInsFromRange.insert(aFromList);
+            aFromList = aFromList[1 .. $];
+            assert(aFromList == [3]);
+            assert(aInsFromRange == [2, 3]);
+
+            auto aFromRef = aInsFromRange;
+            auto aFromDup = aInsFromRange.dup;
+            assert(aInsFromRange[0] == 2);
+            aFromRef[0] = 5;
+            assert(aInsFromRange[0] == 5);
+            assert(aFromDup[0] == 2);
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
     }
 
-    private nothrow pure @safe
-    void testImmutability()
-    {
-        auto a = immutable rcarray!(int)(1, 2, 3);
-        auto a2 = a;
-
-        assert(a2[0] == 1);
-        assert(a2[0] == a2[0]);
-        static assert(!__traits(compiles, { a2[0] = 4; }));
-        static assert(!__traits(compiles, { a2 = a2[1 .. $]; }));
-
-        auto a4 = a2[1 .. $];
-        assert(a4[0] == 2);
-
-        // Create a mutable copy from an immutable array
-        auto a5 = a.dup();
-        assert(a5 == [1, 2, 3]);
-        assert(a5[0] == 1);
-        a5[0] = 2;
-        assert(a5[0] == 2);
-        assert(a[0] == 1);
-        assert(a5 == [2, 2, 3]);
-    }
-
-    private nothrow pure @safe
-    void testConstness()
-    {
-        auto a = const rcarray!(int)(1, 2, 3);
-        auto a2 = a;
-        immutable rcarray!int a5 = a;
-
-        assert(a2[0] == 1);
-        assert(a2[0] == a2[0]);
-        static assert(!__traits(compiles, { a2[0] = 4; }));
-        static assert(!__traits(compiles, { a2 = a2[1 .. $]; }));
-
-        auto a4 = a2[1 .. $];
-        assert(a4[0] == 2);
-    }
-
+    //Test immutability
     @safe unittest
     {
         () nothrow pure @safe {
-            testImmutability();
-            testConstness();
+            auto a = immutable rcarray!(int)(1, 2, 3);
+            auto a2 = a;
+
+            assert(a2[0] == 1);
+            assert(a2[0] == a2[0]);
+            static assert(!__traits(compiles, { a2[0] = 4; }));
+            static assert(!__traits(compiles, { a2 = a2[1 .. $]; }));
+
+            auto a4 = a2[1 .. $];
+            assert(a4[0] == 2);
+
+            // Create a mutable copy from an immutable array
+            auto a5 = a.dup();
+            assert(a5 == [1, 2, 3]);
+            assert(a5[0] == 1);
+            a5[0] = 2;
+            assert(a5[0] == 2);
+            assert(a[0] == 1);
+            assert(a5 == [2, 2, 3]);
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
     }
 
-    private nothrow pure @safe
-    void testWithClass()
-    {
-        class MyClass
-        {
-            int x;
-            this(int x) { this.x = x; }
-        }
-
-        MyClass c = new MyClass(10);
-        {
-            auto a = rcarray!MyClass(c);
-            assert(a[0].x == 10);
-            assert(a[0] is c);
-            a[0].x = 20;
-
-            auto ia = immutable rcarray!MyClass(a);
-            assert(ia[0].x == 20);
-            assert(ia[0] is c);
-            static assert(!__traits(compiles, { ia[0].x = 30; }));
-        }
-        assert(c.x == 20);
-    }
-
+    //Test constness
     @safe unittest
     {
         () nothrow pure @safe {
-            testWithClass();
+            auto a = const rcarray!(int)(1, 2, 3);
+            auto a2 = a;
+            immutable rcarray!int a5 = a;
+
+            assert(a2[0] == 1);
+            assert(a2[0] == a2[0]);
+            static assert(!__traits(compiles, { a2[0] = 4; }));
+            static assert(!__traits(compiles, { a2 = a2[1 .. $]; }));
+
+            auto a4 = a2[1 .. $];
+            assert(a4[0] == 2);
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
     }
 
-    private @nogc nothrow pure @safe
-    void testOpOverloads()
+    //Test with class instances
+    @safe unittest
     {
-        auto a = rcarray!int(1, 2, 3, 4);
-        assert(a[0] == 1); // opIndex
+        () nothrow pure @safe {
+            class MyClass
+            {
+                int x;
+                this(int x) { this.x = x; }
+            }
 
-        // opIndexUnary
-        ++a[0];
-        assert(a[0] == 2);
-        --a[0];
-        assert(a[0] == 1);
-        a[0]++;
-        assert(a[0] == 2);
-        a[0]--;
-        assert(a[0] == 1);
+            MyClass c = new MyClass(10);
+            {
+                auto a = rcarray!MyClass(c);
+                assert(a[0].x == 10);
+                assert(a[0] is c);
+                a[0].x = 20;
 
-        // opIndexAssign
-        a[0] = 2;
-        assert(a[0] == 2);
+                auto ia = immutable rcarray!MyClass(a);
+                assert(ia[0].x == 20);
+                assert(ia[0] is c);
+                static assert(!__traits(compiles, { ia[0].x = 30; }));
+            }
+            assert(c.x == 20);
+        }();
 
-        // opIndexOpAssign
-        a[0] /= 2;
-        assert(a[0] == 1);
-        a[0] *= 2;
-        assert(a[0] == 2);
-        a[0] -= 1;
-        assert(a[0] == 1);
-        a[0] += 1;
-        assert(a[0] == 2);
+        assert(allocator.bytesUsed == 0, "rcarray leaked memory");
     }
 
+    //Test operators
     @safe unittest
     {
         () @nogc nothrow pure @safe {
-            testOpOverloads();
+            auto a = rcarray!int(1, 2, 3, 4);
+            assert(a[0] == 1); // opIndex
+
+            // opIndexUnary
+            ++a[0];
+            assert(a[0] == 2);
+            --a[0];
+            assert(a[0] == 1);
+            a[0]++;
+            assert(a[0] == 2);
+            a[0]--;
+            assert(a[0] == 1);
+
+            // opIndexAssign
+            a[0] = 2;
+            assert(a[0] == 2);
+
+            // opIndexOpAssign
+            a[0] /= 2;
+            assert(a[0] == 1);
+            a[0] *= 2;
+            assert(a[0] == 2);
+            a[0] -= 1;
+            assert(a[0] == 1);
+            a[0] += 1;
+            assert(a[0] == 2);
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
     }
 
-    private nothrow pure @safe
-    void testSlice()
-    {
-        auto a = rcarray!int(1, 2, 3, 4);
-        auto b = a[];
-        assert(a == b);
-        b[1] = 5;
-        assert(a[1] == 5);
-
-        size_t startPos = 2;
-        auto c = b[startPos .. $];
-        assert(c == [3, 4]);
-        c[0] = 5;
-        assert(a == b);
-        assert(a == [1, 5, 5, 4]);
-        assert(a.capacity == b.capacity && b.capacity == c.capacity + startPos);
-
-        c ~= 5;
-        assert(c == [5, 4, 5]);
-        assert(a == b);
-        assert(a == [1, 5, 5, 4]);
-    }
-
+    //Test slices
     @safe unittest
     {
         () nothrow pure @safe {
-            testSlice();
+            auto a = rcarray!int(1, 2, 3, 4);
+            auto b = a[];
+            assert(a == b);
+            b[1] = 5;
+            assert(a[1] == 5);
+
+            size_t startPos = 2;
+            auto c = b[startPos .. $];
+            assert(c == [3, 4]);
+            c[0] = 5;
+            assert(a == b);
+            assert(a == [1, 5, 5, 4]);
+            assert(a.capacity == b.capacity && b.capacity == c.capacity + startPos);
+
+            c ~= 5;
+            assert(c == [5, 4, 5]);
+            assert(a == b);
+            assert(a == [1, 5, 5, 4]);
         }();
 
         assert(allocator.bytesUsed == 0, "rcarray leaked memory");
@@ -1516,7 +1481,7 @@ else
     }
 }
 
-version (unittest)
+version (CoreUnittest)
 {
     // Structs used to test the type system inference
     private static struct Unsafe
