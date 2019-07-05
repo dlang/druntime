@@ -18,7 +18,7 @@ module core.experimental.memutils;
   the size of the array element) to `val`.
   Otherwise, set T.sizeof bytes to `val` starting from the address of `dst`.
  */
-void Dmemset(T)(ref T dst, const ubyte val)
+void memset(T)(ref T dst, const ubyte val)
 {
     const uint v = cast(uint) val;
     version (D_SIMD)
@@ -37,20 +37,20 @@ void Dmemset(T)(ref T dst, const ubyte val)
     {
         static if (isArray!T)
         {
-            Dmemset_naive(dst.ptr, val, dst.length * typeof(dst[0]).sizeof);
+            DmemsetNaive(dst.ptr, val, dst.length * typeof(dst[0]).sizeof);
         }
         else
         {
-            Dmemset_naive(&dst, val, T.sizeof);
+            DmemsetNaive(&dst, val, T.sizeof);
         }
     }
 }
 
 version (GNU)
 {
-    void Dmemset(void *d, const uint val, size_t n)
+    private void Dmemset(void *d, const uint val, size_t n)
     {
-        Dmemset_naive(d, cast(const(ubyte)) val, n);
+        DmemsetNaive(d, cast(const(ubyte)) val, n);
     }
 }
 else
@@ -58,7 +58,7 @@ else
     version (D_SIMD)
     {
         // NOTE(stefanos): I could not GDC respective intrinsics.
-        void Dmemset(void *d, const uint val, size_t n)
+        private void Dmemset(void *d, const uint val, size_t n)
         {
             import core.simd : int4;
             version (LDC)
@@ -107,7 +107,7 @@ else
             // but the fact that it's more difficult to optimize it as part of the rest of the code.
             if (n <= 16)
             {
-                Dmemset_naive(cast(ubyte*) d, cast(ubyte) val, n);
+                DmemsetNaive(cast(ubyte*) d, cast(ubyte) val, n);
                 return;
             }
             void *temp = d + n - 0x10;                  // Used for the last 32 bytes
@@ -152,7 +152,7 @@ else
     }
 }
 
-void Dmemset_naive(void *dst, const ubyte val, size_t n)
+private void DmemsetNaive(void *dst, const ubyte val, size_t n)
 {
     ubyte *d = cast(ubyte*) dst;
     foreach (i; 0 .. n)

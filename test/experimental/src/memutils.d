@@ -1,4 +1,4 @@
-import core.experimental.memutils: Dmemset;
+import core.experimental.memutils : memset;
 
 void main()
 {
@@ -87,7 +87,7 @@ void DmemsetTestDynamicArray(T)(const ubyte v, size_t n)
         auto d = buf[i..i+n];
 
         escape(d.ptr);
-        Dmemset(d, v);
+        memset(d, v);
         DmemsetVerifyArray(i, d, v);
     }
 }
@@ -104,7 +104,7 @@ void DmemsetTestStaticArray(T, size_t n)(const ubyte v)
         auto d = buf[i..i+n];
 
         escape(d.ptr);
-        Dmemset(d, v);
+        memset(d, v);
         DmemsetVerifyArray(i, d, v);
     }
 }
@@ -113,6 +113,6 @@ void DmemsetTestStaticType(T)(const ubyte v)
 {
     T t;
     escape(&t);
-    Dmemset(t, v);
+    memset(t, v);
     DmemsetVerifyStaticType(t, v);
 }
