@@ -4,128 +4,53 @@
  */
 module core.experimental.memutils;
 
-unittest
-{
-    Dmemset_testStaticType!(byte)(5);
-    Dmemset_testStaticType!(ubyte)(5);
-    Dmemset_testStaticType!(short)(5);
-    Dmemset_testStaticType!(ushort)(5);
-    Dmemset_testStaticType!(int)(5);
-    Dmemset_testStaticType!(uint)(5);
-    Dmemset_testStaticType!(long)(5);
-    Dmemset_testStaticType!(ulong)(5);
-    Dmemset_testStaticType!(float)(5);
-    Dmemset_testStaticType!(double)(5);
-    Dmemset_testStaticType!(real)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 3);
-    static foreach (i; 1..10) {
-        Dmemset_testDynamicArray!(ubyte)(5, 2^^i);
-        Dmemset_testStaticArray!(ubyte, 2^^i)(5);
-    }
-    Dmemset_testDynamicArray!(ubyte)(5, 100);
-    Dmemset_testStaticArray!(ubyte, 100)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 500);
-    Dmemset_testStaticArray!(ubyte, 500)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 700);
-    Dmemset_testStaticArray!(ubyte, 700)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 3434);
-    Dmemset_testStaticArray!(ubyte, 3434)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 7128);
-    Dmemset_testStaticArray!(ubyte, 7128)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 13908);
-    Dmemset_testStaticArray!(ubyte, 13908)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 16343);
-    Dmemset_testStaticArray!(ubyte, 16343)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 27897);
-    Dmemset_testStaticArray!(ubyte, 27897)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 32344);
-    Dmemset_testStaticArray!(ubyte, 32344)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 46830);
-    Dmemset_testStaticArray!(ubyte, 46830)(5);
-    Dmemset_testDynamicArray!(ubyte)(5, 64349);
-    Dmemset_testStaticArray!(ubyte, 64349)(5);
-}
+/** Dmemset() implementation */
 
-// From a very good Chandler Carruth video on benchmarking: https://www.youtube.com/watch?v=nXaxk27zwlk
-void escape(void* p)
+/**
+ * NOTE(stefanos):
+ * Range-checking is not needed since the user never
+ * pass an `n` (byte count) directly.
+ */
+
+/*
+  If T is an array,set all `dst`'s bytes
+  (whose count is the length of the array times
+  the size of the array element) to `val`.
+  Otherwise, set T.sizeof bytes to `val` starting from the address of `dst`.
+ */
+void Dmemset(T)(ref T dst, const ubyte val)
 {
-    version (LDC)
+    const uint v = cast(uint) val;
+    version (D_SIMD)
     {
-        import ldc.llvmasm;
-        __asm("", "r,~{memory}", p);
+        static if (isArray!T)
+        {
+            size_t n = dst.length * typeof(dst[0]).sizeof;
+            Dmemset(dst.ptr, v, n);
+        }
+        else
+        {
+            Dmemset(&dst, v, T.sizeof);
+        }
     }
-    version (GNU)
+    else
     {
-        asm { "" : : "g" p : "memory"; }
+        static if (isArray!T)
+        {
+            Dmemset_naive(dst.ptr, val, dst.length * typeof(dst[0]).sizeof);
+        }
+        else
+        {
+            Dmemset_naive(&dst, val, T.sizeof);
+        }
     }
-}
-
-void Dmemset_verifyArray(T)(int j, const ref T[] a, const ubyte v)
-{
-    const ubyte *p = cast(const ubyte *) a.ptr;
-    for (size_t i = 0; i < a.length * T.sizeof; i++)
-    {
-        assert(p[i] == v);
-    }
-}
-
-void Dmemset_verifyStaticType(T)(const ref T t, const ubyte v)
-{
-    const ubyte *p = cast(const ubyte *) &t;
-    for (size_t i = 0; i < T.sizeof; i++)
-    {
-        assert(p[i] == v);
-    }
-}
-
-void Dmemset_testDynamicArray(T)(const ubyte v, size_t n)
-{
-    T[] buf;
-    buf.length = n + 32;
-
-    enum alignments = 32;
-    size_t len = n;
-
-    foreach (i; 0..alignments)
-    {
-        auto d = buf[i..i+n];
-
-        escape(d.ptr);
-        Dmemset(d, v);
-        Dmemset_verifyArray(i, d, v);
-    }
-}
-
-void Dmemset_testStaticArray(T, size_t n)(const ubyte v)
-{
-    T[n + 32] buf;
-
-    enum alignments = 32;
-    size_t len = n;
-
-    foreach (i; 0..alignments)
-    {
-        auto d = buf[i..i+n];
-
-        escape(d.ptr);
-        Dmemset(d, v);
-        Dmemset_verifyArray(i, d, v);
-    }
-}
-
-void Dmemset_testStaticType(T)(const ubyte v)
-{
-    T t;
-    escape(&t);
-    Dmemset(t, v);
-    Dmemset_verifyStaticType(t, v);
 }
 
 version (GNU)
 {
     void Dmemset(void *d, const uint val, size_t n)
     {
-        Dmemset_naive(d, cast(const(ubyte))val, n);
+        Dmemset_naive(d, cast(const(ubyte)) val, n);
     }
 }
 else
@@ -135,15 +60,14 @@ else
         // NOTE(stefanos): I could not GDC respective intrinsics.
         void Dmemset(void *d, const uint val, size_t n)
         {
-            import core.simd: int4;
+            import core.simd : int4;
             version (LDC)
             {
-                import ldc.simd: loadUnaligned, storeUnaligned;
+                import ldc.simd : loadUnaligned, storeUnaligned;
             }
-            else
-            version (DigitalMars)
+            else version (DigitalMars)
             {
-                import core.simd: void16, loadUnaligned, storeUnaligned;
+                import core.simd : void16, loadUnaligned, storeUnaligned;
             }
             else
             {
@@ -156,24 +80,24 @@ else
             {
                 version (LDC)
                 {
-                    storeUnaligned!int4(reg, cast(int*)dest);
-                    storeUnaligned!int4(reg, cast(int*)(dest+0x10));
+                    storeUnaligned!int4(reg, cast(int*) dest);
+                    storeUnaligned!int4(reg, cast(int*) (dest+0x10));
                 }
                 else
                 {
-                    storeUnaligned(cast(void16*)dest, reg);
-                    storeUnaligned(cast(void16*)(dest+0x10), reg);
+                    storeUnaligned(cast(void16*) dest, reg);
+                    storeUnaligned(cast(void16*) (dest+0x10), reg);
                 }
             }
             void store16i_sse(void *dest, int4 reg)
             {
                 version (LDC)
                 {
-                    storeUnaligned!int4(reg, cast(int*)dest);
+                    storeUnaligned!int4(reg, cast(int*) dest);
                 }
                 else
                 {
-                    storeUnaligned(cast(void16*)dest, reg);
+                    storeUnaligned(cast(void16*) dest, reg);
                 }
             }
             const uint v = val * 0x01010101;            // Broadcast c to all 4 bytes
@@ -183,13 +107,13 @@ else
             // but the fact that it's more difficult to optimize it as part of the rest of the code.
             if (n <= 16)
             {
-                Dmemset_naive(cast(ubyte*)d, cast(ubyte)val, n);
+                Dmemset_naive(cast(ubyte*) d, cast(ubyte) val, n);
                 return;
             }
             void *temp = d + n - 0x10;                  // Used for the last 32 bytes
             // Broadcast v to all bytes.
             auto xmm0 = int4(v);
-            ubyte rem = cast(ubyte)d & 15;              // Remainder from the previous 16-byte boundary.
+            ubyte rem = cast(ubyte) d & 15;              // Remainder from the previous 16-byte boundary.
             // Store 16 bytes, from which some will possibly overlap on a future store.
             // For example, if the `rem` is 7, we want to store 16 - 7 = 9 bytes unaligned,
             // add 16 - 7 = 9 to `d` and start storing aligned. Since 16 - `rem` can be at most
@@ -230,19 +154,36 @@ else
 
 void Dmemset_naive(void *dst, const ubyte val, size_t n)
 {
-    ubyte *d = cast(ubyte*)dst;
-    for (size_t i = 0; i != n; ++i)
+    ubyte *d = cast(ubyte*) dst;
+    foreach (i; 0 .. n)
     {
         d[i] = val;
     }
 }
 
-// NOTE(stefanos):
-// Range-checking is not needed since the user never
-// pass an `n` (byte count) directly.
+/** Core features tests.
+  */
+unittest
+{
+    ubyte a[3];
+    Dmemset(a, 7);
+    assert(a[0] == 7);
+    assert(a[1] == 7);
+    assert(a[2] == 7);
 
-// Copied from std.traits
-import core.internal.traits: Unqual;
+    real b;
+    Dmemset(b, 9);
+    ubyte *p = cast(ubyte*) &b;
+    foreach (i; 0 .. b.sizeof)
+    {
+        assert(p[i] == 9);
+    }
+}
+
+
+/** Handy std.traits code, directly copied from there.
+  */
+import core.internal.traits : Unqual;
 
 package template ModifyTypePreservingTQ(alias Modifier, T)
 {
@@ -303,30 +244,122 @@ enum bool isDynamicArray(T) = is(DynamicArrayTypeOf!T) && !isAggregateType!T;
 enum bool isStaticArray(T) = __traits(isStaticArray, T);
 enum bool isArray(T) = isStaticArray!T || isDynamicArray!T;
 
-void Dmemset(T)(ref T dst, const ubyte val)
+
+/** Test suite code
+  */
+unittest
 {
-    const uint v = cast(uint)val;
-    version (D_SIMD)
-    {
-        static if (isArray!T)
-        {
-            size_t n = dst.length * typeof(dst[0]).sizeof;
-            Dmemset(dst.ptr, v, n);
-        }
-        else
-        {
-            Dmemset(&dst, v, T.sizeof);
-        }
+    DmemsetTestStaticType!(byte)(5);
+    DmemsetTestStaticType!(ubyte)(5);
+    DmemsetTestStaticType!(short)(5);
+    DmemsetTestStaticType!(ushort)(5);
+    DmemsetTestStaticType!(int)(5);
+    DmemsetTestStaticType!(uint)(5);
+    DmemsetTestStaticType!(long)(5);
+    DmemsetTestStaticType!(ulong)(5);
+    DmemsetTestStaticType!(float)(5);
+    DmemsetTestStaticType!(double)(5);
+    DmemsetTestStaticType!(real)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 3);
+    static foreach (i; 1..10) {
+        DmemsetTestDynamicArray!(ubyte)(5, 2^^i);
+        DmemsetTestStaticArray!(ubyte, 2^^i)(5);
     }
-    else
+    DmemsetTestDynamicArray!(ubyte)(5, 100);
+    DmemsetTestStaticArray!(ubyte, 100)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 500);
+    DmemsetTestStaticArray!(ubyte, 500)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 700);
+    DmemsetTestStaticArray!(ubyte, 700)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 3434);
+    DmemsetTestStaticArray!(ubyte, 3434)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 7128);
+    DmemsetTestStaticArray!(ubyte, 7128)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 13908);
+    DmemsetTestStaticArray!(ubyte, 13908)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 16343);
+    DmemsetTestStaticArray!(ubyte, 16343)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 27897);
+    DmemsetTestStaticArray!(ubyte, 27897)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 32344);
+    DmemsetTestStaticArray!(ubyte, 32344)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 46830);
+    DmemsetTestStaticArray!(ubyte, 46830)(5);
+    DmemsetTestDynamicArray!(ubyte)(5, 64349);
+    DmemsetTestStaticArray!(ubyte, 64349)(5);
+}
+
+// From a very good Chandler Carruth video on benchmarking: https://www.youtube.com/watch?v=nXaxk27zwlk
+void escape(void* p)
+{
+    version (LDC)
     {
-        static if (isArray!T)
-        {
-            Dmemset_naive(dst.ptr, val, dst.length * typeof(dst[0]).sizeof);
-        }
-        else
-        {
-            Dmemset_naive(&dst, val, T.sizeof);
-        }
+        import ldc.llvmasm;
+        __asm("", "r,~{memory}", p);
     }
+    version (GNU)
+    {
+        asm { "" : : "g" p : "memory"; }
+    }
+}
+
+void DmemsetVerifyArray(T)(int j, const ref T[] a, const ubyte v)
+{
+    const ubyte *p = cast(const ubyte *) a.ptr;
+    foreach (i; 0 .. (a.length * T.sizeof))
+    {
+        assert(p[i] == v);
+    }
+}
+
+void DmemsetVerifyStaticType(T)(const ref T t, const ubyte v)
+{
+    const ubyte *p = cast(const ubyte *) &t;
+    foreach (i; 0 .. T.sizeof)
+    {
+        assert(p[i] == v);
+    }
+}
+
+void DmemsetTestDynamicArray(T)(const ubyte v, size_t n)
+{
+    T[] buf;
+    buf.length = n + 32;
+
+    enum alignments = 32;
+    size_t len = n;
+
+    foreach (i; 0 .. alignments)
+    {
+        auto d = buf[i..i+n];
+
+        escape(d.ptr);
+        Dmemset(d, v);
+        DmemsetVerifyArray(i, d, v);
+    }
+}
+
+void DmemsetTestStaticArray(T, size_t n)(const ubyte v)
+{
+    T[n + 32] buf;
+
+    enum alignments = 32;
+    size_t len = n;
+
+    foreach (i; 0..alignments)
+    {
+        auto d = buf[i..i+n];
+
+        escape(d.ptr);
+        Dmemset(d, v);
+        DmemsetVerifyArray(i, d, v);
+    }
+}
+
+void DmemsetTestStaticType(T)(const ubyte v)
+{
+    T t;
+    escape(&t);
+    Dmemset(t, v);
+    DmemsetVerifyStaticType(t, v);
 }
