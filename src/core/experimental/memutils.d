@@ -176,15 +176,6 @@ else
                     storeUnaligned(cast(void16*)dest, reg);
                 }
             }
-            // TODO(stefanos): Can we broadcast an int in a float4? That would be useful
-            // because then we would use only the float versions.
-            void broadcast_int(ref int4 xmm, int v)
-            {
-                xmm[0] = v;
-                xmm[1] = v;
-                xmm[2] = v;
-                xmm[3] = v;
-            }
             const uint v = val * 0x01010101;            // Broadcast c to all 4 bytes
             // NOTE(stefanos): I use the naive version, which in my benchmarks was slower
             // than the previous classic switch. BUT. Using the switch had a significant
@@ -196,10 +187,9 @@ else
                 return;
             }
             void *temp = d + n - 0x10;                  // Used for the last 32 bytes
-            int4 xmm0;
             // Broadcast v to all bytes.
-            broadcast_int(xmm0, v);
-            ubyte rem = cast(ulong)d & 15;              // Remainder from the previous 16-byte boundary.
+            auto xmm0 = int4(v);
+            ubyte rem = cast(ubyte)d & 15;              // Remainder from the previous 16-byte boundary.
             // Store 16 bytes, from which some will possibly overlap on a future store.
             // For example, if the `rem` is 7, we want to store 16 - 7 = 9 bytes unaligned,
             // add 16 - 7 = 9 to `d` and start storing aligned. Since 16 - `rem` can be at most
@@ -322,20 +312,10 @@ void Dmemset(T)(ref T dst, const ubyte val)
         {
             size_t n = dst.length * typeof(dst[0]).sizeof;
             Dmemset(dst.ptr, v, n);
-
-            version (unittest)
-            {
-                Dmemset_naive(dst.ptr, v, n);
-            }
         }
         else
         {
             Dmemset(&dst, v, T.sizeof);
-
-            version (unittest)
-            {
-                Dmemset_naive(&dst, v, T.sizeof);
-            }
         }
     }
     else
