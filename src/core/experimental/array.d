@@ -11,6 +11,50 @@ import core.experimental.refcount;
 
 import core.internal.traits : Unqual;
 
+///
+pure nothrow @nogc unittest
+{
+    auto arr = rcarray!int(0, 2, 3);
+    assert(arr[0] == 0);
+    assert(arr[$ - 1] == 3);
+
+    // append
+    arr ~= 4;
+    assert(arr[$ - 1] == 4);
+    assert(arr.length == 4);
+
+    // set elements
+    arr[0] = 1;
+    assert(arr[0] == 1);
+    arr[0] *= 42;
+    assert(arr[0] == 42);
+
+    // reserve space
+    arr.reserve(1000);
+    assert(arr.length == 4);
+    assert(arr.capacity == 1000);
+}
+
+///
+pure nothrow @nogc unittest
+{
+    auto arr = rcarray!int(1, 2, 3);
+
+    // create an immutable copy
+    auto iarr = arr.idup;
+    assert(iarr == arr);
+
+    // changing the original array doesn't affect the immutable copy
+    arr[0] = 0;
+    assert(iarr != arr);
+
+    // elements of an immutable array can't be reassigned
+    static assert(!__traits(compiles, () { iarr[0] = 0; }));
+
+    // extra immutable copies at no cost
+    assert(iarr is iarr.idup);
+}
+
 /*
 The element type of `R`. `R` does not have to be a range. The element type is
 determined as the type yielded by `r[0]` for an object `r` of type `R`.
