@@ -166,13 +166,13 @@ private void DmemsetNaive(void *dst, const ubyte val, size_t n)
 unittest
 {
     ubyte[3] a;
-    Dmemset(a, 7);
+    memset(a, 7);
     assert(a[0] == 7);
     assert(a[1] == 7);
     assert(a[2] == 7);
 
     real b;
-    Dmemset(b, 9);
+    memset(b, 9);
     ubyte *p = cast(ubyte*) &b;
     foreach (i; 0 .. b.sizeof)
     {
