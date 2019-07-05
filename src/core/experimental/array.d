@@ -604,6 +604,15 @@ struct rcarray(T)
         return this;
     }
 
+    ///
+    static if (is(T == int))
+    @safe unittest
+    {
+        auto stuff = [1, 2, 3];
+        auto a = immutable rcarray!int(stuff);
+        assert(a[] == stuff);
+    }
+
     /**
     Return a slice to the current array that is bounded by `start` and `end`.
     `start` must be less than or equal to `end` and `end` must be less than
@@ -629,7 +638,6 @@ struct rcarray(T)
     {
         auto stuff = [1, 2, 3];
         auto a = immutable rcarray!int(stuff);
-        assert(a[] == stuff);
         assert(a[1 .. $] == stuff[1 .. $]);
     }
 
