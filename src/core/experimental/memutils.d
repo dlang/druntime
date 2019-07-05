@@ -21,6 +21,7 @@ module core.experimental.memutils;
 
 void memset(T)(ref T dst, const ubyte val)
 {
+    import core.internal.traits : isArray;
     const uint v = cast(uint) val;
     static if (isArray!T)
     {
@@ -144,7 +145,6 @@ else
     {
         memsetNaive(d, val, n);
     }
-    
 }
 
 /* Naive implementation
@@ -177,67 +177,3 @@ unittest
         assert(p[i] == 9);
     }
 }
-
-
-/** Handy std.traits code, directly copied from there.
-  */
-import core.internal.traits : Unqual;
-
-package template ModifyTypePreservingTQ(alias Modifier, T)
-{
-    static if (is(T U ==          immutable U)) alias ModifyTypePreservingTQ =          immutable Modifier!U;
-    else static if (is(T U == shared inout const U)) alias ModifyTypePreservingTQ = shared inout const Modifier!U;
-    else static if (is(T U == shared inout       U)) alias ModifyTypePreservingTQ = shared inout       Modifier!U;
-    else static if (is(T U == shared       const U)) alias ModifyTypePreservingTQ = shared       const Modifier!U;
-    else static if (is(T U == shared             U)) alias ModifyTypePreservingTQ = shared             Modifier!U;
-    else static if (is(T U ==        inout const U)) alias ModifyTypePreservingTQ =        inout const Modifier!U;
-    else static if (is(T U ==        inout       U)) alias ModifyTypePreservingTQ =              inout Modifier!U;
-    else static if (is(T U ==              const U)) alias ModifyTypePreservingTQ =              const Modifier!U;
-    else                                             alias ModifyTypePreservingTQ =                    Modifier!T;
-}
-
-template OriginalType(T)
-{
-    template Impl(T)
-    {
-        static if (is(T U == enum)) alias Impl = OriginalType!U;
-        else                        alias Impl =              T;
-    }
-
-    alias OriginalType = ModifyTypePreservingTQ!(Impl, T);
-}
-
-enum bool isAggregateType(T) = is(T == struct) || is(T == union) ||
-                               is(T == class) || is(T == interface);
-
-private template AliasThisTypeOf(T)
-if (isAggregateType!T)
-{
-    alias members = __traits(getAliasThis, T);
-
-    static if (members.length == 1)
-    {
-        alias AliasThisTypeOf = typeof(__traits(getMember, T.init, members[0]));
-    }
-    else
-        static assert(0, T.stringof~" does not have alias this type");
-}
-
-template DynamicArrayTypeOf(T)
-{
-    static if (is(AliasThisTypeOf!T AT) && !is(AT[] == AT))
-        alias X = DynamicArrayTypeOf!AT;
-    else
-        alias X = OriginalType!T;
-
-    static if (is(Unqual!X : E[], E) && !is(typeof({ enum n = X.length; })))
-    {
-        alias DynamicArrayTypeOf = X;
-    }
-    else
-        static assert(0, T.stringof~" is not a dynamic array");
-}
-
-enum bool isDynamicArray(T) = is(DynamicArrayTypeOf!T) && !isAggregateType!T;
-enum bool isStaticArray(T) = __traits(isStaticArray, T);
-enum bool isArray(T) = isStaticArray!T || isDynamicArray!T;

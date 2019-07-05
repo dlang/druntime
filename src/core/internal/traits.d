@@ -567,3 +567,128 @@ if (func.length == 1 /*&& isCallable!func*/)
     static assert(P_dglit.length == 1);
     static assert(is(P_dglit[0] == int));
 }
+
+// [For internal use]
+package template ModifyTypePreservingTQ(alias Modifier, T)
+{
+         static if (is(T U ==          immutable U)) alias ModifyTypePreservingTQ =          immutable Modifier!U;
+    else static if (is(T U == shared inout const U)) alias ModifyTypePreservingTQ = shared inout const Modifier!U;
+    else static if (is(T U == shared inout       U)) alias ModifyTypePreservingTQ = shared inout       Modifier!U;
+    else static if (is(T U == shared       const U)) alias ModifyTypePreservingTQ = shared       const Modifier!U;
+    else static if (is(T U == shared             U)) alias ModifyTypePreservingTQ = shared             Modifier!U;
+    else static if (is(T U ==        inout const U)) alias ModifyTypePreservingTQ =        inout const Modifier!U;
+    else static if (is(T U ==        inout       U)) alias ModifyTypePreservingTQ =              inout Modifier!U;
+    else static if (is(T U ==              const U)) alias ModifyTypePreservingTQ =              const Modifier!U;
+    else                                             alias ModifyTypePreservingTQ =                    Modifier!T;
+}
+
+@safe unittest
+{
+    alias Intify(T) = int;
+    static assert(is(ModifyTypePreservingTQ!(Intify,                    real) ==                    int));
+    static assert(is(ModifyTypePreservingTQ!(Intify,              const real) ==              const int));
+    static assert(is(ModifyTypePreservingTQ!(Intify,        inout       real) ==        inout       int));
+    static assert(is(ModifyTypePreservingTQ!(Intify,        inout const real) ==        inout const int));
+    static assert(is(ModifyTypePreservingTQ!(Intify, shared             real) == shared             int));
+    static assert(is(ModifyTypePreservingTQ!(Intify, shared       const real) == shared       const int));
+    static assert(is(ModifyTypePreservingTQ!(Intify, shared inout       real) == shared inout       int));
+    static assert(is(ModifyTypePreservingTQ!(Intify, shared inout const real) == shared inout const int));
+    static assert(is(ModifyTypePreservingTQ!(Intify,          immutable real) ==          immutable int));
+}
+
+/**
+ * Strips off all `enum`s from type `T`.
+ */
+template OriginalType(T)
+{
+    template Impl(T)
+    {
+        static if (is(T U == enum)) alias Impl = OriginalType!U;
+        else                        alias Impl =              T;
+    }
+
+    alias OriginalType = ModifyTypePreservingTQ!(Impl, T);
+}
+
+///
+@safe unittest
+{
+    enum E : real { a = 0 } // NOTE: explicit initialization to 0 required during Enum init deprecation cycle
+    enum F : E    { a = E.a }
+    alias G = const(F);
+    static assert(is(OriginalType!E == real));
+    static assert(is(OriginalType!F == real));
+    static assert(is(OriginalType!G == const real));
+}
+
+/**
+ * Detect whether type `T` is an aggregate type.
+ */
+enum bool isAggregateType(T) = is(T == struct) || is(T == union) ||
+                               is(T == class) || is(T == interface);
+
+private template AliasThisTypeOf(T)
+if (isAggregateType!T)
+{
+    alias members = __traits(getAliasThis, T);
+
+    static if (members.length == 1)
+    {
+        alias AliasThisTypeOf = typeof(__traits(getMember, T.init, members[0]));
+    }
+    else
+        static assert(0, T.stringof~" does not have alias this type");
+}
+
+/*
+ */
+template DynamicArrayTypeOf(T)
+{
+    static if (is(AliasThisTypeOf!T AT) && !is(AT[] == AT))
+        alias X = DynamicArrayTypeOf!AT;
+    else
+        alias X = OriginalType!T;
+
+    static if (is(Unqual!X : E[], E) && !is(typeof({ enum n = X.length; })))
+    {
+        alias DynamicArrayTypeOf = X;
+    }
+    else
+        static assert(0, T.stringof~" is not a dynamic array");
+}
+
+@safe unittest
+{
+    static foreach (T; AliasSeq!(/*void, */bool, NumericTypeList, /*ImaginaryTypeList, ComplexTypeList*/))
+        static foreach (Q; AliasSeq!(TypeQualifierList, InoutOf, SharedInoutOf))
+        {
+            static assert(is( Q!T[]  == DynamicArrayTypeOf!( Q!T[] ) ));
+            static assert(is( Q!(T[])  == DynamicArrayTypeOf!( Q!(T[]) ) ));
+
+            static foreach (P; AliasSeq!(MutableOf, ConstOf, ImmutableOf))
+            {
+                static assert(is( Q!(P!T[]) == DynamicArrayTypeOf!( Q!(SubTypeOf!(P!T[])) ) ));
+                static assert(is( Q!(P!(T[])) == DynamicArrayTypeOf!( Q!(SubTypeOf!(P!(T[]))) ) ));
+            }
+        }
+
+    static assert(!is(DynamicArrayTypeOf!(int[3])));
+    static assert(!is(DynamicArrayTypeOf!(void[3])));
+    static assert(!is(DynamicArrayTypeOf!(typeof(null))));
+}
+
+/**
+ * Detect whether type `T` is a dynamic array.
+ */
+enum bool isDynamicArray(T) = is(DynamicArrayTypeOf!T) && !isAggregateType!T;
+
+/**
+ * Detect whether type `T` is an array (static or dynamic; for associative
+ *  arrays see $(LREF isAssociativeArray)).
+ */
+enum bool isArray(T) = isStaticArray!T || isDynamicArray!T;
+
+/**
+ * Detect whether type `T` is a static array.
+ */
+enum bool isStaticArray(T) = __traits(isStaticArray, T);
