@@ -149,12 +149,12 @@ else
 
 /* Naive implementation
  */
-private void memsetNaive(void *dst, const ubyte val, size_t n)
+private void memsetNaive(void *dst, const uint val, size_t n)
 {
     ubyte *d = cast(ubyte*) dst;
     foreach (i; 0 .. n)
     {
-        d[i] = val;
+        d[i] = cast(ubyte)val;
     }
 }
 
