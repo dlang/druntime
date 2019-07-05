@@ -364,17 +364,17 @@ struct rcarray(T)
 
         foreach (i; 0 .. tmpSupport.length)
         {
-            import core.lifetime : emplace;
+            import core.internal.lifetime : emplaceRef;
 
             if (i < payload.length)
             {
                 // Copy the existing items
-                emplace(&tmpSupport[i], payload[i]);
+                emplaceRef(tmpSupport[i], payload[i]);
             }
             else
             {
                 // Default initialise the remaining memory
-                emplace(&tmpSupport[i]);
+                emplaceRef(tmpSupport[i]);
             }
         }
 
@@ -497,11 +497,11 @@ struct rcarray(T)
             size_t e = (i + 1) * E.sizeof;
             void[] tmp = tmpSupport[s .. e];
 
-            import core.lifetime : emplace;
+            import core.internal.lifetime : emplaceRef;
             static if (is(T == class) || is(T == interface))
-                (() @trusted => emplace(cast(Unqual!E*)tmp.ptr, cast(Unqual!E)} ~ stuff ~ q{[i]))();
+                (() @trusted => emplaceRef(*cast(Unqual!E*)tmp.ptr, cast(Unqual!E)} ~ stuff ~ q{[i]))();
             else
-                (() @trusted => emplace!E(tmp, } ~ stuff ~ q{[i]))();
+                (() @trusted => emplaceRef(*cast(Unqual!E*)tmp.ptr, } ~ stuff ~ q{[i]))();
         } ~ "}"
         ~ q{
 
