@@ -657,21 +657,10 @@ template DynamicArrayTypeOf(T)
         static assert(0, T.stringof~" is not a dynamic array");
 }
 
+// TODO(stefanos): More unit-testing.
+
 @safe unittest
 {
-    static foreach (T; AliasSeq!(/*void, */bool, NumericTypeList, /*ImaginaryTypeList, ComplexTypeList*/))
-        static foreach (Q; AliasSeq!(TypeQualifierList, InoutOf, SharedInoutOf))
-        {
-            static assert(is( Q!T[]  == DynamicArrayTypeOf!( Q!T[] ) ));
-            static assert(is( Q!(T[])  == DynamicArrayTypeOf!( Q!(T[]) ) ));
-
-            static foreach (P; AliasSeq!(MutableOf, ConstOf, ImmutableOf))
-            {
-                static assert(is( Q!(P!T[]) == DynamicArrayTypeOf!( Q!(SubTypeOf!(P!T[])) ) ));
-                static assert(is( Q!(P!(T[])) == DynamicArrayTypeOf!( Q!(SubTypeOf!(P!(T[]))) ) ));
-            }
-        }
-
     static assert(!is(DynamicArrayTypeOf!(int[3])));
     static assert(!is(DynamicArrayTypeOf!(void[3])));
     static assert(!is(DynamicArrayTypeOf!(typeof(null))));
