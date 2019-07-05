@@ -95,7 +95,7 @@ version (D_SIMD)
         // but the fact that it's more difficult to optimize it as part of the rest of the code.
         if (n <= 16)
         {
-            DmemsetNaive(cast(ubyte*) d, cast(ubyte) val, n);
+            memsetNaive(cast(ubyte*) d, cast(ubyte) val, n);
             return;
         }
         void *temp = d + n - 0x10;                  // Used for the last 32 bytes
