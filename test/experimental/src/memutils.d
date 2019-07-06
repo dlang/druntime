@@ -42,20 +42,6 @@ void main()
     DmemsetTestStaticArray!(ubyte, 64349)(5);
 }
 
-// From a very good Chandler Carruth video on benchmarking: https://www.youtube.com/watch?v=nXaxk27zwlk
-void escape(void* p)
-{
-    version (LDC)
-    {
-        import ldc.llvmasm;
-        __asm("", "r,~{memory}", p);
-    }
-    version (GNU)
-    {
-        asm { "" : : "g" p : "memory"; }
-    }
-}
-
 void DmemsetVerifyArray(T)(int j, const ref T[] a, const ubyte v)
 {
     const ubyte *p = cast(const ubyte *) a.ptr;
@@ -73,6 +59,10 @@ void DmemsetVerifyStaticType(T)(const ref T t, const ubyte v)
         assert(p[i] == v);
     }
 }
+
+// NOTE(stefanos): Escaping the pointers is not needed, the compiler doesn't optimize it away.
+// My best guess is that this is because of the verification (i.e. if the operation is not done,
+// an assert will fire and does not satisfy correctness).
 
 void DmemsetTestDynamicArray(T)(const ubyte v, size_t n)
 {
