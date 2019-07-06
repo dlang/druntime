@@ -25,7 +25,8 @@ extern (C) void _d_critical_init()
 
 extern (C) void _d_critical_term()
 {
-    for (auto p = head; p; p = p.next)
+    auto h = cast()head;
+    for (auto p = h; p; p = p.next)
         destroyMutex(cast(Mutex*)&p.mtx);
 }
 
