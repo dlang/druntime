@@ -223,7 +223,7 @@ extern (C) int rt_init()
  */
 extern (C) int rt_term()
 {
-    if (atomicOp!"!="(_initCount,0) return 0; // was never initialized
+    if (atomicOp!"!="(_initCount,0)) return 0; // was never initialized
     if (atomicOp!"-="(_initCount, 1)) return 1;
 
     try
