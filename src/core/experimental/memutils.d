@@ -34,18 +34,22 @@ void memset(T)(ref T dst, const ubyte val)
     }
 }
 
-version (GNU)
-{
-    private void Dmemset(void *d, const uint val, size_t n)
-    {
-        memsetNaive(d, val, n);
-    }
-}
-else
 version (D_SIMD)
+{
+    version = useSIMD;
+}
+version (LDC)
+{
+    // LDC always supports SIMD and the back-end uses the most
+    // appropriate size for every target.
+    version = useSIMD;
+}
+
+version (useSIMD)
 {
     /* SIMD implementation
      */
+    //pragma(msg, "SIMD used");
     private void Dmemset(void *d, const uint val, size_t n)
     {
         import core.simd : int4;
@@ -64,19 +68,6 @@ version (D_SIMD)
         // TODO(stefanos): Is there a way to make them @safe?
         // (The problem is that for LDC, they could take int* or float* pointers
         // but the cast to void16 for DMD is necessary anyway).
-        void store32i_sse(void *dest, int4 reg)
-        {
-            version (LDC)
-            {
-                storeUnaligned!int4(reg, cast(int*) dest);
-                storeUnaligned!int4(reg, cast(int*) (dest+0x10));
-            }
-            else
-            {
-                storeUnaligned(cast(void16*) dest, reg);
-                storeUnaligned(cast(void16*) (dest+0x10), reg);
-            }
-        }
         void store16i_sse(void *dest, int4 reg)
         {
             version (LDC)
@@ -88,6 +79,12 @@ version (D_SIMD)
                 storeUnaligned(cast(void16*) dest, reg);
             }
         }
+        void store32i_sse(void *dest, int4 reg)
+        {
+            store16i_sse(dest, reg);
+            store16i_sse(dest+0x10, reg);
+        }
+
         const uint v = val * 0x01010101;            // Broadcast c to all 4 bytes
         // NOTE(stefanos): I use the naive version, which in my benchmarks was slower
         // than the previous classic switch. BUT. Using the switch had a significant
@@ -137,18 +134,17 @@ version (D_SIMD)
         // Compensate for the last (at most) 32 bytes.
         store32i_sse(temp-0x10, xmm0);
     }
-
 }
 else
 {
+    /* Forward to simple implementation.
+     */
     private void Dmemset(void *d, const uint val, size_t n)
     {
         memsetNaive(d, val, n);
     }
 }
 
-/* Naive implementation
- */
 private void memsetNaive(void *dst, const uint val, size_t n)
 {
     ubyte *d = cast(ubyte*) dst;
@@ -157,7 +153,6 @@ private void memsetNaive(void *dst, const uint val, size_t n)
         d[i] = cast(ubyte)val;
     }
 }
-
 
 /** Core features tests.
   */
