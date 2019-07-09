@@ -28,15 +28,13 @@ unittest
     real b;
     memmove(&b, &a);
     assert(b == 1.2);
- 
-    // Overwrite the type system and create overlap with dst forward.   
+    // Overwrite the type system and create overlap with dst forward.
     ubyte[8] buf;
     int *p = cast(int*) buf.ptr;
     int *q = cast(int*) (buf.ptr + 2);
     *p = 203847;
     memmove(q, p);
     assert(*q == 203847);
-
     // Create overlap with src forward.
     *q = 92239;
     memmove(p, q);
@@ -155,7 +153,6 @@ static if (useSIMD)
             __builtin_ia32_storeups(cast(float*) dest, reg);
         }
     }
-    
     float4 load16f_sse(const(void) *src)
     {
         version (LDC)
@@ -196,13 +193,11 @@ static if (useSIMD)
         }
 
     }
-    
     void lstore128fp_sse(void *d, const(void) *s)
     {
         prefetchForward(cast(void*) s);
         lstore128f_sse(d, s);
     }
-    
     void lstore128f_sse(void *d, const(void) *s)
     {
         float4 xmm0 = load16f_sse(cast(const float*)s);
@@ -213,7 +208,7 @@ static if (useSIMD)
         float4 xmm5 = load16f_sse(cast(const float*)(s+80));
         float4 xmm6 = load16f_sse(cast(const float*)(s+96));
         float4 xmm7 = load16f_sse(cast(const float*)(s+112));
-    
+        //
         store16f_sse(cast(float*)d, xmm0);
         store16f_sse(cast(float*)(d+16), xmm1);
         store16f_sse(cast(float*)(d+32), xmm2);
@@ -223,24 +218,23 @@ static if (useSIMD)
         store16f_sse(cast(float*)(d+96), xmm6);
         store16f_sse(cast(float*)(d+112), xmm7);
     }
-    
     void lstore64f_sse(void *d, const(void) *s)
     {
         float4 xmm0 = load16f_sse(cast(const float*)s);
         float4 xmm1 = load16f_sse(cast(const float*)(s+16));
         float4 xmm2 = load16f_sse(cast(const float*)(s+32));
         float4 xmm3 = load16f_sse(cast(const float*)(s+48));
-    
+        //
         store16f_sse(cast(float*)d, xmm0);
         store16f_sse(cast(float*)(d+16), xmm1);
         store16f_sse(cast(float*)(d+32), xmm2);
         store16f_sse(cast(float*)(d+48), xmm3);
     }
-    
     void lstore32f_sse(void *d, const(void) *s)
     {
         float4 xmm0 = load16f_sse(cast(const float*)s);
         float4 xmm1 = load16f_sse(cast(const float*)(s+16));
+        //
         store16f_sse(cast(float*)d, xmm0);
         store16f_sse(cast(float*)(d+16), xmm1);
     }
