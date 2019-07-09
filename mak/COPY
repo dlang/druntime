@@ -20,6 +20,8 @@ COPY=\
 	$(IMPDIR)\core\thread.d \
 	$(IMPDIR)\core\time.d \
 	$(IMPDIR)\core\vararg.d \
+    \
+	$(IMPDIR)\core\experimental\memutils.d \
 	\
 	$(IMPDIR)\core\internal\abort.d \
 	$(IMPDIR)\core\internal\arrayop.d \
