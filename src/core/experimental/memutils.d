@@ -88,19 +88,21 @@ unittest
 
 /* Can we use SIMD?
  */
-import core.simd: float4;
 version (D_SIMD)
 {
+    import core.simd: float4;
     enum useSIMD = true;
 }
 else version (LDC)
 {
     // LDC always supports SIMD (but doesn't ever set D_SIMD) and
     // the back-end uses the most appropriate size for every target.
+    import core.simd: float4;
     enum useSIMD = true;
 }
 else version (GNU)
 {
+    import core.simd: float4;
     // GNU does not support SIMD by default.
     version (X86_64)
     {
@@ -111,7 +113,7 @@ else version (GNU)
         enum isX86 = true;
     }
 
-    static if (isX86 && __traits(compiles, float))
+    static if (isX86 && __traits(compiles, float4))
     {
         enum useSIMD = true;
     }
@@ -119,6 +121,10 @@ else version (GNU)
     {
         enum useSIMD = false;
     }
+}
+else
+{
+    enum useSIMD = false;
 }
 
 /* Little SIMD library
