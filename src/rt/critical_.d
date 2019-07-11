@@ -25,7 +25,7 @@ extern (C) void _d_critical_init()
 
 extern (C) void _d_critical_term()
 {
-    // This function is only ever called by the runtime shotdown code
+    // This function is only ever called by the runtime shutdown code
     // and therefore is single threaded so the following cast is fine.
     auto h = cast()head;
     for (auto p = h; p; p = p.next)
