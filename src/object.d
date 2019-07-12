@@ -48,6 +48,10 @@ public import rt.array.equality : __ArrayEq;
 public import rt.array.casting: __ArrayCast;
 /// See $(REF _d_arraycatnTXImpl, rt,array,concatenation)
 public import rt.array.concatenation : _d_arraycatnTXImpl;
+/// See $(REF _d_arrayctor, rt,array,construction)
+public import rt.array.construction : _d_arrayctor;
+/// See $(REF _d_arraysetctor, rt,array,construction)
+public import rt.array.construction : _d_arraysetctor;
 
 /// See $(REF capacity, rt,array,capacity)
 public import rt.array.capacity: capacity;
