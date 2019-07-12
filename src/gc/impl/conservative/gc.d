@@ -45,7 +45,6 @@ import core.gc.gcinterface;
 import rt.util.container.treap;
 
 import cstdlib = core.stdc.stdlib : calloc, free, malloc, realloc;
-import core.stdc.stdio : fflush;
 import core.stdc.string : memcpy, memset, memmove;
 import core.bitop;
 import core.thread;
@@ -2637,9 +2636,11 @@ struct Gcx
         // (unless they allocate or use the GC themselves, in which case
         // the global GC lock will stop them).
         // fork now and sweep later
-        import core.stdc.stdio : fflush;
         import core.stdc.stdlib : _Exit;
-        fflush(null); // avoid duplicated FILE* output
+        debug (PRINTF_TO_FILE){
+            import core.stdc.stdio : fflush;
+            fflush(null); // avoid duplicated FILE* output
+        }
         auto pid = fork();
         assert(pid != -1);
         switch (pid)
