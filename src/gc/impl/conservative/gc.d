@@ -2664,8 +2664,6 @@ struct Gcx
                     return ChildStatus.running;
                 }
                 ChildStatus r = wait_pid(pid); // block until marking is done
-                assert(r == ChildStatus.done);
-                assert(r != ChildStatus.running);
                 if (r == ChildStatus.error)
                 {
                     thread_suspendAll();
@@ -2678,6 +2676,9 @@ struct Gcx
                         markAll!markPrecise(nostack);
                     else
                         markAll!markConservative(nostack);
+                } else {
+                    assert(r == ChildStatus.done);
+                    assert(r != ChildStatus.running);
                 }
         }
         return ChildStatus.done; // waited for the child
