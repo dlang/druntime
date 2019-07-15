@@ -29,12 +29,12 @@ class TypeInfo_s : TypeInfo
         return *cast(const short *)p;
     }
 
-    override bool equals(in void* p1, in void* p2)
+    override bool equals(const scope void* p1, const scope void* p2)
     {
         return *cast(short *)p1 == *cast(short *)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(const scope void* p1, const scope void* p2)
     {
         return *cast(short *)p1 - *cast(short *)p2;
     }

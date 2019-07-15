@@ -28,7 +28,7 @@ class TypeInfo_C : TypeInfo
         return o ? o.toHash() : 0;
     }
 
-    override bool equals(in void* p1, in void* p2)
+    override bool equals(const scope void* p1, const scope void* p2)
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;
@@ -36,7 +36,7 @@ class TypeInfo_C : TypeInfo
         return o1 == o2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(const scope void* p1, const scope void* p2)
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;

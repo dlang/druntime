@@ -232,7 +232,7 @@ class ProtoGC : GC
         return 0;
     }
 
-    void runFinalizers(in void[] segment) nothrow
+    void runFinalizers(const scope void[] segment) nothrow
     {
     }
 

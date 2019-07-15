@@ -539,7 +539,7 @@ void encode(ref dchar[] s, dchar c)
 
 /**
 Returns the code length of $(D c) in the encoding using $(D C) as a
-code point. The code is returned in character count, not in bytes.
+code point. The code is returned const scope character count, not in bytes.
  */
 @safe pure nothrow @nogc
 ubyte codeLength(C)(dchar c)
@@ -571,7 +571,7 @@ Checks to see if string is well formed or not. $(D S) can be an array
  if it is not. Use to check all untrusted input for correctness.
  */
 @safe pure
-void validate(S)(in S s)
+void validate(S)(const scope S s)
 {
     auto len = s.length;
     for (size_t i = 0; i < len; )

@@ -75,7 +75,7 @@ int    fscanf(FILE*, const scope char*, ...);
 int    fseek(FILE*, c_long, int);
 int    fsetpos(FILE*, const scope fpos_t*);
 c_long ftell(FILE*);
-size_t fwrite(in void *, size_t, size_t, FILE*);
+size_t fwrite(const void *, size_t, size_t, FILE*);
 int    getc(FILE*);
 int    getchar();
 char*  gets(char*);

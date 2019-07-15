@@ -40,9 +40,9 @@ private extern (C)
     MachHeader* _NSGetMachExecuteHeader();
 
     ubyte* getsectiondata(
-        in MachHeader* mhp,
-        in char* segname,
-        in char* sectname,
+        const scope MachHeader* mhp,
+        const scope char* segname,
+        const scope char* sectname,
         c_ulong* size
     );
 }

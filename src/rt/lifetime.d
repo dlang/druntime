@@ -693,7 +693,7 @@ extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) /+nothrow+/
     }
 }
 
-package bool hasPostblit(in TypeInfo ti)
+package bool hasPostblit(const scope TypeInfo ti)
 {
     return (&ti.postblit).funcptr !is &TypeInfo.postblit;
 }
@@ -1091,7 +1091,7 @@ extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims)
  * Allocate an uninitialized non-array item.
  * This is an optimization to avoid things needed for arrays like the __arrayPad(size).
  */
-extern (C) void* _d_newitemU(in TypeInfo _ti)
+extern (C) void* _d_newitemU(const scope TypeInfo _ti)
 {
     auto ti = unqualify(_ti);
     auto flags = !(ti.flags & 1) ? BlkAttr.NO_SCAN : 0;
@@ -1110,7 +1110,7 @@ extern (C) void* _d_newitemU(in TypeInfo _ti)
 }
 
 /// Same as above, zero initializes the item.
-extern (C) void* _d_newitemT(in TypeInfo _ti)
+extern (C) void* _d_newitemT(const scope TypeInfo _ti)
 {
     import core.stdc.string;
     auto p = _d_newitemU(_ti);
@@ -1119,7 +1119,7 @@ extern (C) void* _d_newitemT(in TypeInfo _ti)
 }
 
 /// Same as above, for item with non-zero initializer.
-extern (C) void* _d_newitemiT(in TypeInfo _ti)
+extern (C) void* _d_newitemiT(const scope TypeInfo _ti)
 {
     import core.stdc.string;
     auto p = _d_newitemU(_ti);
@@ -1263,7 +1263,7 @@ extern (C) CollectHandler rt_getCollectHandler()
 /**
  *
  */
-extern (C) int rt_hasFinalizerInSegment(void* p, size_t size, uint attr, in void[] segment) nothrow
+extern (C) int rt_hasFinalizerInSegment(void* p, size_t size, uint attr, const scope void[] segment) nothrow
 {
     if (attr & BlkAttr.STRUCTFINAL)
     {
@@ -1288,7 +1288,7 @@ extern (C) int rt_hasFinalizerInSegment(void* p, size_t size, uint attr, in void
     return false;
 }
 
-int hasStructFinalizerInSegment(void* p, size_t size, in void[] segment) nothrow
+int hasStructFinalizerInSegment(void* p, size_t size, const scope void[] segment) nothrow
 {
     if (!p)
         return false;
@@ -1297,7 +1297,7 @@ int hasStructFinalizerInSegment(void* p, size_t size, in void[] segment) nothrow
     return cast(size_t)(cast(void*)ti.xdtor - segment.ptr) < segment.length;
 }
 
-int hasArrayFinalizerInSegment(void* p, size_t size, in void[] segment) nothrow
+int hasArrayFinalizerInSegment(void* p, size_t size, const scope void[] segment) nothrow
 {
     if (!p)
         return false;

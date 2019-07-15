@@ -471,7 +471,7 @@ bool readFile(FILE* file, ref char[] buf)
     return true;
 }
 
-version (Windows) extern (C) nothrow @nogc FILE* _wfopen(in wchar* filename, in wchar* mode);
+version (Windows) extern (C) nothrow @nogc FILE* _wfopen(const scope wchar* filename, const scope wchar* mode);
 version (Windows) extern (C) int chsize(int fd, c_long size);
 
 

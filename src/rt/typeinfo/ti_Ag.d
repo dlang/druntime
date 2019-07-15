@@ -30,7 +30,7 @@ class TypeInfo_Ag : TypeInfo_Array
         return hashOf(s);
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         byte[] s1 = *cast(byte[]*)p1;
         byte[] s2 = *cast(byte[]*)p2;
@@ -39,7 +39,7 @@ class TypeInfo_Ag : TypeInfo_Array
                memcmp(cast(byte *)s1, cast(byte *)s2, s1.length) == 0;
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         byte[] s1 = *cast(byte[]*)p1;
         byte[] s2 = *cast(byte[]*)p2;
@@ -73,7 +73,7 @@ class TypeInfo_Ah : TypeInfo_Ag
 {
     override string toString() const { return "ubyte[]"; }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         char[] s1 = *cast(char[]*)p1;
         char[] s2 = *cast(char[]*)p2;

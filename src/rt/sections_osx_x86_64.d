@@ -171,8 +171,8 @@ static immutable SegRef[] dataSegs = [{SEG_DATA, SECT_DATA},
                                       {SEG_DATA, SECT_BSS},
                                       {SEG_DATA, SECT_COMMON}];
 
-ubyte[] getSection(in mach_header* header, intptr_t slide,
-                   in char* segmentName, in char* sectionName)
+ubyte[] getSection(const scope mach_header* header, intptr_t slide,
+                   const scope char* segmentName, const scope char* sectionName)
 {
     assert(header.magic == MH_MAGIC_64);
     auto sect = getsectbynamefromheader_64(cast(mach_header_64*)header,

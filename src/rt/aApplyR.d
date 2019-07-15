@@ -28,7 +28,7 @@ import core.internal.utf;
 // dg is D, but _aApplyRcd() is C
 extern (D) alias int delegate(void *) dg_t;
 
-extern (C) int _aApplyRcd1(in char[] aa, dg_t dg)
+extern (C) int _aApplyRcd1(const scope char[] aa, dg_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRcd1(), len = %d\n", aa.length);
@@ -102,7 +102,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRwd1(in wchar[] aa, dg_t dg)
+extern (C) int _aApplyRwd1(const scope wchar[] aa, dg_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRwd1(), len = %d\n", aa.length);
@@ -166,7 +166,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRcw1(in char[] aa, dg_t dg)
+extern (C) int _aApplyRcw1(const scope char[] aa, dg_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRcw1(), len = %d\n", aa.length);
@@ -253,7 +253,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRwc1(in wchar[] aa, dg_t dg)
+extern (C) int _aApplyRwc1(const scope wchar[] aa, dg_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRwc1(), len = %d\n", aa.length);
@@ -338,7 +338,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRdc1(in dchar[] aa, dg_t dg)
+extern (C) int _aApplyRdc1(const scope dchar[] aa, dg_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRdc1(), len = %d\n", aa.length);
@@ -417,7 +417,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRdw1(in dchar[] aa, dg_t dg)
+extern (C) int _aApplyRdw1(const scope dchar[] aa, dg_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRdw1(), len = %d\n", aa.length);
@@ -490,7 +490,7 @@ unittest
 // dg is D, but _aApplyRcd2() is C
 extern (D) alias int delegate(void *, void *) dg2_t;
 
-extern (C) int _aApplyRcd2(in char[] aa, dg2_t dg)
+extern (C) int _aApplyRcd2(const scope char[] aa, dg2_t dg)
 {   int result;
     size_t i;
     size_t len = aa.length;
@@ -567,7 +567,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRwd2(in wchar[] aa, dg2_t dg)
+extern (C) int _aApplyRwd2(const scope wchar[] aa, dg2_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRwd2(), len = %d\n", aa.length);
@@ -633,7 +633,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRcw2(in char[] aa, dg2_t dg)
+extern (C) int _aApplyRcw2(const scope char[] aa, dg2_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRcw2(), len = %d\n", aa.length);
@@ -722,7 +722,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRwc2(in wchar[] aa, dg2_t dg)
+extern (C) int _aApplyRwc2(const scope wchar[] aa, dg2_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRwc2(), len = %d\n", aa.length);
@@ -809,7 +809,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRdc2(in dchar[] aa, dg2_t dg)
+extern (C) int _aApplyRdc2(const scope dchar[] aa, dg2_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRdc2(), len = %d\n", aa.length);
@@ -889,7 +889,7 @@ unittest
 
 /*****************************/
 
-extern (C) int _aApplyRdw2(in dchar[] aa, dg2_t dg)
+extern (C) int _aApplyRdw2(const scope dchar[] aa, dg2_t dg)
 {   int result;
 
     debug(apply) printf("_aApplyRdw2(), len = %d\n", aa.length);

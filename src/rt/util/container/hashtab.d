@@ -52,7 +52,7 @@ struct HashTab(Key, Value)
         return !_length;
     }
 
-    void remove(in Key key)
+    void remove(const scope Key key)
     in { assert(key in this); }
     do
     {

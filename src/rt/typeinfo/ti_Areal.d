@@ -30,12 +30,12 @@ class TypeInfo_Ae : TypeInfo_Array
         return Array!F.hashOf(*cast(F[]*)p);
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         return Array!F.equals(*cast(F[]*)p1, *cast(F[]*)p2);
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         return Array!F.compare(*cast(F[]*)p1, *cast(F[]*)p2);
     }

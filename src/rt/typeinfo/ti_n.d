@@ -24,13 +24,13 @@ class TypeInfo_n : TypeInfo
         return 0;
     }
 
-    override bool equals(in void* p1, in void* p2) const @trusted
+    override bool equals(const scope void* p1, const scope void* p2) const @trusted
     {
         //return *cast(typeof(null)*)p1 is *cast(typeof(null)*)p2;
         return true;
     }
 
-    override int compare(in void* p1, in void* p2) const @trusted
+    override int compare(const scope void* p1, const scope void* p2) const @trusted
     {
         //if (*cast(int*) p1 < *cast(int*) p2)
         //    return -1;

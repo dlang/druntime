@@ -801,7 +801,7 @@ void scanSegments(const scope ref dl_phdr_info info, DSO* pdso) nothrow @nogc
  * References:
  *      http://linux.die.net/man/3/dl_iterate_phdr
  */
-bool findDSOInfoForAddr(in void* addr, dl_phdr_info* result=null) nothrow @nogc
+bool findDSOInfoForAddr(const scope void* addr, dl_phdr_info* result=null) nothrow @nogc
 {
     version (linux)       enum IterateManually = true;
     else version (NetBSD) enum IterateManually = true;
