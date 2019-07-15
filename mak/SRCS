@@ -148,7 +148,6 @@ SRCS=\
 	\
 	src\core\sys\linux\netinet\in_.d \
 	src\core\sys\linux\netinet\tcp.d \
-	src\core\sys\linux\sys\netinet\tcp.d \
 	\
 	src\core\sys\linux\sys\auxv.d \
 	src\core\sys\linux\sys\eventfd.d \
@@ -450,6 +449,14 @@ SRCS=\
 	src\rt\trace.d \
 	src\rt\tracegc.d \
 	src\rt\unwind.d \
+	\
+	src\rt\array\comparison.d \
+	src\rt\array\construction.d \
+	src\rt\array\equality.d \
+	src\rt\array\casting.d \
+	src\rt\array\capacity.d \
+	src\rt\array\concatenation.d \
+	src\rt\array\utils.d \
 	\
 	src\rt\backtrace\dwarf.d \
 	src\rt\backtrace\elf.d \

@@ -81,6 +81,8 @@ __gshared long extendTime;
 __gshared long otherTime;
 __gshared long lockTime;
 
+ulong bytesAllocated;   // thread local counter
+
 private
 {
     extern (C)
@@ -88,7 +90,7 @@ private
         // to allow compilation of this module without access to the rt package,
         //  make these functions available from rt.lifetime
         void rt_finalizeFromGC(void* p, size_t size, uint attr) nothrow;
-        int rt_hasFinalizerInSegment(void* p, size_t size, uint attr, in void[] segment) nothrow;
+        int rt_hasFinalizerInSegment(void* p, size_t size, uint attr, const scope void[] segment) nothrow;
 
         // Declared as an extern instead of importing core.exception
         // to avoid inlining - see issue 13725.
@@ -397,6 +399,7 @@ class ConservativeGC : GC
             alloc_size = size;
         }
         gcx.leakDetector.log_malloc(p, size);
+        bytesAllocated += alloc_size;
 
         debug(PRINTF) printf("  => p = %p\n", p);
         return p;
@@ -1116,6 +1119,7 @@ class ConservativeGC : GC
 
         stats.usedSize -= freeListSize;
         stats.freeSize += freeListSize;
+        stats.allocatedInCurrentThread = bytesAllocated;
     }
 }
 
@@ -1621,7 +1625,7 @@ struct Gcx
 
     private @property bool lowMem() const nothrow
     {
-        return isLowOnMem(mappedPages * PAGESIZE);
+        return isLowOnMem(cast(size_t)mappedPages * PAGESIZE);
     }
 
     void* alloc(size_t size, ref size_t alloc_size, uint bits, const TypeInfo ti) nothrow
@@ -1853,8 +1857,8 @@ struct Gcx
 
         if (config.profile)
         {
-            if (mappedPages * PAGESIZE > maxPoolMemory)
-                maxPoolMemory = mappedPages * PAGESIZE;
+            if (cast(size_t)mappedPages * PAGESIZE > maxPoolMemory)
+                maxPoolMemory = cast(size_t)mappedPages * PAGESIZE;
         }
         return pool;
     }
@@ -3388,7 +3392,7 @@ struct Pool
         }
     }
 
-    void freePageBits(size_t pagenum, in ref PageBits toFree) nothrow
+    void freePageBits(size_t pagenum, const scope ref PageBits toFree) nothrow
     {
         assert(!isLargeObject);
         assert(!nointerior.nbits); // only for large objects
@@ -4587,7 +4591,9 @@ version (D_LP64) unittest
             GC.free(ptr);
             GC.minimize();
             auto nstats = GC.stats();
-            assert(nstats == stats);
+            assert(nstats.usedSize == stats.usedSize);
+            assert(nstats.freeSize == stats.freeSize);
+            assert(nstats.allocatedInCurrentThread - sz == stats.allocatedInCurrentThread);
         }
     }
 }

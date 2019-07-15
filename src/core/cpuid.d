@@ -318,7 +318,7 @@ private:
 struct CpuFeatures
 {
     bool probablyIntel; // true = _probably_ an Intel processor, might be faking
-    bool probablyAMD; // true = _probably_ an AMD processor
+    bool probablyAMD; // true = _probably_ an AMD or Hygon processor
     string processorName;
     char [12] vendorID = 0;
     char [48] processorNameBuffer = 0;
@@ -727,7 +727,7 @@ void cpuidX86()
 
 
     cf.probablyIntel = cf.vendorID == "GenuineIntel";
-    cf.probablyAMD = cf.vendorID == "AuthenticAMD";
+    cf.probablyAMD = (cf.vendorID == "AuthenticAMD" || cf.vendorID == "HygonGenuine");
     uint apic = 0; // brand index, apic id
     version (GNU) asm pure nothrow @nogc {
         "cpuid" : "=a" a, "=b" apic, "=c" cf.miscfeatures, "=d" cf.features : "a" 1;
@@ -937,13 +937,27 @@ void cpuidX86()
             datacache[0].lineSize = 32;
         }
     }
-    if (max_cpuid >= 0x0B) {
+    if (cf.probablyIntel && max_cpuid >= 0x0B) {
         // For Intel i7 and later, use function 0x0B to determine
         // cores and hyperthreads.
         getCpuInfo0B();
     } else {
         if (hyperThreadingBit) cf.maxThreads = (apic>>>16) & 0xFF;
         else cf.maxThreads = cf.maxCores;
+
+        if (cf.probablyAMD && max_extended_cpuid >= 0x8000_001E) {
+            version (GNU) asm pure nothrow @nogc {
+                "cpuid" : "=a" a, "=b" b : "a" 0x8000_001E : "ecx", "edx";
+            } else {
+                asm pure nothrow @nogc {
+                    mov EAX, 0x8000_001e;
+                    cpuid;
+                    mov b, EBX;
+                }
+            }
+            ubyte coresPerComputeUnit = ((b >> 8) & 3) + 1;
+            cf.maxCores = cf.maxThreads / coresPerComputeUnit;
+        }
     }
 }
 
