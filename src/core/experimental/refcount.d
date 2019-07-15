@@ -1,22 +1,31 @@
+// Written in the D programming language.
 /**
-  This module provides a composable reference count implementation in the form
-  of `__RefCount`.
+This module provides a composable reference count implementation in the form
+of `__RefCount`.
+
+License: $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
+
+Authors: Eduard Staniloiu
+
+Source: $(DRUNTIMESRC core/experimental/refcount.d)
 */
 module core.experimental.refcount;
 
 /**
- * A qualified reference counted `struct` that is intended to be composed by
- * user-defined types that desire to implement manual memory management by means of
- * reference counting. Note to user: The internal implementation uses `malloc`/`free`.
- *
- * `__RefCount` was designed to be composed as a field inside a user-defined type.
- * The user is responsible to initialize the `__RefCount` in that type's constructors.
- * The user will call the `isUnique()` method to decide if this is the last
- * reference to the enclosing type so memory can be safely deallocated.
- *
- * $(B Important:) the `__RefCount` member must be initialized through a call to its
- * constructor before being used.
- */
+A qualified reference counted `struct` that is intended to be composed by
+user-defined types that desire to implement manual memory management by means of
+reference counting.
+
+`__RefCount` was designed to be composed as a field inside a user-defined type.
+The user is responsible to initialize the `__RefCount` in that type's constructors.
+The user will call the `isUnique()` method to decide if this is the last
+reference to the enclosing type so memory can be safely deallocated.
+
+Implementation: The internal implementation of `__RefCount` uses `malloc`/`free`.
+
+Important: The `__RefCount` member must be initialized through a call to its
+constructor before being used.
+*/
 struct __RefCount
 {
     import core.atomic : atomicOp;
@@ -25,11 +34,11 @@ struct __RefCount
     private shared CounterType* rc = null;
 
     /*
-     * Perform `rc op val` operation. Always use atomics as the counter is shared.
-     *
-     * Returns:
-     *      The result of the operation.
-     */
+    Perform `rc op val` operation. Always use atomics as the counter is shared.
+
+    Returns:
+         The result of the operation.
+    */
     @nogc nothrow pure @trusted scope
     private CounterType rcOp(this Q, string op)(CounterType val) const
     {
@@ -37,15 +46,15 @@ struct __RefCount
     }
 
     /**
-     * Creates a new `__RefCount` instance. Its memory is internally managed with
-     * malloc/free.
-     *
-     * Params:
-     *      _ = an unused int value; required because structs don't have a
-     *          user defined default constructor
-     */
+    Creates a new `__RefCount` instance. Its memory is internally managed with
+    malloc/free.
+
+    Params:
+         _ = an unused int value; required because structs don't have a
+             user defined default constructor
+    */
     @nogc nothrow pure @trusted scope
-    this(this Q)(int)
+    this(this Q)(int _)
     {
         // We are required to always use a shared support as the result of a `pure`
         // function is implicitly convertible to `immutable`.
@@ -65,28 +74,29 @@ struct __RefCount
     };
 
     /**
-     * Copy constructs a mutable `__RefCount` from a mutable reference, `rhs`.
-     * This increases the reference count.
-     */
+    Copy constructs a mutable `__RefCount` from a mutable reference, `rhs`.
+    This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope ref typeof(this) rhs)
     {
         mixin(copyCtorIncRef);
     }
 
-    ///
+    /**
+    Copy constructs a `shared` mutable `__RefCount` from a `shared` mutable
+    reference, `rhs`. This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope ref shared typeof(this) rhs) shared
     {
         mixin(copyCtorIncRef);
     }
 
-    // { Get a const obj
-
     /**
-     * Copy constructs a $(B const __RefCount) from a mutable reference, `rhs`.
-     * This increases the reference count.
-     */
+    Copy constructs a $(B const __RefCount) from a mutable reference, `rhs`.
+    This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope ref typeof(this) rhs) const
     {
@@ -94,9 +104,9 @@ struct __RefCount
     }
 
     /**
-     * Copy constructs a $(B const shared __RefCount) from a `shared` mutable
-     * reference, `rhs`. This increases the reference count.
-     */
+    Copy constructs a $(B const shared __RefCount) from a `shared` mutable
+    reference, `rhs`. This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope ref shared typeof(this) rhs) const shared
     {
@@ -104,9 +114,9 @@ struct __RefCount
     }
 
     /**
-     * Copy constructs a $(B const __RefCount) from a `const` reference, `rhs`.
-     * This increases the reference count.
-     */
+    Copy constructs a $(B const __RefCount) from a `const` reference, `rhs`.
+    This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope const ref typeof(this) rhs) const
     {
@@ -114,9 +124,9 @@ struct __RefCount
     }
 
     /**
-     * Copy constructs a $(B const shared __RefCount) from a $(B const shared)
-     * reference, `rhs`. This increases the reference count.
-     */
+    Copy constructs a $(B const shared __RefCount) from a $(B const shared)
+    reference, `rhs`. This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope const shared ref typeof(this) rhs) const shared
     {
@@ -124,9 +134,9 @@ struct __RefCount
     }
 
     /**
-     * Copy constructs a $(B const __RefCount) from an `immutable` reference, `rhs`.
-     * This increases the reference count.
-     */
+    Copy constructs a $(B const __RefCount) from an `immutable` reference, `rhs`.
+    This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope immutable ref typeof(this) rhs) const
     {
@@ -134,44 +144,41 @@ struct __RefCount
     }
 
     /**
-     * Copy constructs a $(B const shared __RefCount) from an $(B immutable shared)
-     * reference, `rhs`. This increases the reference count.
-     */
+    Copy constructs a $(B const shared __RefCount) from an $(B immutable shared)
+    reference, `rhs`. This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope immutable shared ref typeof(this) rhs) const shared
     {
         mixin(copyCtorIncRef);
     }
-    // } Get a const obj
 
-    // { Get an immutable obj; Allow only immutable from immutable
 
-    /*
-     * Copy construct an $(B immutable __RefCount) from an `immutable` reference, `rhs`.
-     * This increases the reference count.
-     */
+    /**
+    Copy construct an $(B immutable __RefCount) from an `immutable` reference, `rhs`.
+    This increases the reference count.
+    */
     @nogc nothrow pure @safe scope
     this(return scope immutable ref typeof(this) rhs) immutable
     {
         mixin(copyCtorIncRef);
     }
-    // } Get an immutable obj
 
-    /*
-     * Assign a `__RefCount` object into this. This will decrement the old reference
-     * count before assigning the new one. If the old reference was the last one,
-     * this will trigger the deallocation of the old ref. This increases the
-     * reference count of `rhs`.
-     *
-     * Params:
-     *      rhs = the `__RefCount` object to be assigned.
-     *
-     * Returns:
-     *      A reference to `this`.
-     *
-     * Complexity:
-     *      $(BIGOH 1).
-     */
+    /**
+    Assign a `__RefCount` object into this. This will decrement the old reference
+    count before assigning the new one. If the old reference was the last one,
+    this will trigger the deallocation of the old ref. This increases the
+    reference count of `rhs`.
+
+    Params:
+         rhs = the `__RefCount` object to be assigned.
+
+    Returns:
+         A reference to `this`.
+
+    Complexity:
+         $(BIGOH 1).
+    */
     @nogc nothrow pure @safe scope
     ref __RefCount opAssign(return scope ref typeof(this) rhs) return
     {
@@ -212,12 +219,12 @@ struct __RefCount
     }
 
     /*
-     * Increase the reference count. This asserts that `__RefCount` is initialized.
-     *
-     * Returns:
-     *      This returns a `void*` so the compiler won't optimize away the call
-     *      to this `const pure` function.
-     */
+    Increase the reference count. This asserts that `__RefCount` is initialized.
+
+    Returns:
+         This returns a `void*` so the compiler won't optimize away the call
+         to this `const pure` function.
+    */
     @nogc nothrow pure @safe scope
     private void* addRef(this Q)() const
     {
@@ -227,13 +234,13 @@ struct __RefCount
     }
 
     /*
-     * Decrease the reference count. If this was the last reference, `free` the
-     * support. This asserts that `__RefCount` is initialized.
-     *
-     * Returns:
-     *      This returns a `void*` so the compiler won't optimize away the call
-     *      to this `const pure` function.
-     */
+    Decrease the reference count. If this was the last reference, `free` the
+    support. This asserts that `__RefCount` is initialized.
+
+    Returns:
+         This returns a `void*` so the compiler won't optimize away the call
+         to this `const pure` function.
+    */
     @nogc nothrow pure @trusted scope
     private void* delRef(this Q)() const
     {
@@ -254,12 +261,12 @@ struct __RefCount
     }
 
     /*
-     * `free` the support.
-     *
-     * Returns:
-     *      This returns a $(B void*) so the compiler won't optimize away the call
-     *      to this `const pure` function.
-     */
+    `free` the support.
+
+    Returns:
+         This returns a $(B void*) so the compiler won't optimize away the call
+         to this `const pure` function.
+    */
     @nogc nothrow pure @system scope
     private void* deallocate(this Q)() const
     {
@@ -267,8 +274,8 @@ struct __RefCount
     }
 
     /**
-     * Destruct the `__RefCount`. If it's initialized, decrement the refcount.
-     */
+    Destruct the `__RefCount`. If it's initialized, decrement the refcount.
+    */
     @nogc nothrow pure @trusted scope
     ~this()
     {
@@ -279,15 +286,15 @@ struct __RefCount
     }
 
     /**
-     * Return a boolean value denoting if this is the only reference to this object.
-     *
-     * Returns:
-     *      `true` if this reference count is unique; `false` if this `__RefCount`
-     *      object is uninitialized or there are multiple references to it.
-     *
-     * Complexity:
-     *      $(BIGOH 1).
-     */
+    Return a boolean value denoting if this is the only reference to this object.
+
+    Returns:
+         `true` if this reference count is unique; `false` if this `__RefCount`
+         object is uninitialized or there are multiple references to it.
+
+    Complexity:
+         $(BIGOH 1).
+    */
     pure nothrow @safe @nogc scope
     bool isUnique(this Q)() const
     {
@@ -295,14 +302,14 @@ struct __RefCount
     }
 
     /**
-     * Return a boolean value denoting if this `__RefCount` object is initialized.
-     *
-     * Returns:
-     *      `true` if initialized; `false` otherwise
-     *
-     * Complexity:
-     *      $(BIGOH 1).
-     */
+    Return a boolean value denoting if this `__RefCount` object is initialized.
+
+    Returns:
+         `true` if initialized; `false` otherwise
+
+    Complexity:
+         $(BIGOH 1).
+    */
     pure nothrow @safe @nogc scope
     bool isInitialized(this Q)() const
     {
@@ -319,15 +326,15 @@ struct __RefCount
     }
 
     /**
-     * Return a raw pointer to the underlying reference count pointer.
-     * This is unsafe and may lead to dangling pointers to invalid memory.
-     *
-     * Returns:
-     *      A raw pointer to the reference count.
-     *
-     * Complexity:
-     *      $(BIGOH 1).
-     */
+    Return a raw pointer to the underlying reference count pointer.
+    This is unsafe and may lead to dangling pointers to invalid memory.
+
+    Returns:
+         A raw pointer to the reference count.
+
+    Complexity:
+         $(BIGOH 1).
+    */
     pure nothrow @nogc @system
     const(CounterType*) getUnsafeValue(this Q)() const
     {
@@ -335,19 +342,19 @@ struct __RefCount
     }
 
     /**
-     * A factory function that creates and returns a new instance of a qualified
-     * `__RefCount`.
-     *
-     * Params:
-     *      QualifiedRefCount = a template parameter that is a qualified
-     *      `__RefCount` type.
-     *
-     * Returns:
-     *      A new instance of `QualifiedRefCount`.
-     *
-     * Complexity:
-     *      $(BIGOH 1).
-     */
+    A factory function that creates and returns a new instance of a qualified
+    `__RefCount`.
+
+    Params:
+         QualifiedRefCount = a template parameter that is a qualified
+         `__RefCount` type.
+
+    Returns:
+         A new instance of `QualifiedRefCount`.
+
+    Complexity:
+         $(BIGOH 1).
+    */
     static pure nothrow @nogc @safe
     auto make(QualifiedRefCount)()
     {
@@ -363,7 +370,7 @@ unittest
 
     struct rcarray
     {
-    @nogc nothrow:
+        @nogc nothrow:
 
         private __RefCount rc;
         int[] payload;
@@ -389,7 +396,7 @@ unittest
             payload = rhs.payload;
         }
 
-        /* Implement copy ctors */
+        /* Implement copy constructors */
         this(return scope ref typeof(this) rhs)
         {
             rc = rhs.rc;
@@ -410,7 +417,7 @@ unittest
     auto a = rcarray(42);
     assert(a.rc.isUnique);
     {
-        auto a2 = a; // Construct a2 by Copy Ctor
+        auto a2 = a; // Construct a2 by copy construction
         assert(!a.rc.isUnique);
         auto a3 = rcarray(4242);
         a2 = a3; // Assign a3 into a2; a's ref count drops
@@ -418,7 +425,7 @@ unittest
         a3 = a; // Assign a into a3; a's ref count increases
         assert(!a.rc.isUnique);
         // a2 and a3 go out of scope here
-        // a2 is the last ref to arr(4242) -> gets freed
+        // a2 is the last ref to rcarray(4242) -> gets freed
     }
     assert(a.rc.isUnique);
 }
