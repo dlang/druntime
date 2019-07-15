@@ -11,6 +11,25 @@ Source: $(DRUNTIMESRC core/experimental/refcount.d)
 */
 module core.experimental.refcount;
 
+///
+unittest
+{
+    auto rc = __RefCount.make!__RefCount();
+    assert(rc.isUnique);
+    {
+        auto rc2 = rc; // Construct rc2 by copy construction
+        assert(!rc.isUnique);
+        auto rc3 = __RefCount.make!__RefCount();
+        rc2 = rc3; // Assign rc3 into rc2; rc's ref count drops
+        assert(rc.isUnique);
+        rc3 = rc; // Assign rc into rc3; rc's ref count increases
+        assert(!rc.isUnique);
+        // rc2 and rc3 go out of scope here
+        // rc2 is the last ref to the `__RefCount` created in this block -> gets freed
+    }
+    assert(rc.isUnique);
+}
+
 /**
 A qualified reference counted `struct` that is intended to be composed by
 user-defined types that desire to implement manual memory management by means of
