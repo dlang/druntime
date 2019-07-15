@@ -80,7 +80,9 @@ else version (Posix)
         while (waited_pid == -1 && errno == EINTR);
         if (waited_pid == 0)
             return ChildStatus.running;
-        if (waited_pid != pid || status != 0)
+        else if (errno ==  ECHILD)
+            return ChildStatus.done; // someone called posix.syswait
+        else if (waited_pid != pid || status != 0)
         {
             onForkError();
             return ChildStatus.error;
@@ -90,7 +92,7 @@ else version (Posix)
 
     public import core.sys.posix.unistd: pid_t, fork;
     import core.sys.posix.sys.wait: waitpid, WNOHANG;
-    import core.stdc.errno: errno, EINTR;
+    import core.stdc.errno: errno, EINTR, ECHILD;
 
     //version = GC_Use_Alloc_MMap;
 }
