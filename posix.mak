@@ -86,6 +86,8 @@ else
 	DFLAGS:=$(UDFLAGS) -inline # unittests don't compile with -inline
 endif
 
+UTFLAGS:=-version=CoreUnittest -unittest
+
 # Set PHOBOS_DFLAGS (for linking against Phobos)
 PHOBOS_PATH=../phobos
 SHARED=$(if $(findstring $(OS),linux freebsd),1,)
@@ -152,6 +154,9 @@ $(DOCDIR)/object.html : src/object.d $(DMD)
 $(DOCDIR)/core_%.html : src/core/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
+$(DOCDIR)/core_experimental_%.html : src/core/experimental/%.d $(DMD)
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+
 $(DOCDIR)/core_gc_%.html : src/core/gc/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
@@ -171,6 +176,12 @@ $(DOCDIR)/core_sys_darwin_mach_%.html : src/core/sys/darwin/mach/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/core_sys_darwin_netinet_%.html : src/core/sys/darwin/netinet/%.d $(DMD)
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+
+$(DOCDIR)/core_internal_array_%.html : src/core/internal/array/%.d $(DMD)
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+
+$(DOCDIR)/core_internal_util_%.html : src/core/internal/util/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
 $(DOCDIR)/rt_%.html : src/rt/%.d $(DMD)
@@ -238,7 +249,7 @@ $(DRUNTIMESO) $(DRUNTIMESOLIB) dll: DFLAGS+=-version=Shared -fPIC
 dll: $(DRUNTIMESOLIB)
 
 $(DRUNTIMESO): $(OBJS) $(SRCS) $(DMD)
-	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) $(DFLAGS) $(SRCS) $(OBJS) $(LINKDL)
+	$(DMD) -shared -debuglib= -defaultlib= -of$(DRUNTIMESO) $(DFLAGS) $(SRCS) $(OBJS) $(LINKDL) -L-lpthread -L-lm
 
 $(DRUNTIMESOLIB): $(OBJS) $(SRCS) $(DMD)
 	$(DMD) -c -fPIC -of$(DRUNTIMESOOBJ) $(DFLAGS) $(SRCS)
@@ -255,7 +266,7 @@ UT_MODULES:=$(patsubst src/%.d,$(ROOT)/unittest/%,$(SRCS))
 HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
 ifeq ($(HAS_ADDITIONAL_TESTS),1)
 	ADDITIONAL_TESTS:=test/init_fini test/exceptions test/coverage test/profile test/cycles test/allocations test/typeinfo \
-	    test/aa test/gc test/hash \
+	    test/aa test/cpuid test/gc test/hash \
 	    test/thread test/unittest test/imports test/betterc test/stdcpp test/config
 	ADDITIONAL_TESTS+=$(if $(SHARED),test/shared,)
 endif
@@ -289,7 +300,7 @@ $(addprefix $(ROOT)/unittest/,$(DISABLED_TESTS)) :
 ifeq (,$(SHARED))
 
 $(ROOT)/unittest/test_runner: $(OBJS) $(SRCS) src/test_runner.d $(DMD)
-	$(DMD) $(UDFLAGS) -unittest -of$@ src/test_runner.d $(SRCS) $(OBJS) -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) $(UTFLAGS) -of$@ src/test_runner.d $(SRCS) $(OBJS) -debuglib= -defaultlib= -L-lpthread -L-lm
 
 else
 
@@ -297,10 +308,10 @@ UT_DRUNTIME:=$(ROOT)/unittest/libdruntime-ut$(DOTDLL)
 
 $(UT_DRUNTIME): UDFLAGS+=-version=Shared -fPIC
 $(UT_DRUNTIME): $(OBJS) $(SRCS) $(DMD)
-	$(DMD) $(UDFLAGS) -shared -unittest -of$@ $(SRCS) $(OBJS) $(LINKDL) -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -shared $(UTFLAGS) -of$@ $(SRCS) $(OBJS) $(LINKDL) -debuglib= -defaultlib= -L-lpthread -L-lm
 
 $(ROOT)/unittest/test_runner: $(UT_DRUNTIME) src/test_runner.d $(DMD)
-	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L$(UT_DRUNTIME) -debuglib= -defaultlib=
+	$(DMD) $(UDFLAGS) -of$@ src/test_runner.d -L$(UT_DRUNTIME) -debuglib= -defaultlib= -L-lpthread -L-lm
 
 endif
 

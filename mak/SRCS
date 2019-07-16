@@ -33,6 +33,15 @@ SRCS=\
 	src\core\internal\utf.d \
 	src\core\internal\lifetime.d \
 	\
+	src\core\internal\array\comparison.d \
+	src\core\internal\array\construction.d \
+	src\core\internal\array\equality.d \
+	src\core\internal\array\casting.d \
+	src\core\internal\array\capacity.d \
+	src\core\internal\array\concatenation.d \
+	src\core\internal\array\utils.d \
+	src\core\internal\util\array.d \
+	\
 	src\core\stdc\assert_.d \
 	src\core\stdc\complex.d \
 	src\core\stdc\config.d \
@@ -148,7 +157,6 @@ SRCS=\
 	\
 	src\core\sys\linux\netinet\in_.d \
 	src\core\sys\linux\netinet\tcp.d \
-	src\core\sys\linux\sys\netinet\tcp.d \
 	\
 	src\core\sys\linux\sys\auxv.d \
 	src\core\sys\linux\sys\eventfd.d \
@@ -455,7 +463,6 @@ SRCS=\
 	src\rt\backtrace\elf.d \
 	src\rt\backtrace\macho.d \
 	\
-	src\rt\util\array.d \
 	src\rt\util\random.d \
 	src\rt\util\typeinfo.d \
 	src\rt\util\container\array.d \

@@ -33,6 +33,16 @@ COPY=\
 	$(IMPDIR)\core\internal\utf.d \
 	$(IMPDIR)\core\internal\lifetime.d \
 	\
+	$(IMPDIR)\core\internal\array\comparison.d \
+	$(IMPDIR)\core\internal\array\construction.d \
+	$(IMPDIR)\core\internal\array\equality.d \
+	$(IMPDIR)\core\internal\array\casting.d \
+	$(IMPDIR)\core\internal\array\capacity.d \
+	$(IMPDIR)\core\internal\array\concatenation.d \
+	$(IMPDIR)\core\internal\array\utils.d \
+	\
+	$(IMPDIR)\core\internal\util\array.d \
+	\
 	$(IMPDIR)\core\stdc\assert_.d \
 	$(IMPDIR)\core\stdc\complex.d \
 	$(IMPDIR)\core\stdc\config.d \
@@ -148,7 +158,6 @@ COPY=\
 	\
 	$(IMPDIR)\core\sys\linux\netinet\in_.d \
 	$(IMPDIR)\core\sys\linux\netinet\tcp.d \
-	$(IMPDIR)\core\sys\linux\sys\netinet\tcp.d \
 	\
 	$(IMPDIR)\core\sys\linux\sys\auxv.d \
 	$(IMPDIR)\core\sys\linux\sys\eventfd.d \
