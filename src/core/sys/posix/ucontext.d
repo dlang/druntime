@@ -1032,7 +1032,47 @@ else version (FreeBSD)
             ulong[8]        mc_spare;
         }
     }
+    else version (PPC)
+    {
+		alias long 	__register_t;
+		alias uint 	__uint32_t;
+		alias ulong __uint64_t;
 
+		struct mcontext_t {
+			int		mc_vers;
+			int		mc_flags;
+			enum _MC_FP_VALID =	0x01;
+			enum _MC_AV_VALID =	0x02;
+			int		mc_onstack;	  	/* saved onstack flag */
+			int		mc_len;			/* sizeof(__mcontext) */
+			__uint64_t[32 * 2] 	mc_avec;		/* vector register file */
+			__uint32_t[2] 		mc_av;
+			__register_t[42] 	mc_frame;
+			__uint64_t[33] 		mc_fpreg;
+			__uint64_t[32] 		mc_vsxfpreg;	/* low-order half of VSR0-31 */
+		}
+	}
+    else version (PPC64)
+    {
+		alias long 	__register_t;
+		alias uint 	__uint32_t;
+		alias ulong __uint64_t;
+
+		struct mcontext_t {
+			int		mc_vers;
+			int		mc_flags;
+			enum _MC_FP_VALID =	0x01;
+			enum _MC_AV_VALID =	0x02;
+			int		mc_onstack;	  	/* saved onstack flag */
+			int		mc_len;			/* sizeof(__mcontext) */
+			__uint64_t[32 * 2] 	mc_avec;		/* vector register file */
+			__uint32_t[2] 		mc_av;
+			__register_t[42] 	mc_frame;
+			__uint64_t[33] 		mc_fpreg;
+			__uint64_t[32] 		mc_vsxfpreg;	/* low-order half of VSR0-31 */
+		}
+	}
+    
     // <ucontext.h>
     enum UCF_SWAPPED = 0x00000001;
 
