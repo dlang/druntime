@@ -211,6 +211,16 @@ else version (FreeBSD)
         // __int128_t
         struct _jmp_buf { long[2][_JBLEN + 1] _jb; };
     }
+    else version (PPC)
+    {
+		enum _JBLEN	= 100;
+        struct _jmp_buf { long[_JBLEN + 1] _jb; }
+    }
+    else version (PPC64)
+    {
+		enum _JBLEN	= 100;
+        struct _jmp_buf { long[_JBLEN + 1] _jb; }
+    }
     else
         static assert(0);
     alias _jmp_buf[1] jmp_buf;
@@ -417,6 +427,14 @@ else version (FreeBSD)
     {
         // __int128_t
         struct _sigjmp_buf { long[2][_JBLEN + 1] _jb; };
+    }
+    else version (PPC)
+    {
+        struct _sigjmp_buf { long[_JBLEN + 1] _sjb; }
+    }
+    else version (PPC64)
+    {
+        struct _sigjmp_buf { long[_JBLEN + 1] _sjb; }
     }
     else
         static assert(0);
