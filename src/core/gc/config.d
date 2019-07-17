@@ -42,7 +42,7 @@ struct Config
     disable:0|1    - start disabled (%d)
     fork:0|1       - set fork behaviour (%d)
     profile:0|1|2  - enable profiling with summary when terminating program (%d)
-    gc:".ptr, disable, profile);
+    gc:".ptr, disable, profile, fork);
         foreach (i, entry; registeredGCFactories)
         {
             if (i) printf("|");
