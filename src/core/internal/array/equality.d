@@ -5,10 +5,10 @@
  * License: Distributed under the
  *      $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
  *    (See accompanying file LICENSE)
- * Source: $(DRUNTIMESRC rt/_array.d)
+ * Source: $(DRUNTIMESRC core/internal/_array/_equality.d)
  */
 
-module rt.array.equality;
+module core.internal.array.equality;
 
 // compiler frontend lowers dynamic array comparison to this
 bool __ArrayEq(T1, T2)(T1[] a, T2[] b)

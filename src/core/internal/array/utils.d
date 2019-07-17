@@ -5,9 +5,9 @@
   License: Distributed under the
        $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
      (See accompanying file LICENSE)
-  Source: $(DRUNTIMESRC rt/_array/_utils.d)
+  Source: $(DRUNTIMESRC core/internal/_array/_utils.d)
 */
-module rt.array.utils;
+module core.internal.array.utils;
 
 import core.internal.traits : Parameters;
 

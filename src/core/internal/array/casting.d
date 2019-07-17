@@ -5,9 +5,9 @@
   License: Distributed under the
        $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost Software License 1.0).
      (See accompanying file LICENSE)
-  Source: $(DRUNTIMESRC rt/_array/_casting.d)
+  Source: $(DRUNTIMESRC core/internal/_array/_casting.d)
 */
-module rt.array.casting;
+module core.internal.array.casting;
 
 /**
 Used by `__ArrayCast` to emit a descriptive error message.
