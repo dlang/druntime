@@ -876,30 +876,30 @@ enum ELF_MACHINE_OK(x) = ((x) == EM_PPC);
 
 struct Elf32_Auxinfo
 {   
-    int a_type;         
+    int a_type;
     union a_un
     {
-        long    a_val;      
-        void    *a_ptr;     
-        void function(void* a) a_fcn;   
-    } 
-} 
-
-struct Elf64_Auxinfo
-{   
-    long a_type;            
-    union a_un
-    {
-        long    a_val;      
-        void    *a_ptr;     
+        long    a_val;
+        void    *a_ptr;
         void function(void* a) a_fcn;   
     }
-} 
+}
+
+struct Elf64_Auxinfo
+{
+    long a_type;
+    union a_un
+    {
+        long    a_val;
+        void    *a_ptr;
+        void function(void* a) a_fcn;
+    }
+}
 
 // __ElfType(Auxinfo);
 
 /** 
- * Values for a_type. 
+ * Values for a_type.
  */
 
 enum AT_NULL   = 0;
@@ -930,11 +930,11 @@ enum AT_COUNT = 23;
  * Relocation types.
  */
 
-enum R_PPC_COUNT =  37; 
+enum R_PPC_COUNT =  37;
 enum R_PPC_EMB_COUNT =  (R_PPC_EMB_RELSDA - R_PPC_EMB_NADDR32 + 1);
 
-/** 
- * Define "machine" characteristics  
+/**
+ * Define "machine" characteristics
  */
 
 version (PPC64)
