@@ -898,7 +898,7 @@ struct Elf64_Auxinfo
 
 // __ElfType(Auxinfo);
 
-/** 
+/**
  * Values for a_type.
  */
 
