@@ -1072,7 +1072,7 @@ else version (FreeBSD)
             __uint64_t[32]      mc_vsxfpreg;    /* low-order half of VSR0-31 */
         }
     }
-    
+
     // <ucontext.h>
     enum UCF_SWAPPED = 0x00000001;
 
