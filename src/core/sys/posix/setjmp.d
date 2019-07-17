@@ -213,12 +213,12 @@ else version (FreeBSD)
     }
     else version (PPC)
     {
-		enum _JBLEN	= 100;
+        enum _JBLEN = 100;
         struct _jmp_buf { long[_JBLEN + 1] _jb; }
     }
     else version (PPC64)
     {
-		enum _JBLEN	= 100;
+        enum _JBLEN = 100;
         struct _jmp_buf { long[_JBLEN + 1] _jb; }
     }
     else
