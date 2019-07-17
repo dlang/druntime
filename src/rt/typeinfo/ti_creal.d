@@ -32,12 +32,12 @@ class TypeInfo_c : TypeInfo
         return Floating!F.hashOf(*cast(F*)p);
     }
 
-    override bool equals(in void* p1, in void* p2) const @trusted
+    override bool equals(const scope void* p1, const scope void* p2) const @trusted
     {
         return Floating!F.equals(*cast(F*)p1, *cast(F*)p2);
     }
 
-    override int compare(in void* p1, in void* p2) const @trusted
+    override int compare(const scope void* p1, const scope void* p2) const @trusted
     {
         return Floating!F.compare(*cast(F*)p1, *cast(F*)p2);
     }

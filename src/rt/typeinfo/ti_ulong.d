@@ -33,12 +33,12 @@ class TypeInfo_m : TypeInfo
             return hashOf(*cast(const ulong*)p);
     }
 
-    override bool equals(in void* p1, in void* p2)
+    override bool equals(const scope void* p1, const scope void* p2)
     {
         return *cast(ulong *)p1 == *cast(ulong *)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(const scope void* p1, const scope void* p2)
     {
         if (*cast(ulong *)p1 < *cast(ulong *)p2)
             return -1;

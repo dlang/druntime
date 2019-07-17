@@ -29,12 +29,12 @@ class TypeInfo_h : TypeInfo
         return *cast(const ubyte *)p;
     }
 
-    override bool equals(in void* p1, in void* p2)
+    override bool equals(const scope void* p1, const scope void* p2)
     {
         return *cast(ubyte *)p1 == *cast(ubyte *)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(const scope void* p1, const scope void* p2)
     {
         return *cast(ubyte *)p1 - *cast(ubyte *)p2;
     }

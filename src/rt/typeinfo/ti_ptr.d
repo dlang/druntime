@@ -29,12 +29,12 @@ class TypeInfo_P : TypeInfo
         return addr ^ (addr >> 4);
     }
 
-    override bool equals(in void* p1, in void* p2)
+    override bool equals(const scope void* p1, const scope void* p2)
     {
         return *cast(void**)p1 == *cast(void**)p2;
     }
 
-    override int compare(in void* p1, in void* p2)
+    override int compare(const scope void* p1, const scope void* p2)
     {
         if (*cast(void**)p1 < *cast(void**)p2)
             return -1;

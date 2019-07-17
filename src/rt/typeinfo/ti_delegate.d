@@ -30,7 +30,7 @@ class TypeInfo_D : TypeInfo
         return hashOf(*cast(dg*)p);
     }
 
-    override bool equals(in void* p1, in void* p2)
+    override bool equals(const scope void* p1, const scope void* p2)
     {
         return *cast(dg *)p1 == *cast(dg *)p2;
     }

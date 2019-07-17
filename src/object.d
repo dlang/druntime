@@ -969,10 +969,10 @@ class TypeInfo
     }
 
     /// Compares two instances for equality.
-    bool equals(in void* p1, in void* p2) const { return p1 == p2; }
+    bool equals(const scope void* p1, const scope void* p2) const { return p1 == p2; }
 
     /// Compares two instances for &lt;, ==, or &gt;.
-    int compare(in void* p1, in void* p2) const { return _xopCmp(p1, p2); }
+    int compare(const scope void* p1, const scope void* p2) const { return _xopCmp(p1, p2); }
 
     /// Returns size of the type.
     @property size_t tsize() nothrow pure const @safe @nogc { return 0; }
@@ -1044,8 +1044,8 @@ class TypeInfo_Enum : TypeInfo
     }
 
     override size_t getHash(scope const void* p) const { return base.getHash(p); }
-    override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
-    override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
+    override bool equals(const scope void* p1, const scope void* p2) const { return base.equals(p1, p2); }
+    override int compare(const scope void* p1, const scope void* p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void* p1, void* p2) const { return base.swap(p1, p2); }
 
@@ -1097,12 +1097,12 @@ class TypeInfo_Pointer : TypeInfo
         return addr ^ (addr >> 4);
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         return *cast(void**)p1 == *cast(void**)p2;
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         if (*cast(void**)p1 < *cast(void**)p2)
             return -1;
@@ -1153,7 +1153,7 @@ class TypeInfo_Array : TypeInfo
         return getArrayHash(value, a.ptr, a.length);
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         void[] a1 = *cast(void[]*)p1;
         void[] a2 = *cast(void[]*)p2;
@@ -1168,7 +1168,7 @@ class TypeInfo_Array : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         void[] a1 = *cast(void[]*)p1;
         void[] a2 = *cast(void[]*)p2;
@@ -1251,7 +1251,7 @@ class TypeInfo_StaticArray : TypeInfo
         return getArrayHash(value, p, len);
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         size_t sz = value.tsize;
 
@@ -1263,7 +1263,7 @@ class TypeInfo_StaticArray : TypeInfo
         return true;
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         size_t sz = value.tsize;
 
@@ -1370,7 +1370,7 @@ class TypeInfo_AssociativeArray : TypeInfo
                     this.value == c.value;
     }
 
-    override bool equals(in void* p1, in void* p2) @trusted const
+    override bool equals(const scope void* p1, const scope void* p2) @trusted const
     {
         return !!_aaEqual(this, *cast(const AA*) p1, *cast(const AA*) p2);
     }
@@ -1423,8 +1423,8 @@ class TypeInfo_Vector : TypeInfo
     }
 
     override size_t getHash(scope const void* p) const { return base.getHash(p); }
-    override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
-    override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
+    override bool equals(const scope void* p1, const scope void* p2) const { return base.equals(p1, p2); }
+    override int compare(const scope void* p1, const scope void* p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void* p1, void* p2) const { return base.swap(p1, p2); }
 
@@ -1523,14 +1523,14 @@ class TypeInfo_Delegate : TypeInfo
         return hashOf(*cast(void delegate()*)p);
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         auto dg1 = *cast(void delegate()*)p1;
         auto dg2 = *cast(void delegate()*)p2;
         return dg1 == dg2;
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         auto dg1 = *cast(void delegate()*)p1;
         auto dg2 = *cast(void delegate()*)p2;
@@ -1598,7 +1598,7 @@ class TypeInfo_Class : TypeInfo
         return o ? o.toHash() : 0;
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;
@@ -1606,7 +1606,7 @@ class TypeInfo_Class : TypeInfo
         return (o1 is o2) || (o1 && o1.opEquals(o2));
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;
@@ -1681,7 +1681,7 @@ class TypeInfo_Class : TypeInfo
      * Search all modules for TypeInfo_Class corresponding to classname.
      * Returns: null if not found
      */
-    static const(TypeInfo_Class) find(in char[] classname)
+    static const(TypeInfo_Class) find(const scope char[] classname)
     {
         foreach (m; ModuleInfo)
         {
@@ -1759,7 +1759,7 @@ class TypeInfo_Interface : TypeInfo
         return o.toHash();
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         Interface* pi = **cast(Interface ***)*cast(void**)p1;
         Object o1 = cast(Object)(*cast(void**)p1 - pi.offset);
@@ -1769,7 +1769,7 @@ class TypeInfo_Interface : TypeInfo
         return o1 == o2 || (o1 && o1.opCmp(o2) == 0);
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         Interface* pi = **cast(Interface ***)*cast(void**)p1;
         Object o1 = cast(Object)(*cast(void**)p1 - pi.offset);
@@ -1834,7 +1834,7 @@ class TypeInfo_Struct : TypeInfo
         }
     }
 
-    override bool equals(in void* p1, in void* p2) @trusted pure nothrow const
+    override bool equals(const scope void* p1, const scope void* p2) @trusted pure nothrow const
     {
         import core.stdc.string : memcmp;
 
@@ -1849,7 +1849,7 @@ class TypeInfo_Struct : TypeInfo
             return memcmp(p1, p2, initializer().length) == 0;
     }
 
-    override int compare(in void* p1, in void* p2) @trusted pure nothrow const
+    override int compare(const scope void* p1, const scope void* p2) @trusted pure nothrow const
     {
         import core.stdc.string : memcmp;
 
@@ -1908,10 +1908,10 @@ class TypeInfo_Struct : TypeInfo
 
     @safe pure nothrow
     {
-        size_t   function(in void*)           xtoHash;
-        bool     function(in void*, in void*) xopEquals;
-        int      function(in void*, in void*) xopCmp;
-        string   function(in void*)           xtoString;
+        size_t   function(const scope void*)           xtoHash;
+        bool     function(const scope void*, const scope void*) xopEquals;
+        int      function(const scope void*, const scope void*) xopCmp;
+        string   function(const scope void*)           xtoString;
 
         enum StructFlags : uint
         {
@@ -1998,12 +1998,12 @@ class TypeInfo_Tuple : TypeInfo
         assert(0);
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         assert(0);
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         assert(0);
     }
@@ -2065,8 +2065,8 @@ class TypeInfo_Const : TypeInfo
     }
 
     override size_t getHash(scope const void *p) const { return base.getHash(p); }
-    override bool equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
-    override int compare(in void *p1, in void *p2) const { return base.compare(p1, p2); }
+    override bool equals(const scope void *p1, const scope void *p2) const { return base.equals(p1, p2); }
+    override int compare(const scope void *p1, const scope void *p2) const { return base.compare(p1, p2); }
     override @property size_t tsize() nothrow pure const { return base.tsize; }
     override void swap(void *p1, void *p2) const { return base.swap(p1, p2); }
 
@@ -2145,7 +2145,7 @@ struct ModuleInfo
     version (all)
     {
         deprecated("ModuleInfo cannot be copy-assigned because it is a variable-sized struct.")
-        void opAssign(in ModuleInfo m) { _flags = m._flags; _index = m._index; }
+        void opAssign(const scope ModuleInfo m) { _flags = m._flags; _index = m._index; }
     }
     else
     {
@@ -2512,7 +2512,7 @@ class Throwable : Object
     override string toString()
     {
         string s;
-        toString((buf) { s ~= buf; });
+        toString((const scope char[] buf) { s ~= buf; });
         return s;
     }
 
@@ -2522,7 +2522,7 @@ class Throwable : Object
      * performed in certain error situations.  Override this $(D
      * toString) method to customize the error message.
      */
-    void toString(scope void delegate(in char[]) sink) const
+    void toString(scope void delegate(const scope char[]) sink) const
     {
         import core.internal.string : unsignedToTempString;
 
@@ -2738,13 +2738,13 @@ extern (C)
     // from druntime/src/rt/aaA.d
 
     private struct AA { void* impl; }
-    // size_t _aaLen(in AA aa) pure nothrow @nogc;
-    private void* _aaGetY(AA* paa, const TypeInfo_AssociativeArray ti, in size_t valsz, in void* pkey) pure nothrow;
-    private void* _aaGetX(AA* paa, const TypeInfo_AssociativeArray ti, in size_t valsz, in void* pkey, out bool found) pure nothrow;
-    // inout(void)* _aaGetRvalueX(inout AA aa, in TypeInfo keyti, in size_t valsz, in void* pkey);
-    inout(void[]) _aaValues(inout AA aa, in size_t keysz, in size_t valsz, const TypeInfo tiValueArray) pure nothrow;
-    inout(void[]) _aaKeys(inout AA aa, in size_t keysz, const TypeInfo tiKeyArray) pure nothrow;
-    void* _aaRehash(AA* paa, in TypeInfo keyti) pure nothrow;
+    // size_t _aaLen(const scope AA aa) pure nothrow @nogc;
+    private void* _aaGetY(AA* paa, const TypeInfo_AssociativeArray ti, const size_t valsz, const scope void* pkey) pure nothrow;
+    private void* _aaGetX(AA* paa, const TypeInfo_AssociativeArray ti, const size_t valsz, const scope void* pkey, out bool found) pure nothrow;
+    // inout(void)* _aaGetRvalueX(inout AA aa, const scope TypeInfo keyti, const size_t valsz, const scope void* pkey);
+    inout(void[]) _aaValues(inout AA aa, const size_t keysz, const size_t valsz, const TypeInfo tiValueArray) pure nothrow;
+    inout(void[]) _aaKeys(inout AA aa, const size_t keysz, const TypeInfo tiKeyArray) pure nothrow;
+    void* _aaRehash(AA* paa, const scope TypeInfo keyti) pure nothrow;
     void _aaClear(AA aa) pure nothrow;
 
     // alias _dg_t = extern(D) int delegate(void*);
@@ -2760,8 +2760,8 @@ extern (C)
     void* _aaRangeFrontValue(AARange r) pure nothrow @nogc @safe;
     void _aaRangePopFront(ref AARange r) pure nothrow @nogc @safe;
 
-    int _aaEqual(in TypeInfo tiRaw, in AA aa1, in AA aa2);
-    hash_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow;
+    int _aaEqual(const scope TypeInfo tiRaw, const scope AA aa1, const scope AA aa2);
+    hash_t _aaGetHash(const scope AA* aa, const scope TypeInfo tiRaw) nothrow;
 
     /*
         _d_assocarrayliteralTX marked as pure, because aaLiteral can be called from pure code.
@@ -3658,7 +3658,7 @@ version (none)
         return value;
     }
 
-    private void _bailOut(string file, int line, in char[] msg)
+    private void _bailOut(string file, int line, const scope char[] msg)
     {
         char[21] buf = void;
         throw new Exception(cast(string)(file ~ "(" ~ ulongToString(buf[], line) ~ "): " ~ (msg ? msg : "Enforcement failed")));
@@ -3728,12 +3728,12 @@ else
     }
 }
 
-bool _xopEquals(in void*, in void*)
+bool _xopEquals(const scope void*, const scope void*)
 {
     throw new Error("TypeInfo.equals is not implemented");
 }
 
-bool _xopCmp(in void*, in void*)
+bool _xopCmp(const scope void*, const scope void*)
 {
     throw new Error("TypeInfo.compare is not implemented");
 }
@@ -3975,7 +3975,7 @@ private inout(TypeInfo) getElement(inout TypeInfo value) @trusted pure nothrow
     return cast(inout) element;
 }
 
-private size_t getArrayHash(in TypeInfo element, in void* ptr, in size_t count) @trusted nothrow
+private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr, const size_t count) @trusted nothrow
 {
     if (!count)
         return 0;
@@ -3984,7 +3984,7 @@ private size_t getArrayHash(in TypeInfo element, in void* ptr, in size_t count) 
     if (!elementSize)
         return 0;
 
-    static bool hasCustomToHash(in TypeInfo value) @trusted pure nothrow
+    static bool hasCustomToHash(const scope TypeInfo value) @trusted pure nothrow
     {
         const element = getElement(value);
 

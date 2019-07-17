@@ -30,7 +30,7 @@ class TypeInfo_As : TypeInfo_Array
         return hashOf(s);
     }
 
-    override bool equals(in void* p1, in void* p2) const
+    override bool equals(const scope void* p1, const scope void* p2) const
     {
         short[] s1 = *cast(short[]*)p1;
         short[] s2 = *cast(short[]*)p2;
@@ -39,7 +39,7 @@ class TypeInfo_As : TypeInfo_Array
                memcmp(cast(void *)s1, cast(void *)s2, s1.length * short.sizeof) == 0;
     }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         short[] s1 = *cast(short[]*)p1;
         short[] s2 = *cast(short[]*)p2;
@@ -73,7 +73,7 @@ class TypeInfo_At : TypeInfo_As
 {
     override string toString() const { return "ushort[]"; }
 
-    override int compare(in void* p1, in void* p2) const
+    override int compare(const scope void* p1, const scope void* p2) const
     {
         ushort[] s1 = *cast(ushort[]*)p1;
         ushort[] s2 = *cast(ushort[]*)p2;
