@@ -45,11 +45,11 @@ struct Elf64_Ehdr
 
 struct Elf64_Lib
 {
-	Elf64_Word    l_name;
-	Elf64_Word 	  l_time_stamp;
-	Elf64_Word 	  l_checksum;
-	Elf64_Word 	  l_version;
-	Elf64_Word 	  l_flags;
+    Elf64_Word    l_name;
+    Elf64_Word    l_time_stamp;
+    Elf64_Word    l_checksum;
+    Elf64_Word    l_version;
+    Elf64_Word    l_flags;
 }
 
 struct Elf64_Shdr
