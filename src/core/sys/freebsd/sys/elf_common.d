@@ -875,13 +875,13 @@ enum ELF_MACHINE_OK(x) = ((x) == EM_PPC);
  */
 
 struct Elf32_Auxinfo
-{   
+{
     int a_type;
     union a_un
     {
         long    a_val;
         void    *a_ptr;
-        void function(void* a) a_fcn;   
+        void function(void* a) a_fcn;
     }
 }
 
