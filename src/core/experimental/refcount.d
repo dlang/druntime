@@ -14,12 +14,12 @@ module core.experimental.refcount;
 ///
 unittest
 {
-    auto rc = __RefCount.make!__RefCount();
+    auto rc = __RefCount.make();
     assert(rc.isUnique);
     {
         auto rc2 = rc; // Construct rc2 by copy construction
         assert(!rc.isUnique);
-        auto rc3 = __RefCount.make!__RefCount();
+        auto rc3 = __RefCount.make();
         rc2 = rc3; // Assign rc3 into rc2; rc's ref count drops
         assert(rc.isUnique);
         rc3 = rc; // Assign rc into rc3; rc's ref count increases
@@ -73,7 +73,7 @@ struct __RefCount
              user defined default constructor
     */
     @nogc nothrow pure @trusted scope
-    this(this Q)(int _)
+    private this(size_t _)
     {
         // We are required to always use a shared support as the result of a `pure`
         // function is implicitly convertible to `immutable`.
@@ -306,23 +306,18 @@ struct __RefCount
     }
 
     /**
-    A factory function that creates and returns a new instance of a qualified
-    `__RefCount`.
-
-    Params:
-         QualifiedRefCount = a template parameter that is a qualified
-         `__RefCount` type.
+    A factory function that creates and returns a new instance of `__RefCount`.
 
     Returns:
-         A new instance of `QualifiedRefCount`.
+         A new instance of `__RefCount`
 
     Complexity:
          $(BIGOH 1).
     */
-    static pure nothrow @nogc @safe
-    auto make(QualifiedRefCount)()
+    pure nothrow @nogc @safe
+    static __RefCount make()
     {
-        return QualifiedRefCount(1);
+        return __RefCount(1);
     }
 }
 
@@ -341,7 +336,7 @@ unittest
 
         this(int sz)
         {
-            rc = __RefCount.make!__RefCount();
+            rc = __RefCount.make();
             payload = (cast(int*) malloc(sz * int.sizeof))[0 .. sz];
         }
 
