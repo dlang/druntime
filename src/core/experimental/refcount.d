@@ -114,65 +114,24 @@ struct __RefCount
     }
 
     /**
-    Copy constructs a $(B const __RefCount) from a mutable reference, `rhs`.
+    Copy constructs a $(B const __RefCount) from an `inout` reference, `rhs`.
     This increases the reference count.
     */
     @nogc nothrow pure @safe scope
-    this(return scope ref typeof(this) rhs) const
+    this(return scope inout ref typeof(this) rhs) const
     {
         mixin(copyCtorIncRef);
     }
 
     /**
-    Copy constructs a $(B const shared __RefCount) from a `shared` mutable
+    Copy constructs a $(B const shared __RefCount) from an `inout shared`
     reference, `rhs`. This increases the reference count.
     */
     @nogc nothrow pure @safe scope
-    this(return scope ref shared typeof(this) rhs) const shared
+    this(return scope inout shared ref typeof(this) rhs) const shared
     {
         mixin(copyCtorIncRef);
     }
-
-    /**
-    Copy constructs a $(B const __RefCount) from a `const` reference, `rhs`.
-    This increases the reference count.
-    */
-    @nogc nothrow pure @safe scope
-    this(return scope const ref typeof(this) rhs) const
-    {
-        mixin(copyCtorIncRef);
-    }
-
-    /**
-    Copy constructs a $(B const shared __RefCount) from a $(B const shared)
-    reference, `rhs`. This increases the reference count.
-    */
-    @nogc nothrow pure @safe scope
-    this(return scope const shared ref typeof(this) rhs) const shared
-    {
-        mixin(copyCtorIncRef);
-    }
-
-    /**
-    Copy constructs a $(B const __RefCount) from an `immutable` reference, `rhs`.
-    This increases the reference count.
-    */
-    @nogc nothrow pure @safe scope
-    this(return scope immutable ref typeof(this) rhs) const
-    {
-        mixin(copyCtorIncRef);
-    }
-
-    /**
-    Copy constructs a $(B const shared __RefCount) from an $(B immutable shared)
-    reference, `rhs`. This increases the reference count.
-    */
-    @nogc nothrow pure @safe scope
-    this(return scope immutable shared ref typeof(this) rhs) const shared
-    {
-        mixin(copyCtorIncRef);
-    }
-
 
     /**
     Copy construct an $(B immutable __RefCount) from an `immutable` reference, `rhs`.
