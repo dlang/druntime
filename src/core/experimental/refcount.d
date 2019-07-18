@@ -50,7 +50,7 @@ struct __RefCount
     import core.atomic : atomicOp;
 
     alias CounterType = uint;
-    private shared CounterType* rc = null;
+    private shared(CounterType)* rc = null;
 
     /*
     Perform `rc op val` operation. Always use atomics as the counter is shared.
@@ -59,9 +59,9 @@ struct __RefCount
          The result of the operation.
     */
     @nogc nothrow pure @trusted scope
-    private CounterType rcOp(this Q, string op)(CounterType val) const
+    private shared(CounterType) rcOp(this Q, string op)(CounterType val) const
     {
-        return cast(CounterType)(atomicOp!op(*(cast(shared CounterType*) rc), val));
+        return cast(shared(CounterType)) (atomicOp!op(*(cast(shared(CounterType)*) rc), val));
     }
 
     /**
@@ -78,7 +78,7 @@ struct __RefCount
         // We are required to always use a shared support as the result of a `pure`
         // function is implicitly convertible to `immutable`.
 
-        shared CounterType* support = cast(shared CounterType*) pureAllocate(CounterType.sizeof);
+        shared(CounterType)* support = cast(shared(CounterType)*) pureAllocate(CounterType.sizeof);
         *support = 1; // Start with 1 to avoid calling an `addRef` from 0 to 1
         rc = cast(typeof(rc)) support;
     }
