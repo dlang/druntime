@@ -78,7 +78,8 @@ struct __RefCount
         // We are required to always use a shared support as the result of a `pure`
         // function is implicitly convertible to `immutable`.
 
-        shared(CounterType)* support = cast(shared(CounterType)*) pureAllocate(CounterType.sizeof);
+        import core.memory : pureMalloc;
+        shared(CounterType)* support = cast(shared(CounterType)*) pureMalloc(CounterType.sizeof);
         *support = 1; // Start with 1 to avoid calling an `addRef` from 0 to 1
         rc = cast(typeof(rc)) support;
     }
@@ -289,7 +290,9 @@ struct __RefCount
     @nogc nothrow pure @system scope
     private void* deallocate(this Q)() const
     {
-        return pureDeallocate((cast(CounterType*) rc)[0 .. 1]);
+        import core.memory : pureFree;
+        pureFree(cast(void*) rc);
+        return null;
     }
 
     /**
@@ -333,15 +336,6 @@ struct __RefCount
     bool isInitialized(this Q)() const
     {
         return rc !is null;
-    }
-
-    version (CoreUnittest)
-    {
-        pure nothrow @nogc @trusted scope
-        private bool isValueEq(this Q)(uint val) const
-        {
-            return *getUnsafeValue == val;
-        }
     }
 
     /**
@@ -447,102 +441,4 @@ unittest
         // a2 is the last ref to rcarray(4242) -> gets freed
     }
     assert(a.rc.isUnique);
-}
-
-version (CoreUnittest)
-{
-    private struct StatsAllocator
-    {
-        version (CoreUnittest) size_t bytesUsed;
-
-        @trusted @nogc nothrow pure
-        void* allocate(size_t bytes) shared
-        {
-            import core.memory : pureMalloc;
-            if (!bytes) return null;
-
-            auto p = pureMalloc(bytes);
-            if (p is null) return null;
-            enum alignment = size_t.sizeof;
-            assert(cast(size_t) p % alignment == 0);
-
-            version (CoreUnittest)
-            {
-                static if (is(typeof(this) == shared))
-                {
-                    import core.atomic : atomicOp;
-                    atomicOp!"+="(bytesUsed, bytes);
-                }
-                else
-                {
-                    bytesUsed += bytes;
-                }
-            }
-            return p;
-        }
-
-        @system @nogc nothrow pure
-        bool deallocate(void[] b) shared
-        {
-            import core.memory : pureFree;
-            assert(b !is null);
-
-            version (CoreUnittest)
-            {
-                static if (is(typeof(this) == shared))
-                {
-                    import core.atomic : atomicOp;
-                    assert(atomicOp!">="(bytesUsed, b.length));
-                    atomicOp!"-="(bytesUsed, b.length);
-                }
-                else
-                {
-                    assert(bytesUsed >= b.length);
-                    bytesUsed -= b.length;
-                }
-            }
-            pureFree(b.ptr);
-            return true;
-        }
-    }
-
-    private shared StatsAllocator allocator;
-
-    private @nogc nothrow pure @trusted
-    void* pureAllocate(size_t n)
-    {
-        return (cast(void* function(size_t) @nogc nothrow pure)(&_allocate))(n);
-    }
-
-    private @nogc nothrow @safe
-    void* _allocate(size_t n)
-    {
-        return allocator.allocate(n);
-    }
-
-    private @nogc nothrow pure
-    void* pureDeallocate(T)(T[] b)
-    {
-        return (cast(void* function(T[]) @nogc nothrow pure)(&_deallocate!(T)))(b);
-    }
-
-    private @nogc nothrow
-    void* _deallocate(T)(T[] b)
-    {
-        allocator.deallocate(b);
-        return null;
-    }
-}
-else
-{
-    import core.memory : pureMalloc, pureFree;
-
-    private alias pureAllocate = pureMalloc;
-
-    @nogc nothrow pure
-    private static void* pureDeallocate(T)(T[] b)
-    {
-        pureFree(b.ptr);
-        return null;
-    }
 }
