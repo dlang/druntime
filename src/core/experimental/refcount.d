@@ -202,32 +202,24 @@ struct __RefCount
     @nogc nothrow pure @safe scope
     ref __RefCount opAssign(return scope ref typeof(this) rhs) return
     {
-        if (rhs.isInitialized() && rc == rhs.rc)
-        {
-            return this;
-        }
-        if (rhs.isInitialized())
-        {
-            rhs.addRef();
-        }
-        if (isInitialized())
-        {
-            delRef();
-        }
-        () @trusted { rc = rhs.rc; }();
-        return this;
+        mixin(opAssignImpl);
     }
 
     ///
     @nogc nothrow pure @safe scope
     ref shared(__RefCount) opAssign(return scope shared ref typeof(this) rhs) return shared
     {
-        if (rhs.isInitialized() && rc == rhs.rc)
-        {
-            return this;
-        }
+        mixin(opAssignImpl);
+    }
+
+    private enum opAssignImpl =
+    q{
         if (rhs.isInitialized())
         {
+            if (rc == rhs.rc)
+            {
+                return this;
+            }
             rhs.addRef();
         }
         if (isInitialized())
@@ -236,7 +228,7 @@ struct __RefCount
         }
         () @trusted { rc = rhs.rc; }();
         return this;
-    }
+    };
 
     /*
     Increase the reference count. This asserts that `__RefCount` is initialized.
