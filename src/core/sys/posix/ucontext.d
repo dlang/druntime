@@ -25,6 +25,8 @@ nothrow:
 
 version (MIPS32)  version = MIPS_Any;
 version (MIPS64)  version = MIPS_Any;
+version (PPC)     version = PPC_Any;
+version (PPC64)   version = PPC_Any;
 version (RISCV32) version = RISCV_Any;
 version (RISCV64) version = RISCV_Any;
 version (S390)    version = IBMZ_Any;
@@ -1032,29 +1034,9 @@ else version (FreeBSD)
             ulong[8]        mc_spare;
         }
     }
-    else version (PPC)
+    else version (PPC_Any)
     {
-        alias uint   __register_t;
-        alias uint   __uint32_t;
-        alias ulong  __uint64_t;
-
-        struct mcontext_t {
-            int     mc_vers;
-            int     mc_flags;
-            enum _MC_FP_VALID = 0x01;
-            enum _MC_AV_VALID = 0x02;
-            int     mc_onstack;
-            int     mc_len;
-            __uint64_t[32 * 2]  mc_avec;
-            __uint32_t[2]       mc_av;
-            __register_t[42]    mc_frame;
-            __uint64_t[33]      mc_fpreg;
-            __uint64_t[32]      mc_vsxfpreg;
-        }
-    }
-    else version (PPC64)
-    {
-        alias long   __register_t;
+        alias size_t __register_t;
         alias uint   __uint32_t;
         alias ulong  __uint64_t;
 
