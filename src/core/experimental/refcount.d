@@ -240,7 +240,7 @@ struct __RefCount
     @nogc nothrow pure @safe scope
     private void* addRef(this Q)() const
     {
-        assert(isInitialized(), "[__RefCount.addRef] __RefCount is uninitialized");
+        assert(isInitialized(), "__RefCount is uninitialized");
         cast(void) rcOp!(Q, "+=")(1);
         return null;
     }
@@ -256,7 +256,7 @@ struct __RefCount
     @nogc nothrow pure @trusted scope
     private void* delRef(this Q)() const
     {
-        assert(isInitialized(), "[__RefCount.delRef] __RefCount is uninitialized");
+        assert(isInitialized(), "__RefCount is uninitialized");
         /*
          * This is an optimization. Most likely, most of the time, the refcount
          * is `1`, so we don't want to make more ops to update that value only
