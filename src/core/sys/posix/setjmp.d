@@ -22,6 +22,8 @@ extern (C) nothrow @nogc:
 
 version (RISCV32) version = RISCV_Any;
 version (RISCV64) version = RISCV_Any;
+version (PPC) version = PPC_Any;
+version (PPC64) version = PPC_Any;
 
 //
 // Required
@@ -211,12 +213,7 @@ else version (FreeBSD)
         // __int128_t
         struct _jmp_buf { long[2][_JBLEN + 1] _jb; };
     }
-    else version (PPC)
-    {
-        enum _JBLEN = 100;
-        struct _jmp_buf { long[_JBLEN + 1] _jb; }
-    }
-    else version (PPC64)
+    else version (PPC_Any)
     {
         enum _JBLEN = 100;
         struct _jmp_buf { long[_JBLEN + 1] _jb; }
@@ -428,11 +425,7 @@ else version (FreeBSD)
         // __int128_t
         struct _sigjmp_buf { long[2][_JBLEN + 1] _jb; };
     }
-    else version (PPC)
-    {
-        struct _sigjmp_buf { long[_JBLEN + 1] _sjb; }
-    }
-    else version (PPC64)
+    else version (PPC_Any)
     {
         struct _sigjmp_buf { long[_JBLEN + 1] _sjb; }
     }
