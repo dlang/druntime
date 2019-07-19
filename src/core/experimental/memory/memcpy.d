@@ -72,16 +72,13 @@ unittest
  */
 version (unittest)
 {
-
     import std.random;
-    
     /* Handy struct
      */
     struct S(size_t Size)
     {
         ubyte[Size] x;
     }
-    
     static string genTests()
     {
         import std.conv : text;
@@ -96,7 +93,6 @@ version (unittest)
         }
         return res;
     }
-    
     void tests()
     {
         testStaticType!(byte);
@@ -122,7 +118,6 @@ version (unittest)
         testStaticType!(S!44032);
         testStaticType!(S!55897);
         testStaticType!(S!79394);
-    
         testStaticType!(S!256);
         testStaticType!(S!512);
         testStaticType!(S!1024);
@@ -133,7 +128,6 @@ version (unittest)
         testStaticType!(S!32768);
         testStaticType!(S!65536);
     }
-    
     pragma(inline, false)
     void initStatic(T)(T *v)
     {
@@ -152,13 +146,12 @@ version (unittest)
         else
         {
             auto m = (cast(ubyte*) v)[0 .. T.sizeof];
-            for(int i = 0; i < m.length; i++)
+            for (int i = 0; i < m.length; i++)
             {
                 m[i] = uniform!byte;
             }
         }
     }
-    
     pragma(inline, false)
     void verifyStaticType(T)(const T *a, const T *b)
     {
@@ -181,12 +174,11 @@ version (unittest)
         {
             enum n = T.sizeof;
         }
-        for(size_t i = 0; i < n; i++)
+        for (size_t i = 0; i < n; i++)
         {
             assert(aa[i] == bb[i]);
         }
     }
-    
     pragma(inline, false)
     void testStaticType(T)()
     {
@@ -196,7 +188,6 @@ version (unittest)
         memcpy(d, s);
         verifyStaticType(&d, &s);
     }
-    
     pragma(inline, false)
     void init(T)(ref T[] v)
     {
@@ -214,42 +205,35 @@ version (unittest)
         }
         else
         {
-            for(int i = 0; i < v.length; i++)
+            for (int i = 0; i < v.length; i++)
             {
                 v[i] = uniform!byte;
             }
         }
     }
-    
     pragma(inline, false)
     void verifyArray(size_t j, const ref ubyte[] a, const ref ubyte[80000] b)
     {
         //assert(a.length == b.length);
-        for(int i = 0; i < a.length; i++)
+        for (int i = 0; i < a.length; i++)
         {
             assert(a[i] == b[i]);
         }
     }
-    
     pragma(inline, false)
     void testDynamicArray(size_t n)()
     {
         ubyte[80000] buf1;
         ubyte[80000] buf2;
-    
         enum alignments = 32;
-    
-        foreach(i; 0..alignments)
+        foreach (i; 0..alignments)
         {
             ubyte[] p = buf1[i..i+n];
             ubyte[] q;
-    
             // Relatively aligned
             q = buf2[0..n];
-    
             // Use a copy for the cases of overlap.
             ubyte[80000] copy;
-    
             pragma(inline, false);
             init(q);
             pragma(inline, false);
