@@ -16,6 +16,9 @@ DOCS=\
 	$(DOCDIR)\core_time.html \
 	$(DOCDIR)\core_vararg.html \
 	\
+	$(DOCDIR)\core_experimental_memory_memcpy.html \
+	$(DOCDIR)\core_experimental_memory_simd.html \
+	\
 	$(DOCDIR)\core_gc_config.html \
 	$(DOCDIR)\core_gc_gcinterface.html \
 	$(DOCDIR)\core_gc_registry.html \

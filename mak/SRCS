@@ -17,6 +17,9 @@ SRCS=\
 	src\core\time.d \
 	src\core\vararg.d \
 	\
+	src\core\experimental\memory\memcpy.d \
+	src\core\experimental\memory\simd.d \
+	\
 	src\core\gc\config.d \
 	src\core\gc\gcinterface.d \
 	src\core\gc\registry.d \
