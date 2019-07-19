@@ -258,7 +258,7 @@ unittest
 /* Implementation
  */
 
-import simd;
+import core.experimental.memory.simd;
 
 /*
  * Dynamic implementation
