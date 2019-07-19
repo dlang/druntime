@@ -11,6 +11,8 @@ module core.experimental.memory.memcpy;
 
 import core.internal.traits : isArray;
 
+//import core.internal.traits : isArray;
+
 /* Static Types
  */
 // NOTE(stefanos): Previously, there was more sophisticated code
@@ -72,26 +74,11 @@ unittest
  */
 version (unittest)
 {
-    import std.random;
     /* Handy struct
      */
     struct S(size_t Size)
     {
         ubyte[Size] x;
-    }
-    static string genTests()
-    {
-        import std.conv : text;
-        string res;
-        foreach (i; 1..100)
-        {
-            res ~=
-            "
-            testStaticType!(S!"~text(i)~");
-            testDynamicArray!("~text(i)~")();
-            ";
-        }
-        return res;
     }
     void tests()
     {
@@ -106,7 +93,11 @@ version (unittest)
         testStaticType!(float);
         testStaticType!(double);
         testStaticType!(real);
-        mixin(genTests());
+        static foreach (i; 1..100)
+        {
+            testStaticType!(S!i);
+            testDynamicArray!(i)();
+        }
         testStaticType!(S!3452);
         testDynamicArray!(3452)();
         testStaticType!(S!6598);
@@ -131,25 +122,10 @@ version (unittest)
     pragma(inline, false)
     void initStatic(T)(T *v)
     {
-        static if (is(T == float))
+        auto m = (cast(ubyte*) v)[0 .. T.sizeof];
+        for (int i = 0; i < m.length; i++)
         {
-            *v = uniform(0.0f, 9_999_999.0f);
-        }
-        else static if (is(T == double))
-        {
-            *v = uniform(0.0, 9_999_999.0);
-        }
-        else static if (is(T == real))
-        {
-            *v = uniform(0.0L, 9_999_999.0L);
-        }
-        else
-        {
-            auto m = (cast(ubyte*) v)[0 .. T.sizeof];
-            for (int i = 0; i < m.length; i++)
-            {
-                m[i] = uniform!byte;
-            }
+            m[i] = cast(ubyte) i;
         }
     }
     pragma(inline, false)
@@ -191,24 +167,9 @@ version (unittest)
     pragma(inline, false)
     void init(T)(ref T[] v)
     {
-        static if (is (T == float))
+        for (int i = 0; i < v.length; i++)
         {
-            v = uniform(0.0f, 9_999_999.0f);
-        }
-        else static if (is(T == double))
-        {
-            v = uniform(0.0, 9_999_999.0);
-        }
-        else static if (is(T == real))
-        {
-            v = uniform(0.0L, 9_999_999.0L);
-        }
-        else
-        {
-            for (int i = 0; i < v.length; i++)
-            {
-                v[i] = uniform!byte;
-            }
+            v[i] = cast(ubyte) i;
         }
     }
     pragma(inline, false)
@@ -427,5 +388,4 @@ void Dmemcpy(void* d, const(void)* s, size_t n)
         src++;
     }
 }
-
 }
