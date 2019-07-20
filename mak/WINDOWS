@@ -111,6 +111,9 @@ $(IMPDIR)\core\time.d : src\core\time.d
 $(IMPDIR)\core\vararg.d : src\core\vararg.d
 	copy $** $@
 
+$(IMPDIR)\core\experimental\rcptr.d : src\core\experimental\rcptr.d
+	copy $** $@
+
 $(IMPDIR)\core\gc\config.d : src\core\gc\config.d
 	copy $** $@
 
