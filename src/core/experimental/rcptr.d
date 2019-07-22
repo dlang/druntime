@@ -49,7 +49,7 @@ Implementation: The internal implementation of `__rcptr` uses `malloc`/`free`.
 */
 struct __rcptr(T)
 {
-    alias CounterType = uint;
+    alias CounterType = int;
 
     private T* ptr = null;
     private shared(CounterType)* count = null;
@@ -141,7 +141,7 @@ struct __rcptr(T)
 
         // The counter is left at -1 when this was the last reference
         // (i.e. the counter is 0-based, because we use calloc)
-        if (atomicOp!"-="(*count, 1) == -1)
+        if (atomicOp!"-="(*count, 1) < 0)
         {
             deallocate();
         }
