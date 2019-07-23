@@ -141,7 +141,7 @@ struct __rcptr(T)
 
         // The counter is left at -1 when this was the last reference
         // (i.e. the counter is 0-based, because we use calloc)
-        if (atomicOp!"-="(*count, 1) < 0)
+        if (atomicOp!"=="(*count, 0) || atomicOp!"-="(*count, 1) == -1)
         {
             deallocate();
         }
