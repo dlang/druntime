@@ -94,7 +94,7 @@ struct __rcptr(T)
     }
 
     ///
-    void opAssign(ref __rcptr!T rhs)
+    void opAssign(__rcptr!T rhs)
     {
         if (rhs.count == count)
         {
