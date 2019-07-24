@@ -86,6 +86,7 @@ COPY=\
 	$(IMPDIR)\core\stdcpp\exception.d \
 	$(IMPDIR)\core\stdcpp\memory.d \
 	$(IMPDIR)\core\stdcpp\new_.d \
+	$(IMPDIR)\core\stdcpp\optional.d \
 	$(IMPDIR)\core\stdcpp\string.d \
 	$(IMPDIR)\core\stdcpp\string_view.d \
 	$(IMPDIR)\core\stdcpp\type_traits.d \
