@@ -33,7 +33,6 @@ void memset(T)(ref T dst, const ubyte val)
     }
 }
 
-
 version (D_SIMD)
 {
     version = useSIMD;
@@ -56,7 +55,7 @@ version (useSIMD)
     /* SIMD implementation
      */
     //pragma(msg, "SIMD used");
-    extern(C) private void Dmemset(void *d, const uint val, size_t n)
+    private void Dmemset(void *d, const uint val, size_t n)
     {
         import core.simd : int4;
         version (LDC)
@@ -198,41 +197,50 @@ else
 // for all < 32 sizes.
 private void memsetNaive(void *dst, const uint val, size_t n)
 {
-    const ulong v = cast(ulong) val * 0x0101010101010101;  // Broadcast val to all 8 bytes
-    enum handleLT16Sizes = "
-    switch (n)
+    // NOTE(stefanos): DMD could not inline it.
+    void handleLT16Sizes(void *d, const ulong v, size_t n)
     {
-        case 6:
-            *(cast(uint*) (dst+2)) = cast(uint) v;
-            goto case 2;  // fall-through
-        case 2:
-            *(cast(ushort*) dst) = cast(ushort) v;
-            return;
+        switch (n)
+        {
+            case 6:
+                *(cast(uint*) (d+2)) = cast(uint) v;
+                goto case 2;  // fall-through
+            case 2:
+                *(cast(ushort*) d) = cast(ushort) v;
+                return;
 
-        case 7:
-            *(cast(uint*) (dst+3)) = cast(uint) v;
-            goto case 3;  // fall-through
-        case 3:
-            *(cast(ushort*) (dst+1)) = cast(ushort) v;
-            goto case 1;  // fall-through
-        case 1:
-            *(cast(ubyte*) dst) = cast(ubyte) v;
-            return;
+            case 7:
+                *(cast(uint*) (d+3)) = cast(uint) v;
+                goto case 3;  // fall-through
+            case 3:
+                *(cast(ushort*) (d+1)) = cast(ushort) v;
+                goto case 1;  // fall-through
+            case 1:
+                *(cast(ubyte*) d) = cast(ubyte) v;
+                return;
 
-        case 4:
-            *(cast(uint*) dst) = cast(uint) v;
-            return;
-        case 0:
-            return;
+            case 4:
+                *(cast(uint*) d) = cast(uint) v;
+                return;
+            case 0:
+                return;
 
-        case 5:
-            *(cast(uint*) (dst+1)) = cast(uint) v;
-            *(cast(ubyte*) dst) = cast(ubyte) v;
-            return;
-        default:
+            case 5:
+                *(cast(uint*) (d+1)) = cast(uint) v;
+                *(cast(ubyte*) d) = cast(ubyte) v;
+                return;
+            default:
+        }
     }
-    ";
-    mixin(handleLT16Sizes);
+
+
+    const ulong v = cast(ulong) val * 0x0101010101010101;  // Broadcast c to all 8 bytes
+    if (n < 8)
+    {
+        handleLT16Sizes(dst, v, n);
+        return;
+    }
+    
     // NOTE(stefanos): Normally, we would have different alignment
     // for 32-bit and 64-bit versions. For the sake of simplicity,
     // we'll let the compiler do the work.
@@ -241,21 +249,22 @@ private void memsetNaive(void *dst, const uint val, size_t n)
     {  // Unaligned
         // Move 8 bytes (which we will possibly overlap later).
         *(cast(ulong*) dst) = v;
-        // Reach alignment
         dst += 8 - rem;
         n -= 8 - rem;
     }
     ulong *d = cast(ulong*) dst;
     ulong temp = n / 8;
-    for (size_t i = 0; i != temp; ++i)
+    for(size_t i = 0; i != temp; ++i)
     {
         *d = v;
-        ++d;  // += 8
+        ++d;
         n -= 8;
     }
     dst = cast(void *) d;
-    mixin(handleLT16Sizes);
+
+    handleLT16Sizes(dst, v, n);
 }
+
 
 /** Core features tests.
   */
