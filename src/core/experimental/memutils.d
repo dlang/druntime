@@ -240,7 +240,6 @@ private void memsetNaive(void *dst, const uint val, size_t n)
         handleLT16Sizes(dst, v, n);
         return;
     }
-    
     // NOTE(stefanos): Normally, we would have different alignment
     // for 32-bit and 64-bit versions. For the sake of simplicity,
     // we'll let the compiler do the work.
@@ -254,7 +253,7 @@ private void memsetNaive(void *dst, const uint val, size_t n)
     }
     ulong *d = cast(ulong*) dst;
     ulong temp = n / 8;
-    for(size_t i = 0; i != temp; ++i)
+    for (size_t i = 0; i != temp; ++i)
     {
         *d = v;
         ++d;
