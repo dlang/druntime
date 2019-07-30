@@ -4,7 +4,9 @@
  * One taking static types, one dynamic arrays and one static arrays.
  * Also, there is available a C-like interface, the Dmemcpy() (which is named Dmemcpy
  * for disambiguation with the C memcpy() a _similar_ interface) that
- * is the classic (void*, void*, size_t) interface. _But_ Dmemcpy returns nothing.
+ * is the classic (void*, void*, size_t) interface.
+ * N.B.: Both the memcpy() here and Dmemcpy() return nothing, contrary to the C Standard
+ * Library version.
  * Source: $(DRUNTIMESRC core/experimental/memory/memcpy.d)
  */
 module core.experimental.memory.memcpy;
@@ -19,9 +21,6 @@ import core.internal.traits : isArray;
  * Params:
  *  dst = Reference to memory destination to copy bytes to.
  *  src = Reference to memory source to copy bytes from.
- *
- * Returns:
- *  Nothing.
  */
 pragma(inline, true)
 void memcpy(T)(ref T dst, ref const T src)
@@ -36,9 +35,6 @@ if (!isArray!T)
  * Params:
  *  dst = Reference to destination dynamic array to copy bytes to.
  *  src = Reference to source dynamic array to copy bytes from.
- *
- * Returns:
- *  Nothing.
  */
 void memcpy(T)(ref T[] dst, ref const T[] src)
 {
@@ -58,9 +54,6 @@ void memcpy(T)(ref T[] dst, ref const T[] src)
  *  len = Length of the static arrays.
  *  dst = Reference to destination static array to copy bytes to.
  *  src = Reference to source static array to copy bytes from.
- *
- * Returns:
- *  Nothing.
  */
 void memcpy(T, size_t len)(ref T[len] dst, ref const T[len] src)
 {
@@ -260,9 +253,6 @@ import core.simd : float4;
  *  len = Length of the static arrays.
  *  dst = Pointer to memory destination to copy bytes to.
  *  src = Pointer to memory source to copy bytes from.
- *
- * Returns:
- *  Nothing.
  */
 void Dmemcpy(void* d, const(void)* s, size_t n)
 {
