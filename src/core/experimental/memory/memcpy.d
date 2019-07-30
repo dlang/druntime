@@ -223,7 +223,7 @@ import core.experimental.memory.simd;
 
 /*
  * Dynamic implementation
- * NOTE: Dmemcpy assumes _no_ overlap
+ * N.B.: Dmemcpy assumes _no_ overlap
  *
  */
 static if (useSIMD)
@@ -299,7 +299,7 @@ private void Dmemcpy_small(void* d, const(void)* s, size_t n)
     }
     import core.simd : void16;
     lstore64fSSE(d, s);
-    // NOTE(stefanos): Requires _no_ overlap.
+    // Requires _no_ overlap.
     n -= 64;
     s = s + n;
     d = d + n;
@@ -307,18 +307,8 @@ private void Dmemcpy_small(void* d, const(void)* s, size_t n)
 }
 
 /* Handle dynamic sizes > 128. `d` and `s` must not overlap.
+   N.B.: This function requires _no_ overlap.
  */
-// TODO(stefanos): I tried prefetching. I suppose
-// because this is a forward implementation, it should
-// actually reduce performance, but a better check would be good.
-// TODO(stefanos): Consider aligning from the end, negate `n` and adding
-// every time the `n` (and thus going backwards). That reduces the operations
-// inside the loop.
-// TODO(stefanos): Consider aligning `n` to 32. This will reduce one operation
-// inside the loop but only if the compiler can pick it up (in my tests, it didn't).
-// TODO(stefanos): Do a better research on how to inform the compiler about alignment,
-// something like assume_aligned.
-// NOTE(stefanos): This function requires _no_ overlap.
 private void Dmemcpy_large(void* d, const(void)* s, size_t n)
 {
     // NOTE(stefanos): Alternative - Reach 64-byte
@@ -362,7 +352,7 @@ private void Dmemcpy_large(void* d, const(void)* s, size_t n)
         mixin(loop!("lstore128fSSE")());
     }
 
-    // NOTE(stefanos): We already have checked that the initial size is >= 128
+    // We already have checked that the initial size is >= 128
     // to be here. So, we won't overwrite previous data.
     if (n != 0)
     {
@@ -376,7 +366,6 @@ else
 
 /* Non-SIMD version
  */
-// TODO(stefanos): Modified GNU algorithm.
 void Dmemcpy(void* d, const(void)* s, size_t n)
 {
     ubyte* dst = cast(ubyte*) d;

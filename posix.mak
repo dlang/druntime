@@ -153,6 +153,9 @@ $(DOCDIR)/core_%.html : src/core/%.d $(DMD)
 $(DOCDIR)/core_experimental_%.html : src/core/experimental/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
+$(DOCDIR)/core_experimental_memory_%.html : src/core/experimental/memory/%.d $(DMD)
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+
 $(DOCDIR)/core_gc_%.html : src/core/gc/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
