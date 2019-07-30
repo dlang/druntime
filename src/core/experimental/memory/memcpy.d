@@ -15,6 +15,13 @@ import core.internal.traits : isArray;
  * Handle Static Types
  * N.B.: No need for more sophisticated code for static types. The compiler
  * knows better how to handle them in every target case.
+ *
+ * Params:
+ *  dst = Reference to memory destination to copy bytes to.
+ *  src = Reference to memory source to copy bytes from.
+ *
+ * Returns:
+ *  Nothing.
  */
 pragma(inline, true)
 void memcpy(T)(ref T dst, ref const T src)
@@ -24,7 +31,14 @@ if (!isArray!T)
 }
 
 /**
- * Dynamic Arrays
+ * Handle Dynamic Types
+ *
+ * Params:
+ *  dst = Reference to destination dynamic array to copy bytes to.
+ *  src = Reference to source dynamic array to copy bytes from.
+ *
+ * Returns:
+ *  Nothing.
  */
 void memcpy(T)(ref T[] dst, ref const T[] src)
 {
@@ -38,7 +52,15 @@ void memcpy(T)(ref T[] dst, ref const T[] src)
 }
 
 /**
- * Static Arrays
+ * Handle Dynamic Types
+ *
+ * Params:
+ *  len = Length of the static arrays.
+ *  dst = Reference to destination static array to copy bytes to.
+ *  src = Reference to source static array to copy bytes from.
+ *
+ * Returns:
+ *  Nothing.
  */
 void memcpy(T, size_t len)(ref T[len] dst, ref const T[len] src)
 {
@@ -231,8 +253,16 @@ static if (useSIMD)
 import core.simd : float4;
 
 /**
- * Handle dynamic sizes. `d` and `s` must not overlap.
+ * Handle Dynamic Types
  * N.B.: While Dmemcpy's interface is C-like, it returns _nothing_.
+ *
+ * Params:
+ *  len = Length of the static arrays.
+ *  dst = Pointer to memory destination to copy bytes to.
+ *  src = Pointer to memory source to copy bytes from.
+ *
+ * Returns:
+ *  Nothing.
  */
 void Dmemcpy(void* d, const(void)* s, size_t n)
 {
