@@ -9,8 +9,8 @@ module core.experimental.memutils;
  * (whose count is the length of the array times
  * the size of the array element) to `val`.
  * Otherwise, set T.sizeof bytes to `val` starting from the address of `dst`.
- * 
- * Params
+ *
+ * Params:
  *  val = The byte with which we want to fill memory with.
  *  dst = Memory Destination whose bytes are to be set to `val`.
  *
