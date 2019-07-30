@@ -250,9 +250,9 @@ import core.simd : float4;
  * N.B.: While Dmemcpy's interface is C-like, it returns _nothing_.
  *
  * Params:
- *  len = Length of the static arrays.
- *  dst = Pointer to memory destination to copy bytes to.
- *  src = Pointer to memory source to copy bytes from.
+ *  d = Pointer to memory destination to copy bytes to.
+ *  s = Pointer to memory source to copy bytes from.
+ *  n = Number of bytes to copy.
  */
 void Dmemcpy(void* d, const(void)* s, size_t n)
 {
