@@ -4,12 +4,12 @@
  */
 module core.experimental.memutils;
 
-/*
-  If T is an array, set all `dst`'s bytes
-  (whose count is the length of the array times
-  the size of the array element) to `val`.
-  Otherwise, set T.sizeof bytes to `val` starting from the address of `dst`.
-*/
+/**
+ * If T is an array, set all `dst`'s bytes
+ * (whose count is the length of the array times
+ * the size of the array element) to `val`.
+ * Otherwise, set T.sizeof bytes to `val` starting from the address of `dst`.
+ */
 void memset(T)(ref T dst, const ubyte val)
 {
     import core.internal.traits : isArray;
@@ -97,7 +97,6 @@ version (useSIMD)
             store16i_sse(dest, reg);
             store16i_sse(dest+0x10, reg);
         }
-
         // NOTE(stefanos): I use the naive version, which in my benchmarks was slower
         // than the previous classic switch. BUT. Using the switch had a significant
         // drop in the rest of the sizes. It's not the branch that is responsible for the drop,
@@ -157,8 +156,7 @@ else
     }
 }
 
-/*
-  Naive version for when there isn't any vector support (SIMD etc.).
+/* Naive version for when there isn't any vector support (SIMD etc.).
 */
 private void memsetNaive(void *dst, const uint val, size_t n)
 {
