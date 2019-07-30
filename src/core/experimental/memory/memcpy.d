@@ -11,13 +11,10 @@ module core.experimental.memory.memcpy;
 
 import core.internal.traits : isArray;
 
-//import core.internal.traits : isArray;
-
 /* Static Types
+   N.B.: No need for more sophisticated code for static types. The compiler
+   knows better how to handle them in every target case.
  */
-// NOTE(stefanos): Previously, there was more sophisticated code
-// for static types. But the rationale of removing it is that
-// the compiler knows better how to optimize static types.
 pragma(inline, true)
 void memcpy(T)(ref T dst, ref const T src)
 if (!isArray!T)
@@ -223,7 +220,7 @@ import core.experimental.memory.simd;
 
 /*
  * Dynamic implementation
- * N.B.: Dmemcpy assumes _no_ overlap
+ * N.B.: All Dmemcpy functions require _no_ overlap.
  *
  */
 static if (useSIMD)
@@ -307,7 +304,6 @@ private void Dmemcpy_small(void* d, const(void)* s, size_t n)
 }
 
 /* Handle dynamic sizes > 128. `d` and `s` must not overlap.
-   N.B.: This function requires _no_ overlap.
  */
 private void Dmemcpy_large(void* d, const(void)* s, size_t n)
 {
