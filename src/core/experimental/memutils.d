@@ -4,14 +4,6 @@
  */
 module core.experimental.memutils;
 
-/** memset() implementation */
-
-/**
- * NOTE(stefanos):
- * Range-checking is not needed since the user never
- * pass an `n` (byte count) directly.
- */
-
 /*
   If T is an array, set all `dst`'s bytes
   (whose count is the length of the array times
@@ -54,7 +46,6 @@ version (useSIMD)
 {
     /* SIMD implementation
      */
-    //pragma(msg, "SIMD used");
     private void Dmemset(void *d, const uint val, size_t n)
     {
         import core.simd : int4;
@@ -154,7 +145,6 @@ version (useSIMD)
         d += 16 - rem;
         n -= 16 - rem;
         // Move in blocks of 32.
-        // TODO(stefanos): Experiment with differnt sizes.
         if (n >= 32)
         {
             // Align to (previous) multiple of 32. That does something invisible to the code,
@@ -192,9 +182,9 @@ else
     }
 }
 
-// NOTE(stefanos): We're using naive for the < 32 case in the SIMD version.
-// To be more performant, for that case, we would have a big fall-through switch
-// for all < 32 sizes.
+/*
+  Naive version for when there isn't any vector support (SIMD etc.).
+*/
 private void memsetNaive(void *dst, const uint val, size_t n)
 {
     // NOTE(stefanos): DMD could not inline it.
@@ -253,6 +243,7 @@ private void memsetNaive(void *dst, const uint val, size_t n)
     }
     ulong *d = cast(ulong*) dst;
     ulong temp = n / 8;
+    // Go in steps of 8 - the register size in x86_64.
     for (size_t i = 0; i != temp; ++i)
     {
         *d = v;
