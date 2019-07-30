@@ -3,17 +3,18 @@
  * There is an idiomatic-D interface, memcpy(), which is split into 3 overloads.
  * One taking static types, one dynamic arrays and one static arrays.
  * Also, there is available a C-like interface, the Dmemcpy() (which is named Dmemcpy
- * for disambiguation with the C memcpy() which has the exact same interface) that
- * is the classic (void*, void*, size_t) interface.
+ * for disambiguation with the C memcpy() a _similar_ interface) that
+ * is the classic (void*, void*, size_t) interface. _But_ Dmemcpy returns nothing.
  * Source: $(DRUNTIMESRC core/experimental/memory/memcpy.d)
  */
 module core.experimental.memory.memcpy;
 
 import core.internal.traits : isArray;
 
-/* Static Types
-   N.B.: No need for more sophisticated code for static types. The compiler
-   knows better how to handle them in every target case.
+/**
+ * Handle Static Types
+ * N.B.: No need for more sophisticated code for static types. The compiler
+ * knows better how to handle them in every target case.
  */
 pragma(inline, true)
 void memcpy(T)(ref T dst, ref const T src)
@@ -22,7 +23,8 @@ if (!isArray!T)
     dst = src;
 }
 
-/* Dynamic Arrays
+/**
+ * Dynamic Arrays
  */
 void memcpy(T)(ref T[] dst, ref const T[] src)
 {
@@ -35,7 +37,8 @@ void memcpy(T)(ref T[] dst, ref const T[] src)
     Dmemcpy(d, s, n);
 }
 
-/* Static Arrays
+/**
+ * Static Arrays
  */
 void memcpy(T, size_t len)(ref T[len] dst, ref const T[len] src)
 {
@@ -207,7 +210,7 @@ version (unittest)
         }
     }
 }
-
+///
 unittest
 {
     tests();
@@ -221,14 +224,15 @@ import core.experimental.memory.simd;
 /*
  * Dynamic implementation
  * N.B.: All Dmemcpy functions require _no_ overlap.
- *
  */
 static if (useSIMD)
 {
 
 import core.simd : float4;
 
-/* Handle dynamic sizes. `d` and `s` must not overlap.
+/**
+ * Handle dynamic sizes. `d` and `s` must not overlap.
+ * N.B.: While Dmemcpy's interface is C-like, it returns _nothing_.
  */
 void Dmemcpy(void* d, const(void)* s, size_t n)
 {
@@ -373,4 +377,5 @@ void Dmemcpy(void* d, const(void)* s, size_t n)
         src++;
     }
 }
+
 }
