@@ -15,7 +15,7 @@ module core.experimental.memutils;
  *  val = The byte with which we want to fill memory with.
  *  dst = Memory Destination whose bytes are to be set to `val`.
  */
-void memset(T)(ref T dst, const ubyte val)
+void memset(T)(ref T dst, const ubyte val) nothrow @nogc
 {
     import core.internal.traits : isArray;
     const uint v = cast(uint) val;
@@ -69,13 +69,13 @@ version (useSIMD)
 {
     /* SIMD implementation
      */
-    private void Dmemset(void *d, const uint val, size_t n)
+    private void Dmemset(void *d, const uint val, size_t n) nothrow @nogc
     {
         import core.simd : int4;
         version (LDC)
         {
             import ldc.simd : loadUnaligned, storeUnaligned;
-            void store16i_sse(void *dest, int4 reg)
+            void store16i_sse(void *dest, int4 reg) nothrow @nogc
             {
                 storeUnaligned!int4(reg, cast(int*) dest);
             }
@@ -83,7 +83,7 @@ version (useSIMD)
         else version (DigitalMars)
         {
             import core.simd : void16, loadUnaligned, storeUnaligned;
-            void store16i_sse(void *dest, int4 reg)
+            void store16i_sse(void *dest, int4 reg) nothrow @nogc
             {
                 storeUnaligned(cast(void16*) dest, reg);
             }
@@ -92,12 +92,12 @@ version (useSIMD)
         {
             import gcc.builtins;
             import core.simd : ubyte16;
-            void store16i_sse(void *dest, int4 reg)
+            void store16i_sse(void *dest, int4 reg) nothrow @nogc
             {
                 __builtin_ia32_storedqu(cast(char*) dest, cast(ubyte16) reg);
             }
         }
-        void store32i_sse(void *dest, int4 reg)
+        void store32i_sse(void *dest, int4 reg) nothrow @nogc
         {
             store16i_sse(dest, reg);
             store16i_sse(dest+0x10, reg);
@@ -155,7 +155,7 @@ else
 {
     /* Forward to simple implementation.
      */
-    private void Dmemset(void *d, const uint val, size_t n)
+    private void Dmemset(void *d, const uint val, size_t n) nothrow @nogc
     {
         memsetNaive(d, val, n);
     }
@@ -163,7 +163,7 @@ else
 
 /* Naive version for when there isn't any vector support (SIMD etc.).
 */
-private void memsetNaive(void *dst, const uint val, size_t n)
+private void memsetNaive(void *dst, const uint val, size_t n) nothrow @nogc
 {
     // NOTE(stefanos): DMD could not inline it.
     void handleLT16Sizes(void *d, const ulong v, size_t n)
