@@ -9,7 +9,7 @@
 */
 module core.internal.array.utils;
 
-import core.internal.traits : Parameters;
+import core.internal.traits : Parameters, hasElaborateCopyConstructor;
 
 private auto gcStatsPure() nothrow pure
 {
@@ -93,7 +93,7 @@ auto _d_HookTraceImpl(T, alias Hook, string errorMessage)(string file, int line,
 }
 
 /**
- * Check if the function `F` is calleable in a `nothrow` scope.
+ * Check if the function `F` is callable in a `nothrow` scope.
  * Params:
  *  F = Function that does not take any parameters
  * Returns:
@@ -102,7 +102,16 @@ auto _d_HookTraceImpl(T, alias Hook, string errorMessage)(string file, int line,
 enum isNoThrow(alias F) = is(typeof(() nothrow { F(); }));
 
 /**
- * Check if the type `T`'s postblit is called in nothrow, if it exist
+ * Check if the function `F` is callable in a `pure` scope.
+ * Params:
+ *  F = Function that does not take any parameters
+ * Returns:
+ *  if the function is callable in a `pure` scope.
+ */
+enum isPure(alias F) = is(typeof(() pure { F(); }));
+
+/**
+ * Check if the type `T`'s postblit is called in a `nothrow` scope, if it exist
  * Params:
  *  T = Type to check
  * Returns:
@@ -112,10 +121,39 @@ enum isNoThrow(alias F) = is(typeof(() nothrow { F(); }));
 template isPostblitNoThrow(T) {
     static if (__traits(isStaticArray, T))
         enum isPostblitNoThrow = isPostblitNoThrow!(typeof(T.init[0]));
-    else static if (__traits(hasMember, T, "__xpostblit") &&
-        // Bugzilla 14746: Check that it's the exact member of S.
-        __traits(isSame, T, __traits(parent, T.init.__xpostblit)))
-        enum isPostblitNoThrow = isNoThrow!(T.init.__xpostblit);
+    else static if (is(T == struct) && hasElaborateCopyConstructor!T)
+    {
+        static if (__traits(hasMember, T, "__xpostblit") &&
+            // Bugzilla 14746: Check that it's the exact member of S.
+            __traits(isSame, T, __traits(parent, T.init.__xpostblit)))
+            enum isPostblitNoThrow = isNoThrow!(T.init.__xpostblit);
+        else
+            enum isPostblitNoThrow = true;
+    }
     else
         enum isPostblitNoThrow = true;
+};
+
+/**
+ * Check if the type `T`'s postblit is called in a `pure` scope, if it exist
+ * Params:
+ *  T = Type to check
+ * Returns:
+ *  if the postblit is callable in a `pure` scope, if it exist.
+ *  if it does not exist, return true.
+ */
+template isPostblitPure(T) {
+    static if (__traits(isStaticArray, T))
+        enum isPostblitPure = isPostblitPure!(typeof(T.init[0]));
+    else static if (is(T == struct) && hasElaborateCopyConstructor!T)
+    {
+        static if (__traits(hasMember, T, "__xpostblit") &&
+            // Bugzilla 14746: Check that it's the exact member of S.
+            __traits(isSame, T, __traits(parent, T.init.__xpostblit)))
+            enum isPostblitPure = isPure!(T.init.__xpostblit);
+        else
+            enum isPostblitNoThrow = true;
+    }
+    else
+        enum isPostblitPure = true;
 };
