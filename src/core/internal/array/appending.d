@@ -40,7 +40,7 @@ template _d_arrayappendcTXImpl(Tarr : T[], T)
             mixin(_d_arrayappendcTXBody);
         }
     else
-        ref Tarr _d_arrayappendcTX(return scope ref Tarr px, size_t n) @trusted pure nothrow
+        ref Tarr _d_arrayappendcTX(return scope ref Tarr px, size_t n) @trusted pure
         {
             pragma(inline, false);
 
@@ -109,19 +109,27 @@ template _d_arrayappendTImpl(Tarr : T[], T)
         }
 
     private enum _d_arrayappendTBody = q{
-        import core.stdc.string : memcpy;
-        import core.internal.traits : Unqual;
+        version (D_TypeInfo)
+        {
+            import core.stdc.string : memcpy;
+            import core.internal.traits : Unqual;
 
-        auto length = x.length;
-        auto sizeelem = T.sizeof;
+            auto length = x.length;
+            auto sizeelem = T.sizeof;
 
-        _d_arrayappendcTXImpl!Tarr._d_arrayappendcTX(x, y.length);
+            if (_d_arrayappendcTXImpl!Tarr._d_arrayappendcTX(x, y.length) is null)
+                assert(0);
 
-        if (y.length)
-            memcpy(cast(Unqual!T *)&x[length], cast(Unqual!T *)&y[0], y.length * sizeelem);
 
-        // do postblit
-        __doPostblit(cast(Unqual!Tarr)x[length .. length + y.length]);
+            if (y.length)
+                memcpy(cast(Unqual!T *)&x[length], cast(Unqual!T *)&y[0], y.length * sizeelem);
+
+            // do postblit
+            if (__doPostblit(cast(Unqual!Tarr)x[length .. length + y.length]) is null)
+                assert(0);
+        }
+        else
+            assert(0, "Cannot append arrays if compiling without support for runtime type information!");
         return x;
     };
 
