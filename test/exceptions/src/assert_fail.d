@@ -102,7 +102,7 @@ void testArray()()
 void testStruct()()
 {
     struct S { int s; }
-    test(S(0), S(1), "S(0) !is S(1)");
+    test(S(0), S(1), "S(s:0) !is S(s:1)");
 }
 
 void testAA()()
@@ -130,6 +130,42 @@ void testVoidArray()()
     test!"!="(null, null, "`null` == `null`");
 }
 
+void testStructOpEquals()()
+{
+    struct T1 {
+        bool opEquals(T1) { return false; }
+    }
+
+    T1 t1;
+    assert(t1 != t1);
+    test(t1, t1, "T1() != T1()");
+}
+
+void testStructOpEquals2()()
+{
+    struct T1 {
+        int i;
+        bool opEquals(T1) { return false; }
+    }
+
+    test(T1(10), T1(20), "T1(i:10) != T1(i:20)");
+}
+
+void testStructFormat()()
+{
+    struct T1 {}
+    struct T2 {
+        bool b;
+        int i;
+        T1 t2;
+        T1* t2p;
+    }
+
+    T2 t1;
+    T2 t2 = {b: true};
+    test(t1, t2, "T2(b:false, i:0, t2:T1(), t2p:(nil)) !is T2(b:true, i:0, t2:T1(), t2p:(nil))");
+}
+
 void main()
 {
     testIntegers();
@@ -142,5 +178,8 @@ void main()
     testAA();
     testAttributes();
     testVoidArray();
+    testStructOpEquals();
+    testStructOpEquals2();
+    testStructFormat();
     fprintf(stderr, "success.\n");
 }

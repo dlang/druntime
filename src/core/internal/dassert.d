@@ -77,6 +77,13 @@ auto miniFormat(V)(V v)
     {
         return `"` ~ v ~ `"`;
     }
+    // pointers
+    else static if (is(V : P*, P))
+    {
+        char[20] val;
+        const len = sprintf(&val[0], "%p", v);
+        return val.idup[0 .. len];
+    }
     else static if (is(V : U[], U))
     {
         string msg = "[";
@@ -120,9 +127,14 @@ auto miniFormat(V)(V v)
         string msg = V.stringof ~ "(";
         foreach (idx, mem; v.tupleof)
         {
-            if (idx > 0)
-                msg ~= ", ";
-            msg ~= miniFormat(v.tupleof[idx]);
+            enum s = "V.init."~V.tupleof[idx].stringof;
+            static if (__traits(compiles, mixin(s))) {
+                if (idx > 0)
+                    msg ~= ", ";
+                msg ~= V.tupleof[idx].stringof;
+                msg ~= ":";
+                msg ~= miniFormat(v.tupleof[idx]);
+            }
         }
         msg ~= ")";
         return msg;
