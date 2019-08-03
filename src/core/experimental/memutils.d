@@ -251,4 +251,8 @@ unittest
     {
         assert(p[i] == 9);
     }
+
+    // Verify that it does not crash on empty array.
+    ubyte[0] c;
+    memset(c, 9);
 }
