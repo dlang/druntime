@@ -139,7 +139,7 @@ template _d_arrayappendTImpl(Tarr : T[], T)
  * Run postblit on `t` if it is a struct and needs it.
  * Or if `t` is a array, run it on the children if they have a postblit.
  */
-private void __doPostblit(T)(auto ref T t) @trusted pure
+private auto __doPostblit(T)(auto ref T t) @trusted pure
 {
     import core.internal.traits : hasElaborateCopyConstructor;
 
@@ -149,14 +149,26 @@ private void __doPostblit(T)(auto ref T t) @trusted pure
         static if (__traits(hasMember, T, "__xpostblit") &&
                 // Bugzilla 14746: Check that it's the exact member of S.
                 __traits(isSame, T, __traits(parent, t.__xpostblit)))
-            t.__xpostblit();
+        {
+            import core.internal.array.utils : isPure;
+            static if (isPure!(t.__xpostblit))
+                t.__xpostblit();
+            else
+                (cast(void delegate() pure)&t.__xpostblit)();
+            return &t;
+        }
     }
-    else static if (is(T U : U[]) && hasElaborateCopyConstructor!U)
+    else static if (is(T U : U[]))
     {
         // only do a postblit if the `U` requires it.
-        foreach (ref el; t)
-            __doPostblit(el);
+        static if (hasElaborateCopyConstructor!U)
+            foreach (ref el; t)
+                __doPostblit(el);
+
+        return t;
     }
+    else
+        static assert(0, "No idea how to postblit " ~ typeof(t).stringof);
 }
 
 @safe unittest
