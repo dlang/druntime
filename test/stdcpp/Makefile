@@ -8,7 +8,7 @@ TESTS17:=string_view
 OLDABITESTS:=
 
 ifeq (osx,$(OS))
-#	TESTS+=string
+	TESTS+=string
 #	TESTS+=vector
 endif
 ifeq (linux,$(OS))

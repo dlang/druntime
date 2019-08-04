@@ -18,8 +18,10 @@ import core.stdc.stddef : wchar_t;
 
 version (OSX)
 {
-    // Apple decided to rock a different ABI... good for them!
-    version = _LIBCPP_ABI_ALTERNATE_STRING_LAYOUT;
+    // There is an alternate ABI which is supposed to make the performance
+    // marginally better to to better alignment,
+    // however it is not enabled by default
+    // version = _LIBCPP_ABI_ALTERNATE_STRING_LAYOUT;
 }
 version (CppRuntime_Gcc)
 {
