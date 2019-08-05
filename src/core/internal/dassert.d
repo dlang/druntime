@@ -65,6 +65,12 @@ auto miniFormat(V)(V v)
     }
     else static if (__traits(compiles, { string s = V.init.toString(); }))
     {
+        // only check for null if it can be null (e.g. class)
+        static if (__traits(compiles, v is null))
+        {
+            if (v is null)
+                return V.stringof ~ "(null)";
+        }
         return v.toString();
     }
     // special-handling for void-arrays
