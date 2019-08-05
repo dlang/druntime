@@ -264,18 +264,17 @@ template hasElaborateCopyConstructor(S)
                 {
                     static foreach (f; __traits(getOverloads, S, "__ctor"))
                     {{
-                        enum isVoid(alias T) = is (T == void);
-                        static if (Parameters!f.length == 1 ||
-                                   (Parameters!f.length > 1 && !anySatisfy!(isVoid, ParameterDefaults!f[1 .. $])))
-                        {
-                            bool r = is (typeof((Parameters!f x) {
-                                static if (!(__traits(isRef, x[0]) && is (Parameters!f[0] : S)))
-                                {
-                                    static assert(0);
-                                }
-                            }));
-                            if (r) return true;
-                        }
+                        bool r = __traits(compiles, {
+                                auto p = &f;
+
+                                // Check if ctor is callable with lval or rval
+                                S s;
+                                (*p)(s);
+
+                                // Check that ctor is't callable with rval
+                                static assert (!__traits(compiles, (*p)(S()) ));
+                        });
+                        if (r) return true;
                     }}
                 }
                 return false;
@@ -332,205 +331,6 @@ template hasElaborateAssign(S)
     {
         enum bool hasElaborateAssign = false;
     }
-}
-
-// std.traits.isFunctionPointer
-/**
-Detect whether symbol or type `T` is a function pointer.
- */
-template isFunctionPointer(T...)
-if (T.length == 1)
-{
-    static if (is(T[0] U) || is(typeof(T[0]) U))
-    {
-        static if (is(U F : F*) && is(F == function))
-            enum bool isFunctionPointer = true;
-        else
-            enum bool isFunctionPointer = false;
-    }
-    else
-        enum bool isFunctionPointer = false;
-}
-
-///
-@safe unittest
-{
-    static void foo() {}
-    void bar() {}
-
-    auto fpfoo = &foo;
-    static assert( isFunctionPointer!fpfoo);
-    static assert( isFunctionPointer!(void function()));
-
-    auto dgbar = &bar;
-    static assert(!isFunctionPointer!dgbar);
-    static assert(!isFunctionPointer!(void delegate()));
-    static assert(!isFunctionPointer!foo);
-    static assert(!isFunctionPointer!bar);
-
-    static assert( isFunctionPointer!((int a) {}));
-}
-
-// std.traits.isDelegate
-/**
-Detect whether symbol or type `T` is a delegate.
-*/
-template isDelegate(T...)
-if (T.length == 1)
-{
-    static if (is(typeof(& T[0]) U : U*) && is(typeof(& T[0]) U == delegate))
-    {
-        // T is a (nested) function symbol.
-        enum bool isDelegate = true;
-    }
-    else static if (is(T[0] W) || is(typeof(T[0]) W))
-    {
-        // T is an expression or a type.  Take the type of it and examine.
-        enum bool isDelegate = is(W == delegate);
-    }
-    else
-        enum bool isDelegate = false;
-}
-
-///
-@safe unittest
-{
-    static void sfunc() { }
-    int x;
-    void func() { x++; }
-
-    int delegate() dg;
-    assert(isDelegate!dg);
-    assert(isDelegate!(int delegate()));
-    assert(isDelegate!(typeof(&func)));
-
-    int function() fp;
-    assert(!isDelegate!fp);
-    assert(!isDelegate!(int function()));
-    assert(!isDelegate!(typeof(&sfunc)));
-}
-
-// std.traits.ParameterIdentifierTuple
-/**
-Get, as a tuple, the identifiers of the parameters to a function symbol.
- */
-template ParameterIdentifierTuple(func...)
-if (func.length == 1/* && isCallable!func*/)
-{
-    static if (is(FunctionTypeOf!func PT == __parameters))
-    {
-        template Get(size_t i)
-        {
-            static if (!isFunctionPointer!func && !isDelegate!func
-                       // Unnamed parameters yield CT error.
-                       && is(typeof(__traits(identifier, PT[i .. i+1])))
-                       // Filter out unnamed args, which look like (Type) instead of (Type name).
-                       && PT[i].stringof != PT[i .. i+1].stringof[1..$-1])
-            {
-                enum Get = __traits(identifier, PT[i .. i+1]);
-            }
-            else
-            {
-                enum Get = "";
-            }
-        }
-    }
-    else
-    {
-        static assert(0, func[0].stringof ~ "is not a function");
-
-        // Define dummy entities to avoid pointless errors
-        template Get(size_t i) { enum Get = ""; }
-        alias PT = AliasSeq!();
-    }
-
-    template Impl(size_t i = 0)
-    {
-        static if (i == PT.length)
-            alias Impl = AliasSeq!();
-        else
-            alias Impl = AliasSeq!(Get!i, Impl!(i+1));
-    }
-
-    alias ParameterIdentifierTuple = Impl!();
-}
-
-///
-@safe unittest
-{
-    int foo(int num, string name, int);
-    static assert([ParameterIdentifierTuple!foo] == ["num", "name", ""]);
-}
-
-// std.traits.ParameterDefaults
-/**
-Get, as a tuple, the default value of the parameters to a function symbol.
-If a parameter doesn't have the default value, `void` is returned instead.
- */
-template ParameterDefaults(func...)
-if (func.length == 1/* && isCallable!func*/)
-{
-    alias param_names = ParameterIdentifierTuple!func;
-    static if (is(FunctionTypeOf!(func[0]) PT == __parameters))
-    {
-        template Get(size_t i)
-        {
-            // `PT[i .. i+1]` declares a parameter with an arbitrary name.
-            // To avoid a name clash, generate local names that are distinct
-            // from the parameter name, and mix them in.
-            enum name = param_names[i];
-            enum args = "args" ~ (name == "args" ? "_" : "");
-            enum val = "val" ~ (name == "val" ? "_" : "");
-            enum ptr = "ptr" ~ (name == "ptr" ? "_" : "");
-            mixin("
-                // workaround scope escape check, see
-                // https://issues.dlang.org/show_bug.cgi?id=16582
-                // should use return scope once available
-                enum get = (PT[i .. i+1] " ~ args ~ ") @trusted
-                {
-                    // If the parameter is lazy, we force it to be evaluated
-                    // like this.
-                    auto " ~ val ~ " = " ~ args ~ "[0];
-                    auto " ~ ptr ~ " = &" ~ val ~ ";
-                        // workaround Bugzilla 16582
-                    return *" ~ ptr ~ ";
-                };
-            ");
-            static if (is(typeof(get())))
-                enum Get = get();
-            else
-                alias Get = void;
-                // If default arg doesn't exist, returns void instead.
-        }
-    }
-    else
-    {
-        static assert(0, func[0].stringof ~ "is not a function");
-
-        // Define dummy entities to avoid pointless errors
-        template Get(size_t i) { enum Get = ""; }
-        alias PT = AliasSeq!();
-    }
-
-    template Impl(size_t i = 0)
-    {
-        static if (i == PT.length)
-            alias Impl = AliasSeq!();
-        else
-            alias Impl = AliasSeq!(Get!i, Impl!(i+1));
-    }
-
-    alias ParameterDefaults = Impl!();
-}
-
-///
-@safe unittest
-{
-    int foo(int num, string name = "hello", int[] = [1,2,3], lazy int x = 0);
-    static assert(is(ParameterDefaults!foo[0] == void));
-    static assert(   ParameterDefaults!foo[1] == "hello");
-    static assert(   ParameterDefaults!foo[2] == [1,2,3]);
-    static assert(   ParameterDefaults!foo[3] == 0);
 }
 
 // std.meta.Filter
