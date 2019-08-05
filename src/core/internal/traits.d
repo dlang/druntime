@@ -268,7 +268,7 @@ template hasElaborateCopyConstructor(S)
                                 auto p = &f;
 
                                 // Check if ctor is callable with lval or rval
-                                S s;
+                                S s = S.init;
                                 (*p)(s);
 
                                 // Check that ctor is't callable with rval
@@ -288,7 +288,7 @@ template hasElaborateCopyConstructor(S)
 
 @safe unittest
 {
-    static struct S
+    struct S
     {
         int x;
         this(return scope ref typeof(this) rhs) { }
@@ -297,7 +297,7 @@ template hasElaborateCopyConstructor(S)
 
     static assert(hasElaborateCopyConstructor!S);
 
-    static struct S2
+    struct S2
     {
         int x;
         this(int x, int y) {}
@@ -305,7 +305,7 @@ template hasElaborateCopyConstructor(S)
 
     static assert(!hasElaborateCopyConstructor!S2);
 
-    static struct S3
+    struct S3
     {
         int x;
         this(return scope ref typeof(this) rhs, int x = 42) { }
