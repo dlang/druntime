@@ -258,8 +258,13 @@ template hasElaborateCopyConstructor(S)
     }
     else static if (is(S == struct))
     {
-        enum hasElaborateCopyConstructor = __traits(hasMember, S, "__xpostblit") ||
-             () {
+        static if (__traits(hasMember, S, "__xpostblit"))
+        {
+            enum hasElaborateCopyConstructor = !__traits(isDisabled, S.__xpostblit);
+        }
+        else
+        {
+            enum hasElaborateCopyConstructor = () {
                 static if (__traits(hasMember, S, "__ctor"))
                 {
                     static foreach (f; __traits(getOverloads, S, "__ctor"))
@@ -278,7 +283,8 @@ template hasElaborateCopyConstructor(S)
                     }}
                 }
                 return false;
-             }();
+            }();
+        }
     }
     else
     {
@@ -313,6 +319,14 @@ template hasElaborateCopyConstructor(S)
     }
 
     static assert(hasElaborateCopyConstructor!S3);
+
+    struct S4
+    {
+        int x;
+        @disable this(this);
+    }
+
+    static assert(!hasElaborateCopyConstructor!S4);
 }
 
 template hasElaborateAssign(S)
