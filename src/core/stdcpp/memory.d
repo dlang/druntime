@@ -45,19 +45,7 @@ struct default_delete(T)
 extern(C++, class)
 struct unique_ptr(T, Deleter = default_delete!T)
 {
-    ///
-    alias pointer = ClassOrPtr!T;
-    ///
-    alias element_type = T;
-    ///
-    alias deleter_type = Deleter;
-
-    ///
-    this(pointer ptr)
-    {
-        __ptr() = ptr;
-    }
-
+extern(D):
     ///
     this(this) @disable;
 
@@ -72,6 +60,29 @@ struct unique_ptr(T, Deleter = default_delete!T)
     {
         reset();
         return this;
+    }
+
+    ///
+    void reset(pointer p = null)
+    {
+        pointer t = __ptr();
+        __ptr() = p;
+        if (t)
+            get_deleter()(t);
+    }
+
+nothrow pure @safe @nogc:
+    ///
+    alias pointer = ClassOrPtr!T;
+    ///
+    alias element_type = T;
+    ///
+    alias deleter_type = Deleter;
+
+    ///
+    this(pointer ptr)
+    {
+        __ptr() = ptr;
     }
 
     ///
@@ -92,15 +103,6 @@ struct unique_ptr(T, Deleter = default_delete!T)
         pointer t = __ptr();
         __ptr() = null;
         return t;
-    }
-
-    ///
-    void reset(pointer p = null)
-    {
-        pointer t = __ptr();
-        __ptr() = p;
-        if (t)
-            get_deleter()(t);
     }
 
 //    void swap(ref unique_ptr u) nothrow
