@@ -58,8 +58,7 @@ void memcpy(T, size_t len)(ref T[len] dst, ref const T[len] src) nothrow @nogc
 /** Tests
   */
 
-/* Basic features tests
- */
+/// Basic features tests
 nothrow @nogc unittest
 {
     real a = 1.2;
@@ -67,7 +66,7 @@ nothrow @nogc unittest
     memcpy(b, a);
     assert(b == 1.2);
 }
-///
+/// Ditto
 nothrow @nogc unittest
 {
     const float[3] a = [1.2, 3.4, 5.8];
@@ -78,8 +77,7 @@ nothrow @nogc unittest
     assert(b[2] == 5.8f);
 }
 
-/* More sophisticated test suite
- */
+/// More sophisticated test suite
 nothrow @nogc unittest
 {
     /* Handy struct
