@@ -220,8 +220,7 @@ nothrow @nogc unittest
     tests();
 }
 
-import core.experimental.memory.simd : useSIMD, load16fSSE, store16fSSE, lstore128fpSSE,
-                                       lstore128fSSE, lstore64fSSE, lstore32fSSE;
+import core.experimental.memory.simd : useSIMD;
 
 /*
  * Dynamic implementation
@@ -230,6 +229,8 @@ import core.experimental.memory.simd : useSIMD, load16fSSE, store16fSSE, lstore1
 static if (useSIMD)
 {
 
+import core.experimental.memory.simd : load16fSSE, store16fSSE, lstore128fpSSE,
+                                       lstore128fSSE, lstore64fSSE, lstore32fSSE;
 import core.simd : float4;
 
 /**
