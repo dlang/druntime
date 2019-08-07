@@ -1,11 +1,6 @@
 /**
- * An currently small experimental SIMD library for D, with the main purpose
- * to be easily used by DMD, GDC and LDC users.
- * There is an idiomatic-D interface, memcpy(), which is split into 3 overloads.
- * One taking static types, one dynamic arrays and one static arrays.
- * Also, there is available a C-like interface, the Dmemcpy() (which is named Dmemcpy
- * for disambiguation with the C memcpy() which has the exact same interface) that
- * is the classic (void*, void*, size_t) interface.
+ * An currently small experimental SIMD library for D. It is cross-compiler (DMD, LDC, GDC)
+ * and cross-platform (For GDC, it is only i386 and x86_64 specific).
  * Source: $(DRUNTIMESRC core/experimental/memory/simd.d)
  */
 module core.experimental.memory.simd;
@@ -67,7 +62,7 @@ static if (useSIMD)
         import gcc.builtins : __builtin_ia32_storeups, __builtin_ia32_loadups;
     }
 
-    void store16fSSE(void* dest, float4 reg)
+    void store16fSSE(void* dest, float4 reg) nothrow @nogc
     {
         version (LDC)
         {
@@ -82,7 +77,7 @@ static if (useSIMD)
             __builtin_ia32_storeups(cast(float*) dest, reg);
         }
     }
-    float4 load16fSSE(const(void)* src)
+    float4 load16fSSE(const(void)* src) nothrow @nogc
     {
         version (LDC)
         {
@@ -97,7 +92,7 @@ static if (useSIMD)
         }
     }
 
-    private void prefetchForward(void* s)
+    private void prefetchForward(void* s) nothrow @nogc
     {
         enum writeFetch = 0;
         enum locality = 3;  // -> t0
@@ -122,12 +117,12 @@ static if (useSIMD)
         }
 
     }
-    void lstore128fpSSE(void* d, const(void)* s)
+    void lstore128fpSSE(void* d, const(void)* s) nothrow @nogc
     {
         prefetchForward(cast(void*) s);
         lstore128fSSE(d, s);
     }
-    void lstore128fSSE(void* d, const(void)* s)
+    void lstore128fSSE(void* d, const(void)* s) nothrow @nogc
     {
         float4 xmm0 = load16fSSE(cast(const float*)s);
         float4 xmm1 = load16fSSE(cast(const float*)(s+16));
@@ -147,7 +142,7 @@ static if (useSIMD)
         store16fSSE(cast(float*)(d+96), xmm6);
         store16fSSE(cast(float*)(d+112), xmm7);
     }
-    void lstore64fSSE(void* d, const(void)* s)
+    void lstore64fSSE(void* d, const(void)* s) nothrow @nogc
     {
         float4 xmm0 = load16fSSE(cast(const float*)s);
         float4 xmm1 = load16fSSE(cast(const float*)(s+16));
@@ -159,7 +154,7 @@ static if (useSIMD)
         store16fSSE(cast(float*)(d+32), xmm2);
         store16fSSE(cast(float*)(d+48), xmm3);
     }
-    void lstore32fSSE(void* d, const(void)* s)
+    void lstore32fSSE(void* d, const(void)* s) nothrow @nogc
     {
         float4 xmm0 = load16fSSE(cast(const float*)s);
         float4 xmm1 = load16fSSE(cast(const float*)(s+16));

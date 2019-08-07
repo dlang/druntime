@@ -23,7 +23,7 @@ import core.internal.traits : isArray;
  *  src = Reference to memory source to copy bytes from.
  */
 pragma(inline, true)
-void memcpy(T)(ref T dst, ref const T src)
+void memcpy(T)(ref T dst, ref const T src) nothrow @nogc
 if (!isArray!T)
 {
     dst = src;
@@ -36,7 +36,7 @@ if (!isArray!T)
  *  dst = Reference to destination dynamic array to copy bytes to.
  *  src = Reference to source dynamic array to copy bytes from.
  */
-void memcpy(T)(ref T[] dst, ref const T[] src)
+void memcpy(T)(ref T[] dst, ref const T[] src) nothrow @nogc
 {
     assert(dst.length == src.length);
     void* d = cast(void*) dst.ptr;
@@ -47,15 +47,8 @@ void memcpy(T)(ref T[] dst, ref const T[] src)
     Dmemcpy(d, s, n);
 }
 
-/**
- * Handle Dynamic Types
- *
- * Params:
- *  len = Length of the static arrays.
- *  dst = Reference to destination static array to copy bytes to.
- *  src = Reference to source static array to copy bytes from.
- */
-void memcpy(T, size_t len)(ref T[len] dst, ref const T[len] src)
+/// Ditto
+void memcpy(T, size_t len)(ref T[len] dst, ref const T[len] src) nothrow @nogc
 {
     T[] d = dst[0 .. $];
     const T[] s = src[0 .. $];
@@ -67,7 +60,7 @@ void memcpy(T, size_t len)(ref T[len] dst, ref const T[len] src)
 
 /* Basic features tests
  */
-unittest
+nothrow @nogc unittest
 {
     real a = 1.2;
     real b;
@@ -75,7 +68,7 @@ unittest
     assert(b == 1.2);
 }
 ///
-unittest
+nothrow @nogc unittest
 {
     const float[3] a = [1.2, 3.4, 5.8];
     float[3] b;
@@ -87,7 +80,7 @@ unittest
 
 /* More sophisticated test suite
  */
-version (unittest)
+nothrow @nogc unittest
 {
     /* Handy struct
      */
@@ -95,7 +88,98 @@ version (unittest)
     {
         ubyte[Size] x;
     }
-    void tests()
+
+    pragma(inline, false)
+    void initStatic(T)(T *v) nothrow @nogc
+    {
+        auto m = (cast(ubyte*) v)[0 .. T.sizeof];
+        foreach (i; 0..m.length)
+        {
+            m[i] = cast(ubyte) i;
+        }
+    }
+
+    pragma(inline, false)
+    void verifyStaticType(T)(const T *a, const T *b) nothrow @nogc
+    {
+        const ubyte* aa = cast(const ubyte*) a;
+        const ubyte* bb = cast(const ubyte*) b;
+        // Note: `real` is an exceptional case,
+        // in that it behaves differently across compilers
+        // because it's not a power of 2 (its size is 10 for x86)
+        // and thus padding is added (to reach 16). But, the padding bytes
+        // are not considered (by the compiler) in a move (for instance).
+        // So, Dmemcpy, for static types, is *dst = *src. And the compiler
+        // might output `fld` followed by `fstp` instruction. Those intructions
+        // operate on extended floating point values (whose size is 10). And so,
+        // the padding bytes are not copied to dest.
+        static if (is(T == real))
+        {
+            enum n = 10;
+        }
+        else
+        {
+            enum n = T.sizeof;
+        }
+        foreach (i; 0..n)
+        {
+            assert(aa[i] == bb[i]);
+        }
+    }
+
+    pragma(inline, false)
+    void testStaticType(T)() nothrow @nogc
+    {
+        T d, s;
+        initStatic!(T)(&d);
+        initStatic!(T)(&s);
+        memcpy(d, s);
+        verifyStaticType(&d, &s);
+    }
+
+    pragma(inline, false)
+    void init(T)(ref T[] v) nothrow @nogc
+    {
+        foreach (i; 0..v.length)
+        {
+            v[i] = cast(ubyte) i;
+        }
+    }
+
+    pragma(inline, false)
+    void verifyArray(size_t j, const ref ubyte[] a, const ref ubyte[80000] b) nothrow @nogc
+    {
+        foreach (i; 0..a.length)
+        {
+            assert(a[i] == b[i]);
+        }
+    }
+
+    pragma(inline, false)
+    void testDynamicArray(size_t n)() nothrow @nogc
+    {
+        ubyte[80000] buf1;
+        ubyte[80000] buf2;
+        enum alignments = 32;
+        foreach (i; 0..alignments)
+        {
+            ubyte[] p = buf1[i..i+n];
+            ubyte[] q;
+            // Relatively aligned
+            q = buf2[0..n];
+            // Use a copy for the cases of overlap.
+            ubyte[80000] copy;
+            init(q);
+            init(p);
+            foreach (k; 0..p.length)
+            {
+                copy[k] = p[k];
+            }
+            memcpy(q, p);
+            verifyArray(i, q, copy);
+        }
+    }
+    void tests() nothrow @nogc
     {
         testStaticType!(byte);
         testStaticType!(ubyte);
@@ -134,107 +218,12 @@ version (unittest)
         testStaticType!(S!32768);
         testStaticType!(S!65536);
     }
-    pragma(inline, false)
-    void initStatic(T)(T *v)
-    {
-        auto m = (cast(ubyte*) v)[0 .. T.sizeof];
-        for (int i = 0; i < m.length; i++)
-        {
-            m[i] = cast(ubyte) i;
-        }
-    }
-    pragma(inline, false)
-    void verifyStaticType(T)(const T *a, const T *b)
-    {
-        const ubyte* aa = (cast(const ubyte*) a);
-        const ubyte* bb = (cast(const ubyte*) b);
-        // NOTE(stefanos): `real` is an exceptional case,
-        // in that it behaves differently across compilers
-        // because it's not a power of 2 (its size is 10 for x86)
-        // and thus padding is added (to reach 16). But, the padding bytes
-        // are not considered (by the compiler) in a move (for instance).
-        // So, Dmemcpy, for static types, is *dst = *src. And the compiler
-        // might output `fld` followed by `fstp` instruction. Those intructions
-        // operate on extended floating point values (whose size is 10). And so,
-        // the padding bytes are not copied to dest.
-        static if (is(T == real))
-        {
-            enum n = 10;
-        }
-        else
-        {
-            enum n = T.sizeof;
-        }
-        for (size_t i = 0; i < n; i++)
-        {
-            assert(aa[i] == bb[i]);
-        }
-    }
-    pragma(inline, false)
-    void testStaticType(T)()
-    {
-        T d, s;
-        initStatic!(T)(&d);
-        initStatic!(T)(&s);
-        memcpy(d, s);
-        verifyStaticType(&d, &s);
-    }
-    pragma(inline, false)
-    void init(T)(ref T[] v)
-    {
-        for (int i = 0; i < v.length; i++)
-        {
-            v[i] = cast(ubyte) i;
-        }
-    }
-    pragma(inline, false)
-    void verifyArray(size_t j, const ref ubyte[] a, const ref ubyte[80000] b)
-    {
-        //assert(a.length == b.length);
-        for (int i = 0; i < a.length; i++)
-        {
-            assert(a[i] == b[i]);
-        }
-    }
-    pragma(inline, false)
-    void testDynamicArray(size_t n)()
-    {
-        ubyte[80000] buf1;
-        ubyte[80000] buf2;
-        enum alignments = 32;
-        foreach (i; 0..alignments)
-        {
-            ubyte[] p = buf1[i..i+n];
-            ubyte[] q;
-            // Relatively aligned
-            q = buf2[0..n];
-            // Use a copy for the cases of overlap.
-            ubyte[80000] copy;
-            pragma(inline, false);
-            init(q);
-            pragma(inline, false);
-            init(p);
-            for (size_t k = 0; k != p.length; ++k)
-            {
-                copy[k] = p[k];
-            }
-            pragma(inline, false);
-            memcpy(q, p);
-            pragma(inline, false);
-            verifyArray(i, q, copy);
-        }
-    }
-}
-///
-unittest
-{
+
     tests();
 }
 
-/* Implementation
- */
-
-import core.experimental.memory.simd;
+import core.experimental.memory.simd : useSIMD, load16fSSE, store16fSSE, lstore128fpSSE,
+                                       lstore128fSSE, lstore64fSSE, lstore32fSSE;
 
 /*
  * Dynamic implementation
@@ -247,14 +236,14 @@ import core.simd : float4;
 
 /**
  * Handle Dynamic Types
- * N.B.: While Dmemcpy's interface is C-like, it returns _nothing_.
+ * N.B.: While Dmemcpy's interface is C-like, it returns void.
  *
  * Params:
  *  d = Pointer to memory destination to copy bytes to.
  *  s = Pointer to memory source to copy bytes from.
  *  n = Number of bytes to copy.
  */
-void Dmemcpy(void* d, const(void)* s, size_t n)
+void Dmemcpy(void* d, const(void)* s, size_t n) nothrow @nogc
 {
     if (n <= 128)
     {
@@ -268,7 +257,7 @@ void Dmemcpy(void* d, const(void)* s, size_t n)
 
 /* Handle dynamic sizes <= 128. `d` and `s` must not overlap.
  */
-private void Dmemcpy_small(void* d, const(void)* s, size_t n)
+private void Dmemcpy_small(void* d, const(void)* s, size_t n) nothrow @nogc
 {
     if (n < 16) {
         if (n & 0x01)
@@ -303,9 +292,6 @@ private void Dmemcpy_small(void* d, const(void)* s, size_t n)
         store16fSSE(d-16+n, xmm1);
         return;
     }
-    // NOTE(stefanos): I'm writing using load/storeUnaligned() but you possibly can
-    // achieve greater performance using naked ASM. Be careful that you should either use
-    // only D or only naked ASM.
     if (n <= 64)
     {
         float4 xmm0 = load16fSSE(s);
@@ -329,14 +315,14 @@ private void Dmemcpy_small(void* d, const(void)* s, size_t n)
 
 /* Handle dynamic sizes > 128. `d` and `s` must not overlap.
  */
-private void Dmemcpy_large(void* d, const(void)* s, size_t n)
+private void Dmemcpy_large(void* d, const(void)* s, size_t n) nothrow @nogc
 {
-    // NOTE(stefanos): Alternative - Reach 64-byte
+    // NOTE: Alternative - Reach 64-byte
     // (cache-line) alignment and use rep movsb
     // Good for bigger sizes and only for Intel.
 
     // Align destination (write) to 32-byte boundary
-    // NOTE(stefanos): We're using SSE, which needs 16-byte alignment.
+    // Note: We're using SSE, which needs 16-byte alignment.
     // But actually, 32-byte alignment was quite faster (probably because
     // the loads / stores are faster and there's the bottleneck).
     uint rem = cast(ulong) d & 15;
@@ -352,14 +338,14 @@ private void Dmemcpy_large(void* d, const(void)* s, size_t n)
     {
         return
         "
-        while (n >= 128)
-        {
-            // Aligned stores / writes
-            " ~ prefetchChoice ~ "(d, s);
-            d += 128;
-            s += 128;
-            n -= 128;
-        }
+            while (n >= 128)
+            {
+                // Aligned stores / writes
+                " ~ prefetchChoice ~ "(d, s);
+                d += 128;
+                s += 128;
+                n -= 128;
+            }
         ";
     }
 
@@ -386,11 +372,11 @@ else
 
 /* Non-SIMD version
  */
-void Dmemcpy(void* d, const(void)* s, size_t n)
+void Dmemcpy(void* d, const(void)* s, size_t n) nothrow @nogc
 {
     ubyte* dst = cast(ubyte*) d;
     const(ubyte)* src = cast(const(ubyte)*) s;
-    for (size_t i = 0; i != n; ++i)
+    foreach (i; 0..n)
     {
         *dst = *src;
         dst++;
