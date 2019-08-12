@@ -3336,26 +3336,26 @@ if (is(typeof(create()) : V) && is(typeof(update(aa[K.init])) : V))
 @safe unittest
 {
     struct S0
-    {        
+    {
         int opCall(ref int v)
         {
             return v + 1;
         }
     }
-    
+
     struct S1
     {
         int opCall()()
         {
             return -2;
         }
-        
+
         T opCall(T)(ref T v)
         {
             return v + 1;
         }
     }
-    
+
     int[string] a = ["2" : 1];
     a.update("2", () => -1, S0.init);
     assert(a["2"] == 2);
