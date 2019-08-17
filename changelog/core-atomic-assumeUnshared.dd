@@ -1,0 +1,23 @@
+`core.atomic.assumeUnshared` has been added
+
+$(REF assumeUnshared, core,atomic) allows to convert a shared lvalue to a non-shared lvalue
+
+---
+shared static int i;
+
+// i is never used outside of synchronized {} blocks...
+
+synchronized
+{
+    ++i;                 // ERROR: cannot directly modify shared lvalue
+
+    atomicOp!"+="(i, 1); // possible overhead
+
+    // Directly modify i
+    assumeUnshared(i) += 1;
+    // or:
+    ++assumeUnshared(i);
+    // or:
+    i.assumeUnshared += 1;
+}
+---
