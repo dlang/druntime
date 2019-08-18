@@ -306,7 +306,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, co
         if (typeInfoSize)
         {
             auto typeInfo = cast(TypeInfo*)(info.base + info.size - size_t.sizeof);
-            *typeInfo = cast() tinext;
+            //*typeInfo = cast() tinext;
         }
     }
     else if (info.size < PAGESIZE)
@@ -337,7 +337,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, co
         if (typeInfoSize)
         {
             auto typeInfo = cast(TypeInfo*)(info.base + info.size - size_t.sizeof);
-            *typeInfo = cast() tinext;
+            //*typeInfo = cast() tinext;
         }
     }
     else
@@ -368,7 +368,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, co
         if (typeInfoSize)
         {
             auto typeInfo = cast(TypeInfo*)(info.base + size_t.sizeof);
-            *typeInfo = cast()tinext;
+            //*typeInfo = cast()tinext;
         }
     }
     return true; // resize succeeded
