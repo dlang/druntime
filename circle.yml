@@ -1,16 +1,10 @@
-dependencies:
-  pre:
-    - ./circleci.sh install-deps
-  cache_directories:
-    - "~/dlang"
-
-test:
-  override:
-    - ./circleci.sh setup-repos
-    - make -f posix.mak style
-    - ./circleci.sh coverage:
-        parallel: true
-        timeout: 1200
-
-  post:
-    - ./circleci.sh codecov
+jobs:
+  build:
+    docker:
+      - image: circleci/buildpack-deps:18.04
+    parallelism: 1
+    filters:
+      branches:
+        ignore: dmd-cxx
+    steps:
+      - run: echo pass
