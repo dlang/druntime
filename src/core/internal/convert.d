@@ -34,7 +34,7 @@ private ubyte[] ctfe_alloc()(size_t n)
 }
 
 @trusted pure nothrow @nogc
-const(ubyte)[] toUbyte(T)(const ref T val) if (is(Unqual!T == float) || is(Unqual!T == double) || is(Unqual!T == real) ||
+const(ubyte)[] toUbyte(T)(return const ref T val) if (is(Unqual!T == float) || is(Unqual!T == double) || is(Unqual!T == real) ||
                                         is(Unqual!T == ifloat) || is(Unqual!T == idouble) || is(Unqual!T == ireal))
 {
     if (__ctfe)

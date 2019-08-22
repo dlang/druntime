@@ -776,7 +776,7 @@ public:
         Params:
             rhs = The duration to add to or subtract from this $(D Duration).
       +/
-    ref Duration opOpAssign(string op, D)(const scope D rhs) nothrow @nogc
+    ref Duration opOpAssign(string op, D)(const scope D rhs) return nothrow @nogc
         if (((op == "+" || op == "-" || op == "%") && is(_Unqual!D == Duration)) ||
            ((op == "+" || op == "-") && is(_Unqual!D == TickDuration)))
     {
@@ -947,7 +947,7 @@ public:
         Params:
             value = The value to multiply/divide this $(D Duration) by.
       +/
-    ref Duration opOpAssign(string op)(long value) nothrow @nogc
+    ref Duration opOpAssign(string op)(long value) return nothrow @nogc
         if (op == "*" || op == "/")
     {
         mixin("_hnsecs " ~ op ~ "= value;");
