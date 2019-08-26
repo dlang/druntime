@@ -124,7 +124,7 @@ struct rcarray(T)
         import core.internal.traits : hasElaborateDestructor;
         static if (hasElaborateDestructor!U)
         {
-            foreach(ref u; slice)
+            foreach (ref u; slice)
             {
                 u.__xdtor;
             }
@@ -245,7 +245,7 @@ struct rcarray(T)
         this.payload = payload;
     }
 
-    version(CoreUnittest)
+    version (CoreUnittest)
     static if (is(T == int))
     unittest
     {
@@ -495,9 +495,9 @@ struct rcarray(T)
             while (newCapacity < capacity + stuff.length)
             {
                 newCapacity = newCapacity * growthFactor;
-                assert(cast(size_t)newCapacity > capacity);
+                assert(cast(size_t) newCapacity > capacity);
             }
-            reserve((() @trusted => cast(size_t)newCapacity)());
+            reserve((() @trusted => cast(size_t) newCapacity)());
         }
 
         // Can't use below, because it doesn't do opAssign, but memcpy
@@ -529,11 +529,11 @@ struct rcarray(T)
             void[] tmp = tmpSupport[s .. e];
 
             import core.internal.lifetime : emplaceRef;
-            (() @trusted => emplaceRef(*cast(Unqual!E*)tmp.ptr, cast(Unqual!E)} ~ stuff ~ q{[i]))();
+            (() @trusted => emplaceRef(*cast(Unqual!E*) tmp.ptr, cast(Unqual!E) } ~ stuff ~ q{[i]))();
         } ~ "}"
         ~ q{
 
-        payload = (() @trusted => (cast(typeof(payload.ptr))(tmpSupport.ptr))[0 .. stuffLength])();
+        payload = (() @trusted => (cast(typeof(payload.ptr)) tmpSupport.ptr)[0 .. stuffLength])();
         };
     }
 

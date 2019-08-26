@@ -92,7 +92,7 @@ struct rcslist(T)
             import core.internal.traits : hasElaborateDestructor;
             static if (hasElaborateDestructor!(Unqual!T))
             {
-                foreach(ref u; slice)
+                foreach (ref u; slice)
                 {
                     u.value.__xdtor;
                 }
