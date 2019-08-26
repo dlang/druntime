@@ -17,6 +17,11 @@ DOCS=\
 	$(DOCDIR)\core_vararg.html \
 	$(DOCDIR)\core_volatile.html \
 	\
+	$(DOCDIR)\core_experimental_rc_slice.html \
+	$(DOCDIR)\core_experimental_rc_array.html \
+	$(DOCDIR)\core_experimental_rc_slist.html \
+	$(DOCDIR)\core_experimental_rc_map.html \
+	\
 	$(DOCDIR)\core_gc_config.html \
 	$(DOCDIR)\core_gc_gcinterface.html \
 	$(DOCDIR)\core_gc_registry.html \

@@ -18,6 +18,11 @@ SRCS=\
 	src\core\vararg.d \
 	src\core\volatile.d \
 	\
+	src\core\experimental\rc\slice.d \
+	src\core\experimental\rc\array.d \
+	src\core\experimental\rc\slist.d \
+	src\core\experimental\rc\map.d \
+	\
 	src\core\gc\config.d \
 	src\core\gc\gcinterface.d \
 	src\core\gc\registry.d \

@@ -111,6 +111,18 @@ $(IMPDIR)\core\vararg.d : src\core\vararg.d
 $(IMPDIR)\core\volatile.d : src\core\volatile.d
 	copy $** $@
 
+$(IMPDIR)\core\experimental\rc\slice.d : src\core\experimental\rc\slice.d
+	copy $** $@
+
+$(IMPDIR)\core\experimental\rc\array.d : src\core\experimental\rc\array.d
+	copy $** $@
+
+$(IMPDIR)\core\experimental\rc\slist.d : src\core\experimental\rc\slist.d
+	copy $** $@
+
+$(IMPDIR)\core\experimental\rc\map.d : src\core\experimental\rc\map.d
+	copy $** $@
+
 $(IMPDIR)\core\gc\config.d : src\core\gc\config.d
 	copy $** $@
 

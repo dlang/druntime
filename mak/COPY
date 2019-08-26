@@ -22,6 +22,11 @@ COPY=\
 	$(IMPDIR)\core\vararg.d \
 	$(IMPDIR)\core\volatile.d \
 	\
+	$(IMPDIR)\core\experimental\rc\slice.d \
+	$(IMPDIR)\core\experimental\rc\array.d \
+	$(IMPDIR)\core\experimental\rc\slist.d \
+	$(IMPDIR)\core\experimental\rc\map.d \
+	\
 	$(IMPDIR)\core\internal\abort.d \
 	$(IMPDIR)\core\internal\atomic.d \
 	$(IMPDIR)\core\internal\attributes.d \
