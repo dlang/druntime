@@ -43,6 +43,7 @@ COPY=\
 	$(IMPDIR)\core\internal\array\casting.d \
 	$(IMPDIR)\core\internal\array\capacity.d \
 	$(IMPDIR)\core\internal\array\concatenation.d \
+	$(IMPDIR)\core\internal\array\duplication.d \
 	$(IMPDIR)\core\internal\array\utils.d \
 	\
 	$(IMPDIR)\core\internal\util\array.d \

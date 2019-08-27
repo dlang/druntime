@@ -180,6 +180,9 @@ $(IMPDIR)\core\internal\array\capacity.d : src\core\internal\array\capacity.d
 $(IMPDIR)\core\internal\array\concatenation.d : src\core\internal\array\concatenation.d
 	copy $** $@
 
+$(IMPDIR)\core\internal\array\duplication.d : src\core\internal\array\duplication.d
+	copy $** $@
+
 $(IMPDIR)\core\internal\array\utils.d : src\core\internal\array\utils.d
 	copy $** $@
 
