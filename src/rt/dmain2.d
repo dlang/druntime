@@ -210,7 +210,7 @@ extern (C) int rt_init()
     }
     catch (Throwable t)
     {
-        atomicStore!(MemoryOrder.raw)(_initCount);
+        atomicStore!(MemoryOrder.raw)(_initCount, 0);
         _d_print_throwable(t);
     }
     _d_critical_term();
