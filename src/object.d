@@ -27,9 +27,13 @@ else
     alias ptrdiff_t = int;
 }
 
+deprecated("Use `ptrdiff_t` instead.")
 alias sizediff_t = ptrdiff_t; //For backwards compatibility only.
 
+deprecated("`Use `size_t` instead.")
 alias hash_t = size_t; //For backwards compatibility only.
+
+deprecated("`Use `bool` instead.")
 alias equals_t = bool; //For backwards compatibility only.
 
 alias string  = immutable(char)[];
@@ -745,7 +749,7 @@ class TypeInfo_AssociativeArray : TypeInfo
         return !!_aaEqual(this, *cast(const AA*) p1, *cast(const AA*) p2);
     }
 
-    override hash_t getHash(scope const void* p) nothrow @trusted const
+    override size_t getHash(scope const void* p) nothrow @trusted const
     {
         return _aaGetHash(cast(AA*)p, this);
     }
@@ -2148,7 +2152,7 @@ extern (C)
     void _aaRangePopFront(ref AARange r) pure nothrow @nogc @safe;
 
     int _aaEqual(in TypeInfo tiRaw, in AA aa1, in AA aa2);
-    hash_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow;
+    size_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow;
 
     /*
         _d_assocarrayliteralTX marked as pure, because aaLiteral can be called from pure code.

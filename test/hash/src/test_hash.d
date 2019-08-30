@@ -240,7 +240,7 @@ void testTypeInfoArrayGetHash1()
     {
         int i;
         this(in int i) { this.i = i; }
-        override hash_t toHash() { return 0; }
+        override size_t toHash() { return 0; }
     }
     C[] a1 = [new C(11)], a2 = [new C(12)];
     assert(typeid(C[]).getHash(&a1) == typeid(C[]).getHash(&a2));
@@ -252,7 +252,7 @@ void testTypeInfoArrayGetHash2()
     struct S
     {
         int i;
-        hash_t toHash() const @safe nothrow { return 0; }
+        size_t toHash() const @safe nothrow { return 0; }
     }
     S[] a1 = [S(11)], a2 = [S(12)];
     assert(typeid(S[]).getHash(&a1) == typeid(S[]).getHash(&a2));

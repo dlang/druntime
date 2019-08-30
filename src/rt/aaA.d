@@ -816,7 +816,7 @@ extern (C) int _aaEqual(in TypeInfo tiRaw, in AA aa1, in AA aa2)
 }
 
 /// compute a hash
-extern (C) hash_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow
+extern (C) size_t _aaGetHash(in AA* aa, in TypeInfo tiRaw) nothrow
 {
     if (aa.empty)
         return 0;

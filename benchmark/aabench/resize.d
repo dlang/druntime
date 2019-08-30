@@ -16,7 +16,7 @@ void runTest(RNG)(RNG gen)
 {
     bool[uint] aa;
 
-    sizediff_t diff = MinSize;
+    ptrdiff_t diff = MinSize;
     size_t cnt = Count;
 
     do

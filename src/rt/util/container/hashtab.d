@@ -145,7 +145,7 @@ private:
         return &p._value;
     }
 
-    static hash_t hashOf(const scope ref Key key) @trusted
+    static size_t hashOf(const scope ref Key key) @trusted
     {
         static if (is(Key U : U[]))
             return .hashOf(key, 0);
@@ -153,7 +153,7 @@ private:
             return .hashOf((&key)[0 .. 1], 0);
     }
 
-    @property hash_t mask() const
+    @property size_t mask() const
     {
         return _buckets.length - 1;
     }

@@ -707,7 +707,7 @@ void testStructArrayKey() @safe
     {
         int i;
     const @safe nothrow:
-        hash_t toHash() { return 0; }
+        size_t toHash() { return 0; }
         bool opEquals(const S) { return true; }
         int opCmp(const S) { return 0; }
     }
