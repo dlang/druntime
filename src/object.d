@@ -1897,7 +1897,7 @@ class Throwable : Object
     override string toString()
     {
         string s;
-        toString((buf) { s ~= buf; });
+        toString((scope const buf) { s ~= buf; });
         return s;
     }
 
@@ -1907,7 +1907,7 @@ class Throwable : Object
      * performed in certain error situations.  Override this $(D
      * toString) method to customize the error message.
      */
-    void toString(scope void delegate(in char[]) sink) const
+    void toString(scope void delegate(scope const char[]) sink) const
     {
         import core.internal.string : unsignedToTempString;
 
