@@ -114,7 +114,7 @@ struct __rcslice(T, alias onDeallocate = null, bool defaultInitialize = true)
 
     ~this()
     {
-        delRef();
+        () @trusted { delRef(); }();
     }
 
     ///
@@ -192,7 +192,6 @@ struct __rcslice(T, alias onDeallocate = null, bool defaultInitialize = true)
         }
     }
 
-    @trusted
     private void deallocate()
     {
         import core.memory : pureFree;
