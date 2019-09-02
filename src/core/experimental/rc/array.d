@@ -343,7 +343,7 @@ struct rcarray(T)
         {
             reserve(len);
         }
-        payload = (() @trusted => cast(T[])(support[slackFront .. slackFront + len]))();
+        payload = (() @trusted => (cast(T*) support.ptr)[slackFront .. slackFront + len])();
     }
 
     ///
@@ -406,27 +406,26 @@ struct rcarray(T)
         if (n <= capacity) { return; }
 
         auto tmpSupport = typeof(support)(n);
-        Unqual!T[] tmpSupportSlice = (() @trusted => tmpSupport[])();
-        assert(tmpSupportSlice !is null);
+        assert(tmpSupport.length == n);
 
-        foreach (i; 0 .. tmpSupportSlice.length)
+        foreach (i; 0 .. tmpSupport.length)
         {
             import core.internal.lifetime : emplaceRef;
 
             if (i < payload.length)
             {
                 // Copy the existing items
-                emplaceRef(tmpSupportSlice[i], payload[i]);
+                () @trusted { emplaceRef(*(tmpSupport.ptr + i), *(payload.ptr + i)); }();
             }
             else
             {
                 // Default initialise the remaining memory
-                emplaceRef(tmpSupportSlice[i]);
+                () @trusted { emplaceRef(*(tmpSupport.ptr + i)); }();
             }
         }
 
         support = tmpSupport;
-        payload = (() @trusted => cast(T[]) (support[0 .. payload.length]))();
+        payload = (() @trusted => (cast(T*) support.ptr)[0 .. payload.length])();
 
         assert(capacity >= n);
     }
@@ -504,10 +503,13 @@ struct rcarray(T)
         //support[slackFront + length .. slackFront + length + stuff.length] = stuff[];
         for (size_t i = length, j = 0; i < length + stuff.length; ++i, ++j)
         {
-            support[slackFront + i] = stuff[j];
+            static if (is(typeof(stuff) == rcarray!T))
+                () @trusted { *(support.ptr + slackFront + i) = *(stuff.payload.ptr + j); }();
+            else
+                () @trusted { *(support.ptr + slackFront + i) = *(stuff.ptr + j); }();
         }
 
-        payload = (() @trusted => cast(T[])(support[slackFront .. slackFront + payload.length + stuff.length]))();
+        payload = (() @trusted => (cast(T*) support.ptr)[slackFront .. slackFront + payload.length + stuff.length])();
         return stuff.length;
     };
 
