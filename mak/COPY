@@ -435,6 +435,7 @@ COPY=\
 	\
 	$(IMPDIR)\core\thread\fiber.d \
 	$(IMPDIR)\core\thread\osthread.d \
+	$(IMPDIR)\core\thread\context.d \
 	$(IMPDIR)\core\thread\package.d \
 	\
 	$(IMPDIR)\etc\linux\memoryerror.d
