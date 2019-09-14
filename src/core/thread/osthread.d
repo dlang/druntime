@@ -291,12 +291,12 @@ version (Windows)
             obj.m_tlsgcdata = rt_tlsgc_init();
 
             Thread.setThis(obj);
-            Thread.add(obj);
+            GlobalStackContext.add(obj);
             scope (exit)
             {
-                Thread.remove(obj);
+                GlobalStackContext.remove(obj);
             }
-            Thread.add(&obj.m_main);
+            GlobalStackContext.add(&obj.m_main);
 
             // NOTE: No GC allocations may occur until the stack pointers have
             //       been set and Thread.getThis returns a valid reference to
@@ -2018,7 +2018,7 @@ version (Windows)
             return t;
 
         Thread          thisThread  = new Thread();
-        Thread.Context* thisContext = &thisThread.m_main;
+        StackContext*   thisContext = &thisThread.m_main;
         assert( thisContext == thisThread.m_curr );
 
         thisThread.m_addr  = addr;
@@ -2043,8 +2043,8 @@ version (Windows)
             });
         }
 
-        Thread.add( thisThread, false );
-        Thread.add( thisContext );
+        GlobalStackContext.add( thisThread, false );
+        GlobalStackContext.add( thisContext );
         if ( Thread.sm_main !is null )
             multiThreadedFlag = true;
         return thisThread;
@@ -2408,7 +2408,7 @@ private bool suspend( Thread t ) nothrow
         {
             if ( !t.isRunning )
             {
-                Thread.remove( t );
+                GlobalStackContext.remove( t );
                 return false;
             }
             onThreadError( "Unable to suspend thread" );
@@ -2507,9 +2507,9 @@ extern (C) void thread_suspendAll() nothrow
     //       completes, with the assumption that no other GC memory has yet
     //       been allocated by the system, and thus there is no risk of losing
     //       data if the global thread list is empty.  The check of
-    //       Thread.sm_tbeg below is done to ensure thread_init has completed,
+    //       GlobalStackContext.sm_tbeg below is done to ensure thread_init has completed,
     //       and therefore that calling Thread.getThis will not result in an
-    //       error.  For the short time when Thread.sm_tbeg is null, there is
+    //       error.  For the short time when GlobalStackContext.sm_tbeg is null, there is
     //       no reason not to simply call the multithreaded code below, with
     //       the expectation that the foreach loop will never be entered.
     if ( !multiThreadedFlag && GlobalStackContext.sm_tbeg )
@@ -2558,7 +2558,7 @@ extern (C) void thread_suspendAll() nothrow
             version (FreeBSD)
             {
                 // avoid deadlocks, see Issue 13416
-                t = Thread.sm_tbeg;
+                t = GlobalStackContext.sm_tbeg;
                 while (t)
                 {
                     auto tn = t.next;
@@ -2595,7 +2595,7 @@ private void resume( Thread t ) nothrow
         {
             if ( !t.isRunning )
             {
-                Thread.remove( t );
+                GlobalStackContext.remove( t );
                 return;
             }
             onThreadError( "Unable to resume thread" );
@@ -2611,7 +2611,7 @@ private void resume( Thread t ) nothrow
         {
             if ( !t.isRunning )
             {
-                Thread.remove( t );
+                GlobalStackContext.remove( t );
                 return;
             }
             onThreadError( "Unable to resume thread" );
@@ -2741,7 +2741,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         }
     }
 
-    // NOTE: Synchronizing on Thread.slock is not needed because this
+    // NOTE: Synchronizing on GlobalStackContext.slock is not needed because this
     //       function may only be called after all other threads have
     //       been suspended from within the same lock.
     if (GlobalStackContext.nAboutToStart)
@@ -2935,12 +2935,12 @@ unittest
     thr.start();
 
     sema.wait();
-    synchronized (Thread.criticalRegionLock)
+    synchronized (GlobalStackContext.criticalRegionLock)
         assert(thr.m_isInCriticalRegion);
     semb.notify();
 
     sema.wait();
-    synchronized (Thread.criticalRegionLock)
+    synchronized (GlobalStackContext.criticalRegionLock)
         assert(!thr.m_isInCriticalRegion);
     semb.notify();
 
