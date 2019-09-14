@@ -518,7 +518,10 @@ private
  *
  * Authors: Based on a design by Mikola Lysenko.
  */
-class Fiber
+
+import core.thread.context : StackContext, StackContextExecutor;
+
+class Fiber : StackContextExecutor
 {
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
@@ -614,6 +617,8 @@ class Fiber
     // General Actions
     ///////////////////////////////////////////////////////////////////////////
 
+    /// Flag to control rethrow behavior of $(D $(LREF call))
+    enum Rethrow : bool { no, yes }
 
     /**
      * Transfers execution to this fiber object.  The calling context will be
@@ -691,9 +696,6 @@ class Fiber
             m_ctxt.tstack = m_ctxt.bstack;
         }
     }
-
-    /// Flag to control rethrow behavior of $(D $(LREF call))
-    enum Rethrow : bool { no, yes }
 
     /**
      * Resets this fiber so that it may be re-used, optionally with a
@@ -866,43 +868,10 @@ private:
         m_call = Call.NO;
     }
 
-
-    //
-    // Fiber entry point.  Invokes the function or delegate passed on
-    // construction (if any).
-    //
-    final void run()
-    {
-        switch ( m_call )
-        {
-        case Call.FN:
-            m_fn();
-            break;
-        case Call.DG:
-            m_dg();
-            break;
-        default:
-            break;
-        }
-    }
-
-
 private:
-    //
-    // The type of routine passed on fiber construction.
-    //
-    enum Call
-    {
-        NO,
-        FN,
-        DG
-    }
-
-
     //
     // Standard fiber data
     //
-    Call                m_call;
     union
     {
         void function() m_fn;
@@ -917,7 +886,7 @@ private:
     ///////////////////////////////////////////////////////////////////////////
     // Stack Management
     ///////////////////////////////////////////////////////////////////////////
-
+    import core.thread.context : GlobalStackContext;
 
     //
     // Allocate a new stack for this fiber.
@@ -941,7 +910,7 @@ private:
         //       room for this struct explicitly would be to mash it into the
         //       base of the stack being allocated below.  However, doing so
         //       requires too much special logic to be worthwhile.
-        m_ctxt = new Thread.Context;
+        m_ctxt = new StackContext;
 
         static if ( __traits( compiles, VirtualAlloc ) )
         {
@@ -1060,7 +1029,7 @@ private:
             }
         }
 
-        Thread.add( m_ctxt );
+        GlobalStackContext.add( m_ctxt );
     }
 
 
@@ -1076,9 +1045,9 @@ private:
     {
         // NOTE: m_ctxt is guaranteed to be alive because it is held in the
         //       global context list.
-        Thread.slock.lock_nothrow();
-        scope(exit) Thread.slock.unlock_nothrow();
-        Thread.remove( m_ctxt );
+        GlobalStackContext.slock.lock_nothrow();
+        scope(exit) GlobalStackContext.slock.unlock_nothrow();
+        GlobalStackContext.remove( m_ctxt );
 
         static if ( __traits( compiles, VirtualAlloc ) )
         {
@@ -1445,7 +1414,7 @@ private:
     }
 
 
-    Thread.Context* m_ctxt;
+    StackContext* m_ctxt;
     size_t          m_size;
     void*           m_pmem;
 

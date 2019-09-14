@@ -363,6 +363,8 @@ else version (Posix)
         import core.sys.posix.signal;
         import core.sys.posix.time;
 
+        import core.thread.context : GlobalStackContext;
+
         version (Darwin)
         {
             import core.sys.darwin.mach.thread_act;
@@ -401,13 +403,13 @@ else version (Posix)
 
             atomicStore!(MemoryOrder.raw)(obj.m_isRunning, true);
             Thread.setThis(obj); // allocates lazy TLS (see Issue 11981)
-            Thread.add(obj);     // can only receive signals from here on
+            GlobalStackContext.add(obj);     // can only receive signals from here on
             scope (exit)
             {
-                Thread.remove(obj);
+                GlobalStackContext.remove(obj);
                 atomicStore!(MemoryOrder.raw)(obj.m_isRunning, false);
             }
-            Thread.add(&obj.m_main);
+            GlobalStackContext.add(&obj.m_main);
 
             static extern (C) void thread_cleanupHandler( void* arg ) nothrow @nogc
             {
@@ -600,11 +602,11 @@ else
     static assert( false, "Unknown threading implementation." );
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // Thread
 ///////////////////////////////////////////////////////////////////////////////
 
+import core.thread.context;
 
 /**
  * This class encapsulates all threading functionality for the D
@@ -614,7 +616,7 @@ else
  * A new thread may be created using either derivation or composition, as
  * in the following example.
  */
-class Thread
+class Thread : StackContextExecutor
 {
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
@@ -677,7 +679,7 @@ class Thread
     ~this() nothrow @nogc
     {
         bool no_context = m_addr == m_addr.init;
-        bool not_registered = !next && !prev && (sm_tbeg !is this);
+        bool not_registered = !next && !prev && (GlobalStackContext.sm_tbeg !is this);
 
         if (no_context || not_registered)
         {
@@ -762,12 +764,14 @@ class Thread
                 onThreadError( "Error creating thread" );
         }
 
-        slock.lock_nothrow();
-        scope(exit) slock.unlock_nothrow();
+        GlobalStackContext.slock.lock_nothrow();
+        scope(exit) GlobalStackContext.slock.unlock_nothrow();
         {
-            ++nAboutToStart;
-            pAboutToStart = cast(Thread*)realloc(pAboutToStart, Thread.sizeof * nAboutToStart);
-            pAboutToStart[nAboutToStart - 1] = this;
+            ++(GlobalStackContext.nAboutToStart);
+            GlobalStackContext.pAboutToStart = cast(Thread*)realloc(
+                                                            GlobalStackContext.pAboutToStart,
+                                             Thread.sizeof * GlobalStackContext.nAboutToStart);
+            GlobalStackContext.pAboutToStart[GlobalStackContext.nAboutToStart - 1] = this;
             version (Windows)
             {
                 if ( ResumeThread( m_hndl ) == -1 )
@@ -1492,15 +1496,16 @@ class Thread
         Thread[] buf;
         while (true)
         {
-            immutable len = atomicLoad!(MemoryOrder.raw)(*cast(shared)&sm_tlen);
+            auto tlen_addr = &GlobalStackContext.sm_tlen;
+            immutable len = atomicLoad!(MemoryOrder.raw)(*cast(shared)tlen_addr);
             resize(buf, len);
             assert(buf.length == len);
-            synchronized (slock)
+            synchronized (GlobalStackContext.slock)
             {
-                if (len == sm_tlen)
+                if (len == GlobalStackContext.sm_tlen)
                 {
                     size_t pos;
-                    for (Thread t = sm_tbeg; t; t = t.next)
+                    for (Thread t = GlobalStackContext.sm_tbeg; t; t = t.next)
                         buf[pos++] = t;
                     return buf;
                 }
@@ -1537,39 +1542,7 @@ private:
         m_curr = &m_main;
     }
 
-
-    //
-    // Thread entry point.  Invokes the function or delegate passed on
-    // construction (if any).
-    //
-    final void run()
-    {
-        switch ( m_call )
-        {
-        case Call.FN:
-            m_fn();
-            break;
-        case Call.DG:
-            m_dg();
-            break;
-        default:
-            break;
-        }
-    }
-
-
 private:
-    //
-    // The type of routine passed on thread construction.
-    //
-    enum Call
-    {
-        NO,
-        FN,
-        DG
-    }
-
-
     //
     // Standard types
     //
@@ -1613,13 +1586,7 @@ private:
         mach_port_t     m_tmach;
     }
     ThreadID            m_addr;
-    Call                m_call;
     string              m_name;
-    union
-    {
-        void function() m_fn;
-        void delegate() m_dg;
-    }
     size_t              m_sz;
     version (Posix)
     {
@@ -1649,32 +1616,12 @@ private:
     }
 
 package(core.thread):
-    static struct Context
-    {
-        void*           bstack,
-                        tstack;
+    StackContext     m_main;
+    StackContext*    m_curr;
+    bool             m_lock;
+    void*            m_tlsgcdata;
 
-        /// Slot for the EH implementation to keep some state for each stack
-        /// (will be necessary for exception chaining, etc.). Opaque as far as
-        /// we are concerned here.
-        void*           ehContext;
-
-        Context*        within;
-        Context*        next,
-                        prev;
-    }
-
-    Context             m_main;
-    Context*            m_curr;
-    bool                m_lock;
-    void*               m_tlsgcdata;
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Thread Context and GC Scanning Support
-    ///////////////////////////////////////////////////////////////////////////
-
-
-    final void pushContext( Context* c ) nothrow @nogc
+    final void pushContext( StackContext* c ) nothrow @nogc
     in
     {
         assert( !c.within );
@@ -1686,7 +1633,6 @@ package(core.thread):
         m_curr = c;
     }
 
-
     final void popContext() nothrow @nogc
     in
     {
@@ -1694,15 +1640,13 @@ package(core.thread):
     }
     do
     {
-        Context* c = m_curr;
+        StackContext* c = m_curr;
         m_curr = c.within;
         c.ehContext = swapContext(m_curr.ehContext);
         c.within = null;
     }
 
-private:
-
-    final Context* topContext() nothrow @nogc
+    final StackContext* topContext() nothrow @nogc
     in
     {
         assert( m_curr );
@@ -1711,6 +1655,12 @@ private:
     {
         return m_curr;
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Thread Context and GC Scanning Support
+    ///////////////////////////////////////////////////////////////////////////
+
+    private:
 
     version (Windows)
     {
@@ -1747,239 +1697,11 @@ private:
 
 
 package(core.thread):
-    ///////////////////////////////////////////////////////////////////////////
-    // GC Scanning Support
-    ///////////////////////////////////////////////////////////////////////////
-
-
-    // NOTE: The GC scanning process works like so:
-    //
-    //          1. Suspend all threads.
-    //          2. Scan the stacks of all suspended threads for roots.
-    //          3. Resume all threads.
-    //
-    //       Step 1 and 3 require a list of all threads in the system, while
-    //       step 2 requires a list of all thread stacks (each represented by
-    //       a Context struct).  Traditionally, there was one stack per thread
-    //       and the Context structs were not necessary.  However, Fibers have
-    //       changed things so that each thread has its own 'main' stack plus
-    //       an arbitrary number of nested stacks (normally referenced via
-    //       m_curr).  Also, there may be 'free-floating' stacks in the system,
-    //       which are Fibers that are not currently executing on any specific
-    //       thread but are still being processed and still contain valid
-    //       roots.
-    //
-    //       To support all of this, the Context struct has been created to
-    //       represent a stack range, and a global list of Context structs has
-    //       been added to enable scanning of these stack ranges.  The lifetime
-    //       (and presence in the Context list) of a thread's 'main' stack will
-    //       be equivalent to the thread's lifetime.  So the Ccontext will be
-    //       added to the list on thread entry, and removed from the list on
-    //       thread exit (which is essentially the same as the presence of a
-    //       Thread object in its own global list).  The lifetime of a Fiber's
-    //       context, however, will be tied to the lifetime of the Fiber object
-    //       itself, and Fibers are expected to add/remove their Context struct
-    //       on construction/deletion.
-
-
-    //
-    // All use of the global thread lists/array should synchronize on this lock.
-    //
-    // Careful as the GC acquires this lock after the GC lock to suspend all
-    // threads any GC usage with slock held can result in a deadlock through
-    // lock order inversion.
-    @property static Mutex slock() nothrow @nogc
-    {
-        return cast(Mutex)_locks[0].ptr;
-    }
-
-    @property static Mutex criticalRegionLock() nothrow @nogc
-    {
-        return cast(Mutex)_locks[1].ptr;
-    }
-
-    __gshared align(Mutex.alignof) void[__traits(classInstanceSize, Mutex)][2] _locks;
-
-    static void initLocks() @nogc
-    {
-        foreach (ref lock; _locks)
-        {
-            lock[] = typeid(Mutex).initializer[];
-            (cast(Mutex)lock.ptr).__ctor();
-        }
-    }
-
-    static void termLocks() @nogc
-    {
-        foreach (ref lock; _locks)
-            (cast(Mutex)lock.ptr).__dtor();
-    }
-
-    __gshared Context*  sm_cbeg;
-
-    __gshared Thread    sm_tbeg;
-    __gshared size_t    sm_tlen;
-
-    // can't use core.internal.util.array in public code
-    __gshared Thread* pAboutToStart;
-    __gshared size_t nAboutToStart;
-
     //
     // Used for ordering threads in the global thread list.
     //
     Thread              prev;
     Thread              next;
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Global Context List Operations
-    ///////////////////////////////////////////////////////////////////////////
-
-
-    //
-    // Add a context to the global context list.
-    //
-    static void add( Context* c ) nothrow @nogc
-    in
-    {
-        assert( c );
-        assert( !c.next && !c.prev );
-    }
-    do
-    {
-        slock.lock_nothrow();
-        scope(exit) slock.unlock_nothrow();
-        assert(!suspendDepth); // must be 0 b/c it's only set with slock held
-
-        if (sm_cbeg)
-        {
-            c.next = sm_cbeg;
-            sm_cbeg.prev = c;
-        }
-        sm_cbeg = c;
-    }
-
-    //
-    // Remove a context from the global context list.
-    //
-    // This assumes slock being acquired. This isn't done here to
-    // avoid double locking when called from remove(Thread)
-    static void remove( Context* c ) nothrow @nogc
-    in
-    {
-        assert( c );
-        assert( c.next || c.prev );
-    }
-    do
-    {
-        if ( c.prev )
-            c.prev.next = c.next;
-        if ( c.next )
-            c.next.prev = c.prev;
-        if ( sm_cbeg == c )
-            sm_cbeg = c.next;
-        // NOTE: Don't null out c.next or c.prev because opApply currently
-        //       follows c.next after removing a node.  This could be easily
-        //       addressed by simply returning the next node from this
-        //       function, however, a context should never be re-added to the
-        //       list anyway and having next and prev be non-null is a good way
-        //       to ensure that.
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Global Thread List Operations
-    ///////////////////////////////////////////////////////////////////////////
-
-
-    //
-    // Add a thread to the global thread list.
-    //
-    static void add( Thread t, bool rmAboutToStart = true ) nothrow @nogc
-    in
-    {
-        assert( t );
-        assert( !t.next && !t.prev );
-    }
-    do
-    {
-        slock.lock_nothrow();
-        scope(exit) slock.unlock_nothrow();
-        assert(t.isRunning); // check this with slock to ensure pthread_create already returned
-        assert(!suspendDepth); // must be 0 b/c it's only set with slock held
-
-        if (rmAboutToStart)
-        {
-            size_t idx = -1;
-            foreach (i, thr; pAboutToStart[0 .. nAboutToStart])
-            {
-                if (thr is t)
-                {
-                    idx = i;
-                    break;
-                }
-            }
-            assert(idx != -1);
-            import core.stdc.string : memmove;
-            memmove(pAboutToStart + idx, pAboutToStart + idx + 1, Thread.sizeof * (nAboutToStart - idx - 1));
-            pAboutToStart =
-                cast(Thread*)realloc(pAboutToStart, Thread.sizeof * --nAboutToStart);
-        }
-
-        if (sm_tbeg)
-        {
-            t.next = sm_tbeg;
-            sm_tbeg.prev = t;
-        }
-        sm_tbeg = t;
-        ++sm_tlen;
-    }
-
-
-    //
-    // Remove a thread from the global thread list.
-    //
-    static void remove( Thread t ) nothrow @nogc
-    in
-    {
-        assert( t );
-    }
-    do
-    {
-        // Thread was already removed earlier, might happen b/c of thread_detachInstance
-        if (!t.next && !t.prev && (sm_tbeg !is t))
-            return;
-
-        slock.lock_nothrow();
-        {
-            // NOTE: When a thread is removed from the global thread list its
-            //       main context is invalid and should be removed as well.
-            //       It is possible that t.m_curr could reference more
-            //       than just the main context if the thread exited abnormally
-            //       (if it was terminated), but we must assume that the user
-            //       retains a reference to them and that they may be re-used
-            //       elsewhere.  Therefore, it is the responsibility of any
-            //       object that creates contexts to clean them up properly
-            //       when it is done with them.
-            remove( &t.m_main );
-
-            if ( t.prev )
-                t.prev.next = t.next;
-            if ( t.next )
-                t.next.prev = t.prev;
-            if ( sm_tbeg is t )
-                sm_tbeg = t.next;
-            t.prev = t.next = null;
-            --sm_tlen;
-        }
-        // NOTE: Don't null out t.next or t.prev because opApply currently
-        //       follows t.next after removing a node.  This could be easily
-        //       addressed by simply returning the next node from this
-        //       function, however, a thread should never be re-added to the
-        //       list anyway and having next and prev be non-null is a good way
-        //       to ensure that.
-        slock.unlock_nothrow();
-    }
 }
 
 ///
@@ -2102,7 +1824,7 @@ extern (C) void thread_init() @nogc
     //       functions to detect the condition and return immediately.
 
     initLowlevelThreads();
-    Thread.initLocks();
+    GlobalStackContext.initLocks();
 
     // The Android VM runtime intercepts SIGUSR1 and apparently doesn't allow
     // its signal handler to run, so swap the two signals on Android, since
@@ -2191,14 +1913,14 @@ extern (C) void thread_term() @nogc
         (cast(ubyte[])_mainThreadStore)[] = 0;
     Thread.sm_main = null;
 
-    assert(Thread.sm_tbeg && Thread.sm_tlen == 1);
-    assert(!Thread.nAboutToStart);
-    if (Thread.pAboutToStart) // in case realloc(p, 0) doesn't return null
+    assert(GlobalStackContext.sm_tbeg && GlobalStackContext.sm_tlen == 1);
+    assert(!GlobalStackContext.nAboutToStart);
+    if (GlobalStackContext.pAboutToStart) // in case realloc(p, 0) doesn't return null
     {
-        free(Thread.pAboutToStart);
-        Thread.pAboutToStart = null;
+        free(GlobalStackContext.pAboutToStart);
+        GlobalStackContext.pAboutToStart = null;
     }
-    Thread.termLocks();
+    GlobalStackContext.termLocks();
     termLowlevelThreads();
 }
 
@@ -2232,7 +1954,7 @@ extern (C) Thread thread_attachThis()
 
 private Thread attachThread(Thread thisThread) @nogc
 {
-    Thread.Context* thisContext = &thisThread.m_main;
+    StackContext* thisContext = &thisThread.m_main;
     assert( thisContext == thisThread.m_curr );
 
     version (Windows)
@@ -2260,8 +1982,8 @@ private Thread attachThread(Thread thisThread) @nogc
         assert( thisThread.m_tmach != thisThread.m_tmach.init );
     }
 
-    Thread.add( thisThread, false );
-    Thread.add( thisContext );
+    GlobalStackContext.add( thisThread, false );
+    GlobalStackContext.add( thisContext );
     if ( Thread.sm_main !is null )
         multiThreadedFlag = true;
     return thisThread;
@@ -2344,7 +2066,7 @@ version (Windows)
 extern (C) void thread_detachThis() nothrow @nogc
 {
     if (auto t = Thread.getThis())
-        Thread.remove(t);
+        GlobalStackContext.remove(t);
 }
 
 
@@ -2362,14 +2084,14 @@ extern (C) void thread_detachThis() nothrow @nogc
 extern (C) void thread_detachByAddr( ThreadID addr )
 {
     if ( auto t = thread_findByAddr( addr ) )
-        Thread.remove( t );
+        GlobalStackContext.remove( t );
 }
 
 
 /// ditto
 extern (C) void thread_detachInstance( Thread t ) nothrow @nogc
 {
-    Thread.remove( t );
+    GlobalStackContext.remove( t );
 }
 
 
@@ -2402,12 +2124,12 @@ unittest
  */
 static Thread thread_findByAddr( ThreadID addr )
 {
-    Thread.slock.lock_nothrow();
-    scope(exit) Thread.slock.unlock_nothrow();
+    GlobalStackContext.slock.lock_nothrow();
+    scope(exit) GlobalStackContext.slock.unlock_nothrow();
 
     // also return just spawned thread so that
     // DLL_THREAD_ATTACH knows it's a D thread
-    foreach (t; Thread.pAboutToStart[0 .. Thread.nAboutToStart])
+    foreach (t; GlobalStackContext.pAboutToStart[0 .. GlobalStackContext.nAboutToStart])
         if (t.m_addr == addr)
             return t;
 
@@ -2443,23 +2165,23 @@ extern (C) void thread_setThis(Thread t) nothrow @nogc
 extern (C) void thread_joinAll()
 {
  Lagain:
-    Thread.slock.lock_nothrow();
+    GlobalStackContext.slock.lock_nothrow();
     // wait for just spawned threads
-    if (Thread.nAboutToStart)
+    if (GlobalStackContext.nAboutToStart)
     {
-        Thread.slock.unlock_nothrow();
+        GlobalStackContext.slock.unlock_nothrow();
         Thread.yield();
         goto Lagain;
     }
 
     // join all non-daemon threads, the main thread is also a daemon
-    auto t = Thread.sm_tbeg;
+    auto t = GlobalStackContext.sm_tbeg;
     while (t)
     {
         if (!t.isRunning)
         {
             auto tn = t.next;
-            Thread.remove(t);
+            GlobalStackContext.remove(t);
             t = tn;
         }
         else if (t.isDaemon)
@@ -2468,12 +2190,12 @@ extern (C) void thread_joinAll()
         }
         else
         {
-            Thread.slock.unlock_nothrow();
+            GlobalStackContext.slock.unlock_nothrow();
             t.join(); // might rethrow
             goto Lagain; // must restart iteration b/c of unlock
         }
     }
-    Thread.slock.unlock_nothrow();
+    GlobalStackContext.slock.unlock_nothrow();
 }
 
 
@@ -2485,12 +2207,12 @@ shared static ~this()
     // NOTE: The functionality related to garbage collection must be minimally
     //       operable after this dtor completes.  Therefore, only minimal
     //       cleanup may occur.
-    auto t = Thread.sm_tbeg;
+    auto t = GlobalStackContext.sm_tbeg;
     while (t)
     {
         auto tn = t.next;
         if (!t.isRunning)
-            Thread.remove(t);
+            GlobalStackContext.remove(t);
         t = tn;
     }
 }
@@ -2587,9 +2309,6 @@ else
     }
 }
 
-// Used for suspendAll/resumeAll below.
-private __gshared uint suspendDepth = 0;
-
 /**
  * Suspend the specified thread and load stack and register information for
  * use by thread_scanAll.  If the supplied thread is the calling thread,
@@ -2612,15 +2331,15 @@ private bool suspend( Thread t ) nothrow
  Lagain:
     if (!t.isRunning)
     {
-        Thread.remove(t);
+        GlobalStackContext.remove(t);
         return false;
     }
     else if (t.m_isInCriticalRegion)
     {
-        Thread.criticalRegionLock.unlock_nothrow();
+        GlobalStackContext.criticalRegionLock.unlock_nothrow();
         Thread.sleep(waittime);
         if (waittime < dur!"msecs"(10)) waittime *= 2;
-        Thread.criticalRegionLock.lock_nothrow();
+        GlobalStackContext.criticalRegionLock.lock_nothrow();
         goto Lagain;
     }
 
@@ -2630,7 +2349,7 @@ private bool suspend( Thread t ) nothrow
         {
             if ( !t.isRunning )
             {
-                Thread.remove( t );
+                GlobalStackContext.remove( t );
                 return false;
             }
             onThreadError( "Unable to suspend thread" );
@@ -2755,7 +2474,7 @@ private bool suspend( Thread t ) nothrow
             {
                 if ( !t.isRunning )
                 {
-                    Thread.remove( t );
+                    GlobalStackContext.remove( t );
                     return false;
                 }
                 onThreadError( "Unable to suspend thread" );
@@ -2793,23 +2512,23 @@ extern (C) void thread_suspendAll() nothrow
     //       error.  For the short time when Thread.sm_tbeg is null, there is
     //       no reason not to simply call the multithreaded code below, with
     //       the expectation that the foreach loop will never be entered.
-    if ( !multiThreadedFlag && Thread.sm_tbeg )
+    if ( !multiThreadedFlag && GlobalStackContext.sm_tbeg )
     {
-        if ( ++suspendDepth == 1 )
+        if ( ++GlobalStackContext.suspendDepth == 1 )
             suspend( Thread.getThis() );
 
         return;
     }
 
-    Thread.slock.lock_nothrow();
+    GlobalStackContext.slock.lock_nothrow();
     {
-        if ( ++suspendDepth > 1 )
+        if ( ++GlobalStackContext.suspendDepth > 1 )
             return;
 
-        Thread.criticalRegionLock.lock_nothrow();
-        scope (exit) Thread.criticalRegionLock.unlock_nothrow();
+        GlobalStackContext.criticalRegionLock.lock_nothrow();
+        scope (exit) GlobalStackContext.criticalRegionLock.unlock_nothrow();
         size_t cnt;
-        auto t = Thread.sm_tbeg;
+        auto t = GlobalStackContext.sm_tbeg;
         while (t)
         {
             auto tn = t.next;
@@ -2910,7 +2629,7 @@ private void resume( Thread t ) nothrow
             {
                 if ( !t.isRunning )
                 {
-                    Thread.remove( t );
+                    GlobalStackContext.remove( t );
                     return;
                 }
                 onThreadError( "Unable to resume thread" );
@@ -2937,24 +2656,24 @@ private void resume( Thread t ) nothrow
 extern (C) void thread_resumeAll() nothrow
 in
 {
-    assert( suspendDepth > 0 );
+    assert( GlobalStackContext.suspendDepth > 0 );
 }
 do
 {
     // NOTE: See thread_suspendAll for the logic behind this.
-    if ( !multiThreadedFlag && Thread.sm_tbeg )
+    if ( !multiThreadedFlag && GlobalStackContext.sm_tbeg )
     {
-        if ( --suspendDepth == 0 )
+        if ( --GlobalStackContext.suspendDepth == 0 )
             resume( Thread.getThis() );
         return;
     }
 
-    scope(exit) Thread.slock.unlock_nothrow();
+    scope(exit) GlobalStackContext.slock.unlock_nothrow();
     {
-        if ( --suspendDepth > 0 )
+        if ( --GlobalStackContext.suspendDepth > 0 )
             return;
 
-        for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+        for ( Thread t = GlobalStackContext.sm_tbeg; t; t = t.next )
         {
             // NOTE: We do not need to care about critical regions at all
             //       here. thread_suspendAll takes care of everything.
@@ -2988,7 +2707,7 @@ alias ScanAllThreadsTypeFn = void delegate(ScanType, void*, void*) nothrow; /// 
 extern (C) void thread_scanAllType( scope ScanAllThreadsTypeFn scan ) nothrow
 in
 {
-    assert( suspendDepth > 0 );
+    assert( GlobalStackContext.suspendDepth > 0 );
 }
 do
 {
@@ -3001,7 +2720,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
     Thread  thisThread  = null;
     void*   oldStackTop = null;
 
-    if ( Thread.sm_tbeg )
+    if ( GlobalStackContext.sm_tbeg )
     {
         thisThread  = Thread.getThis();
         if ( !thisThread.m_lock )
@@ -3013,7 +2732,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
 
     scope( exit )
     {
-        if ( Thread.sm_tbeg )
+        if ( GlobalStackContext.sm_tbeg )
         {
             if ( !thisThread.m_lock )
             {
@@ -3025,10 +2744,12 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
     // NOTE: Synchronizing on Thread.slock is not needed because this
     //       function may only be called after all other threads have
     //       been suspended from within the same lock.
-    if (Thread.nAboutToStart)
-        scan(ScanType.stack, Thread.pAboutToStart, Thread.pAboutToStart + Thread.nAboutToStart);
+    if (GlobalStackContext.nAboutToStart)
+        scan(ScanType.stack,
+            GlobalStackContext.pAboutToStart,
+            GlobalStackContext.pAboutToStart + GlobalStackContext.nAboutToStart);
 
-    for ( Thread.Context* c = Thread.sm_cbeg; c; c = c.next )
+    for ( StackContext* c = GlobalStackContext.sm_cbeg; c; c = c.next )
     {
         version (StackGrowsDown)
         {
@@ -3044,7 +2765,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         }
     }
 
-    for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+    for ( Thread t = GlobalStackContext.sm_tbeg; t; t = t.next )
     {
         version (Windows)
         {
@@ -3102,7 +2823,7 @@ in
 }
 do
 {
-    synchronized (Thread.criticalRegionLock)
+    synchronized (GlobalStackContext.criticalRegionLock)
         Thread.getThis().m_isInCriticalRegion = true;
 }
 
@@ -3121,7 +2842,7 @@ in
 }
 do
 {
-    synchronized (Thread.criticalRegionLock)
+    synchronized (GlobalStackContext.criticalRegionLock)
         Thread.getThis().m_isInCriticalRegion = false;
 }
 
@@ -3139,7 +2860,7 @@ in
 }
 do
 {
-    synchronized (Thread.criticalRegionLock)
+    synchronized (GlobalStackContext.criticalRegionLock)
         return Thread.getThis().m_isInCriticalRegion;
 }
 
@@ -3282,7 +3003,7 @@ alias IsMarkedDg = int delegate( void* addr ) nothrow; /// The isMarked callback
  */
 extern(C) void thread_processGCMarks( scope IsMarkedDg isMarked ) nothrow
 {
-    for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+    for ( Thread t = GlobalStackContext.sm_tbeg; t; t = t.next )
     {
         /* Can be null if collection was triggered between adding a
          * thread and calling rt_tlsgc_init.
