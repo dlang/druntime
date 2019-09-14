@@ -1,5 +1,9 @@
 /**
- * thread.context provides stack context data structures needed by threads and fibers.
+ * Every thread / fiber needs stack context data structure.
+ * thread.context decouples this info into the StackContext struct.
+ * Also, Thread / Fiber have some common functionality which is provided
+ * as a super class for both in StackContextExecutor.
+ * Finally, GlobalStackContext contains commonly used global data.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2012.
  * License: Distributed under the
