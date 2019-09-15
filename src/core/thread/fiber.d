@@ -872,11 +872,6 @@ private:
     //
     // Standard fiber data
     //
-    union
-    {
-        void function() m_fn;
-        void delegate() m_dg;
-    }
     bool                m_isRunning;
     Throwable           m_unhandled;
     State               m_state;
@@ -1578,6 +1573,7 @@ version (unittest)
             super(&run);
         }
 
+    private:
         void run()
         {
             foreach (i; 0 .. 1000)
