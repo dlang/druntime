@@ -21,21 +21,21 @@ void main()
     // allocate a page below (above) the fiber's stack to make stack overflows possible (w/o segfaulting)
     version (StackGrowsDown)
     {
-        static assert(__traits(identifier, test_fiber.tupleof[8]) == "m_pmem");
-        auto stackBottom = test_fiber.tupleof[8];
-        auto p = mmap(stackBottom - 8 * stackSize, 8 * stackSize,
+        static assert(__traits(identifier, test_fiber.tupleof[5]) == "m_pmem");
+        auto stackBottom = test_fiber.tupleof[5];
+        auto p = mmap(stackBottom - 5 * stackSize, 5 * stackSize,
                       PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
         assert(p !is null, "failed to allocate page");
     }
     else
     {
-        auto m_sz = test_fiber.tupleof[7];
-        auto m_pmem = test_fiber.tupleof[8];
-        static assert(__traits(identifier, test_fiber.tupleof[7]) == "m_size");
-        static assert(__traits(identifier, test_fiber.tupleof[8]) == "m_pmem");
+        auto m_sz = test_fiber.tupleof[4];
+        auto m_pmem = test_fiber.tupleof[5];
+        static assert(__traits(identifier, test_fiber.tupleof[4]) == "m_size");
+        static assert(__traits(identifier, test_fiber.tupleof[5]) == "m_pmem");
 
         auto stackTop = m_pmem + m_sz;
-        auto p = mmap(stackTop, 8 * stackSize,
+        auto p = mmap(stackTop, 5 * stackSize,
                       PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
         assert(p !is null, "failed to allocate page");
     }

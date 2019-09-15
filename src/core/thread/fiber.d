@@ -1409,7 +1409,7 @@ private:
     }
 
 
-    StackContext* m_ctxt;
+    StackContext*   m_ctxt;
     size_t          m_size;
     void*           m_pmem;
 
