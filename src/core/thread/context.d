@@ -28,6 +28,10 @@ struct StackContext
     StackContext* within, next, prev;
 }
 
+
+/// Flag to control rethrow behavior of call, join and friends
+enum Rethrow : bool { no, yes }
+
 /**
 A class that represents a thread of execution that manages a stack.
 This serves primarily as a superclass for Thread and Fiber.
@@ -45,7 +49,7 @@ class StackContextExecutor
     }
 
     // Common standard data for Thread / Fiber.
-    Call                m_call = Call.NO;
+    Call m_call = Call.NO;
     union
     {
         void function() m_fn;
@@ -55,6 +59,7 @@ class StackContextExecutor
     StackContext*   m_ctxt;
     size_t          m_size;
     Throwable       m_unhandled;
+
 
     // Thread / Fiber entry point.  Invokes the function or delegate passed on
     // construction (if any).
@@ -233,16 +238,16 @@ struct GlobalStackContext
     static void remove(StackContext* c) nothrow @nogc
     in
     {
-        assert( c );
-        assert( c.next || c.prev );
+        assert(c);
+        assert(c.next || c.prev);
     }
     do
     {
-        if ( c.prev )
+        if (c.prev)
             c.prev.next = c.next;
-        if ( c.next )
+        if (c.next)
             c.next.prev = c.prev;
-        if ( sm_cbeg == c )
+        if (sm_cbeg == c)
             sm_cbeg = c.next;
         // NOTE: Don't null out c.next or c.prev because opApply currently
         //       follows c.next after removing a node.  This could be easily
@@ -263,8 +268,8 @@ struct GlobalStackContext
     static void add(Thread t, bool rmAboutToStart = true) nothrow @nogc
     in
     {
-        assert( t );
-        assert( !t.next && !t.prev );
+        assert(t);
+        assert(!t.next && !t.prev);
     }
     do
     {
@@ -310,7 +315,7 @@ struct GlobalStackContext
     static void remove(Thread t) nothrow @nogc
     in
     {
-        assert( t );
+        assert(t);
     }
     do
     {
@@ -329,13 +334,13 @@ struct GlobalStackContext
             //       elsewhere.  Therefore, it is the responsibility of any
             //       object that creates contexts to clean them up properly
             //       when it is done with them.
-            remove( &t.m_main );
+            remove(&t.m_main);
 
-            if ( t.prev )
+            if (t.prev)
                 t.prev.next = t.next;
-            if ( t.next )
+            if (t.next)
                 t.next.prev = t.prev;
-            if ( sm_tbeg is t )
+            if (sm_tbeg is t)
                 sm_tbeg = t.next;
             t.prev = t.next = null;
             --sm_tlen;
@@ -456,7 +461,7 @@ package(core.thread)
         {
             pthread_attr_t attr;
             void* addr; size_t size;
-    
+
             pthread_getattr_np(pthread_self(), &attr);
             pthread_attr_getstack(&attr, &addr, &size);
             pthread_attr_destroy(&attr);
@@ -468,7 +473,6 @@ package(core.thread)
         {
             pthread_attr_t attr;
             void* addr; size_t size;
-    
             pthread_attr_init(&attr);
             pthread_attr_get_np(pthread_self(), &attr);
             pthread_attr_getstack(&attr, &addr, &size);
@@ -481,7 +485,6 @@ package(core.thread)
         {
             pthread_attr_t attr;
             void* addr; size_t size;
-    
             pthread_attr_init(&attr);
             pthread_attr_get_np(pthread_self(), &attr);
             pthread_attr_getstack(&attr, &addr, &size);
@@ -493,7 +496,6 @@ package(core.thread)
         else version (OpenBSD)
         {
             stack_t stk;
-    
             pthread_stackseg_np(pthread_self(), &stk);
             return stk.ss_sp;
         }
@@ -501,7 +503,6 @@ package(core.thread)
         {
             pthread_attr_t attr;
             void* addr; size_t size;
-    
             pthread_attr_init(&attr);
             pthread_attr_get_np(pthread_self(), &attr);
             pthread_attr_getstack(&attr, &addr, &size);
@@ -513,7 +514,6 @@ package(core.thread)
         else version (Solaris)
         {
             stack_t stk;
-    
             thr_stksegment(&stk);
             return stk.ss_sp;
         }
@@ -521,7 +521,6 @@ package(core.thread)
         {
             pthread_attr_t attr;
             void* addr; size_t size;
-    
             pthread_getattr_np(pthread_self(), &attr);
             pthread_attr_getstack(&attr, &addr, &size);
             pthread_attr_destroy(&attr);
@@ -533,7 +532,6 @@ package(core.thread)
         {
             pthread_attr_t attr;
             void* addr; size_t size;
-    
             pthread_getattr_np(pthread_self(), &attr);
             pthread_attr_getstack(&attr, &addr, &size);
             pthread_attr_destroy(&attr);
@@ -545,7 +543,6 @@ package(core.thread)
         {
             pthread_attr_t attr;
             void* addr; size_t size;
-    
             pthread_getattr_np(pthread_self(), &attr);
             pthread_attr_getstack(&attr, &addr, &size);
             pthread_attr_destroy(&attr);
@@ -556,7 +553,6 @@ package(core.thread)
         else
             static assert(false, "Platform not supported.");
     }
-    
     void* getStackTop() nothrow @nogc
     {
         version (D_InlineAsm_X86)

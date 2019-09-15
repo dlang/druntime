@@ -19,17 +19,19 @@ import core.exception : onOutOfMemoryError;
 // Platform Detection and Memory Allocation
 ///////////////////////////////////////////////////////////////////////////////
 
-version (OSX)
-    version = Darwin;
-else version (iOS)
-    version = Darwin;
-else version (TVOS)
-    version = Darwin;
-else version (WatchOS)
-    version = Darwin;
+
 
 package(core.thread)
 {
+    version (OSX)
+        version = Darwin;
+    else version (iOS)
+        version = Darwin;
+    else version (TVOS)
+        version = Darwin;
+    else version (WatchOS)
+        version = Darwin;
+
     version (D_InlineAsm_X86)
     {
         version (Windows)
@@ -304,6 +306,10 @@ else version (Posix)
             import core.sys.darwin.pthread : pthread_mach_thread_np;
         }
 
+        // exposed by compiler runtime
+        extern (C) void  rt_moduleTlsCtor();
+        extern (C) void  rt_moduleTlsDtor();
+
         //
         // Entry point for POSIX threads
         //
@@ -393,10 +399,6 @@ else version (Posix)
             }
             try
             {
-                // exposed by compiler runtime
-                extern (C) void  rt_moduleTlsCtor();
-                extern (C) void  rt_moduleTlsDtor();
-
                 rt_moduleTlsCtor();
                 try
                 {
@@ -772,12 +774,12 @@ class Thread : StackContextExecutor
      *  Any exception not handled by this thread if rethrow = false, null
      *  otherwise.
      */
-    final Throwable join( bool rethrow = true )
+    final Throwable join(Rethrow rethrow = Rethrow.yes)
     {
         version (Windows)
         {
-            if ( WaitForSingleObject( m_hndl, INFINITE ) != WAIT_OBJECT_0 )
-                throw new ThreadException( "Unable to join thread" );
+            if (WaitForSingleObject( m_hndl, INFINITE ) != WAIT_OBJECT_0)
+                throw new ThreadException("Unable to join thread");
             // NOTE: m_addr must be cleared before m_hndl is closed to avoid
             //       a race condition with isRunning. The operation is done
             //       with atomicStore to prevent compiler reordering.
@@ -2997,11 +2999,11 @@ class ThreadGroup
      * Returns:
      *  A reference to the newly created thread.
      */
-    final Thread create( void delegate() dg )
+    final Thread create(void delegate() dg)
     {
-        Thread t = new Thread( dg ).start();
+        Thread t = new Thread(dg).start();
 
-        synchronized( this )
+        synchronized(this)
         {
             m_all[t] = t;
         }
@@ -3018,14 +3020,14 @@ class ThreadGroup
      * In:
      *  t must not be null.
      */
-    final void add( Thread t )
+    final void add(Thread t)
     in
     {
-        assert( t );
+        assert(t);
     }
     do
     {
-        synchronized( this )
+        synchronized(this)
         {
             m_all[t] = t;
         }
@@ -3042,16 +3044,16 @@ class ThreadGroup
      * In:
      *  t must not be null.
      */
-    final void remove( Thread t )
+    final void remove(Thread t)
     in
     {
-        assert( t );
+        assert(t);
     }
     do
     {
-        synchronized( this )
+        synchronized(this)
         {
-            m_all.remove( t );
+            m_all.remove(t);
         }
     }
 
@@ -3089,15 +3091,15 @@ class ThreadGroup
      * Throws:
      *  Any exception not handled by the joined threads.
      */
-    final void joinAll( bool rethrow = true )
+    final void joinAll(Rethrow rethrow = Rethrow.yes)
     {
-        synchronized( this )
+        synchronized(this)
         {
             // NOTE: This loop relies on the knowledge that m_all uses the
             //       Thread object for both the key and the mapped value.
-            foreach ( Thread t; m_all.keys )
+            foreach (Thread t; m_all.keys)
             {
-                t.join( rethrow );
+                t.join(rethrow);
             }
         }
     }

@@ -617,8 +617,7 @@ class Fiber : StackContextExecutor
     // General Actions
     ///////////////////////////////////////////////////////////////////////////
 
-    /// Flag to control rethrow behavior of $(D $(LREF call))
-    enum Rethrow : bool { no, yes }
+    public import core.thread.context : Rethrow;
 
     /**
      * Transfers execution to this fiber object.  The calling context will be
@@ -644,7 +643,7 @@ class Fiber : StackContextExecutor
     // is already `@nogc nothrow`, but in order for `Fiber.call` to
     // propagate the attributes of the user's function, the Fiber
     // class needs to be templated.
-    final Throwable call( Rethrow rethrow = Rethrow.yes )
+    final Throwable call(Rethrow rethrow = Rethrow.yes)
     {
         return rethrow ? call!(Rethrow.yes)() : call!(Rethrow.no);
     }
@@ -668,20 +667,20 @@ class Fiber : StackContextExecutor
     private void callImpl() nothrow @nogc
     in
     {
-        assert( m_state == State.HOLD );
+        assert(m_state == State.HOLD);
     }
     do
     {
-        Fiber   cur = getThis();
+        Fiber cur = getThis();
 
-        static if ( __traits( compiles, ucontext_t ) )
+        static if (__traits(compiles, ucontext_t))
             m_ucur = cur ? &cur.m_utxt : &Fiber.sm_utxt;
 
-        setThis( this );
+        setThis(this);
         this.switchIn();
-        setThis( cur );
+        setThis(cur);
 
-        static if ( __traits( compiles, ucontext_t ) )
+        static if (__traits(compiles, ucontext_t))
             m_ucur = null;
 
         // NOTE: If the fiber has terminated then the stack pointers must be
@@ -691,7 +690,7 @@ class Fiber : StackContextExecutor
         //       the collection of otherwise dead objects.  The most notable
         //       being the current object, which is referenced at the top of
         //       fiber_entryPoint.
-        if ( m_state == State.TERM )
+        if (m_state == State.TERM)
         {
             m_ctxt.tstack = m_ctxt.bstack;
         }
@@ -711,7 +710,7 @@ class Fiber : StackContextExecutor
     final void reset() nothrow @nogc
     in
     {
-        assert( m_state == State.TERM || m_state == State.HOLD );
+        assert(m_state == State.TERM || m_state == State.HOLD);
     }
     do
     {
