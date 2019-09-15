@@ -28,72 +28,6 @@ struct StackContext
     StackContext* within, next, prev;
 }
 
-package(core.thread)
-{
-    import core.atomic, core.memory, core.sync.mutex;
-
-    //
-    // exposed by compiler runtime
-    //
-    extern (C) void  rt_moduleTlsCtor();
-    extern (C) void  rt_moduleTlsDtor();
-
-    /**
-     * Hook for whatever EH implementation is used to save/restore some data
-     * per stack.
-     *
-     * Params:
-     *     newContext = The return value of the prior call to this function
-     *         where the stack was last swapped out, or null when a fiber stack
-     *         is switched in for the first time.
-     */
-    extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc;
-
-    version (DigitalMars)
-    {
-        version (Windows)
-            alias swapContext = _d_eh_swapContext;
-        else
-        {
-            extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc;
-
-            void* swapContext(void* newContext) nothrow @nogc
-            {
-                /* Detect at runtime which scheme is being used.
-                 * Eventually, determine it statically.
-                 */
-                static int which = 0;
-                final switch (which)
-                {
-                    case 0:
-                    {
-                        assert(newContext == null);
-                        auto p = _d_eh_swapContext(newContext);
-                        auto pdwarf = _d_eh_swapContextDwarf(newContext);
-                        if (p)
-                        {
-                            which = 1;
-                            return p;
-                        }
-                        else if (pdwarf)
-                        {
-                            which = 2;
-                            return pdwarf;
-                        }
-                        return null;
-                    }
-                    case 1:
-                        return _d_eh_swapContext(newContext);
-                    case 2:
-                        return _d_eh_swapContextDwarf(newContext);
-                }
-            }
-        }
-    }
-    else
-        alias swapContext = _d_eh_swapContext;
-}
-
 /**
 A class that represents a thread of execution that manages a stack.
 This serves primarily as a superclass for Thread and Fiber.
@@ -138,7 +72,7 @@ class StackContextExecutor
             break;
         }
     }
-    
+
     final void pushContext( StackContext* c ) nothrow @nogc
     in
     {
@@ -253,12 +187,12 @@ struct GlobalStackContext
 
     import core.thread : Thread;
 
-    __gshared Thread         sm_tbeg;
-    __gshared size_t         sm_tlen;
+    __gshared Thread sm_tbeg;
+    __gshared size_t sm_tlen;
 
     // can't use core.internal.util.array in public code
     __gshared Thread* pAboutToStart;
-    __gshared size_t nAboutToStart;
+    __gshared size_t  nAboutToStart;
 
 
     __gshared uint suspendDepth = 0;
@@ -326,7 +260,7 @@ struct GlobalStackContext
     //
     // Add a thread to the global thread list.
     //
-    static void add( Thread t, bool rmAboutToStart = true ) nothrow @nogc
+    static void add(Thread t, bool rmAboutToStart = true) nothrow @nogc
     in
     {
         assert( t );
@@ -373,7 +307,7 @@ struct GlobalStackContext
     //
     // Remove a thread from the global thread list.
     //
-    static void remove( Thread t ) nothrow @nogc
+    static void remove(Thread t) nothrow @nogc
     in
     {
         assert( t );
@@ -414,4 +348,62 @@ struct GlobalStackContext
         //       to ensure that.
         slock.unlock_nothrow();
     }
+}
+
+private
+{
+    /**
+     * Hook for whatever EH implementation is used to save/restore some data
+     * per stack.
+     *
+     * Params:
+     *     newContext = The return value of the prior call to this function
+     *         where the stack was last swapped out, or null when a fiber stack
+     *         is switched in for the first time.
+     */
+    extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc;
+
+    version (DigitalMars)
+    {
+        version (Windows)
+            alias swapContext = _d_eh_swapContext;
+        else
+        {
+            extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc;
+
+            void* swapContext(void* newContext) nothrow @nogc
+            {
+                /* Detect at runtime which scheme is being used.
+                 * Eventually, determine it statically.
+                 */
+                static int which = 0;
+                final switch (which)
+                {
+                    case 0:
+                    {
+                        assert(newContext == null);
+                        auto p = _d_eh_swapContext(newContext);
+                        auto pdwarf = _d_eh_swapContextDwarf(newContext);
+                        if (p)
+                        {
+                            which = 1;
+                            return p;
+                        }
+                        else if (pdwarf)
+                        {
+                            which = 2;
+                            return pdwarf;
+                        }
+                        return null;
+                    }
+                    case 1:
+                        return _d_eh_swapContext(newContext);
+                    case 2:
+                        return _d_eh_swapContextDwarf(newContext);
+                }
+            }
+        }
+    }
+    else
+        alias swapContext = _d_eh_swapContext;
 }

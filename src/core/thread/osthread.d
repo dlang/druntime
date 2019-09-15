@@ -393,6 +393,10 @@ else version (Posix)
             }
             try
             {
+                // exposed by compiler runtime
+                extern (C) void  rt_moduleTlsCtor();
+                extern (C) void  rt_moduleTlsDtor();
+
                 rt_moduleTlsCtor();
                 try
                 {
@@ -3322,6 +3326,8 @@ version (Posix)
 // lowlovel threading support
 private
 {
+    import core.atomic, core.memory, core.sync.mutex;
+
     struct ll_ThreadData
     {
         ThreadID tid;
