@@ -28,6 +28,72 @@ struct StackContext
     StackContext* within, next, prev;
 }
 
+package(core.thread)
+{
+    import core.atomic, core.memory, core.sync.mutex;
+
+    //
+    // exposed by compiler runtime
+    //
+    extern (C) void  rt_moduleTlsCtor();
+    extern (C) void  rt_moduleTlsDtor();
+
+    /**
+     * Hook for whatever EH implementation is used to save/restore some data
+     * per stack.
+     *
+     * Params:
+     *     newContext = The return value of the prior call to this function
+     *         where the stack was last swapped out, or null when a fiber stack
+     *         is switched in for the first time.
+     */
+    extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc;
+
+    version (DigitalMars)
+    {
+        version (Windows)
+            alias swapContext = _d_eh_swapContext;
+        else
+        {
+            extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc;
+
+            void* swapContext(void* newContext) nothrow @nogc
+            {
+                /* Detect at runtime which scheme is being used.
+                 * Eventually, determine it statically.
+                 */
+                static int which = 0;
+                final switch (which)
+                {
+                    case 0:
+                    {
+                        assert(newContext == null);
+                        auto p = _d_eh_swapContext(newContext);
+                        auto pdwarf = _d_eh_swapContextDwarf(newContext);
+                        if (p)
+                        {
+                            which = 1;
+                            return p;
+                        }
+                        else if (pdwarf)
+                        {
+                            which = 2;
+                            return pdwarf;
+                        }
+                        return null;
+                    }
+                    case 1:
+                        return _d_eh_swapContext(newContext);
+                    case 2:
+                        return _d_eh_swapContextDwarf(newContext);
+                }
+            }
+        }
+    }
+    else
+        alias swapContext = _d_eh_swapContext;
+}
+
 /**
 A class that represents a thread of execution that manages a stack.
 This serves primarily as a superclass for Thread and Fiber.
@@ -71,6 +137,41 @@ class StackContextExecutor
         default:
             break;
         }
+    }
+    
+    final void pushContext( StackContext* c ) nothrow @nogc
+    in
+    {
+        assert( !c.within );
+    }
+    do
+    {
+        m_ctxt.ehContext = swapContext(c.ehContext);
+        c.within = m_ctxt;
+        m_ctxt = c;
+    }
+
+    final void popContext() nothrow @nogc
+    in
+    {
+        assert( m_ctxt && m_ctxt.within );
+    }
+    do
+    {
+        StackContext* c = m_ctxt;
+        m_ctxt = c.within;
+        c.ehContext = swapContext(m_ctxt.ehContext);
+        c.within = null;
+    }
+
+    final StackContext* topContext() nothrow @nogc
+    in
+    {
+        assert( m_ctxt );
+    }
+    do
+    {
+        return m_ctxt;
     }
 }
 
