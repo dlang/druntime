@@ -1441,6 +1441,7 @@ private:
     // Context Switching
     ///////////////////////////////////////////////////////////////////////////
 
+    import core.thread.context : getStackTop;
 
     //
     // Switches into the stack held by this fiber.
