@@ -385,6 +385,7 @@ else version (D_InlineAsm_X86_64)
 
 version (Posix)
 {
+    import core.sys.posix.pthread;
     import core.sys.posix.unistd;
 
     version (AsmX86_Windows)    {} else
@@ -487,10 +488,6 @@ private
 
 package(core.thread)
 {
-
-    import core.sys.posix.pthread : pthread_attr_t, pthread_attr_getstack,
-                                    pthread_attr_destroy, pthread_self;
-
     void* getStackBottom() nothrow @nogc
     {
         version (Windows)
