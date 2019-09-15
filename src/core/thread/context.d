@@ -52,6 +52,10 @@ class StackContextExecutor
         void delegate() m_dg;
     }
 
+    StackContext*   m_ctxt;
+    size_t          m_size;
+    Throwable       m_unhandled;
+
     // Thread / Fiber entry point.  Invokes the function or delegate passed on
     // construction (if any).
     final void run()

@@ -285,7 +285,7 @@ version (Windows)
             Thread  obj = cast(Thread) arg;
             assert( obj );
 
-            assert( obj.m_curr is &obj.m_main );
+            assert( obj.m_ctxt is &obj.m_main );
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
             obj.m_tlsgcdata = rt_tlsgc_init();
@@ -396,7 +396,7 @@ else version (Posix)
                              void function(void*) @nogc nothrow)(loadedLibraries);
             }
 
-            assert( obj.m_curr is &obj.m_main );
+            assert( obj.m_ctxt is &obj.m_main );
             obj.m_main.bstack = getStackBottom();
             obj.m_main.tstack = obj.m_main.bstack;
             obj.m_tlsgcdata = rt_tlsgc_init();
@@ -519,7 +519,7 @@ else version (Posix)
 
                 if ( !obj.m_lock )
                 {
-                    obj.m_curr.tstack = getStackTop();
+                    obj.m_ctxt.tstack = getStackTop();
                 }
 
                 sigset_t    sigres = void;
@@ -539,7 +539,7 @@ else version (Posix)
 
                 if ( !obj.m_lock )
                 {
-                    obj.m_curr.tstack = obj.m_curr.bstack;
+                    obj.m_ctxt.tstack = obj.m_ctxt.bstack;
                 }
             }
 
@@ -644,7 +644,7 @@ class Thread : StackContextExecutor
         this(sz);
         () @trusted { m_fn   = fn; }();
         m_call = Call.FN;
-        m_curr = &m_main;
+        m_ctxt = &m_main;
     }
 
 
@@ -669,7 +669,7 @@ class Thread : StackContextExecutor
         this(sz);
         () @trusted { m_dg   = dg; }();
         m_call = Call.DG;
-        m_curr = &m_main;
+        m_ctxt = &m_main;
     }
 
 
@@ -743,7 +743,7 @@ class Thread : StackContextExecutor
 
             if ( pthread_attr_init( &attr ) )
                 onThreadError( "Error initializing thread attributes" );
-            if ( m_sz && pthread_attr_setstacksize( &attr, m_sz ) )
+            if ( m_size && pthread_attr_setstacksize( &attr, m_size ) )
                 onThreadError( "Error initializing thread stack size" );
         }
 
@@ -758,8 +758,8 @@ class Thread : StackContextExecutor
             //
             // Solution: Create the thread in suspended state and then
             //       add and resume it with slock acquired
-            assert(m_sz <= uint.max, "m_sz must be less than or equal to uint.max");
-            m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint) m_sz, &thread_entryPoint, cast(void*) this, CREATE_SUSPENDED, &m_addr );
+            assert(m_size <= uint.max, "m_size must be less than or equal to uint.max");
+            m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint) m_size, &thread_entryPoint, cast(void*) this, CREATE_SUSPENDED, &m_addr );
             if ( cast(size_t) m_hndl == 0 )
                 onThreadError( "Error creating thread" );
         }
@@ -1536,10 +1536,10 @@ private:
                 if (PTHREAD_STACK_MIN > sz)
                     sz = PTHREAD_STACK_MIN;
             }
-            m_sz = sz;
+            m_size = sz;
         }
         m_call = Call.NO;
-        m_curr = &m_main;
+        m_ctxt = &m_main;
     }
 
 private:
@@ -1587,14 +1587,12 @@ private:
     }
     ThreadID            m_addr;
     string              m_name;
-    size_t              m_sz;
     version (Posix)
     {
         shared bool     m_isRunning;
     }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
-    Throwable           m_unhandled;
 
     version (Solaris)
     {
@@ -1617,7 +1615,6 @@ private:
 
 package(core.thread):
     StackContext     m_main;
-    StackContext*    m_curr;
     bool             m_lock;
     void*            m_tlsgcdata;
 
@@ -1628,32 +1625,32 @@ package(core.thread):
     }
     do
     {
-        m_curr.ehContext = swapContext(c.ehContext);
-        c.within = m_curr;
-        m_curr = c;
+        m_ctxt.ehContext = swapContext(c.ehContext);
+        c.within = m_ctxt;
+        m_ctxt = c;
     }
 
     final void popContext() nothrow @nogc
     in
     {
-        assert( m_curr && m_curr.within );
+        assert( m_ctxt && m_ctxt.within );
     }
     do
     {
-        StackContext* c = m_curr;
-        m_curr = c.within;
-        c.ehContext = swapContext(m_curr.ehContext);
+        StackContext* c = m_ctxt;
+        m_ctxt = c.within;
+        c.ehContext = swapContext(m_ctxt.ehContext);
         c.within = null;
     }
 
     final StackContext* topContext() nothrow @nogc
     in
     {
-        assert( m_curr );
+        assert( m_ctxt );
     }
     do
     {
-        return m_curr;
+        return m_ctxt;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1955,7 +1952,7 @@ extern (C) Thread thread_attachThis()
 private Thread attachThread(Thread thisThread) @nogc
 {
     StackContext* thisContext = &thisThread.m_main;
-    assert( thisContext == thisThread.m_curr );
+    assert( thisContext == thisThread.m_ctxt );
 
     version (Windows)
     {
@@ -2019,7 +2016,7 @@ version (Windows)
 
         Thread          thisThread  = new Thread();
         StackContext*   thisContext = &thisThread.m_main;
-        assert( thisContext == thisThread.m_curr );
+        assert( thisContext == thisThread.m_ctxt );
 
         thisThread.m_addr  = addr;
         thisContext.bstack = bstack;
@@ -2363,7 +2360,7 @@ private bool suspend( Thread t ) nothrow
         version (X86)
         {
             if ( !t.m_lock )
-                t.m_curr.tstack = cast(void*) context.Esp;
+                t.m_ctxt.tstack = cast(void*) context.Esp;
             // eax,ebx,ecx,edx,edi,esi,ebp,esp
             t.m_reg[0] = context.Eax;
             t.m_reg[1] = context.Ebx;
@@ -2377,7 +2374,7 @@ private bool suspend( Thread t ) nothrow
         else version (X86_64)
         {
             if ( !t.m_lock )
-                t.m_curr.tstack = cast(void*) context.Rsp;
+                t.m_ctxt.tstack = cast(void*) context.Rsp;
             // rax,rbx,rcx,rdx,rdi,rsi,rbp,rsp
             t.m_reg[0] = context.Rax;
             t.m_reg[1] = context.Rbx;
@@ -2422,7 +2419,7 @@ private bool suspend( Thread t ) nothrow
             if ( thread_get_state( t.m_tmach, x86_THREAD_STATE32, &state, &count ) != KERN_SUCCESS )
                 onThreadError( "Unable to load thread state" );
             if ( !t.m_lock )
-                t.m_curr.tstack = cast(void*) state.esp;
+                t.m_ctxt.tstack = cast(void*) state.esp;
             // eax,ebx,ecx,edx,edi,esi,ebp,esp
             t.m_reg[0] = state.eax;
             t.m_reg[1] = state.ebx;
@@ -2441,7 +2438,7 @@ private bool suspend( Thread t ) nothrow
             if ( thread_get_state( t.m_tmach, x86_THREAD_STATE64, &state, &count ) != KERN_SUCCESS )
                 onThreadError( "Unable to load thread state" );
             if ( !t.m_lock )
-                t.m_curr.tstack = cast(void*) state.rsp;
+                t.m_ctxt.tstack = cast(void*) state.rsp;
             // rax,rbx,rcx,rdx,rdi,rsi,rbp,rsp
             t.m_reg[0] = state.rax;
             t.m_reg[1] = state.rbx;
@@ -2482,7 +2479,7 @@ private bool suspend( Thread t ) nothrow
         }
         else if ( !t.m_lock )
         {
-            t.m_curr.tstack = getStackTop();
+            t.m_ctxt.tstack = getStackTop();
         }
     }
     return true;
@@ -2602,7 +2599,7 @@ private void resume( Thread t ) nothrow
         }
 
         if ( !t.m_lock )
-            t.m_curr.tstack = t.m_curr.bstack;
+            t.m_ctxt.tstack = t.m_ctxt.bstack;
         t.m_reg[0 .. $] = 0;
     }
     else version (Darwin)
@@ -2618,7 +2615,7 @@ private void resume( Thread t ) nothrow
         }
 
         if ( !t.m_lock )
-            t.m_curr.tstack = t.m_curr.bstack;
+            t.m_ctxt.tstack = t.m_ctxt.bstack;
         t.m_reg[0 .. $] = 0;
     }
     else version (Posix)
@@ -2637,7 +2634,7 @@ private void resume( Thread t ) nothrow
         }
         else if ( !t.m_lock )
         {
-            t.m_curr.tstack = t.m_curr.bstack;
+            t.m_ctxt.tstack = t.m_ctxt.bstack;
         }
     }
 }
@@ -2725,8 +2722,8 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         thisThread  = Thread.getThis();
         if ( !thisThread.m_lock )
         {
-            oldStackTop = thisThread.m_curr.tstack;
-            thisThread.m_curr.tstack = curStackTop;
+            oldStackTop = thisThread.m_ctxt.tstack;
+            thisThread.m_ctxt.tstack = curStackTop;
         }
     }
 
@@ -2736,7 +2733,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         {
             if ( !thisThread.m_lock )
             {
-                thisThread.m_curr.tstack = oldStackTop;
+                thisThread.m_ctxt.tstack = oldStackTop;
             }
         }
     }

@@ -144,7 +144,7 @@ private
         Fiber   obj = Fiber.getThis();
         assert( obj );
 
-        assert( Thread.getThis().m_curr is obj.m_ctxt );
+        assert( Thread.getThis().m_ctxt is obj.m_ctxt );
         atomicStore!(MemoryOrder.raw)(*cast(shared)&Thread.getThis().m_lock, false);
         obj.m_ctxt.tstack = obj.m_ctxt.bstack;
         obj.m_state = Fiber.State.EXEC;
@@ -873,7 +873,6 @@ private:
     // Standard fiber data
     //
     bool                m_isRunning;
-    Throwable           m_unhandled;
     State               m_state;
 
 
@@ -1408,9 +1407,6 @@ private:
             static assert(0, "Not implemented");
     }
 
-
-    StackContext*   m_ctxt;
-    size_t          m_size;
     void*           m_pmem;
 
     static if ( __traits( compiles, ucontext_t ) )
@@ -1452,7 +1448,7 @@ private:
     final void switchIn() nothrow @nogc
     {
         Thread  tobj = Thread.getThis();
-        void**  oldp = &tobj.m_curr.tstack;
+        void**  oldp = &tobj.m_ctxt.tstack;
         void*   newp = m_ctxt.tstack;
 
         // NOTE: The order of operations here is very important.  The current
@@ -1476,7 +1472,7 @@ private:
         //       to prevent Bad Things from happening.
         tobj.popContext();
         atomicStore!(MemoryOrder.raw)(*cast(shared)&tobj.m_lock, false);
-        tobj.m_curr.tstack = tobj.m_curr.bstack;
+        tobj.m_ctxt.tstack = tobj.m_ctxt.bstack;
     }
 
 
@@ -1487,7 +1483,7 @@ private:
     {
         Thread  tobj = Thread.getThis();
         void**  oldp = &m_ctxt.tstack;
-        void*   newp = tobj.m_curr.within.tstack;
+        void*   newp = tobj.m_ctxt.within.tstack;
 
         // NOTE: The order of operations here is very important.  The current
         //       stack top must be stored before m_lock is set, and pushContext
@@ -1512,7 +1508,7 @@ private:
         //       current thread handle before unlocking, etc.
         tobj = Thread.getThis();
         atomicStore!(MemoryOrder.raw)(*cast(shared)&tobj.m_lock, false);
-        tobj.m_curr.tstack = tobj.m_curr.bstack;
+        tobj.m_ctxt.tstack = tobj.m_ctxt.bstack;
     }
 }
 
