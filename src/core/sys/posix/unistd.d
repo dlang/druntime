@@ -1344,6 +1344,7 @@ else version (CRuntime_Bionic)
 
     enum _SC_PAGESIZE         = 0x0027;
     enum _SC_NPROCESSORS_ONLN = 0x0061;
+    enum _SC_PHYS_PAGES       = 0x0062;
     enum _SC_THREAD_STACK_MIN = 0x004c;
 }
 else version (Solaris)
