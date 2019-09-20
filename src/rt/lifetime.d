@@ -39,17 +39,8 @@ private
     }
 }
 
-private immutable bool callStructDtorsDuringGC;
-
 extern (C) void lifetime_init()
 {
-    // this is run before static ctors, so it is safe to modify immutables
-    import rt.config;
-    string s = rt_configOption("callStructDtorsDuringGC");
-    if (s != null)
-        cast() callStructDtorsDuringGC = s[0] == '1' || s[0] == 'y' || s[0] == 'Y';
-    else
-        cast() callStructDtorsDuringGC = true;
 }
 
 /**
@@ -212,9 +203,6 @@ inout(TypeInfo) unqualify(inout(TypeInfo) cti) pure nothrow @nogc
 // size used to store the TypeInfo at the end of an allocation for structs that have a destructor
 size_t structTypeInfoSize(const TypeInfo ti) pure nothrow @nogc
 {
-    if (!callStructDtorsDuringGC)
-        return 0;
-
     if (ti && typeid(ti) is typeid(TypeInfo_Struct)) // avoid a complete dynamic type cast
     {
         auto sti = cast(TypeInfo_Struct)cast(void*)ti;
@@ -2621,7 +2609,6 @@ deprecated unittest
     delete arr1;
     assert(dtorCount == 7);
 
-    if (callStructDtorsDuringGC)
     {
         dtorCount = 0;
         S1* s2 = new S1;
@@ -2655,7 +2642,6 @@ deprecated unittest
     arr2.assumeSafeAppend;
     assert(dtorCount == 4); // destructors run explicitely?
 
-    if (callStructDtorsDuringGC)
     {
         dtorCount = 0;
         BlkInfo blkinf = GC.query(arr2.ptr);
@@ -2672,7 +2658,6 @@ deprecated unittest
     S1[int] aa1;
     aa1[0] = S1(0);
     aa1[1] = S1(1);
-    if (callStructDtorsDuringGC)
     {
         dtorCount = 0;
         aa1 = null;
@@ -2684,7 +2669,6 @@ deprecated unittest
     aa2[S1(0)] = 0;
     aa2[S1(1)] = 1;
     aa2[S1(2)] = 2;
-    if (callStructDtorsDuringGC)
     {
         dtorCount = 0;
         aa2 = null;
@@ -2695,7 +2679,6 @@ deprecated unittest
     S1[2][int] aa3;
     aa3[0] = [S1(0),S1(2)];
     aa3[1] = [S1(1),S1(3)];
-    if (callStructDtorsDuringGC)
     {
         dtorCount = 0;
         aa3 = null;
@@ -2817,9 +2800,6 @@ unittest
 debug(SENTINEL) {} else
 unittest
 {
-    if (!callStructDtorsDuringGC)
-        return;
-
     bool test(E)()
     {
         import core.exception;
