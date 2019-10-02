@@ -2819,6 +2819,7 @@ struct Gcx
 
         evStart.initialize(false, false);
         evDone.initialize(false, false);
+
         for (int idx = 0; idx < numScanThreads; idx++)
             scanThreadData[idx].tid = createLowLevelThread(&scanBackground, 0x4000, &stopScanThreads);
     }
