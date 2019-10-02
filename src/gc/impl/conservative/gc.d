@@ -2854,7 +2854,7 @@ struct Gcx
 
     void scanBackground() nothrow
     {
-        version(linux)
+        version (linux)
         {
             import core.sys.posix.signal;
 
