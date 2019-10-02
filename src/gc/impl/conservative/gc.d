@@ -4480,3 +4480,41 @@ unittest
         printf("unexpected pointers %p and %p\n", p.ptr, q.ptr);
     }
 }
+
+// https://issues.dlang.org/show_bug.cgi?id=20256
+version (linux) unittest
+{
+    import core.sys.posix.signal;
+    import core.sys.posix.unistd;
+    import core.thread;
+    import core.memory;
+
+    int sig;
+    sigset_t m, o;
+    sigemptyset(&m);
+    sigaddset(&m, SIGHUP);
+
+    auto x = new int[](10000);
+    for(int i=0;i<10000;i++)
+    {
+        x ~= i;
+    }
+    GC.collect();  // GC create thread
+
+    sigprocmask(SIG_BLOCK, &m, &o); // block SIGHUP from delivery to main thread
+
+    auto parent_pid = getpid();
+    auto child_pid = fork();
+    assert(child_pid >= 0);
+    if ( child_pid == 0 )
+    {
+        kill(parent_pid, SIGHUP); // send signal to parent
+        _exit(0);
+    }
+    // parent
+    Thread.sleep(100.msecs);
+    // if we are here, then GC threads didn't receive SIGHUP,
+    // otherwise whole process killed
+    sigwait(&m, &sig); // clear pending SIGHUP
+    sigprocmask(SIG_SETMASK, &o, null); // restore old signal mask
+}
