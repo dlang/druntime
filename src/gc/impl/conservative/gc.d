@@ -2821,7 +2821,6 @@ struct Gcx
 
         evStart.initialize(false, false);
         evDone.initialize(false, false);
-
         for (int idx = 0; idx < numScanThreads; idx++)
             scanThreadData[idx].tid = createLowLevelThread(&scanBackground, 0x4000, &stopScanThreads);
 
@@ -2874,6 +2873,16 @@ struct Gcx
 
     void scanBackground() nothrow
     {
+        version(linux) {
+            import core.sys.posix.signal;
+
+            // block all signals, so that scanThread will not receive a signal not intended for him.
+			// see https://issues.dlang.org/show_bug.cgi?id=20256
+            sigset_t new_mask;
+            sigfillset(&new_mask);
+			int sigmask_rc = pthread_sigmask(SIG_BLOCK, &new_mask, null);
+			assert(sigmask_rc == 0, "failed to set up GC scan thread sigmask");
+		}
         while (!stopGC)
         {
             evStart.wait();
