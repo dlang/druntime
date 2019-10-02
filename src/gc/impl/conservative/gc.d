@@ -2858,7 +2858,7 @@ struct Gcx
             import core.sys.posix.signal;
 
             // block all signals, so that scanThread will not receive a signal not intended for him.
-			// see https://issues.dlang.org/show_bug.cgi?id=20256
+            // see https://issues.dlang.org/show_bug.cgi?id=20256
             sigset_t new_mask;
             sigfillset(&new_mask);
 			int sigmask_rc = pthread_sigmask(SIG_BLOCK, &new_mask, null);
