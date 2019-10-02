@@ -2864,7 +2864,7 @@ struct Gcx
             sigfillset(&new_mask);
             int sigmask_rc = pthread_sigmask(SIG_BLOCK, &new_mask, null);
             assert(sigmask_rc == 0, "failed to set up GC scan thread sigmask");
-		}
+        }
         while (!stopGC)
         {
             evStart.wait(dur!"msecs"(10));
