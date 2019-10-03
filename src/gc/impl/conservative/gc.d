@@ -454,7 +454,7 @@ class ConservativeGC : GC
 
         p = runLocked!(reallocNoSync, mallocTime, numMallocs)(p, size, bits, localAllocSize, ti);
 
-        if (p && p !is oldp && !(bits & BlkAttr.NO_SCAN))
+        if (p && !(bits & BlkAttr.NO_SCAN))
         {
             memset(p + size, 0, localAllocSize - size);
         }
@@ -592,7 +592,6 @@ class ConservativeGC : GC
         {
             pool.clrBits(biti, ~BlkAttr.NONE);
             pool.setBits(biti, bits);
-
         }
         return p;
     }
@@ -4488,4 +4487,74 @@ unittest
 
     assert(stats2.maxPauseTime >= stats1.maxPauseTime);
     assert(stats2.maxCollectionTime >= stats1.maxCollectionTime);
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=20214
+unittest
+{
+    import core.memory;
+    import core.stdc.stdio;
+
+    // allocate from large pool
+    auto o = GC.malloc(10);
+    auto p = (cast(void**)GC.malloc(4096 * (void*).sizeof))[0 .. 4096];
+    auto q = (cast(void**)GC.malloc(4096 * (void*).sizeof))[0 .. 4096];
+    if (p.ptr + p.length is q.ptr)
+    {
+        q[] = o; // fill with pointers
+
+        // shrink, unused area cleared?
+        auto nq = (cast(void**)GC.realloc(q.ptr, 4000 * (void*).sizeof))[0 .. 4000];
+        assert(q.ptr is nq.ptr);
+        assert(q.ptr[4095] !is o);
+
+        GC.free(q.ptr);
+        // expected to extend in place
+        auto np = (cast(void**)GC.realloc(p.ptr, 4200 * (void*).sizeof))[0 .. 4200];
+        assert(p.ptr is np.ptr);
+        assert(q.ptr[4200] !is o);
+    }
+    else
+    {
+        // adjacent allocations likely but not guaranteed
+        printf("unexpected pointers %p and %p\n", p.ptr, q.ptr);
+    }
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=20256
+version (linux) unittest
+{
+    import core.sys.posix.signal;
+    import core.sys.posix.unistd;
+    import core.thread;
+    import core.memory;
+
+    int sig;
+    sigset_t m, o;
+    sigemptyset(&m);
+    sigaddset(&m, SIGHUP);
+
+    auto x = new int[](10000);
+    for(int i=0;i<10000;i++)
+    {
+        x ~= i;
+    }
+    GC.collect();  // GC create thread
+
+    sigprocmask(SIG_BLOCK, &m, &o); // block SIGHUP from delivery to main thread
+
+    auto parent_pid = getpid();
+    auto child_pid = fork();
+    assert(child_pid >= 0);
+    if ( child_pid == 0 )
+    {
+        kill(parent_pid, SIGHUP); // send signal to parent
+        _exit(0);
+    }
+    // parent
+    Thread.sleep(100.msecs);
+    // if we are here, then GC threads didn't receive SIGHUP,
+    // otherwise whole process killed
+    sigwait(&m, &sig); // clear pending SIGHUP
+    sigprocmask(SIG_SETMASK, &o, null); // restore old signal mask
 }
