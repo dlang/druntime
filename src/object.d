@@ -1497,6 +1497,14 @@ class TypeInfo_Inout : TypeInfo_Const
     }
 }
 
+class TypeInfo_Rvalue : TypeInfo_Const
+{
+    override string toString() const
+    {
+        return cast(string) ("@rvalue(" ~ base.toString() ~ ")");
+    }
+}
+
 // Contents of Moduleinfo._flags
 enum
 {
