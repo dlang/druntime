@@ -350,6 +350,13 @@ else version (Solaris) enum ClockType
     second = 6,
     threadCPUTime = 7,
 }
+else version (WebAssembly) enum ClockType
+{
+    normal = 0,
+    coarse = 2,
+    precise = 3,
+    second = 6,
+}
 else
 {
     // It needs to be decided (and implemented in an appropriate version branch
@@ -447,6 +454,17 @@ version (Posix)
             case processCPUTime: return CLOCK_PROCESS_CPUTIME_ID;
             case threadCPUTime: return CLOCK_THREAD_CPUTIME_ID;
             case second: assert(0);
+            }
+        }
+        else version (WebAssembly)
+        {
+            enum CLOCK_MONOTONIC = 1;
+            with(ClockType) final switch (clockType)
+            {
+                case coarse: return CLOCK_MONOTONIC;
+                case normal: return CLOCK_MONOTONIC;
+                case precise: return CLOCK_MONOTONIC;
+                case second: assert(0);
             }
         }
         else

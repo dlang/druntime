@@ -34,3 +34,8 @@ else version (Posix)
     ///
     alias dchar wchar_t;
 }
+else version (WebAssembly)
+{
+    ///
+    alias dchar wchar_t;
+}
