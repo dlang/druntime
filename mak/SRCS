@@ -184,6 +184,7 @@ SRCS=\
 	src\core\sys\linux\sys\xattr.d \
 	src\core\sys\linux\sys\time.d \
 	src\core\sys\linux\sys\prctl.d \
+	src\core\sys\linux\sys\gettid.d \
 	\
 	src\core\sys\netbsd\err.d \
 	src\core\sys\netbsd\sys\featuretest.d \
@@ -217,6 +218,7 @@ SRCS=\
 	src\core\sys\posix\stdlib.d \
 	src\core\sys\posix\string.d \
 	src\core\sys\posix\strings.d \
+	src\core\sys\posix\syscall.d \
 	src\core\sys\posix\syslog.d \
 	src\core\sys\posix\termios.d \
 	src\core\sys\posix\time.d \

@@ -186,6 +186,7 @@ COPY=\
 	$(IMPDIR)\core\sys\linux\sys\xattr.d \
 	$(IMPDIR)\core\sys\linux\sys\time.d \
 	$(IMPDIR)\core\sys\linux\sys\prctl.d \
+	$(IMPDIR)\core\sys\linux\sys\gettid.d \
 	\
 	$(IMPDIR)\core\sys\netbsd\err.d \
 	$(IMPDIR)\core\sys\netbsd\sys\featuretest.d \
@@ -219,6 +220,7 @@ COPY=\
 	$(IMPDIR)\core\sys\posix\stdlib.d \
 	$(IMPDIR)\core\sys\posix\string.d \
 	$(IMPDIR)\core\sys\posix\strings.d \
+	$(IMPDIR)\core\sys\posix\syscall.d \
 	$(IMPDIR)\core\sys\posix\syslog.d \
 	$(IMPDIR)\core\sys\posix\termios.d \
 	$(IMPDIR)\core\sys\posix\time.d \
