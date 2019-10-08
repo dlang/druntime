@@ -50,7 +50,6 @@ shared struct SpinLock
     /// yield with backoff
     void yield(size_t k)
     {
-        import core.time;
         if (k < pauseThresh)
             return core.atomic.pause();
         else if (k < 32)
