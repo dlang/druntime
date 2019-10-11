@@ -112,17 +112,17 @@ int _d_isbaseof2(ClassInfo oc, ClassInfo c, ref size_t offset)
 
 int _d_isbaseof(ClassInfo oc, ClassInfo c)
 {
-    if (oc is c)
+    if (oc.compareClassInfo(c))
         return true;
 
     do
     {
-        if (oc.base is c)
+        if (oc.base.compareClassInfo(c))
             return true;
 
         foreach (iface; oc.interfaces)
         {
-            if (iface.classinfo is c || _d_isbaseof(iface.classinfo, c))
+            if (iface.classinfo.compareClassInfo(c) || _d_isbaseof(iface.classinfo, c))
                 return true;
         }
 
