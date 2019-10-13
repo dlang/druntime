@@ -122,12 +122,12 @@ version (Windows)
      *      opaque handle to the DLL if successfully loaded
      *      null if failure
      */
-    export extern (C) void* rt_loadLibrary(const char* name)
+    extern (C) void* rt_loadLibrary(const char* name)
     {
         return initLibrary(.LoadLibraryA(name));
     }
 
-    export extern (C) void* rt_loadLibraryW(const WCHAR* name)
+    extern (C) void* rt_loadLibraryW(const WCHAR* name)
     {
         return initLibrary(.LoadLibraryW(name));
     }
@@ -145,51 +145,50 @@ version (Windows)
             gcSet(gc_getProxy());
         }
 
-    version (Win64)
-    {
-        import rt.sections_win64;
-
-        ehGetFn ehGet = cast(ehGetFn) GetProcAddress(mod, "_d_innerEhTable");
-        ehSetFn ehSet = cast(ehSetFn) GetProcAddress(mod, "_d_setEhTablePointer");
-
-        typeof(ehGet()) libraryEh;
-        if (ehGet)
+        version (Win64)
         {
-            libraryEh = ehGet();
-            if (ehTablesGlobal is null)
-            {
-            // first time: copy the local table into it as well as
-            // the new library
-            auto local = _d_innerEhTable();
-            auto len = libraryEh.length + local.length;
-            auto ptr = cast(FuncTable*) malloc(typeof(ehTablesGlobal[0]).sizeof * len);
-            ptr[0 .. local.length] = cast(FuncTable[]) local[];
-            ptr[local.length .. local.length + libraryEh.length] = cast(FuncTable[]) libraryEh[];
-            ehTablesGlobal = ptr[0 .. len];
-            }
-            else
-            {
-            // otherwise we need to realloc it to append the library table
-            auto ptr = ehTablesGlobal.ptr;
-            ptr = cast(FuncTable*) realloc(cast(void*) ptr,
-                typeof(ehTablesGlobal[0]).sizeof * (ehTablesGlobal.length + libraryEh.length));
-            if (ptr is null)
-                abort();
-            auto orig = ehTablesGlobal.length;
-            cast(FuncTable[]) ptr[orig .. orig + libraryEh.length] = cast(FuncTable[]) libraryEh[];
-            ehTablesGlobal = ptr[0 .. orig + libraryEh.length];
-            }
+            import rt.sections_win64;
 
-            // set the local pointer
-            _d_setEhTablePointer(&ehTablesGlobal);
+            auto ehGet = cast(ehGetFn) GetProcAddress(mod, "_d_innerEhTable");
+            auto ehSet = cast(ehSetFn) GetProcAddress(mod, "_d_setEhTablePointer");
 
-            if (ehSet)
+            if (ehGet)
             {
-            // and set the remote table too so throwing from the dll also sees the whole thing
-               ehSet(&ehTablesGlobal);
+                auto libraryEh = ehGet();
+                if (ehTablesGlobal is null)
+                {
+                    // first time: copy the local table into it as well as
+                    // the new library
+                    auto local = _d_innerEhTable();
+                    auto len = libraryEh.length + local.length;
+                    auto ptr = cast(FuncTable*) malloc(typeof(ehTablesGlobal[0]).sizeof * len);
+                    ptr[0 .. local.length] = cast(FuncTable[]) local[];
+                    ptr[local.length .. local.length + libraryEh.length] = cast(FuncTable[]) libraryEh[];
+                    ehTablesGlobal = ptr[0 .. len];
+                }
+                else
+                {
+                    // otherwise we need to realloc it to append the library table
+                    auto ptr = ehTablesGlobal.ptr;
+                    ptr = cast(FuncTable*) realloc(cast(void*) ptr,
+                        typeof(ehTablesGlobal[0]).sizeof * (ehTablesGlobal.length + libraryEh.length));
+                    if (ptr is null)
+                        abort();
+                    auto orig = ehTablesGlobal.length;
+                    cast(FuncTable[]) ptr[orig .. orig + libraryEh.length] = cast(FuncTable[]) libraryEh[];
+                    ehTablesGlobal = ptr[0 .. orig + libraryEh.length];
+                }
+
+                // set the local pointer
+                _d_setEhTablePointer(&ehTablesGlobal);
+
+                if (ehSet)
+                {
+                    // and set the remote table too so throwing from the dll also sees the whole thing
+                   ehSet(&ehTablesGlobal);
+                }
             }
         }
-    }
 
         return mod;
     }
@@ -202,7 +201,7 @@ version (Windows)
      *      1   succeeded
      *      0   some failure happened
      */
-    export extern (C) int rt_unloadLibrary(void* ptr)
+    extern (C) int rt_unloadLibrary(void* ptr)
     {
         // should this logic just be done in the dll's DllMain instead?
 
@@ -270,7 +269,7 @@ shared size_t _initCount;
  * If a C program wishes to call D code, and there's no D main(), then it
  * must call rt_init() and rt_term().
  */
-export extern (C) int rt_init()
+extern (C) int rt_init()
 {
     /* @@BUG 11380 @@ Need to synchronize rt_init/rt_term calls for
        version (Shared) druntime, because multiple C threads might

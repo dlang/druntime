@@ -1,0 +1,4 @@
+LIBRARY l
+EXPORTS
+    _d_innerEhTable = _d_innerEhTable
+    _d_setEhTablePointer = _d_setEhTablePointer

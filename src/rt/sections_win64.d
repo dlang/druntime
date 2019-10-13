@@ -231,11 +231,11 @@ version (Win64)
         ehTablesFull = &ehTablesLocal;
     }
 
-    extern(C) export void _d_setEhTablePointer(const(FuncTable)[]* ptr) {
+    package(rt) extern(C) void _d_setEhTablePointer(const(FuncTable)[]* ptr) {
         ehTablesFull = ptr;
     }
 
-    extern(C) export const(FuncTable)[] _d_innerEhTable() {
+    package(rt) extern(C) const(FuncTable)[] _d_innerEhTable() {
         auto pbeg = cast(const(FuncTable)*)&_deh_beg;
         auto pend = cast(const(FuncTable)*)&_deh_end;
         return pbeg[0 .. pend - pbeg];
