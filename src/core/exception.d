@@ -19,6 +19,19 @@ void __switch_errorT()(string file = __FILE__, size_t line = __LINE__) @trusted
         assert(0, "No appropriate switch clause found");
 }
 
+
+/**
+ * Thrown on a configuration error.
+ */
+class ForkError : Error
+{
+    this( string file = __FILE__, size_t line = __LINE__, Throwable next = null ) @nogc nothrow pure @safe
+    {
+        super( "fork() failed", file, line, next );
+    }
+}
+
+
 version (D_BetterC)
 {
     // When compiling with -betterC we use template functions so if they are
@@ -537,6 +550,22 @@ extern (C) void onInvalidMemoryOperationError(void* pretend_sideffect = null) @t
     // The same restriction applies as for onOutOfMemoryError. The GC is in an
     // undefined state, thus no allocation must occur while generating this object.
     throw staticError!InvalidMemoryOperationError();
+}
+
+
+/**
+ * A callback for errors in the case of a failed fork in D.  A $(LREF ForkError) will be thrown.
+ *
+ * Params:
+ *  file = The name of the file that signaled this error.
+ *  line = The line number on which this error occurred.
+ *
+ * Throws:
+ *  $(LREF ConfigurationError).
+ */
+extern (C) void onForkError( string file = __FILE__, size_t line = __LINE__ ) @trusted pure nothrow @nogc
+{
+    throw staticError!ForkError( file, line, null );
 }
 
 /**
