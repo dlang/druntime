@@ -923,7 +923,6 @@ pure @safe:
             return dst[beg .. len];
         case 'F': case 'U': case 'W': case 'V': case 'R': // TypeFunction
             return parseTypeFunction( name );
-        case 'I': // TypeIdent (I LName)
         case 'C': // TypeClass (C LName)
         case 'S': // TypeStruct (S LName)
         case 'E': // TypeEnum (E LName)
@@ -1237,6 +1236,11 @@ pure @safe:
             }
             switch ( front )
             {
+            case 'I': // in (I Type)
+                popFront();
+                put( "in " );
+                parseType();
+                continue;
             case 'J': // out (J Type)
                 popFront();
                 put( "out " );
