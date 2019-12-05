@@ -13,7 +13,7 @@ ifeq (osx,$(OS))
 endif
 ifeq (linux,$(OS))
 #	TESTS+=string
-#	TESTS+=vector
+	TESTS+=vector
 	OLDABITESTS+=string
 endif
 ifeq (freebsd,$(OS))

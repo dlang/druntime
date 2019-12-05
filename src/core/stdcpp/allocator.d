@@ -28,7 +28,7 @@ struct allocator(T)
 extern(D):
 
     ///
-    this(U)(ref allocator!U) {}
+    this(U)(auto ref allocator!U) {}
 
     ///
     alias size_type = size_t;
@@ -348,6 +348,11 @@ version (CppRuntime_Microsoft)
             _Ptr = cast(void*)_Ptr_container;
         }
     }
+}
+version (CppRuntime_Gcc)
+{
+    version (__SANITIZE_ADDRESS__)
+        version = _GLIBCXX_SANITIZE_STD_ALLOCATOR;
 }
 version (CppRuntime_Clang)
 {
