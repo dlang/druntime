@@ -356,6 +356,14 @@ enum bool isPointer(T) = is(T == U*, U) && !isAggregateType!T;
 
 enum bool isDynamicArray(T) = is(DynamicArrayTypeOf!T) && !isAggregateType!T;
 
+template RemovePointer(T)
+{
+    static if (is(T == U*, U) && !isAggregateType!T)
+        alias RemovePointer = U;
+    else
+        alias RemovePointer = T;
+}
+
 template OriginalType(T)
 {
     template Impl(T)

@@ -322,7 +322,7 @@ else version (CppRuntime_Clang)
 {
     import core.stdcpp.type_traits : is_empty;
 
-extern(C++, "std"):
+extern(C++, (StdNamespace)):
 
     extern (C++, class) struct __compressed_pair(_T1, _T2)
     {
@@ -347,4 +347,425 @@ extern(C++, "std"):
         else
             @property ref inout(_T2) __value2_() inout nothrow @trusted @nogc { return *__get_base2(); }
     }
+
+    struct __split_buffer(T, Allocator = allocator!T)
+    {
+        import core.internal.traits : isPointer, RemovePointer;
+        import core.lifetime : emplace, forward, move, moveEmplace;
+        import core.stdcpp.allocator : allocator_traits;
+
+    pragma (inline, true):
+    extern(D):
+
+    public:
+        alias value_type = T;
+        alias allocator_type = Allocator;
+        alias __alloc_rr = RemovePointer!allocator_type;
+        alias __alloc_traits = allocator_traits!__alloc_rr;
+        alias size_type = __alloc_traits.size_type;
+        alias difference_type = __alloc_traits.difference_type;
+        alias pointer = __alloc_traits.pointer;
+
+        pointer __first_;
+        pointer __begin_;
+        pointer __end_;
+        __compressed_pair!(pointer, allocator_type) __end_cap_;
+
+        ref inout(__alloc_rr) __alloc() inout pure nothrow @nogc @safe
+        {
+
+            static if (isPointer!allocator_type)
+                return *__end_cap_.second();
+            else
+                return __end_cap_.second();
+        }
+
+        ref inout(pointer) __end_cap() inout pure nothrow @nogc @safe
+        {
+            return __end_cap_.first();
+        }
+
+        this()(auto ref allocator_type __a)
+        {
+            emplace(&__end_cap_.second, forward!__a);
+        }
+
+        this(size_type __cap, size_type __start, ref __alloc_rr __a)
+        {
+            __first_ = __cap != 0 ? __alloc().allocate(__cap) : null;
+            __begin_ = __end_ = __first_ + __start;
+            __end_cap() = __first_ + __cap;
+        }
+
+        @disable this(this);
+
+        ~this()
+        {
+            clear();
+            if (__first_)
+                __alloc().deallocate(__first_, capacity());
+        }
+
+        this()(auto ref __split_buffer __c)
+        if (!__traits(isRef, __c))
+        {
+            __first_ = move(__c.__first_);
+            __begin_ = move(__c.__begin_);
+            __end_ = move(__c.__end_);
+            __end_cap_ = move(__c.__end_cap_());
+            __c.__first_ = null;
+            __c.__begin_ = null;
+            __c.__end_ = null;
+            __c.__end_cap() = null;
+        }
+
+        this()(auto ref __split_buffer __c, auto ref allocator_type __a)
+        if (!__traits(isRef, __c))
+        {
+            emplace( & __end_cap_.second, __a);
+            if (__a == __c.__alloc())
+            {
+                __first_ = __c.__first_;
+                __begin_ = __c.__begin_;
+                __end_ = __c.__end_;
+                __end_cap() = __c.__end_cap();
+                __c.__first_ = null;
+                __c.__begin_ = null;
+                __c.__end_ = null;
+                __c.__end_cap() = null;
+            }
+            else
+            {
+                size_type __cap = __c.size();
+                __first_ = __alloc().allocate(__cap);
+                __begin_ = __end_ = __first_;
+                __end_cap() = __first_ + __cap;
+                __construct_move_at_end(__c.__begin_[0 .. __c.size()]);
+            }
+        }
+
+        ref __split_buffer opAssign()(auto ref __split_buffer __c)
+        if (!__traits(isRef, __c))
+        {
+            clear();
+            shrink_to_fit();
+            __first_ = __c.__first_;
+            __begin_ = __c.__begin_;
+            __end_ = __c.__end_;
+            __end_cap() = __c.__end_cap();
+            enum __propagate = __alloc_traits.propagate_on_container_move_assignment;
+            __move_assign_alloc!__propagate(__c);
+            __c.__first_ = __c.__begin_ = __c.__end_ = __c.__end_cap() = null;
+            return this;
+        }
+
+        void clear() { __destruct_at_end(__begin_); }
+
+        size_type size() const pure nothrow @nogc @safe
+        {
+            return cast(size_type)(__end_ - __begin_);
+        }
+
+        bool empty() const pure nothrow @nogc @safe
+        {
+            return __end_ == __begin_;
+        }
+
+        size_type capacity() const pure nothrow @nogc @safe
+        {
+            return cast(size_type)(__end_cap() - __first_);
+        }
+
+        size_type __front_spare() const pure nothrow @nogc @safe
+        {
+            return cast(size_type)(__begin_ - __first_);
+        }
+
+        size_type __back_spare() const pure nothrow @nogc @safe
+        {
+            return cast(size_type)(__end_cap() - __end_);
+        }
+
+        ref inout(T) front() inout pure nothrow @nogc @safe
+        {
+            return *__begin_;
+        }
+
+        ref inout(T) back() inout pure nothrow @nogc @trusted
+        {
+            return *(__end_ - 1);
+        }
+
+        void reserve(size_type __n)
+        {
+            import core.internal.lifetime : swap;
+
+            if (__n < capacity())
+            {
+                auto __t = __split_buffer!(value_type, __alloc_rr*)(__n, 0, __alloc());
+                __t.__construct_move_at_end(__begin_[0 .. size()]);
+                swap(__first_, __t.__first_);
+                swap(__begin_, __t.__begin_);
+                swap(__end_, __t.__end_);
+                swap(__end_cap(), __t.__end_cap());
+            }
+        }
+
+        void shrink_to_fit() nothrow
+        {
+            import core.internal.lifetime : swap;
+
+            if (capacity() > size())
+            {
+                try
+                {
+                    auto __t = __split_buffer!(value_type, __alloc_rr*)(size(), 0, __alloc());
+                    __t.__construct_move_at_end(__begin_[0 .. size()]);
+                    __t.__end_ = __t.__begin_ + (__end_ - __begin_);
+                    swap(__first_, __t.__first_);
+                    swap(__begin_, __t.__begin_);
+                    swap(__end_, __t.__end_);
+                    swap(__end_cap(), __t.__end_cap());
+                }
+                catch (Throwable e)
+                {
+                }
+            }
+        }
+
+        void push_front()(auto ref T __x)
+        {
+            import core.internal.lifetime : swap;
+
+            if (__begin_ == __first_)
+            {
+                if (__end_ < __end_cap())
+                {
+                    difference_type __d = __end_cap() - __end_;
+                    __d = (__d + 1) / 2;
+                    foreach_reverse (__i, ref __e; __begin_[0 .. size()])
+                        move(__e, __begin_[__d + __i]);
+                    __begin_ += __d;
+                    __end_ += __d;
+                }
+                else
+                {
+                    size_type __c = max!size_type(2 * cast(size_t)(__end_cap() - __first_), 1);
+                    auto __t = __split_buffer!(value_type, __alloc_rr*)(__c, (__c + 3) / 4, __alloc());
+                    __t.__construct_move_at_end(__begin_[0 .. size()]);
+                    swap(__first_, __t.__first_);
+                    swap(__begin_, __t.__begin_);
+                    swap(__end_, __t.__end_);
+                    swap(__end_cap(), __t.__end_cap());
+                }
+            }
+            static if (__traits(isRef, __x))
+                emplace(__begin_ - 1, __x);
+            else
+                moveEmplace(__x,  * (__begin_ - 1));
+            --__begin_;
+        }
+
+        void push_back()(auto ref T __x)
+        {
+            import core.internal.lifetime : swap;
+
+            if (__end_ == __end_cap())
+            {
+                if (__begin_ > __first_)
+                {
+                    difference_type __d = __begin_ - __first_;
+                    __d = (__d + 1) / 2;
+                    foreach (__i, ref __e; __begin_[0 .. size()])
+                        move(__e, (__begin_ - __d)[__i]);
+                    __end_ -= __d;
+                    __begin_ -= __d;
+                }
+                else
+                {
+                    size_type __c = max!size_type(2 * cast(size_t)(__end_cap() - __first_), 1);
+                    auto __t = __split_buffer!(value_type, __alloc_rr*)(__c, __c / 4, __alloc());
+                    __t.__construct_move_at_end(__begin_[0 .. size()]);
+                    swap(__first_, __t.__first_);
+                    swap(__begin_, __t.__begin_);
+                    swap(__end_, __t.__end_);
+                    swap(__end_cap(), __t.__end_cap());
+                }
+            }
+            static if (__traits(isRef, __x))
+                emplace(__end_, __x);
+            else
+                moveEmplace(__x,  * __end_);
+            ++__end_;
+        }
+
+        void emplace_back(_Args...)(_Args __args)
+        {
+            import core.internal.lifetime : swap;
+
+            if (__end_ == __end_cap())
+            {
+                if (__begin_ > __first_)
+                {
+                    difference_type __d = __begin_ - __first_;
+                    __d = (__d + 1) / 2;
+                    foreach (__i, ref __e; __begin_[0 .. size()])
+                        move(__e, (__begin_ - __d)[__i]);
+                    __end_ -= __d;
+                    __begin_ -= __d;
+                }
+                else
+                {
+                    size_type __c = max!size_type(2 * cast(size_t)(__end_cap() - __first_), 1);
+                    auto __t = __split_buffer!(value_type, __alloc_rr*)(__c, __c / 4, __alloc());
+                    __t.__construct_move_at_end(__begin_[0 .. size()]);
+                    swap(__first_, __t.__first_);
+                    swap(__begin_, __t.__begin_);
+                    swap(__end_, __t.__end_);
+                    swap(__end_cap(), __t.__end_cap());
+                }
+            }
+            emplace(__end_, forward!__args);
+            ++__end_;
+        }
+
+        void pop_front() { __destruct_at_begin(__begin_ + 1); }
+
+        void pop_back() { __destruct_at_end(__end_ - 1); }
+
+        void __construct_at_end(size_type __n)
+        {
+            import core.internal.lifetime : emplaceInitializer;
+
+            do
+            {
+                emplaceInitializer(*this.__end_);
+                ++this.__end_;
+                --__n;
+            }
+            while (__n > 0);
+        }
+
+        void __construct_at_end()(size_type __n, auto ref T __x)
+        {
+            do
+            {
+                emplace(this.__end_, __x);
+                ++this.__end_;
+                --__n;
+            }
+            while (__n > 0);
+        }
+
+        void __construct_at_end(T[] __array)
+        {
+            foreach (ref e; __array)
+            {
+                emplace(this.__end_, e);
+                ++this.__end_;
+            }
+        }
+
+        void __construct_move_at_end(T[] __array)
+        {
+            foreach (ref e; __array)
+            {
+                moveEmplace(e, *this.__end_);
+                ++this.__end_;
+            }
+        }
+
+        void __destruct_at_begin(pointer __new_begin)
+        {
+            import core.internal.traits : hasElaborateDestructor;
+
+            static if (hasElaborateDestructor!value_type)
+            {
+                while (__begin_ != __new_begin)
+                    destroy!false(*__begin_++);
+            }
+        }
+
+        void __destruct_at_end(pointer __new_last)
+        {
+            while (__new_last != __end_)
+                destroy!false(*--__end_);
+        }
+
+        void swap(ref __split_buffer __x)
+        {
+            import core.stdcpp.allocator : __swap_allocator;
+            import core.internal.lifetime : swap;
+
+            swap(__first_, __x.__first_);
+            swap(__begin_, __x.__begin_);
+            swap(__end_, __x.__end_);
+            swap(__end_cap(), __x.__end_cap());
+            __swap_allocator(__alloc(), __x.__alloc());
+        }
+
+        bool __invariants() const
+        {
+            if (__first_ == null)
+            {
+                if (__begin_ != null)
+                    return false;
+                if (__end_ != null)
+                    return false;
+                if (__end_cap() != null)
+                    return false;
+            }
+            else
+            {
+                if (__begin_ < __first_)
+                    return false;
+                if (__end_ < __begin_)
+                    return false;
+                if (__end_cap() < __end_)
+                    return false;
+            }
+            return true;
+        }
+
+    private:
+        void __move_assign_alloc(bool __propagate : true)(ref __split_buffer __c)
+        {
+            __alloc() = move(__c.__alloc());
+        }
+
+        void __move_assign_alloc(bool __propagate : false)(ref __split_buffer) nothrow {}
+
+        static max(T)(T a, T b) { return a > b ? a : b;}
+    }
+
+    struct __temp_value(T, Alloc)
+    {
+        import core.stdcpp.allocator : allocator_traits;
+
+        alias _Traits = allocator_traits!Alloc;
+
+        align(T.alignof) void[T.sizeof] __v;
+        Alloc* __a;
+
+        T* __addr() { return cast(T*)(&__v[0]); }
+        ref T get() { return *__addr(); }
+
+        this(Args...)(ref Alloc __alloc, auto ref Args __args)
+        {
+            import core.lifetime : emplace, forward;
+
+            __a =  &__alloc;
+            emplace(cast(T*)& __v[0], forward!__args);
+        }
+
+        ~this() { destroy!false(*__addr()); }
+    }
+
+    version (_LIBCPP_HAS_NO_ASAN)      enum _LIBCPP_HAS_NO_ASAN = true;
+    else version (__SANITIZE_ADRESS__) enum _LIBCPP_HAS_NO_ASAN = false;
+    else                               enum _LIBCPP_HAS_NO_ASAN = true;
+
+    version (_LIBCPP_DEBUG_LEVEL)  enum _LIBCPP_DEBUG_LEVEL = 1;
+    version (_LIBCPP_DEBUG_LEVEL2) enum _LIBCPP_DEBUG_LEVEL = 2;
+    else                           enum _LIBCPP_DEBUG_LEVEL = 0;
 }

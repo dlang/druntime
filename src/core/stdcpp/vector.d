@@ -22,13 +22,14 @@ module core.stdcpp.vector;
 ///////////////////////////////////////////////////////////////////////////////
 
 import core.stdcpp.allocator;
+import core.stdcpp.xutility : StdNamespace;
 
 enum DefaultConstruct { value }
 
 /// Constructor argument for default construction
 enum Default = DefaultConstruct();
 
-extern(C++, "std"):
+extern(C++, (StdNamespace)):
 
 extern(C++, class) struct vector(T, Alloc = allocator!T)
 {
@@ -1653,6 +1654,979 @@ extern(D):
 
         alias _Alloc_traits = allocator_traits!Alloc;
     }
+    else version (CppRuntime_Clang)
+    {
+        import core.stdcpp.xutility : __split_buffer, _LIBCPP_DEBUG_LEVEL, _LIBCPP_HAS_NO_ASAN;
+
+    public:
+        alias __alloc_traits = __base.__alloc_traits;
+
+        ///
+        this()(DefaultConstruct) @nogc
+        {
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+        }
+
+        ///
+        this()(auto ref allocator_type __a)
+        {
+            __base = forward!__a;
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+        }
+
+        ///
+        this(size_type __n)
+        {
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            if (__n > 0)
+            {
+                __vallocate(__n);
+                __construct_at_end(__n);
+            }
+        }
+
+        ///
+        this()(size_type __n, auto ref allocator_type __a)
+        {
+            __base = forward!__a;
+
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            if (__n > 0)
+            {
+                __vallocate(__n);
+                __construct_at_end(__n);
+            }
+        }
+
+        ///
+        this()(size_type __n, auto ref value_type __x)
+        {
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            if (__n > 0)
+            {
+                __vallocate(__n);
+                __construct_at_end(__n, forward!__x);
+            }
+        }
+
+        ///
+        this()(size_type __n, auto ref value_type __x, auto ref allocator_type __a)
+        {
+            __base = forward!__a;
+
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            if (__n > 0)
+            {
+                __vallocate(__n);
+                __construct_at_end(__n, forward!__x);
+            }
+        }
+
+        ///
+        this()(T[] __array)
+        {
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            if (__array.length > 0)
+            {
+                __vallocate(__array.length);
+                __construct_at_end(__array);
+            }
+        }
+
+        ///
+        this()(T[] __array, auto ref allocator_type __a)
+        {
+            __base = forward!__a;
+
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            if (__array.length > 0)
+            {
+                __vallocate(__array.length);
+                __construct_at_end(__array);
+            }
+        }
+
+        ///
+        ~this()
+        {
+            __annotate_delete();
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__erase_c(&this);
+        }
+
+        ///
+        this(ref vector __x)
+        {
+            __base = __alloc_traits.select_on_container_copy_construction(__x.__base.__alloc());
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            const size_type __n = __x.size();
+            if (__n > 0)
+            {
+                __vallocate(__n);
+                __construct_at_end(__x.as_array());
+            }
+        }
+
+        ///
+        this()(ref vector __x, auto ref allocator_type __a)
+        {
+            __base = forward!__a;
+
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            const size_type __n = __x.size();
+            if (__n > 0)
+            {
+                __vallocate(__n);
+                __construct_at_end(__x.as_array());
+            }
+        }
+
+        ///
+        this()(auto ref vector __x) if (!__traits(isRef, __x))
+        {
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+            {
+                __get_db().__insert_c(&this);
+                __get_db().swap(&this, &__x);
+            }
+            __base.__begin_ = __x.__base.__begin_;
+            __base.__end_ = __x.__base.__end_;
+            __base.__end_cap() = __x.__base.__end_cap();
+            __x.__base.__begin_ = __x.__base.__end_ = __x.__base.__end_cap() = null;
+        }
+
+        ///
+        this()(auto ref vector __x, auto ref allocator_type __a)
+        if (!__traits(isRef, __x))
+        {
+            __base = forward!__a;
+
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__insert_c(&this);
+
+            if (__a == __x.__base.__alloc())
+            {
+                __base.__begin_ = __x.__base.__begin_;
+                __base.__end_ = __x.__base.__end_;
+                __base.__end_cap() = __x.__base.__end_cap();
+                __x.__base.__begin_ = __x.__base.__end_ = __x.__base.__end_cap() = null;
+                static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                    __get_db().swap(&this, &__x);
+            }
+            else
+            {
+                __move_assign(__x.as_array());
+            }
+        }
+
+        ///
+        ref vector opAssign(ref vector __x)
+        {
+            if (&this != &__x)
+            {
+                __base.__copy_assign_alloc(__x.__base);
+                assign(__x.as_array());
+            }
+            return this;
+        }
+
+        ///
+        ref vector opAssign()(auto ref vector __x) if (!__traits(isRef, __x))
+        {
+            enum __propagate = __alloc_traits.propagate_on_container_move_assignment;
+            __move_assign!__propagate(__x);
+            return this;
+        }
+
+        ///
+        ref vector opAssign(T[] __array)
+        {
+            assign(__array);
+            return this;
+        }
+
+        ///
+        void assign()(size_type __n, auto ref T __u)
+        {
+            if (__n <= capacity())
+            {
+                size_type __s = size();
+                __base.__begin_[0 .. min(__n, __s)] = __u;
+                if (__n > __s)
+                    __construct_at_end(__n - __s, __u);
+                else
+                    __destruct_at_end(__base.__begin_ + __n);
+            }
+            else
+            {
+                __vdeallocate();
+                __vallocate(__recommend(cast(size_type) __n));
+                __construct_at_end(__n, forward!__u);
+            }
+            __invalidate_all_iterators();
+        }
+
+        ///
+        void assign(T[] __array)
+        {
+            const size_type __new_size = __array.length;
+            if (__new_size <= capacity())
+            {
+                size_type __mid = __array.length;
+                bool __growing = false;
+                if (__new_size > size())
+                {
+                    __growing = true;
+                    __mid = size();
+                }
+                __base.__begin_[0 .. __mid] = __array[0 .. __mid];
+                pointer __m = __base.__begin_ + __mid;
+                if (__growing)
+                    __construct_at_end(__array[__mid .. __new_size]);
+                else
+                    __destruct_at_end(__m);
+            }
+            else
+            {
+                __vdeallocate();
+                __vallocate(__recommend(__new_size));
+                __construct_at_end(__array);
+            }
+            __invalidate_all_iterators();
+        }
+
+        ///
+        inout(allocator_type) get_allocator() inout pure nothrow @safe @nogc
+        {
+            return __base.__alloc();
+        }
+
+        ///
+        size_type size() inout pure nothrow @safe @nogc
+        {
+            return cast(size_type)(__base.__end_ - __base.__begin_);
+        }
+
+        ///
+        size_type capacity() inout pure nothrow @safe @nogc
+        {
+            return __base.capacity();
+        }
+
+        ///
+        bool empty() inout pure nothrow @safe @nogc
+        {
+            return __base.__begin_ == __base.__end_;
+        }
+
+        ///
+        size_type max_size() inout pure nothrow @safe @nogc
+        {
+            return cast(size_type) min(__base.__alloc().max_size, difference_type.max);
+        }
+
+        ///
+        void reserve(size_type __n)
+        {
+            if (__n > capacity())
+            {
+                allocator_type* __a = &__base.__alloc();
+                auto __v = __split_buffer!(value_type, allocator_type*)(__n, size(), *__a);
+                __swap_out_circular_buffer(__v);
+            }
+        }
+
+        ///
+        void shrink_to_fit()
+        {
+            if (capacity() > size())
+            {
+                try
+                {
+                    allocator_type* __a = &__base.__alloc();
+                    auto __v = __split_buffer!(value_type, allocator_type*)(size(), size(), *__a);
+                    __swap_out_circular_buffer(__v);
+                }
+                catch (Throwable e)
+                {
+                }
+            }
+        }
+
+        ///
+        ref inout(T) at(size_type __n) inout pure nothrow @trusted @nogc
+        {
+            return __base.__begin_[0 .. size()][__n];
+        }
+
+        ///
+        inout(T)* data() inout pure nothrow @safe @nogc
+        {
+            return __base.__begin_;
+        }
+
+        ///
+        inout(T)[] as_array() inout pure nothrow @trusted @nogc
+        {
+            return __base.__begin_[0 .. size()];
+        }
+
+        alias __emplace_back = emplace_back;
+
+        ///
+        void push_back()(auto ref T __x)
+        {
+            if (__base.__end_ != __base.__end_cap())
+            {
+                auto __annotator = __RAII_IncreaseAnnotator(this);
+                static if (__traits(isRef, __x))
+                    core_emplace(__base.__end_, __x);
+                else
+                    moveEmplace(__x, *__base.__end_);
+                __annotator.__done();
+                ++__base.__end_;
+            }
+            else
+                __push_back_slow_path(forward!__x);
+        }
+
+        ///
+        void emplace_back(_Args...)(_Args __args)
+        {
+            if (__base.__end_ < __base.__end_cap())
+            {
+                auto __annotator = __RAII_IncreaseAnnotator(this);
+                core_emplace(__base.__end_, forward!__args);
+                __annotator.__done();
+                ++__base.__end_;
+            }
+            else
+                __emplace_back_slow_path(forward!__args);
+        }
+
+        ///
+        void pop_back()
+        {
+            assert(!empty(), "vector::pop_back called for empty vector");
+            __destruct_at_end(__base.__end_ - 1);
+        }
+
+        ///
+        void insert()(size_type __offset, auto ref T __x)
+        {
+            //static if (_LIBCPP_DEBUG_LEVEL >= 2)
+            //    assert(__get_const_db().__find_c_from_i(&__position) == this,
+            //        "vector::insert(iterator, x) called with an iterator not"
+            //        " referring to this vector");
+
+            pointer __p = __base.__begin_ + __offset;
+            if (__base.__end_ < __base.__end_cap())
+            {
+                auto __annotator = __RAII_IncreaseAnnotator(this);
+                if (__p == __base.__end_)
+                {
+                    static if (__traits(isRef, __x))
+                        core_emplace(__base.__end_, __x);
+                    else
+                        moveEmplace(__x, *__base.__end_);
+                    ++__base.__end_;
+                }
+                else
+                {
+                    __move_range(__p, __base.__end_, __p + 1);
+                    pointer __xr = &__x;
+                    if (__p <= __xr && __xr < __base.__end_)
+                        ++__xr;
+                    static if (__traits(isRef, __x))
+                        *__p = *__xr;
+                    else
+                        *__p = move(*__xr);
+                }
+                __annotator.__done();
+            }
+            else
+            {
+                allocator_type* __a = &__base.__alloc();
+                auto __v = __split_buffer!(value_type, allocator_type*)(__recommend(size() + 1), __p - __base.__begin_, *__a);
+                __v.push_back(forward!__x);
+                __p = __swap_out_circular_buffer(__v, __p);
+            }
+        }
+
+        ///
+        void emplace(_Args...)(size_type __offset, auto ref _Args __args)
+        {
+            import core.stdcpp.xutility : __temp_value;
+
+            //static if (_LIBCPP_DEBUG_LEVEL >= 2)
+            //    assert(__get_const_db().__find_c_from_i(&__position) == this,
+            //        "vector::emplace(iterator, x) called with an iterator not"
+            //        " referring to this vector");
+
+            pointer __p = __base.__begin_ + __offset;
+            if (__base.__end_ < __base.__end_cap())
+            {
+                auto __annotator = __RAII_IncreaseAnnotator(this);
+                if (__p == __base.__end_)
+                {
+                    core_emplace(__base.__end_, forward!__args);
+                    ++__base.__end_;
+                }
+                else
+                {
+                    auto __tmp = __temp_value!(value_type, Alloc)(__base.__alloc(), forward!__args);
+                    __move_range(__p, __base.__end_, __p + 1);
+                    *__p = move(__tmp.get());
+                }
+                __annotator.__done();
+            }
+            else
+            {
+                allocator_type* __a = &__base.__alloc();
+                auto __v = __split_buffer!(value_type, allocator_type*)(__recommend(size() + 1), __p - __base.__begin_, *__a);
+                __v.emplace_back(forward!__args);
+                __p = __swap_out_circular_buffer(__v, __p);
+            }
+        }
+
+        ///
+        void insert()(size_type __offset, size_type __n, auto ref T __x)
+        {
+            //static if (_LIBCPP_DEBUG_LEVEL >= 2)
+            //    assert(__get_const_db().__find_c_from_i(&__position) == this,
+            //        "vector::insert(iterator, n, x) called with an iterator not"
+            //        " referring to this vector");
+
+            pointer __p = __base.__begin_ + __offset;
+            if (__n > 0)
+            {
+                if (__n <= cast(size_type)(__base.__end_cap() - __base.__end_))
+                {
+                    size_type __old_n = __n;
+                    pointer __old_last = __base.__end_;
+                    if (__n > cast(size_type)(__base.__end_ - __p))
+                    {
+                        size_type __cx = __n - (__base.__end_ - __p);
+                        __construct_at_end(__cx, __x);
+                        __n -= __cx;
+                    }
+                    if (__n > 0)
+                    {
+                        auto __annotator = __RAII_IncreaseAnnotator(this, __n);
+                        __move_range(__p, __old_last, __p + __old_n);
+                        __annotator.__done();
+                        pointer __xr = &__x;
+                        if (__p <= __xr && __xr < __base.__end_)
+                            __xr += __old_n;
+                        __p[0 .. __n] = *__xr;
+                    }
+                }
+                else
+                {
+                    allocator_type* __a = &__base.__alloc();
+                    auto __v = __split_buffer!(value_type, allocator_type*)(__recommend(size() + __n), __p - __base.__begin_, *__a);
+                    __v.__construct_at_end(__n, forward!__x);
+                    __p = __swap_out_circular_buffer(__v, __p);
+                }
+            }
+        }
+
+        ///
+        void insert(size_type __offset, T[] __array)
+        {
+            //static if (_LIBCPP_DEBUG_LEVEL >= 2)
+            //    assert(__get_const_db().__find_c_from_i(&__position) == this,
+            //        "vector::insert(iterator, range) called with an iterator not"
+            //        " referring to this vector");
+
+            pointer __p = __base.__begin_ + __offset;
+            difference_type __n = __array.length;
+            if (__n > 0)
+            {
+                if (__n <= __base.__end_cap() - __base.__end_)
+                {
+                    size_type __old_n = __n;
+                    pointer __old_last = __base.__end_;
+                    size_type __m = __array.length;
+                    difference_type __dx = __base.__end_ - __p;
+                    if (__n > __dx)
+                    {
+                        difference_type __diff = __base.__end_ - __p;
+                        __m = __diff;
+                        __construct_at_end(__array[__m .. __n]);
+                        __n = __dx;
+                    }
+                    if (__n > 0)
+                    {
+                        auto __annotator = __RAII_IncreaseAnnotator(this, __n);
+                        __move_range(__p, __old_last, __p + __old_n);
+                        __annotator.__done();
+                        __p[0 .. __m] = __array[0 .. __m];
+                    }
+                }
+                else
+                {
+                    allocator_type* __a = &__base.__alloc();
+                    auto __v = __split_buffer!(value_type, allocator_type*)(__recommend(size() + __n), __p - __base.__begin_, *__a);
+                    __v.__construct_at_end(__array);
+                    __p = __swap_out_circular_buffer(__v, __p);
+                }
+            }
+        }
+
+        ///
+        void erase(size_type __offset)
+        {
+            //static if (_LIBCPP_DEBUG_LEVEL >= 2)
+            //    assert(__get_const_db().__find_c_from_i(&__position) == this,
+            //        "vector::erase(iterator) called with an iterator not"
+            //        " referring to this vector");
+
+            assert(__offset < size(), "vector::erase(offset) called with an out of range offset");
+            pointer __p = __base.__begin_ + __offset;
+            moveSlice(__base.__begin_[__offset + 1 .. size()], __base.__begin_[__offset .. size() - 1]);
+            __destruct_at_end(__base.__end_ - 1);
+            __invalidate_iterators_past(__p - 1);
+        }
+
+        ///
+        void erase(size_type __first, size_type __last)
+        {
+            //static if (_LIBCPP_DEBUG_LEVEL >= 2)
+            //    assert(__get_const_db()->__find_c_from_i(&__first) == this,
+            //        "vector::erase(iterator,  iterator) called with an iterator not"
+            //        " referring to this vector");
+            //    assert(__get_const_db()->__find_c_from_i(&__last) == this,
+            //        "vector::erase(iterator,  iterator) called with an iterator not"
+            //        " referring to this vector");
+            //}
+            assert(__first <= __last, "vector::erase(first, last) called with invalid range");
+            assert(__last < size(), "vector::erase(first, last) called with an out of range offset");
+            const size_type __n = __last - __first;
+            pointer __p = __base.__begin_ + __first;
+            if (__first != __last)
+            {
+                moveSlice(__base.__begin_[__last .. size()], __base.__begin_[__first .. size() - __n]);
+                __destruct_at_end(__base.__end_ - __n);
+                __invalidate_iterators_past(__p - 1);
+            }
+        }
+
+        ///
+        void clear()
+        {
+            size_type __old_size = size();
+            __base.clear();
+            __annotate_shrink(__old_size);
+            //__invalidate_all_iterators();
+        }
+
+        ///
+        void resize(size_type __sz)
+        {
+            size_type __cs = size();
+            if (__cs < __sz)
+                __append(__sz - __cs);
+            else if (__cs > __sz)
+                __destruct_at_end(__base.__begin_ + __sz);
+        }
+
+        ///
+        void resize()(size_type __sz, auto ref T __x)
+        {
+            size_type __cs = size();
+            if (__cs < __sz)
+                __append(__sz - __cs, forward!__x);
+            else if (__cs > __sz)
+                __destruct_at_end(__base.__begin_ + __sz);
+        }
+
+        ///
+        void swap(ref vector __x)
+        {
+            import core.stdcpp.allocator : __swap_allocator;
+            import core.internal.lifetime : swap;
+
+            assert(__alloc_traits.propagate_on_container_swap || __base.__alloc() == __x.__base.__alloc(),
+                    "vector.swap: Either propagate_on_container_swap must be true or the allocators must compare equal");
+            swap(__base.__begin_, __x.__base.__begin_);
+            swap(__base.__end_, __x.__base.__end_);
+            swap(__base.__end_cap(), __x.__base.__end_cap());
+            __swap_allocator(__base.__alloc(), __x.__base.__alloc());
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().swap(&this, &__x);
+        }
+
+        bool __invariants() const
+        {
+            if (__base.__begin_ == null)
+            {
+                if (__base.__end_ != null || __base.__end_cap() != null)
+                    return false;
+            }
+            else
+            {
+                if (__base.__begin_ > __base.__end_)
+                    return false;
+                if (__base.__begin_ == __base.__end_cap())
+                    return false;
+                if (__base.__end_ > __base.__end_cap())
+                    return false;
+            }
+            return true;
+        }
+
+    private:
+        //static if (_LIBCPP_DEBUG_LEVEL >= 2)
+        //{
+        //    bool __dereferenceable(const const_iterator* __i) const
+        //    bool __decrementable(const const_iterator* __i) const;
+        //    bool __addable(const const_iterator* __i, ptrdiff_t __n) const;
+        //    bool __subscriptable(const const_iterator* __i, ptrdiff_t __n) const;
+        //}  // _LIBCPP_DEBUG_LEVEL >= 2
+
+    private:
+        void __invalidate_all_iterators()
+        {
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().__invalidate_all(&this);
+        }
+
+        void __invalidate_iterators_past(pointer __new_last)
+        {
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+            {
+                __c_node* __c = __get_db().__find_c_and_lock(&this);
+                for (__i_node** __p = __c.end_; __p != __c.beg_; )
+                {
+                    --__p;
+                    const_iterator* __i = cast(const_iterator*)((*__p).__i_);
+                    if (__i.base() > __new_last)
+                    {
+                        (*__p).__c_ = null;
+                        if (--__c.end_ != __p)
+                            memmove(__p, __p + 1, (__c.end_ - __p) * (__i_node*).sizeof);
+                    }
+                }
+                __get_db().unlock();
+            }
+            else
+                (cast(void) __new_last);
+        }
+
+        void __vallocate(size_type __n)
+        {
+            assert(__n <= max_size());
+            //if (__n > max_size())
+            //    __throw_length_error();
+            __base.__begin_ = __base.__end_ = __base.__alloc().allocate(__n);
+            __base.__end_cap() = __base.__begin_ + __n;
+            __annotate_new(0);
+        }
+
+        void __vdeallocate()
+        {
+            if (__base.__begin_ != null)
+            {
+                clear();
+                __base.__alloc.deallocate(__base.__begin_, capacity());
+                __base.__begin_ = __base.__end_ = __base.__end_cap() = null;
+            }
+        }
+
+        size_type __recommend(size_type __new_size) const
+        {
+            const size_type __ms = max_size();
+            assert(__new_size <= __ms);
+            //if (__new_size > __ms)
+            //    __throw_length_error();
+            const size_type __cap = capacity();
+            if (__cap >= __ms / 2)
+                return __ms;
+
+            return cast(size_type) max(2 * __cap, __new_size);
+        }
+
+        void __construct_at_end(size_type __n)
+        {
+            do
+            {
+                auto __annotator = __RAII_IncreaseAnnotator(this);
+                emplaceInitializer(*__base.__end_);
+                ++__base.__end_;
+                --__n;
+                __annotator.__done();
+            }
+            while (__n > 0);
+        }
+
+        void __construct_at_end()(size_type __n, auto ref value_type __x)
+        {
+            do
+            {
+                auto __annotator = __RAII_IncreaseAnnotator(this);
+                core_emplace(__base.__end_, __x);
+                ++__base.__end_;
+                --__n;
+                __annotator.__done();
+            }
+            while (__n > 0);
+        }
+
+        void __construct_at_end(value_type[] __array)
+        {
+            auto __annotator = __RAII_IncreaseAnnotator(this, __array.length);
+            emplaceSlice(__array, __base.__end_[0 .. __array.length]);
+            __base.__end_ += __array.length;
+            __annotator.__done();
+        }
+
+        void __construct_move_at_end(value_type[] __array)
+        {
+            auto __annotator = __RAII_IncreaseAnnotator(this, __array.length);
+            moveEmplaceSlice(__array, __base.__end_[0 .. __array.length]);
+            __base.__end_ += __array.length;
+            __annotator.__done();
+        }
+
+        void __append(size_type __n)
+        {
+            if (cast(size_type)(__base.__end_cap() - __base.__end_) >= __n)
+                __construct_at_end(__n);
+            else
+            {
+                allocator_type* __a = &__base.__alloc();
+                auto __v = __split_buffer!(value_type, allocator_type*)(__recommend(size() + __n), size(), *__a);
+                __v.__construct_at_end(__n);
+                __swap_out_circular_buffer(__v);
+            }
+        }
+
+        void __append()(size_type __n, auto ref value_type __x)
+        {
+            if (cast(size_type)(__base.__end_cap() - __base.__end_) >= __n)
+                this.__construct_at_end(__n, forward!__x);
+            else
+            {
+                allocator_type* __a = &__base.__alloc();
+                auto __v = __split_buffer!(value_type, allocator_type*)(__recommend(size() + __n), size(), *__a);
+                __v.__construct_at_end(__n, forward!__x);
+                __swap_out_circular_buffer(__v);
+            }
+        }
+
+        void __swap_out_circular_buffer(ref __split_buffer!(value_type, allocator_type*) __v)
+        {
+            import core.internal.lifetime : swap;
+
+            __annotate_delete();
+            for (pointer __first = __base.__begin_, __last = __base.__end_; __first != __last; )
+                moveEmplaceIfNothrow(*(--__last), *(--__v.__begin_));
+            swap(__base.__begin_, __v.__begin_);
+            swap(__base.__end_, __v.__end_);
+            swap(__base.__end_cap(), __v.__end_cap());
+            __v.__first_ = __v.__begin_;
+            __annotate_new(size());
+            __invalidate_all_iterators();
+        }
+
+        pointer __swap_out_circular_buffer(ref __split_buffer!(value_type, allocator_type*) __v, pointer __p)
+        {
+            import core.internal.lifetime : swap;
+
+            __annotate_delete();
+            pointer __r = __v.__begin_;
+            for (pointer __first = __base.__begin_, __last = __p; __first != __last; )
+                moveEmplaceIfNothrow(*(--__last), *(--__v.__begin_));
+            for (pointer __first = __p, __last = __base.__end_; __first != __last; )
+                moveEmplaceIfNothrow(*(__first++), *(__v.__end_++));
+            swap(__base.__begin_, __v.__begin_);
+            swap(__base.__end_, __v.__end_);
+            swap(__base.__end_cap(), __v.__end_cap());
+            __v.__first_ = __v.__begin_;
+            __annotate_new(size());
+            __invalidate_all_iterators();
+            return __r;
+        }
+
+        void __move_range(pointer __from_s, pointer __from_e, pointer __to)
+        {
+            pointer __old_last = __base.__end_;
+            difference_type __n = __old_last - __to;
+            for (pointer __i = __from_s + __n; __i < __from_e; ++__i, ++__base.__end_)
+                moveEmplace(*__i, *__base.__end_);
+            moveSliceBackward(__from_s[0 .. __n], __old_last[0 .. __n]);
+        }
+
+        void __move_assign(bool __propagate : true)(ref vector __c)
+        {
+            __vdeallocate();
+            __base.__move_assign_alloc(__c.__base); // this can throw
+            __base.__begin_ = __c.__base.__begin_;
+            __base.__end_ = __c.__base.__end_;
+            __base.__end_cap() = __c.__base.__end_cap();
+            __c.__base.__begin_ = __c.__base.__end_ = __c.__base.__end_cap() = null;
+            static if (_LIBCPP_DEBUG_LEVEL >= 2)
+                __get_db().swap(&this, &__c);
+        }
+
+        void __move_assign(bool __propagate : false)(ref vector __c)
+        {
+            if (__base.__alloc() != __c.__base.__alloc())
+                __move_assign(__array);
+            else
+                __move_assign!true(__c);
+        }
+
+        void __move_assign(T[] __array)
+        {
+            const size_type __new_size = __array.length;
+            if (__new_size <= capacity())
+            {
+                size_type __mid = __array.length;
+                bool __growing = false;
+                if (__new_size > size())
+                {
+                    __growing = true;
+                    __mid = size();
+                }
+                moveSlice(__array[0 .. __mid], __base.__begin_[0 .. __mid]);
+                pointer __m = __base.__begin_ + __mid;
+                if (__growing)
+                    __construct_move_at_end(__array[__mid .. __new_size]);
+                else
+                    __destruct_at_end(__m);
+            }
+            else
+            {
+                __vdeallocate();
+                __vallocate(__recommend(__new_size));
+                __construct_move_at_end(__array);
+            }
+            __invalidate_all_iterators();
+        }
+
+        void __destruct_at_end(pointer __new_last)
+        {
+            __invalidate_iterators_past(__new_last);
+            size_type __old_size = size();
+            __base.__destruct_at_end(__new_last);
+            __annotate_shrink(__old_size);
+        }
+
+        void __push_back_slow_path()(auto ref T __x)
+        {
+            allocator_type* __a = &__base.__alloc();
+            auto __v = __split_buffer!(value_type, allocator_type*)(__recommend(size() + 1), size(), *__a);
+            // __v.push_back(forward!__x);
+            static if (__traits(isRef, __x))
+                core_emplace(__v.__end_, __x);
+            else
+                moveEmplace(__x, *__v.__end_);
+            __v.__end_++;
+            __swap_out_circular_buffer(__v);
+        }
+
+        void __emplace_back_slow_path(_Args)(auto ref _Args __args)
+        {
+            allocator_type* __a = &__base.__alloc();
+            auto __v = __split_buffer!(value_type, allocator_type*)(__recommend(size() + 1), size(), *__a);
+            //    __v.emplace_back(_VSTD::forward<_Args>(__args)...);
+            core_emplace(__v.__base.__end_, forward!__args);
+            __v.__base.__end_++;
+            __swap_out_circular_buffer(__v);
+        }
+
+        // The following functions are no-ops outside of AddressSanitizer mode.
+        // We call annotatations only for the default Allocator because other allocators
+        // may not meet the AddressSanitizer alignment constraints.
+        // See the documentation for __sanitizer_annotate_contiguous_container for more details.
+        static if (!_LIBCPP_HAS_NO_ASAN)
+            void __annotate_contiguous_container(const void* __beg, const void* __end, const void* __old_mid, const void* __new_mid) const
+            {
+                if (__beg && is(allocator_type : allocator!value_type))
+                    __sanitizer_annotate_contiguous_container(__beg, __end, __old_mid, __new_mid);
+            }
+        else
+            void __annotate_contiguous_container(const void*, const void*, const void*, const void*) const {}
+
+        void __annotate_new(size_type __current_size) const
+        {
+            __annotate_contiguous_container(data(), data() + capacity(),
+                    data() + capacity(), data() + __current_size);
+        }
+
+        void __annotate_delete() const
+        {
+            __annotate_contiguous_container(data(), data() + capacity(),
+                    data() + size(), data() + capacity());
+        }
+
+        void __annotate_increase(size_type __n) const
+        {
+            __annotate_contiguous_container(data(), data() + capacity(),
+                    data() + size(), data() + size() + __n);
+        }
+
+        void __annotate_shrink(size_type __old_size) const
+        {
+            __annotate_contiguous_container(data(), data() + capacity(),
+                    data() + __old_size, data() + size());
+        }
+
+        static if (!_LIBCPP_HAS_NO_ASAN) // The annotation for size increase should happen before the actual increase,
+            // but if an exception is thrown after that the annotation has to be undone.
+            struct __RAII_IncreaseAnnotator
+            {
+                this(const ref vector __v, size_type __n = 1)
+                {
+                    __commit = false;
+                    __v = &__v;
+                    __old_size = __v.size() + __n;
+                    __v.__annotate_increase(__n);
+                }
+
+                void __done() { __commit = true; }
+
+                ~this()
+                {
+                    if (__commit)
+                        return;
+                    __v.__annotate_shrink(__old_size);
+                }
+
+                bool __commit;
+                const(vector)* __v;
+                size_type __old_size;
+            }
+        else
+            struct __RAII_IncreaseAnnotator
+            {
+                this(const ref vector, size_type __n = 1) {}
+                void __done() {}
+            }
+
+    private:
+        __vector_base!(T, Alloc) __base;
+    }
     else version (None)
     {
         size_type size() const pure nothrow @safe @nogc                     { return 0; }
@@ -2058,6 +3032,95 @@ version (CppRuntime_Gcc)
         enum _GLIBCXX_ASAN_ANNOTATE_BEFORE_DEALLOC = "";
     } // (_GLIBCXX_SANITIZE_STD_ALLOCATOR && _GLIBCXX_SANITIZE_VECTOR)
 }
+version (CppRuntime_Clang)
+{
+    extern (C++, class) struct __vector_base(T, Allocator)
+    {
+        import core.stdcpp.xutility : __compressed_pair;
+
+    public:
+        alias allocator_type = Allocator;
+        alias __alloc_traits = allocator_traits!allocator_type;
+        alias size_type = __alloc_traits.size_type;
+
+    protected:
+        alias value_type = T;
+        alias difference_type = __alloc_traits.difference_type;
+        alias pointer = __alloc_traits.pointer;
+
+        pointer __begin_;
+        pointer __end_;
+        __compressed_pair!(pointer, allocator_type) __end_cap_;
+
+        ref inout(allocator_type) __alloc() inout pure nothrow @nogc @safe
+        {
+            return __end_cap_.second();
+        }
+
+        ref inout(pointer) __end_cap() inout pure nothrow @nogc @safe
+        {
+            return __end_cap_.first();
+        }
+
+        this()(auto ref allocator_type __a)
+        {
+            import core.lifetime : emplace, moveEmplace;
+
+            static if (__traits(isRef, __a))
+                emplace(&__end_cap_.second, __a);
+            else
+                moveEmplace(__a, __end_cap_.second);
+        }
+
+        ~this()
+        {
+            if (__begin_ != null)
+            {
+                clear();
+                __alloc().deallocate(__begin_, capacity());
+            }
+        }
+
+        void clear()
+        {
+            __destruct_at_end(__begin_);
+        }
+
+        size_type capacity() const pure nothrow @nogc @safe
+        {
+            return cast(size_type)(__end_cap() - __begin_);
+        }
+
+        void __destruct_at_end(pointer __new_last)
+        {
+            pointer __soon_to_be_end = __end_;
+            while (__new_last != __soon_to_be_end)
+                destroy!false(*--__soon_to_be_end);
+            __end_ = __new_last;
+        }
+
+        void __copy_assign_alloc()(auto ref __vector_base __c)
+        {
+            static if (__alloc_traits.propagate_on_container_copy_assignment)
+            {
+                if (__alloc() != __c.__alloc())
+                {
+                    clear();
+                    __alloc().deallocate(__begin_, capacity());
+                    __begin_ = __end_ = __end_cap() = null;
+                }
+                __alloc() = __c.__alloc();
+            }
+        }
+
+        void __move_assign_alloc()(ref __vector_base __c)
+        {
+            import core.lifetime : move;
+            static if (__alloc_traits.propagate_on_container_move_assignment)
+                __alloc() = move(__c.__alloc());
+        }
+    }
+}
 
 // -- Helpers --
 
@@ -2173,3 +3236,6 @@ extern(D) void destroySlice(bool initialize = true, T : U[], U)(T obj)
     foreach_reverse (ref e; obj)
         destroy!initialize(e);
 }
+
+T min(T)(T a, T b) { return a < b ? a : b; }
+T max(T)(T a, T b) { return a > b ? a : b; }
