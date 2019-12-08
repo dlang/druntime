@@ -107,3 +107,15 @@ void emplaceInitializer(T)(scope ref T chunk)
         }
     }
 }
+
+/*
+Simple swap function.
+*/
+void swap(T)(ref T lhs, ref T rhs)
+{
+    import core.lifetime : move;
+
+    T tmp = move(lhs);
+    lhs = move(rhs);
+    rhs = move(tmp);
+}
