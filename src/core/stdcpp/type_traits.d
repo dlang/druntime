@@ -28,7 +28,10 @@ alias false_type = bool_constant!false;
 
 struct is_empty(T)
 {
-    enum value = T.tupleof.length == 0;
+    static if (is(T == struct))
+        enum value = T.tupleof.length == 0;
+    else
+        enum value = false;
     alias value_type = typeof(value);
     alias type = integral_constant!(typeof(value), value);
 }
