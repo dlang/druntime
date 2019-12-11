@@ -278,6 +278,13 @@ extern(D):
         }
 
         ///
+        void insert()(size_t offset, auto ref T value)
+        {
+            T[] array = (&value)[0 .. 1];
+            insert(offset, array);
+        }
+
+        ///
         void insert(size_t offset, T[] array)
         {
             pointer _Where = _Get_data()._Myfirst + offset;
