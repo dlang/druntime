@@ -6,6 +6,7 @@ std::unique_ptr<int> passThrough(std::unique_ptr<int> x)
 }
 std::unique_ptr<int> changeIt(std::unique_ptr<int> x)
 {
+    auto p = new int(20); // ensure new pointer is different from released pointer
     x.reset();
-    return std::unique_ptr<int>(new int(20));
+    return std::unique_ptr<int>(p);
 }
