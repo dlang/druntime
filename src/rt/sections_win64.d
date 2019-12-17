@@ -44,9 +44,7 @@ struct SectionGroup
     version (Win64)
     @property immutable(FuncTable)[] ehTables() const nothrow @nogc
     {
-        auto pbeg = cast(immutable(FuncTable)*)&_deh_beg;
-        auto pend = cast(immutable(FuncTable)*)&_deh_end;
-        return pbeg[0 .. pend - pbeg];
+        return cast(typeof(return)) *ehTablesFull;
     }
 
     @property inout(void[])[] gcRanges() inout nothrow @nogc
@@ -216,6 +214,32 @@ do
         if (*p !is null) result[cnt++] = *p;
 
     return cast(immutable)result;
+}
+
+// Used for EH table merging across DLL boundaries
+version (Win64)
+{
+
+    __gshared const(FuncTable)[]* ehTablesFull; // this is the proxy throw actually uses. may point to local or global
+    __gshared const(FuncTable)[] ehTablesLocal; // never changed, just the local module's things
+
+    // this is only valid if we are an exe, it contains the concatenation of the exe and all loaded dlls
+    __gshared package(rt) const(FuncTable)[] ehTablesGlobal;
+
+    package(rt) void loadDefaultEhTables() {
+        ehTablesLocal = _d_innerEhTable();
+        ehTablesFull = &ehTablesLocal;
+    }
+
+    extern(C) export void _d_setEhTablePointer(const(FuncTable)[]* ptr) {
+        ehTablesFull = ptr;
+    }
+
+    extern(C) export const(FuncTable)[] _d_innerEhTable() {
+        auto pbeg = cast(const(FuncTable)*)&_deh_beg;
+        auto pend = cast(const(FuncTable)*)&_deh_end;
+        return pbeg[0 .. pend - pbeg];
+    }
 }
 
 extern(C)

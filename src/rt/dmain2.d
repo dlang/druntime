@@ -89,6 +89,9 @@ version (CRuntime_Microsoft)
     extern(C) void init_msvc();
 }
 
+version (Win64)
+import rt.deh_win64_posix;
+
 /***********************************
  * These are a temporary means of providing a GC hook for DLL use.  They may be
  * replaced with some other similar functionality later.
@@ -102,6 +105,13 @@ extern (C)
     alias void* function()      gcGetFn;
     alias void  function(void*) gcSetFn;
     alias void  function()      gcClrFn;
+
+    // for exception handling, at least until druntime.dll actually works.
+    version (Win64)
+    {
+        alias void  function(const(FuncTable)[]*) ehSetFn;
+        alias const(FuncTable)[] function() ehGetFn;
+    }
 }
 
 version (Windows)
@@ -112,12 +122,12 @@ version (Windows)
      *      opaque handle to the DLL if successfully loaded
      *      null if failure
      */
-    extern (C) void* rt_loadLibrary(const char* name)
+    export extern (C) void* rt_loadLibrary(const char* name)
     {
         return initLibrary(.LoadLibraryA(name));
     }
 
-    extern (C) void* rt_loadLibraryW(const WCHAR* name)
+    export extern (C) void* rt_loadLibraryW(const WCHAR* name)
     {
         return initLibrary(.LoadLibraryW(name));
     }
@@ -126,6 +136,7 @@ version (Windows)
     {
         // BUG: LoadLibrary() call calls rt_init(), which fails if proxy is not set!
         // (What? LoadLibrary() is a Windows API call, it shouldn't call rt_init().)
+        // FYI LoadLibrary calls DllMain. DllMain calls rt_init.
         if (mod is null)
             return mod;
         gcSetFn gcSet = cast(gcSetFn) GetProcAddress(mod, "gc_setProxy");
@@ -133,6 +144,53 @@ version (Windows)
         {   // BUG: Set proxy, but too late
             gcSet(gc_getProxy());
         }
+
+    version (Win64)
+    {
+        import rt.sections_win64;
+
+        ehGetFn ehGet = cast(ehGetFn) GetProcAddress(mod, "_d_innerEhTable");
+        ehSetFn ehSet = cast(ehSetFn) GetProcAddress(mod, "_d_setEhTablePointer");
+
+        typeof(ehGet()) libraryEh;
+        if (ehGet)
+        {
+            libraryEh = ehGet();
+            if (ehTablesGlobal is null)
+            {
+            // first time: copy the local table into it as well as
+            // the new library
+            auto local = _d_innerEhTable();
+            auto len = libraryEh.length + local.length;
+            auto ptr = cast(FuncTable*) malloc(typeof(ehTablesGlobal[0]).sizeof * len);
+            ptr[0 .. local.length] = cast(FuncTable[]) local[];
+            ptr[local.length .. local.length + libraryEh.length] = cast(FuncTable[]) libraryEh[];
+            ehTablesGlobal = ptr[0 .. len];
+            }
+            else
+            {
+            // otherwise we need to realloc it to append the library table
+            auto ptr = ehTablesGlobal.ptr;
+            ptr = cast(FuncTable*) realloc(cast(void*) ptr,
+                typeof(ehTablesGlobal[0]).sizeof * (ehTablesGlobal.length + libraryEh.length));
+            if (ptr is null)
+                abort();
+            auto orig = ehTablesGlobal.length;
+            cast(FuncTable[]) ptr[orig .. orig + libraryEh.length] = cast(FuncTable[]) libraryEh[];
+            ehTablesGlobal = ptr[0 .. orig + libraryEh.length];
+            }
+
+            // set the local pointer
+            _d_setEhTablePointer(&ehTablesGlobal);
+
+            if (ehSet)
+            {
+            // and set the remote table too so throwing from the dll also sees the whole thing
+               ehSet(&ehTablesGlobal);
+            }
+        }
+    }
+
         return mod;
     }
 
@@ -144,8 +202,41 @@ version (Windows)
      *      1   succeeded
      *      0   some failure happened
      */
-    extern (C) int rt_unloadLibrary(void* ptr)
+    export extern (C) int rt_unloadLibrary(void* ptr)
     {
+        // should this logic just be done in the dll's DllMain instead?
+
+        // need to clear the DLL's table out of the global list, so first that
+        // means fetching the dll's table...
+        version (Win64)
+        {
+            ehGetFn ehGet = cast(ehGetFn) GetProcAddress(ptr, "_d_innerEhTable");
+            if (ehGet)
+            {
+                const(FuncTable)[] dllTables = ehGet();
+                import rt.sections_win64;
+
+                loop: foreach (entry; dllTables)
+                {
+                    foreach (idx, ge; ehTablesGlobal)
+                    {
+                        if (ge == entry)
+                        {
+                            import core.stdc.string;
+                            // assumes continuous append! If you ever sort the loading code or something
+                            // be sure to fix this too.
+                            memmove(&ehTablesGlobal[idx], &ehTablesGlobal[idx + dllTables.length], typeof(ge).sizeof * (ehTablesGlobal.length - (idx + dllTables.length)));
+                            ehTablesGlobal = ehTablesGlobal[idx + dllTables.length .. $];
+                            // could realloc it down to the new size, but I suspect it will be useful
+                            // again in the future anyway so might as well let the realloc on load reuse
+                            // space if needed and also simplify this part of the code a little.
+                            break loop;
+                        }
+                    }
+                }
+            }
+        }
+
         gcClrFn gcClr  = cast(gcClrFn) GetProcAddress(ptr, "gc_clrProxy");
         if (gcClr !is null)
             gcClr();
@@ -179,7 +270,7 @@ shared size_t _initCount;
  * If a C program wishes to call D code, and there's no D main(), then it
  * must call rt_init() and rt_term().
  */
-extern (C) int rt_init()
+export extern (C) int rt_init()
 {
     /* @@BUG 11380 @@ Need to synchronize rt_init/rt_term calls for
        version (Shared) druntime, because multiple C threads might
@@ -190,6 +281,12 @@ extern (C) int rt_init()
 
     version (CRuntime_Microsoft)
         init_msvc();
+
+    version (Win64)
+    {{
+        import rt.sections_win64;
+        loadDefaultEhTables();
+    }}
 
     _d_monitor_staticctor();
     _d_critical_init();
