@@ -225,7 +225,7 @@ version (Windows)
                             import core.stdc.string;
                             // assumes continuous append! If you ever sort the loading code or something
                             // be sure to fix this too.
-                            memmove(&ehTablesGlobal[idx], &ehTablesGlobal[idx + dllTables.length], typeof(ge).sizeof * (ehTablesGlobal.length - (idx + dllTables.length)));
+                            memmove(cast(void*) &ehTablesGlobal[idx], cast(void*) &ehTablesGlobal[idx + dllTables.length], typeof(ge).sizeof * (ehTablesGlobal.length - (idx + dllTables.length)));
                             ehTablesGlobal = ehTablesGlobal[idx + dllTables.length .. $];
                             // could realloc it down to the new size, but I suspect it will be useful
                             // again in the future anyway so might as well let the realloc on load reuse
