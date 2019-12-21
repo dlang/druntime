@@ -686,3 +686,10 @@ if (func.length == 1 /*&& isCallable!func*/)
     static assert(P_dglit.length == 1);
     static assert(is(P_dglit[0] == int));
 }
+
+// std.traits.isType
+template isType(X...)
+if (X.length == 1)
+{
+    enum isType = is(X[0]);
+}

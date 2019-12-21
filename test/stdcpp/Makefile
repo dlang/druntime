@@ -3,7 +3,7 @@ include ../common.mak
 HASCPP17:=`echo wow | $(CXX) -std=c++17 -E -xc++ - > /dev/null 2>&1 && echo yes`
 
 TESTS:=allocator new
-TESTS11:=array
+TESTS11:=array tuple
 TESTS17:=string_view
 OLDABITESTS:=
 
