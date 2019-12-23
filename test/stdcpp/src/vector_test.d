@@ -57,6 +57,12 @@ unittest
     vec2[] *= [10, 1, 10, 1, 1, 2];
     assert(vec2[] == [20, 200, 40, 400, 16000, 360]);
 
+    vec = vector!int([1, 2, 3, 4]);
+    vec.insert(1, 11);
+    vec.insert(0, 10);
+    vec.insert(5, [20, 30, 40, 50]);
+    assert(vec[] == [10, 1, 11, 2, 3, 20, 30, 40, 50, 4]);
+
     // test local instantiations...
     // there's no vector<float> instantiation in C++
     vector!CustomInit vec3 = vector!CustomInit(1);

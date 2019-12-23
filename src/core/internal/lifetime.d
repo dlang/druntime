@@ -86,7 +86,7 @@ if (is(UT == core.internal.traits.Unqual!UT))
 }
 
 //emplace helper functions
-private nothrow pure @trusted
+nothrow pure @trusted
 void emplaceInitializer(T)(scope ref T chunk)
 {
     import core.internal.traits : hasElaborateAssign, isAssignable;
@@ -106,4 +106,16 @@ void emplaceInitializer(T)(scope ref T chunk)
             memcpy(&chunk, &init, T.sizeof);
         }
     }
+}
+
+/*
+Simple swap function.
+*/
+void swap(T)(ref T lhs, ref T rhs)
+{
+    import core.lifetime : move;
+
+    T tmp = move(lhs);
+    lhs = move(rhs);
+    rhs = move(tmp);
 }

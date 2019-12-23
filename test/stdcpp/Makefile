@@ -9,16 +9,16 @@ OLDABITESTS:=
 
 ifeq (osx,$(OS))
 #	TESTS+=string
-#	TESTS+=vector
+	TESTS+=vector
 endif
 ifeq (linux,$(OS))
 #	TESTS+=string
-#	TESTS+=vector
+	TESTS+=vector
 	OLDABITESTS+=string
 endif
 ifeq (freebsd,$(OS))
 	TESTS+=string
-#	TESTS+=vector
+	TESTS+=vector
 endif
 
 # some build machines have ancient compilers, so we need to disable C++17 tests

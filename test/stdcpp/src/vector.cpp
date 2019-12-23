@@ -4,7 +4,9 @@ extern int vectorTest_numAllocated;
 
 struct NotPOD
 {
+#if __cplusplus >= 201103L
     NotPOD() = delete;
+#endif
     NotPOD(int a)
     {
         for (int i = 0; i < 5; ++i)
@@ -20,6 +22,7 @@ struct NotPOD
         if (rh.wasInit)
             ++vectorTest_numAllocated;
     }
+#if __cplusplus >= 201103L
     NotPOD(NotPOD&& rh)
     {
         for (int i = 0; i < 5; ++i)
@@ -27,6 +30,7 @@ struct NotPOD
         wasInit = rh.wasInit;
         rh.wasInit = false;
     }
+#endif
     ~NotPOD()
     {
         if (wasInit)
