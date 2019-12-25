@@ -619,14 +619,17 @@ public:
         Params:
             rhs = The duration to add to or subtract from this $(D Duration).
       +/
-    Duration opBinary(string op, D)(D rhs) const nothrow @nogc
-        if (((op == "+" || op == "-" || op == "%") && is(_Unqual!D == Duration)) ||
-           ((op == "+" || op == "-") && is(_Unqual!D == TickDuration)))
+    Duration opBinary(string op)(const Duration rhs) const nothrow @nogc
+    if (op == "+" || op == "-" || op == "%")
     {
-        static if (is(_Unqual!D == Duration))
-            return Duration(mixin("_hnsecs " ~ op ~ " rhs._hnsecs"));
-        else if (is(_Unqual!D == TickDuration))
-            return Duration(mixin("_hnsecs " ~ op ~ " rhs.hnsecs"));
+        return Duration(mixin("_hnsecs " ~ op ~ " rhs._hnsecs"));
+    }
+
+    /// ditto
+    deprecated Duration opBinary(string op)(const TickDuration rhs) const nothrow @nogc
+    if (op == "+" || op == "-")
+    {
+        return Duration(mixin("_hnsecs " ~ op ~ " rhs.hnsecs"));
     }
 
     version (CoreUnittest) unittest
@@ -663,7 +666,13 @@ public:
                 assert((cast(D)Duration(-7)) - (cast(E)Duration(-5)) == Duration(-2));
                 assert((cast(D)Duration(-7)) % (cast(E)Duration(5)) == Duration(-2));
             }
+        }
+    }
 
+    version (CoreUnittest) deprecated unittest
+    {
+        foreach (D; AliasSeq!(Duration, const Duration, immutable Duration))
+        {
             foreach (T; AliasSeq!(TickDuration, const TickDuration, immutable TickDuration))
             {
                 assertApprox((cast(D)Duration(5)) + cast(T)TickDuration.from!"usecs"(7), Duration(70), Duration(80));
@@ -704,14 +713,13 @@ public:
             lhs = The $(D TickDuration) to add to this $(D Duration) or to
                   subtract this $(D Duration) from.
       +/
-    Duration opBinaryRight(string op, D)(D lhs) const nothrow @nogc
-        if ((op == "+" || op == "-") &&
-            is(_Unqual!D == TickDuration))
+    deprecated Duration opBinaryRight(string op)(const TickDuration lhs) const nothrow @nogc
+    if (op == "+" || op == "-")
     {
         return Duration(mixin("lhs.hnsecs " ~ op ~ " _hnsecs"));
     }
 
-    version (CoreUnittest) unittest
+    version (CoreUnittest) deprecated unittest
     {
         foreach (D; AliasSeq!(Duration, const Duration, immutable Duration))
         {
@@ -758,14 +766,18 @@ public:
         Params:
             rhs = The duration to add to or subtract from this $(D Duration).
       +/
-    ref Duration opOpAssign(string op, D)(const scope D rhs) nothrow @nogc
-        if (((op == "+" || op == "-" || op == "%") && is(_Unqual!D == Duration)) ||
-           ((op == "+" || op == "-") && is(_Unqual!D == TickDuration)))
+    ref Duration opOpAssign(string op)(const scope Duration rhs) nothrow @nogc
+    if (op == "+" || op == "-" || op == "%")
     {
-        static if (is(_Unqual!D == Duration))
-            mixin("_hnsecs " ~ op ~ "= rhs._hnsecs;");
-        else if (is(_Unqual!D == TickDuration))
-            mixin("_hnsecs " ~ op ~ "= rhs.hnsecs;");
+        mixin("_hnsecs " ~ op ~ "= rhs._hnsecs;");
+        return this;
+    }
+
+    ///
+    deprecated ref Duration opOpAssign(string op)(const scope TickDuration rhs) nothrow @nogc
+    if (op == "+" || op == "-")
+    {
+        mixin("_hnsecs " ~ op ~ "= rhs.hnsecs;");
         return this;
     }
 
@@ -778,13 +790,6 @@ public:
 
             if (actual != expected)
                 throw new AssertError("op assign failed", __FILE__, line);
-        }
-
-        static void test2(string op, E)
-                         (Duration actual, in E rhs, Duration lower, Duration upper, size_t line = __LINE__)
-        {
-            assertApprox(mixin("actual " ~ op ~ " rhs"), lower, upper, "op failed", line);
-            assertApprox(actual, lower, upper, "op assign failed", line);
         }
 
         foreach (E; AliasSeq!(Duration, const Duration, immutable Duration))
@@ -816,6 +821,16 @@ public:
             test1!"+="(Duration(-7), (cast(E)Duration(-5)), Duration(-12));
             test1!"-="(Duration(-7), (cast(E)Duration(-5)), Duration(-2));
             test1!"%="(Duration(-7), (cast(E)Duration(-5)), Duration(-2));
+        }
+    }
+
+    version (CoreUnittest) deprecated unittest
+    {
+        static void test2(string op, E)
+                         (Duration actual, in E rhs, Duration lower, Duration upper, size_t line = __LINE__)
+        {
+            assertApprox(mixin("actual " ~ op ~ " rhs"), lower, upper, "op failed", line);
+            assertApprox(actual, lower, upper, "op assign failed", line);
         }
 
         foreach (T; AliasSeq!(TickDuration, const TickDuration, immutable TickDuration))
@@ -1106,13 +1121,13 @@ public:
         $(D TickDuration) is using $(REF to, std,conv), e.g.:
         $(D duration.to!TickDuration())
       +/
-    TickDuration opCast(T)() const nothrow @nogc
+    deprecated TickDuration opCast(T)() const nothrow @nogc
         if (is(_Unqual!T == TickDuration))
     {
         return TickDuration.from!"hnsecs"(_hnsecs);
     }
 
-    version (CoreUnittest) unittest
+    version (CoreUnittest) deprecated unittest
     {
         foreach (D; AliasSeq!(Duration, const Duration, immutable Duration))
         {
@@ -1751,7 +1766,7 @@ unittest
 
         td    = The TickDuration to convert
   +/
-T to(string units, T, D)(D td) @safe pure nothrow @nogc
+deprecated T to(string units, T, D)(D td) @safe pure nothrow @nogc
     if (is(_Unqual!D == TickDuration) &&
        (units == "seconds" ||
         units == "msecs" ||
@@ -1782,7 +1797,7 @@ T to(string units, T, D)(D td) @safe pure nothrow @nogc
 }
 
 ///
-unittest
+deprecated unittest
 {
     auto t = TickDuration.from!"seconds"(1000);
 
@@ -1793,7 +1808,7 @@ unittest
     assert(_abs(td - 1000) < 0.001);
 }
 
-unittest
+deprecated unittest
 {
     void testFun(string U)() {
         auto t1v = 1000;
@@ -2735,20 +2750,22 @@ unittest
 
 
 /++
-    $(RED Warning: TickDuration will be deprecated in the near future (once all
-          uses of it in Phobos have been deprecated). Please use
-          $(LREF MonoTime) for the cases where a monotonic timestamp is needed
-          and $(LREF Duration) when a duration is needed, rather than using
-          TickDuration. It has been decided that TickDuration is too confusing
-          (e.g. it conflates a monotonic timestamp and a duration in monotonic
-           clock ticks) and that having multiple duration types is too awkward
-          and confusing.)
+    $(RED Warning: TickDuration is deprecated and will be removed after 2.100.
+          Please use $(LREF MonoTime) for the cases where a monotonic timestamp
+          is needed and $(LREF Duration) when a duration is needed, rather than
+          using TickDuration. It has been decided that TickDuration is too
+          confusing (e.g. it conflates a monotonic timestamp and a duration in
+          monotonic clock ticks) and that having multiple duration types is too
+          awkward and confusing.)
 
    Represents a duration of time in system clock ticks.
 
    The system clock ticks are the ticks of the system clock at the highest
    precision that the system provides.
   +/
+// @@@DEPRECATED_2.100@@@
+// Deprecated in 2.090, to be removed after 2.100
+deprecated("Please use Monotime or Duration. TickDuration will be removed after 2.100")
 struct TickDuration
 {
     /++
@@ -3620,7 +3637,7 @@ Duration abs(Duration duration) @safe pure nothrow @nogc
 }
 
 /++ Ditto +/
-TickDuration abs(TickDuration duration) @safe pure nothrow @nogc
+deprecated TickDuration abs(TickDuration duration) @safe pure nothrow @nogc
 {
     return TickDuration(_abs(duration.length));
 }
@@ -3629,7 +3646,10 @@ unittest
 {
     assert(abs(dur!"msecs"(5)) == dur!"msecs"(5));
     assert(abs(dur!"msecs"(-5)) == dur!"msecs"(5));
+}
 
+deprecated unittest
+{
     assert(abs(TickDuration(17)) == TickDuration(17));
     assert(abs(TickDuration(-17)) == TickDuration(17));
 }
@@ -4115,7 +4135,7 @@ version (CoreUnittest) void assertApprox(D, E)(D actual,
         throw new AssertError(msg ~ ": upper: " ~ actual.toString(), __FILE__, line);
 }
 
-version (CoreUnittest) void assertApprox(D, E)(D actual,
+version (CoreUnittest) deprecated void assertApprox(D, E)(D actual,
                                           E lower,
                                           E upper,
                                           string msg = "unittest failure",
