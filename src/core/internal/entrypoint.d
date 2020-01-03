@@ -29,7 +29,7 @@ template _d_cmain()
         int _Dmain(char[][] args);
 
         pragma(mangle, "main")
-        int main(int argc, char **argv)
+        int _Cmain(int argc, char **argv)
         {
             return _d_run_main(argc, argv, &_Dmain);
         }
