@@ -9,6 +9,7 @@
  */
 module core.internal.convert;
 import core.internal.traits : Unqual;
+import core.math : toPrec;
 
 /+
 A @nogc function can allocate memory during CTFE.
@@ -67,6 +68,41 @@ const(ubyte)[] toUbyte(T)(const ref T val) if (is(Unqual!T == float) || is(Unqua
                 }
             }
             return result;
+        }
+        else static if (floatFormat!T == FloatFormat.DoubleDouble)
+        {
+            // Parse DoubleDoubles as a pair of doubles.
+            // The layout of the type is:
+            //
+            //   [1|  7  |       56      ][   8    |       56       ]
+            //   [S| Exp | Fraction (hi) ][ Unused | Fraction (low) ]
+            //
+            // We can get the least significant bits by subtracting the IEEE
+            // double precision portion from the real value.
+
+            ubyte[] buff = ctfe_alloc(T.sizeof);
+            enum msbSize = double.sizeof;
+
+            double hi = toPrec!double(val);
+            buff[0 .. msbSize] = toUbyte(hi)[];
+
+            if (val is cast(T)0.0 || val is cast(T)-0.0 ||
+                val is T.nan || val is -T.nan ||
+                val is T.infinity || val > T.max ||
+                val is -T.infinity || val < -T.max)
+            {
+                // Zero, NaN, and Inf are all representable as doubles, so the
+                // least significant part can be 0.0.
+                buff[msbSize .. $] = 0;
+            }
+            else
+            {
+                double low = toPrec!double(val - hi);
+                buff[msbSize .. $] = toUbyte(low)[];
+            }
+
+            // Arrays don't index differently between little and big-endian targets.
+            return buff;
         }
         else
         {

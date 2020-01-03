@@ -239,10 +239,10 @@ in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
 
 /// Ditto
 TailShared!T atomicExchange(MemoryOrder ms = MemoryOrder.seq,T,V)(shared(T)* here, V exchangeWith) pure nothrow @nogc @trusted
-    if (!is(T == class))
+    if (!is(T == class) && !is(T == interface))
 in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
 {
-    static if (is (V == shared))
+    static if (is (V == shared U, U))
         alias Thunk = U;
     else
     {
@@ -255,7 +255,7 @@ in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
 
 /// Ditto
 shared(T) atomicExchange(MemoryOrder ms = MemoryOrder.seq,T,V)(shared(T)* here, shared(V) exchangeWith) pure nothrow @nogc @trusted
-    if (is(T == class))
+    if (is(T == class) || is(T == interface))
 in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
 {
     static assert (is (V : T), "Can't assign `exchangeWith` of type `" ~ shared(V).stringof ~ "` to `" ~ shared(T).stringof ~ "`.");
@@ -605,6 +605,13 @@ else version (D_InlineAsm_X86_64)
     enum has64BitCAS = true;
     enum has128BitCAS = true;
 }
+else version (GNU)
+{
+    import gcc.config;
+    enum has64BitCAS = GNU_Have_64Bit_Atomics;
+    enum has64BitXCHG = GNU_Have_64Bit_Atomics;
+    enum has128BitCAS = GNU_Have_LibAtomic;
+}
 else
 {
     enum has64BitXCHG = false;
@@ -875,6 +882,7 @@ private
         assert(atom is val);
     }
 
+
     void testType(T)(T val = T.init + 1) pure nothrow @nogc @safe
     {
         static if (T.sizeof < 8 || has64BitXCHG)
@@ -897,9 +905,16 @@ private
 
     testType!(shared int*)();
 
+    static interface Inter {}
+    static class KlassImpl : Inter {}
+    testXCHG!(shared Inter)(new shared(KlassImpl));
+    testCAS!(shared Inter)(new shared(KlassImpl));
+
     static class Klass {}
     testXCHG!(shared Klass)(new shared(Klass));
     testCAS!(shared Klass)(new shared(Klass));
+
+    testXCHG!(shared int)(42);
 
     testType!(float)(1.0f);
 

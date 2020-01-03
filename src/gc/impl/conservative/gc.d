@@ -979,7 +979,7 @@ class ConservativeGC : GC
     }
 
 
-    bool inFinalizer() nothrow
+    bool inFinalizer() nothrow @nogc
     {
         return _inFinalizer;
     }
@@ -1062,7 +1062,7 @@ class ConservativeGC : GC
     }
 
 
-    core.memory.GC.ProfileStats profileStats() nothrow
+    core.memory.GC.ProfileStats profileStats() nothrow @trusted
     {
         typeof(return) ret;
 
@@ -2410,7 +2410,7 @@ struct Gcx
                         {
                             bool hasDead = false;
                             static foreach (w; 0 .. PageBits.length)
-                                hasDead = hasDead && (~freebitsdata[w] != baseOffsetBits[bin][w]);
+                                hasDead = hasDead || (~freebitsdata[w] != baseOffsetBits[bin][w]);
                             if (hasDead)
                             {
                                 // add to recover chain
