@@ -239,6 +239,22 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args)
 
 @nogc pure nothrow @safe unittest
 {
+    class __conv_EmplaceTestClass
+    {
+        int i = 3;
+        this(int i) @nogc @safe pure nothrow
+        {
+            assert(this.i == 3 && i == 5);
+            this.i = i;
+        }
+        this(int i, ref int j) @nogc @safe pure nothrow
+        {
+            assert(i == 5 && j == 6);
+            this.i = i;
+            ++j;
+        }
+    }
+
     int var = 6;
     align(__conv_EmplaceTestClass.alignof) ubyte[__traits(classInstanceSize, __conv_EmplaceTestClass)] buf;
     auto support = (() @trusted => cast(__conv_EmplaceTestClass)(buf.ptr))();
@@ -304,43 +320,6 @@ T* emplace(T, Args...)(void[] chunk, auto ref Args args)
     U u2 = { "hello" };
     emplace(&u1, u2);
     assert(u1.a == "hello");
-}
-
-version (unittest) private struct __conv_EmplaceTest
-{
-    int i = 3;
-    this(int i)
-    {
-        assert(this.i == 3 && i == 5);
-        this.i = i;
-    }
-    this(int i, ref int j)
-    {
-        assert(i == 5 && j == 6);
-        this.i = i;
-        ++j;
-    }
-
-@disable:
-    this();
-    this(this);
-    void opAssign();
-}
-
-version (unittest) private class __conv_EmplaceTestClass
-{
-    int i = 3;
-    this(int i) @nogc @safe pure nothrow
-    {
-        assert(this.i == 3 && i == 5);
-        this.i = i;
-    }
-    this(int i, ref int j) @nogc @safe pure nothrow
-    {
-        assert(i == 5 && j == 6);
-        this.i = i;
-        ++j;
-    }
 }
 
 @system unittest // bugzilla 15772
@@ -476,17 +455,40 @@ version (unittest) private class __conv_EmplaceTestClass
 
 @system unittest
 {
+    struct __conv_EmplaceTest
+    {
+        int i = 3;
+        this(int i)
+        {
+            assert(this.i == 3 && i == 5);
+            this.i = i;
+        }
+        this(int i, ref int j)
+        {
+            assert(i == 5 && j == 6);
+            this.i = i;
+            ++j;
+        }
+
+    @disable:
+        this();
+        this(this);
+        void opAssign();
+    }
+
     __conv_EmplaceTest k = void;
     emplace(&k, 5);
     assert(k.i == 5);
-}
 
-@system unittest
-{
     int var = 6;
-    __conv_EmplaceTest k = void;
-    emplace(&k, 5, var);
-    assert(k.i == 5);
+    __conv_EmplaceTest z = void;
+    emplace(&z, 5, var);
+    assert(z.i == 5);
+    assert(var == 7);
+
+    var = 6;
+    auto x = emplace!__conv_EmplaceTest(new void[__conv_EmplaceTest.sizeof], 5, var);
+    assert(x.i == 5);
     assert(var == 7);
 }
 
@@ -1164,10 +1166,6 @@ pure nothrow @safe /* @nogc */ unittest
 
 @system unittest
 {
-    int var = 6;
-    auto k = emplace!__conv_EmplaceTest(new void[__conv_EmplaceTest.sizeof], 5, var);
-    assert(k.i == 5);
-    assert(var == 7);
 }
 
 @system unittest

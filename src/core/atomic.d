@@ -811,8 +811,7 @@ private
 // Unit Tests
 ////////////////////////////////////////////////////////////////////////////////
 
-
-version (unittest)
+@betterC @safe pure nothrow unittest
 {
     void testXCHG(T)(T val) pure nothrow @nogc @trusted
     in
@@ -876,7 +875,6 @@ version (unittest)
         assert(atom is val);
     }
 
-
     void testType(T)(T val = T.init + 1) pure nothrow @nogc @safe
     {
         static if (T.sizeof < 8 || has64BitXCHG)
@@ -886,285 +884,282 @@ version (unittest)
         testLoadStore!(MemoryOrder.raw, T)(val);
     }
 
-    @betterC @safe pure nothrow unittest
+    testType!(bool)();
+
+    testType!(byte)();
+    testType!(ubyte)();
+
+    testType!(short)();
+    testType!(ushort)();
+
+    testType!(int)();
+    testType!(uint)();
+
+    testType!(shared int*)();
+
+    static class Klass {}
+    testXCHG!(shared Klass)(new shared(Klass));
+    testCAS!(shared Klass)(new shared(Klass));
+
+    testType!(float)(1.0f);
+
+    static if (has64BitCAS)
     {
-        testType!(bool)();
+        testType!(double)(1.0);
+        testType!(long)();
+        testType!(ulong)();
+    }
+}
 
-        testType!(byte)();
-        testType!(ubyte)();
+@safe pure nothrow unittest
+{
+    static if (has128BitCAS)
+    {
+        () @trusted
+        {
+            align(16) struct Big { long a, b; }
 
-        testType!(short)();
-        testType!(ushort)();
+            shared(Big) atom;
+            shared(Big) base;
+            shared(Big) arg;
+            shared(Big) val = Big(1, 2);
 
-        testType!(int)();
-        testType!(uint)();
+            assert(cas(&atom, arg, val), Big.stringof);
+            assert(atom is val, Big.stringof);
+            assert(!cas(&atom, arg, val), Big.stringof);
+            assert(atom is val, Big.stringof);
+
+            atom = Big();
+            assert(cas(&atom, &arg, val), Big.stringof);
+            assert(arg is base, Big.stringof);
+            assert(atom is val, Big.stringof);
+
+            arg = Big();
+            assert(!cas(&atom, &arg, base), Big.stringof);
+            assert(arg is val, Big.stringof);
+            assert(atom is val, Big.stringof);
+        }();
     }
 
-    @safe pure nothrow unittest
+    shared(size_t) i;
+
+    atomicOp!"+="(i, cast(size_t) 1);
+    assert(i == 1);
+
+    atomicOp!"-="(i, cast(size_t) 1);
+    assert(i == 0);
+
+    shared float f = 0;
+    atomicOp!"+="(f, 1);
+    assert(f == 1);
+
+    static if (has64BitCAS)
     {
+        shared double d = 0;
+        atomicOp!"+="(d, 1);
+        assert(d == 1);
+    }
+}
 
-        testType!(shared int*)();
-
-        static class Klass {}
-        testXCHG!(shared Klass)(new shared(Klass));
-        testCAS!(shared Klass)(new shared(Klass));
-
-        testType!(float)(1.0f);
-
-        static if (has64BitCAS)
+@betterC pure nothrow unittest
+{
+    static if (has128BitCAS)
+    {
+        struct DoubleValue
         {
-            testType!(double)(1.0);
-            testType!(long)();
-            testType!(ulong)();
-        }
-        static if (has128BitCAS)
-        {
-            () @trusted
-            {
-                align(16) struct Big { long a, b; }
-
-                shared(Big) atom;
-                shared(Big) base;
-                shared(Big) arg;
-                shared(Big) val = Big(1, 2);
-
-                assert(cas(&atom, arg, val), Big.stringof);
-                assert(atom is val, Big.stringof);
-                assert(!cas(&atom, arg, val), Big.stringof);
-                assert(atom is val, Big.stringof);
-
-                atom = Big();
-                assert(cas(&atom, &arg, val), Big.stringof);
-                assert(arg is base, Big.stringof);
-                assert(atom is val, Big.stringof);
-
-                arg = Big();
-                assert(!cas(&atom, &arg, base), Big.stringof);
-                assert(arg is val, Big.stringof);
-                assert(atom is val, Big.stringof);
-            }();
+            long value1;
+            long value2;
         }
 
-        shared(size_t) i;
+        align(16) shared DoubleValue a;
+        atomicStore(a, DoubleValue(1,2));
+        assert(a.value1 == 1 && a.value2 ==2);
 
-        atomicOp!"+="(i, cast(size_t) 1);
-        assert(i == 1);
+        while (!cas(&a, DoubleValue(1,2), DoubleValue(3,4))){}
+        assert(a.value1 == 3 && a.value2 ==4);
 
-        atomicOp!"-="(i, cast(size_t) 1);
-        assert(i == 0);
-
-        shared float f = 0;
-        atomicOp!"+="(f, 1);
-        assert(f == 1);
-
-        static if (has64BitCAS)
-        {
-            shared double d = 0;
-            atomicOp!"+="(d, 1);
-            assert(d == 1);
-        }
+        align(16) DoubleValue b = atomicLoad(a);
+        assert(b.value1 == 3 && b.value2 ==4);
     }
 
-    @betterC pure nothrow unittest
+    version (D_LP64)
     {
-        static if (has128BitCAS)
-        {
-            struct DoubleValue
-            {
-                long value1;
-                long value2;
-            }
-
-            align(16) shared DoubleValue a;
-            atomicStore(a, DoubleValue(1,2));
-            assert(a.value1 == 1 && a.value2 ==2);
-
-            while (!cas(&a, DoubleValue(1,2), DoubleValue(3,4))){}
-            assert(a.value1 == 3 && a.value2 ==4);
-
-            align(16) DoubleValue b = atomicLoad(a);
-            assert(b.value1 == 3 && b.value2 ==4);
-        }
-
-        version (D_LP64)
-        {
-            enum hasDWCAS = has128BitCAS;
-        }
-        else
-        {
-            enum hasDWCAS = has64BitCAS;
-        }
-
-        static if (hasDWCAS)
-        {
-            static struct List { size_t gen; List* next; }
-            shared(List) head;
-            assert(cas(&head, shared(List)(0, null), shared(List)(1, cast(List*)1)));
-            assert(head.gen == 1);
-            assert(cast(size_t)head.next == 1);
-        }
+        enum hasDWCAS = has128BitCAS;
+    }
+    else
+    {
+        enum hasDWCAS = has64BitCAS;
     }
 
-    @betterC pure nothrow unittest
+    static if (hasDWCAS)
     {
-        static struct S { int val; }
-        auto s = shared(S)(1);
-
-        shared(S*) ptr;
-
-        // head unshared
-        shared(S)* ifThis = null;
-        shared(S)* writeThis = &s;
-        assert(ptr is null);
-        assert(cas(&ptr, ifThis, writeThis));
-        assert(ptr is writeThis);
-
-        // head shared
-        shared(S*) ifThis2 = writeThis;
-        shared(S*) writeThis2 = null;
-        assert(cas(&ptr, ifThis2, writeThis2));
-        assert(ptr is null);
+        static struct List { size_t gen; List* next; }
+        shared(List) head;
+        assert(cas(&head, shared(List)(0, null), shared(List)(1, cast(List*)1)));
+        assert(head.gen == 1);
+        assert(cast(size_t)head.next == 1);
     }
+}
 
-    unittest
+@betterC pure nothrow unittest
+{
+    static struct S { int val; }
+    auto s = shared(S)(1);
+
+    shared(S*) ptr;
+
+    // head unshared
+    shared(S)* ifThis = null;
+    shared(S)* writeThis = &s;
+    assert(ptr is null);
+    assert(cas(&ptr, ifThis, writeThis));
+    assert(ptr is writeThis);
+
+    // head shared
+    shared(S*) ifThis2 = writeThis;
+    shared(S*) writeThis2 = null;
+    assert(cas(&ptr, ifThis2, writeThis2));
+    assert(ptr is null);
+}
+
+unittest
+{
+    import core.thread;
+
+    // Use heap memory to ensure an optimizing
+    // compiler doesn't put things in registers.
+    uint* x = new uint();
+    bool* f = new bool();
+    uint* r = new uint();
+
+    auto thr = new Thread(()
     {
-        import core.thread;
-
-        // Use heap memory to ensure an optimizing
-        // compiler doesn't put things in registers.
-        uint* x = new uint();
-        bool* f = new bool();
-        uint* r = new uint();
-
-        auto thr = new Thread(()
+        while (!*f)
         {
-            while (!*f)
-            {
-            }
-
-            atomicFence();
-
-            *r = *x;
-        });
-
-        thr.start();
-
-        *x = 42;
+        }
 
         atomicFence();
 
-        *f = true;
+        *r = *x;
+    });
 
-        atomicFence();
+    thr.start();
 
-        thr.join();
+    *x = 42;
 
-        assert(*r == 42);
-    }
+    atomicFence();
 
-    // === atomicFetchAdd and atomicFetchSub operations ====
-    @betterC pure nothrow @nogc @safe unittest
+    *f = true;
+
+    atomicFence();
+
+    thr.join();
+
+    assert(*r == 42);
+}
+
+// === atomicFetchAdd and atomicFetchSub operations ====
+@betterC pure nothrow @nogc @safe unittest
+{
+    shared ubyte u8 = 1;
+    shared ushort u16 = 2;
+    shared uint u32 = 3;
+    shared byte i8 = 5;
+    shared short i16 = 6;
+    shared int i32 = 7;
+
+    assert(atomicOp!"+="(u8, 8) == 9);
+    assert(atomicOp!"+="(u16, 8) == 10);
+    assert(atomicOp!"+="(u32, 8) == 11);
+    assert(atomicOp!"+="(i8, 8) == 13);
+    assert(atomicOp!"+="(i16, 8) == 14);
+    assert(atomicOp!"+="(i32, 8) == 15);
+    version (D_LP64)
     {
-        shared ubyte u8 = 1;
-        shared ushort u16 = 2;
-        shared uint u32 = 3;
-        shared byte i8 = 5;
-        shared short i16 = 6;
-        shared int i32 = 7;
-
-        assert(atomicOp!"+="(u8, 8) == 9);
-        assert(atomicOp!"+="(u16, 8) == 10);
-        assert(atomicOp!"+="(u32, 8) == 11);
-        assert(atomicOp!"+="(i8, 8) == 13);
-        assert(atomicOp!"+="(i16, 8) == 14);
-        assert(atomicOp!"+="(i32, 8) == 15);
-        version (D_LP64)
-        {
-            shared ulong u64 = 4;
-            shared long i64 = 8;
-            assert(atomicOp!"+="(u64, 8) == 12);
-            assert(atomicOp!"+="(i64, 8) == 16);
-        }
+        shared ulong u64 = 4;
+        shared long i64 = 8;
+        assert(atomicOp!"+="(u64, 8) == 12);
+        assert(atomicOp!"+="(i64, 8) == 16);
     }
+}
 
-    @betterC pure nothrow @nogc @safe unittest
+@betterC pure nothrow @nogc @safe unittest
+{
+    shared ubyte u8 = 1;
+    shared ushort u16 = 2;
+    shared uint u32 = 3;
+    shared byte i8 = 5;
+    shared short i16 = 6;
+    shared int i32 = 7;
+
+    assert(atomicOp!"-="(u8, 1) == 0);
+    assert(atomicOp!"-="(u16, 1) == 1);
+    assert(atomicOp!"-="(u32, 1) == 2);
+    assert(atomicOp!"-="(i8, 1) == 4);
+    assert(atomicOp!"-="(i16, 1) == 5);
+    assert(atomicOp!"-="(i32, 1) == 6);
+    version (D_LP64)
     {
-        shared ubyte u8 = 1;
-        shared ushort u16 = 2;
-        shared uint u32 = 3;
-        shared byte i8 = 5;
-        shared short i16 = 6;
-        shared int i32 = 7;
-
-        assert(atomicOp!"-="(u8, 1) == 0);
-        assert(atomicOp!"-="(u16, 1) == 1);
-        assert(atomicOp!"-="(u32, 1) == 2);
-        assert(atomicOp!"-="(i8, 1) == 4);
-        assert(atomicOp!"-="(i16, 1) == 5);
-        assert(atomicOp!"-="(i32, 1) == 6);
-        version (D_LP64)
-        {
-            shared ulong u64 = 4;
-            shared long i64 = 8;
-            assert(atomicOp!"-="(u64, 1) == 3);
-            assert(atomicOp!"-="(i64, 1) == 7);
-        }
+        shared ulong u64 = 4;
+        shared long i64 = 8;
+        assert(atomicOp!"-="(u64, 1) == 3);
+        assert(atomicOp!"-="(i64, 1) == 7);
     }
+}
 
-    @betterC pure nothrow @nogc @safe unittest // issue 16651
+@betterC pure nothrow @nogc @safe unittest // issue 16651
+{
+    shared ulong a = 2;
+    uint b = 1;
+    atomicOp!"-="(a, b);
+    assert(a == 1);
+
+    shared uint c = 2;
+    ubyte d = 1;
+    atomicOp!"-="(c, d);
+    assert(c == 1);
+}
+
+pure nothrow @safe unittest // issue 16230
+{
+    shared int i;
+    static assert(is(typeof(atomicLoad(i)) == int));
+
+    shared int* p;
+    static assert(is(typeof(atomicLoad(p)) == shared(int)*));
+
+    shared int[] a;
+    static if (__traits(compiles, atomicLoad(a)))
     {
-        shared ulong a = 2;
-        uint b = 1;
-        atomicOp!"-="(a, b);
-        assert(a == 1);
-
-        shared uint c = 2;
-        ubyte d = 1;
-        atomicOp!"-="(c, d);
-        assert(c == 1);
+        static assert(is(typeof(atomicLoad(a)) == shared(int)[]));
     }
 
-    pure nothrow @safe unittest // issue 16230
+    static struct S { int* _impl; }
+    shared S s;
+    static assert(is(typeof(atomicLoad(s)) : shared S));
+    static assert(is(typeof(atomicLoad(s)._impl) == shared(int)*));
+    auto u = atomicLoad(s);
+    assert(u._impl is null);
+    u._impl = new shared int(42);
+    assert(atomicLoad(*u._impl) == 42);
+
+    static struct S2 { S s; }
+    shared S2 s2;
+    static assert(is(typeof(atomicLoad(s2).s) == TailShared!S));
+
+    static struct S3 { size_t head; int* tail; }
+    shared S3 s3;
+    static if (__traits(compiles, atomicLoad(s3)))
     {
-        shared int i;
-        static assert(is(typeof(atomicLoad(i)) == int));
-
-        shared int* p;
-        static assert(is(typeof(atomicLoad(p)) == shared(int)*));
-
-        shared int[] a;
-        static if (__traits(compiles, atomicLoad(a)))
-        {
-            static assert(is(typeof(atomicLoad(a)) == shared(int)[]));
-        }
-
-        static struct S { int* _impl; }
-        shared S s;
-        static assert(is(typeof(atomicLoad(s)) : shared S));
-        static assert(is(typeof(atomicLoad(s)._impl) == shared(int)*));
-        auto u = atomicLoad(s);
-        assert(u._impl is null);
-        u._impl = new shared int(42);
-        assert(atomicLoad(*u._impl) == 42);
-
-        static struct S2 { S s; }
-        shared S2 s2;
-        static assert(is(typeof(atomicLoad(s2).s) == TailShared!S));
-
-        static struct S3 { size_t head; int* tail; }
-        shared S3 s3;
-        static if (__traits(compiles, atomicLoad(s3)))
-        {
-            static assert(is(typeof(atomicLoad(s3).head) == size_t));
-            static assert(is(typeof(atomicLoad(s3).tail) == shared(int)*));
-        }
-
-        static class C { int i; }
-        shared C c;
-        static assert(is(typeof(atomicLoad(c)) == shared C));
-
-        static struct NoIndirections { int i; }
-        shared NoIndirections n;
-        static assert(is(typeof(atomicLoad(n)) == NoIndirections));
+        static assert(is(typeof(atomicLoad(s3).head) == size_t));
+        static assert(is(typeof(atomicLoad(s3).tail) == shared(int)*));
     }
+
+    static class C { int i; }
+    shared C c;
+    static assert(is(typeof(atomicLoad(c)) == shared C));
+
+    static struct NoIndirections { int i; }
+    shared NoIndirections n;
+    static assert(is(typeof(atomicLoad(n)) == NoIndirections));
 }
