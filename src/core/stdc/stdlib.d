@@ -150,14 +150,10 @@ else
     void    srand(uint seed);
 }
 
-// We don't mark these @trusted. Given that they return a void*, one has
-// to do a pointer cast to do anything sensible with the result. Thus,
-// functions using these already have to be @trusted, allowing them to
-// call @system stuff anyway.
 ///
-void*   malloc(size_t size);
+void*   malloc(size_t size) @trusted;
 ///
-void*   calloc(size_t nmemb, size_t size);
+void*   calloc(size_t nmemb, size_t size) @trusted;
 ///
 void*   realloc(void* ptr, size_t size);
 ///
@@ -209,7 +205,6 @@ size_t  wcstombs(scope char* s, scope const wchar_t* pwcs, size_t n);
 ///
 version (DigitalMars)
 {
-    // See malloc comment about @trusted.
     void* alloca(size_t size) pure; // non-standard
 }
 else version (GNU)
