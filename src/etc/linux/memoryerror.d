@@ -25,8 +25,13 @@ version (CRuntime_Glibc)
 version (MemoryErrorSupported):
 @system:
 
+import core.sys.posix.pthread;
 import core.sys.posix.signal;
 import core.sys.posix.ucontext;
+
+import core.thread;
+
+extern (C) int pthread_getattr_np(pthread_t thread, pthread_attr_t* attr) @nogc nothrow;
 
 // Register and unregister memory error handler.
 
@@ -61,6 +66,22 @@ class InvalidPointerError : Error
     this(Throwable next, string file = __FILE__, size_t line = __LINE__)
     {
         super("", file, line, next);
+    }
+}
+
+/**
+ * Thrown on stack overflow.
+ */
+class StackOverflow : InvalidPointerError
+{
+    this(string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    {
+        super(file, line, next);
+    }
+
+    this(Throwable next, string file = __FILE__, size_t line = __LINE__)
+    {
+        super(file, line, next);
     }
 }
 
@@ -106,6 +127,37 @@ unittest
         *getNull() = 42;
     }
     catch (InvalidPointerError)
+    {
+        b = true;
+    }
+
+    assert(b);
+
+    assert(deregisterMemoryErrorHandler());
+}
+
+unittest
+{
+    import core.sys.posix.pthread;
+
+    assert(registerMemoryErrorHandler());
+
+    pthread_attr_t attr;
+    void* stackaddr;
+    size_t size;
+
+    assert(pthread_attr_init(&attr) == 0);
+    assert(pthread_getattr_np(pthread_self(), &attr) == 0);
+    assert(pthread_attr_getstack(&attr, &stackaddr, &size) == 0);
+    assert(pthread_attr_destroy(&attr) == 0);
+
+    bool b = false;
+
+    try
+    {
+        b = *cast(bool*)(stackaddr - (bool*).sizeof);
+    }
+    catch (StackOverflow)
     {
         b = true;
     }
@@ -316,11 +368,57 @@ enum MEMORY_RESERVED_FOR_NULL_DEREFERENCE = 4096 * 16;
 void sigsegvUserspaceProcess(void* address)
 {
     // SEGV_MAPERR, SEGV_ACCERR.
+    //
     // The first page is protected to detect null dereferences.
     if ((cast(size_t) address) < MEMORY_RESERVED_FOR_NULL_DEREFERENCE)
     {
         throw new NullPointerError();
     }
 
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+
+    int rc = pthread_getattr_np(pthread_self(), &attr);
+    if (rc != 0)
+        throw new InvalidPointerError();
+    void* stackaddr;
+    size_t _size;
+    rc = pthread_attr_getstack(&attr, &stackaddr, &_size);
+    if (rc != 0)
+        throw new InvalidPointerError();
+
+    /**
+     * On main thread, we cannot get guard size via pthread_attr_getguardsize.
+     * So we rely on the kernel's own stack guard will work.
+     */
+    if (thread_isMainThread())
+    {
+        pthread_attr_destroy(&attr);
+
+        /**
+         * We assume,
+         *   1. The size of the guard area == PAGE_SIZE.
+         *   2. A user never defines own stack-guard implementation.
+         *   3. stackaddr is aligned to a page. (which is guaranteed by pthread_attr_getstack)
+         */
+        if (stackaddr - PAGE_SIZE < address && address < stackaddr)
+            throw new StackOverflow();
+    }
+    else
+    {
+        size_t guardsize;
+        rc = pthread_attr_getguardsize(&attr, &guardsize);
+        if (rc != 0 || guardsize == 0)
+            throw new InvalidPointerError();
+
+        pthread_attr_destroy(&attr);
+
+        /**
+         * GLibc < 2.27 has a bug that the thread implementation includes the guard
+         * area within the stack size allocation, see `man pthread_attr_setguardsize`.
+         */
+        if (stackaddr - guardsize < address && address < stackaddr + guardsize)
+            throw new StackOverflow();
+    }
     throw new InvalidPointerError();
 }
