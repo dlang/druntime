@@ -479,6 +479,7 @@ SRCS=\
 	src\rt\aaA.d \
 	src\rt\adi.d \
 	src\rt\alloca.d \
+	src\rt\argv_windows.d \
 	src\rt\arrayassign.d \
 	src\rt\arraycat.d \
 	src\rt\cast_.d \
