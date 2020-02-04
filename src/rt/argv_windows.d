@@ -6,6 +6,7 @@ import core.stdc.wchar_ /+: wcslen+/;
 import core.sys.windows.winbase /+: LocalAlloc+/;
 import core.sys.windows.winnt /+: LPWSTR, LPCWSTR+/;
 
+
 /++
 Splits a command line into argc/argv lists, using the VC7 parsing rules.
 This functions interface mimics the `CommandLineToArgvW` api.
@@ -70,7 +71,7 @@ LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
     inquote = FALSE;
     do
     {
-        if (*psrc == W!('"'))
+        if (*psrc == wchar('"'))
         {
             inquote = !inquote;
             c = *psrc++;
@@ -80,15 +81,15 @@ LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
 
         c = *psrc++;
 
-    } while ((c != W!('\0') && (inquote || (c != W!(' ') && c != W!('\t')))));
+    } while ((c != wchar('\0') && (inquote || (c != wchar(' ') && c != wchar('\t')))));
 
-    if (c == W!('\0'))
+    if (c == wchar('\0'))
     {
         psrc--;
     }
     else
     {
-        *(pdst-1) = W!('\0');
+        *(pdst-1) = wchar('\0');
     }
 
     inquote = FALSE;
@@ -98,13 +99,13 @@ LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
     {
         if (*psrc)
         {
-            while (*psrc == W!(' ') || *psrc == W!('\t'))
+            while (*psrc == wchar(' ') || *psrc == wchar('\t'))
             {
                 ++psrc;
             }
         }
 
-        if (*psrc == W!('\0'))
+        if (*psrc == wchar('\0'))
             break;              /* end of args */
 
         /* scan an argument */
@@ -118,19 +119,19 @@ LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
             2N+1 backslashes + " ==> N backslashes + literal "
             N backslashes ==> N backslashes */
             numslash = 0;
-            while (*psrc == W!('\\'))
+            while (*psrc == wchar('\\'))
             {
                 /* count number of backslashes for use below */
                 ++psrc;
                 ++numslash;
             }
-            if (*psrc == W!('"'))
+            if (*psrc == wchar('"'))
             {
                 /* if 2N backslashes before, start/end quote, otherwise
                 copy literally */
                 if (numslash % 2 == 0)
                 {
-                    if (inquote && psrc[1] == W!('"'))
+                    if (inquote && psrc[1] == wchar('"'))
                     {
                         psrc++;    /* Double quote inside quoted string */
                     }
@@ -147,11 +148,11 @@ LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
             /* copy slashes */
             while (numslash--)
             {
-                *pdst++ = W!('\\');
+                *pdst++ = wchar('\\');
             }
 
             /* if at end of arg, break loop */
-            if (*psrc == W!('\0') || (!inquote && (*psrc == W!(' ') || *psrc == W!('\t'))))
+            if (*psrc == wchar('\0') || (!inquote && (*psrc == wchar(' ') || *psrc == wchar('\t'))))
                 break;
 
             /* copy character into argument */
@@ -163,7 +164,7 @@ LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
         }
 
         /* null-terminate the argument */
-        *pdst++ = W!('\0');          /* terminate string */
+        *pdst++ = wchar('\0');          /* terminate string */
     }
 
     /* We put one last argument in -- a null ptr */
@@ -175,13 +176,6 @@ LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
     // formula is wrong.
     assert(cast(BYTE*)pdst <= cast(BYTE*)pAlloc + cbAlloc);
     return argv;
-}
-
-// Ensure wchar literal
-private template W(char c)
-{
-    enum wc = cast(wchar) c;
-    alias W = wc;
 }
 
 unittest
@@ -234,4 +228,26 @@ unittest
     assert(parseArgv(`C:\test\demo.exe a\\\\"b c" d e`w) == [`C:\test\demo.exe`, `a\\b c`, `d`, `e`]);
     // Issue 19502: windows command line arguments wrongly split
     assert(parseArgv(`"C:\test\"\blah.exe`w) == [`C:\test\\blah.exe`]);
+    // These test cases are checked against a simple C++ argv inspector built under Windows 10 and VS 2019, run in cmd.exe
+    assert(parseArgv(`C:\test\demo.exe`w) == [`C:\test\demo.exe`]); // no arg
+    assert(parseArgv(`"C:\test\demo.exe"`w) == [`C:\test\demo.exe`]);
+    assert(parseArgv(`..\test\demo.exe`w) == [`..\test\demo.exe`]); // relative
+    assert(parseArgv(`"..\te st\demo.exe"`w) == [`..\te st\demo.exe`]);
+    assert(parseArgv(`C:\TeSt\DeMo.ExE`w) == [`C:\TeSt\DeMo.ExE`]); // case
+    assert(parseArgv(`C:\test\demo.exe 'a b c'`w) == [`C:\test\demo.exe`, `'a`, `b`, `c'`]); // single quote
+    assert(parseArgv(`C:\test\demo.exe ""`w) == [`C:\test\demo.exe`, ``]); // void argument
+    assert(parseArgv(`"C:\te st\demo.exe"`w) == [`C:\te st\demo.exe`]); // path with space
+    assert(parseArgv(`C:\test\demo.exe "C:\te st\demo.exe"`w) == [`C:\test\demo.exe`, `C:\te st\demo.exe`]); // path argument
+    assert(parseArgv(`\\.\C:\test\demo.exe`w) == [`\\.\C:\test\demo.exe`]); // UNC Path
+    assert(parseArgv(`C:\FOLDER~1\demo.exe`w) == [`C:\FOLDER~1\demo.exe`]); // DOS Path
+    assert(parseArgv(`C:\\\test\\\\demo.exe \\\ \\\\ \\\" \\\\"`w) == [`C:\\\test\\\\demo.exe`, `\\\`, `\\\\`, `\"`, `\\`]); // Backslashes
+    assert(parseArgv(`C:\test\demo.exe """`w) == [`C:\test\demo.exe`, `"`]); // Multiple quotes
+    assert(parseArgv(`C:\test\demo.exe """"`w) == [`C:\test\demo.exe`, `"`]);
+    assert(parseArgv(`C:\test\demo.exe """ """" """"" """""" """""""`w) == [`C:\test\demo.exe`, `" "" ""`, `""`, `"""`]); // Quotes messes
+    assert(parseArgv(`C:\test\demo.exe 你好 D 世界 "你好 D 世界"`w) == [`C:\test\demo.exe`, `你好`, `D`, `世界`, `你好 D 世界`]); // Non-Ascii
+    assert(parseArgv(`C:\""test\"folder"\subfolder""\""demo.exe"`w) == [`C:\test\folder\subfolder\demo.exe`]); // Quotes in path
+    assert(parseArgv(`C:\test\demo.exe "abcde//\\test.txt"`w) == [`C:\test\demo.exe`, `abcde//\\test.txt`]); // Non-trival characters
+    assert(parseArgv(`C:\test\demo.exe /c:{"""Some*Switch""":true,`w) == [`C:\test\demo.exe`, `/c:{"Some*Switch":true,`]);
+    assert(parseArgv(`C:\test\demo.exe "{%22:x-y+z.<?3|3>}"`w) == [`C:\test\demo.exe`, `{%22:x-y+z.<?3|3>}`]);
+    assert(parseArgv(`C:\test\demo.exe    -a`w ~ "\t" ~ `--b` ~ " \t \t" ~ `/c`w) == [`C:\test\demo.exe`, `-a`, `--b`, `/c`]); // Tabs, spaces, tab/space mix
 }
