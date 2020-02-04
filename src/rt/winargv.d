@@ -68,7 +68,7 @@ LPWSTR *commandLineToArgv(LPCWSTR lpCmdLine, int *pNumArgs) nothrow @nogc
     // subtring is accepted. Backslashes are treated as normal characters.
     argv[(*pNumArgs)++] = pdst;
     inquote = FALSE;
-    do 
+    do
     {
         if (*psrc == W!('"'))
         {
@@ -201,7 +201,7 @@ unittest
         // This is required because WideCharToMultiByte requires int as input.
         assert(wCommandLineLength <= cast(size_t) int.max, "Wide char command line length must not exceed int.max");
 
-        immutable size_t totalArgsLength = 
+        immutable size_t totalArgsLength =
             WideCharToMultiByte(CP_UTF8, 0, wCommandLine, cast(int)wCommandLineLength, null, 0, null, null);
         {
             char* totalArgsBuff = (new char[totalArgsLength]).ptr;
