@@ -10,7 +10,7 @@ import core.sys.windows.winnt /+: LPWSTR, LPCWSTR+/;
  Splits a command line into argc/argv lists, using the VC7 parsing rules.
  This functions interface mimics the `CommandLineToArgvW` api.
  If function fails, returns NULL.
- If function suceeds, call LocalFree(HLOCAL)` on return pointer when done.
+ If function suceeds, call `LocalFree(HLOCAL)` on return pointer when done.
  NOTE Implementation-wise, once every few years it would be a good idea to
  compare this code with the .NET Runtime's `SegmentCommandLine` method,
  which is in `src/coreclr/src/utilcode/util.cpp`.
