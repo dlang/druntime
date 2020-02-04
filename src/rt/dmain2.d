@@ -25,17 +25,15 @@ private
 
 version (Windows)
 {
+    private import rt.winargv;
     private import core.stdc.wchar_;
     private import core.sys.windows.basetsd /+: HANDLE+/;
-    private import core.sys.windows.shellapi /+: CommandLineToArgvW+/;
     private import core.sys.windows.winbase /+: FreeLibrary, GetCommandLineW, GetProcAddress,
         IsDebuggerPresent, LoadLibraryA, LoadLibraryW, LocalFree, WriteFile+/;
     private import core.sys.windows.wincon /+: CONSOLE_SCREEN_BUFFER_INFO, GetConsoleOutputCP, GetConsoleScreenBufferInfo+/;
     private import core.sys.windows.winnls /+: CP_UTF8, MultiByteToWideChar, WideCharToMultiByte+/;
     private import core.sys.windows.winnt /+: WCHAR+/;
     private import core.sys.windows.winuser /+: MB_ICONERROR, MessageBoxW+/;
-
-    pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
 }
 
 version (FreeBSD)
@@ -339,7 +337,7 @@ extern (C) int _d_run_main(int argc, char** argv, MainFunc mainFunc)
         const wCommandLine = GetCommandLineW();
         immutable size_t wCommandLineLength = wcslen(wCommandLine);
         int wargc;
-        auto wargs = CommandLineToArgvW(wCommandLine, &wargc);
+        auto wargs = commandLineToArgv(wCommandLine, &wargc);
         // assert(wargc == argc); /* argc can be broken by Unicode arguments */
 
         // Allocate args[] on the stack - use wargc
