@@ -5,18 +5,26 @@ version (Windows)
     import core.stdc.wchar_ /+: wcslen+/;
     import core.sys.windows.winbase /+: LocalAlloc+/;
     import core.sys.windows.winnt /+: LPWSTR, LPCWSTR+/;
+}
+else
+{
+    alias wchar* LPWSTR;
+    alias const(wchar)* LPCWSTR;
+}
 
-    /++
-     Splits a command line into argc/argv lists, using the VC7 parsing rules.
-     This functions interface mimics the `CommandLineToArgvW` api.
-     If function fails, returns NULL.
-     If function suceeds, call `LocalFree(HLOCAL)` on return pointer when done.
-     NOTE Implementation-wise, once every few years it would be a good idea to
-     compare this code with the .NET Runtime's `SegmentCommandLine` method,
-     which is in `src/coreclr/src/utilcode/util.cpp`.
-     Date: Feb 4, 2020
-    +/
-    LPWSTR *commandLineToArgv(LPCWSTR lpCmdLine, int *pNumArgs) nothrow @nogc
+/++
+ Splits a command line into argc/argv lists, using the VC7 parsing rules.
+ This functions interface mimics the `CommandLineToArgvW` api.
+ If function fails, returns NULL.
+ If function suceeds, call `LocalFree(HLOCAL)` on return pointer when done.
+ NOTE Implementation-wise, once every few years it would be a good idea to
+ compare this code with the .NET Runtime's `SegmentCommandLine` method,
+ which is in `src/coreclr/src/utilcode/util.cpp`.
+ Date: Feb 4, 2020
++/
+LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
+{
+    version (Windows)
     {
         /+
         The MIT License (MIT)
@@ -176,13 +184,17 @@ version (Windows)
         assert(cast(BYTE*)pdst <= cast(BYTE*)pAlloc + cbAlloc);
         return argv;
     }
-
-    // Ensure wchar literal
-    private template W(char c)
+    else
     {
-        enum wc = cast(wchar) c;
-        alias W = wc;
+        return null;
     }
+}
+
+// Ensure wchar literal
+private template W(char c)
+{
+    enum wc = cast(wchar) c;
+    alias W = wc;
 }
 
 unittest
