@@ -26,10 +26,11 @@ private
 version (Windows)
 {
     private import rt.argv_windows;
-    private import core.stdc.wchar_;
+    private import core.stdc.stdlib /+: free+/;
+    private import core.stdc.wchar_ /+: wcslen+/;
     private import core.sys.windows.basetsd /+: HANDLE+/;
     private import core.sys.windows.winbase /+: FreeLibrary, GetCommandLineW, GetProcAddress,
-        IsDebuggerPresent, LoadLibraryA, LoadLibraryW, LocalFree, WriteFile+/;
+        IsDebuggerPresent, LoadLibraryA, LoadLibraryW, WriteFile+/;
     private import core.sys.windows.wincon /+: CONSOLE_SCREEN_BUFFER_INFO, GetConsoleOutputCP, GetConsoleScreenBufferInfo+/;
     private import core.sys.windows.winnls /+: CP_UTF8, MultiByteToWideChar, WideCharToMultiByte+/;
     private import core.sys.windows.winnt /+: WCHAR+/;
@@ -363,7 +364,7 @@ extern (C) int _d_run_main(int argc, char** argv, MainFunc mainFunc)
                 WideCharToMultiByte(CP_UTF8, 0, &wargs[i][0], cast(int) wlen, &args[i][0], len, null, null);
             }
         }
-        LocalFree(wargs);
+        free(wargs);
         wargs = null;
         wargc = 0;
     }

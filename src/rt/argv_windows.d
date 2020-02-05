@@ -2,8 +2,8 @@ module rt.argv_windows;
 
 version (Windows):
 
+import core.stdc.stdlib /+: malloc+/;
 import core.stdc.wchar_ /+: wcslen+/;
-import core.sys.windows.winbase /+: LocalAlloc+/;
 import core.sys.windows.winnt /+: LPWSTR, LPCWSTR+/;
 
 
@@ -52,7 +52,7 @@ LPWSTR* commandLineToArgv(LPCWSTR lpCmdLine, int* pNumArgs) nothrow @nogc
     // Calculate the worstcase storage requirement. (One pointer for
     // each argument, plus storage for the arguments themselves.)
     int cbAlloc = (nch + 1) * (cast(int) LPWSTR.sizeof) + (nch + 1) * (cast(int) WCHAR.sizeof);
-    LPWSTR pAlloc = cast(wchar*) LocalAlloc(LPTR, cbAlloc);
+    LPWSTR pAlloc = cast(wchar*) calloc(cbAlloc / (cast(int) WCHAR.sizeof), cast(int) WCHAR.sizeof);
     if (!pAlloc)
         return NULL;
 
@@ -213,7 +213,7 @@ unittest
                 WideCharToMultiByte(CP_UTF8, 0, &wargs[i][0], cast(int) wlen, &args[i][0], len, null, null);
             }
         }
-        LocalFree(wargs);
+        free(wargs);
         wargs = null;
         wargc = 0;
 
