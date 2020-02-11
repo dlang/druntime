@@ -2470,8 +2470,7 @@ struct TOKEN_ELEVATION {
 }
 alias PTOKEN_ELEVATION = TOKEN_ELEVATION*;
 
-alias TOKEN_INFORMATION_CLASS = int;
-enum : TOKEN_INFORMATION_CLASS {
+enum TOKEN_INFORMATION_CLASS {
 	TokenUser = 1,
 	TokenGroups,
 	TokenPrivileges,
@@ -2528,8 +2527,7 @@ enum SID_NAME_USE {
 }
 alias SID_NAME_USE* PSID_NAME_USE;
 
-alias WELL_KNOWN_SID_TYPE = int;
-enum : WELL_KNOWN_SID_TYPE { 
+enum WELL_KNOWN_SID_TYPE { 
 	WinNullSid                                   = 0,
 	WinWorldSid                                  = 1,
 	WinLocalSid                                  = 2,
