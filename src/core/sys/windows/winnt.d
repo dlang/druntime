@@ -2514,7 +2514,7 @@ enum : TOKEN_INFORMATION_CLASS {
 	TokenIsRestricted,
 	TokenProcessTrustLevel,
 	MaxTokenInfoClass  // MaxTokenInfoClass should always be the last enum
-
+}
 enum SID_NAME_USE {
     SidTypeUser = 1,
     SidTypeGroup,
