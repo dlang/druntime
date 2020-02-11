@@ -2397,7 +2397,7 @@ struct TOKEN_OWNER {
     PSID Owner;
 }
 alias TOKEN_OWNER* PTOKEN_OWNER;
-const int SECURITY_MAX_SID_SIZE = 68;
+enum int SECURITY_MAX_SID_SIZE = 68;
 
 struct TOKEN_PRIMARY_GROUP {
     PSID PrimaryGroup;
