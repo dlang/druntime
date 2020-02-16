@@ -76,6 +76,20 @@ class Condition
      */
     this( Mutex m ) nothrow @safe
     {
+        this(m, true);
+    }
+
+    /// ditto
+    this( shared Mutex m ) shared nothrow @safe
+    {
+        this(m, true);
+    }
+
+    //
+    private this(this Q, M)( M m, bool _unused_ ) nothrow @safe
+        if ((is(Q == Condition) && is(M == Mutex)) ||
+            (is(Q == shared Condition) && is(M == shared Mutex)))
+    {
         version (Windows)
         {
             m_blockLock = CreateSemaphoreA( null, 1, 1, null );
@@ -105,7 +119,7 @@ class Condition
                     rc = pthread_condattr_setclock( &attr, CLOCK_MONOTONIC );
                     if ( rc )
                         throw new SyncError( "Unable to initialize condition" );
-                    rc = pthread_cond_init( &m_hndl, &attr );
+                    rc = pthread_cond_init( cast(pthread_cond_t*)&m_hndl, &attr );
                     if ( rc )
                         throw new SyncError( "Unable to initialize condition" );
                     rc = pthread_condattr_destroy( &attr );
@@ -157,12 +171,23 @@ class Condition
         return m_assocMutex;
     }
 
+    /// ditto
+    @property shared(Mutex) mutex() shared
+    {
+        return m_assocMutex;
+    }
+
     // undocumented function for internal use
     final @property Mutex mutex_nothrow() pure nothrow @safe @nogc
     {
         return m_assocMutex;
     }
 
+    // ditto
+    final @property shared(Mutex) mutex_nothrow() shared pure nothrow @safe @nogc
+    {
+        return m_assocMutex;
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // General Actions
@@ -189,6 +214,11 @@ class Condition
         }
     }
 
+    /// ditto
+    void wait() shared
+    {
+        (cast()this).wait();
+    }
 
     /**
      * Suspends the calling thread until a notification occurs or until the
@@ -242,6 +272,11 @@ class Condition
         }
     }
 
+    /// ditto
+    bool wait( Duration val ) shared
+    {
+        return (cast()this).wait(val);
+    }
 
     /**
      * Notifies one waiter.
@@ -278,6 +313,11 @@ class Condition
         }
     }
 
+    /// ditto
+    void notify() shared
+    {
+        (cast()this).notify();
+    }
 
     /**
      * Notifies all waiters.
@@ -314,6 +354,11 @@ class Condition
         }
     }
 
+    /// ditto
+    void notifyAll() shared
+    {
+        (cast()this).notifyAll();
+    }
 
 private:
     version (Windows)
