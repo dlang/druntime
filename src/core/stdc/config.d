@@ -144,6 +144,11 @@ else version (Posix)
     alias ulong cpp_ulonglong;
   }
 }
+else version (ARM)
+{
+    alias c_long = int;
+    alias c_ulong = uint;
+}
 
 version (CRuntime_Microsoft)
 {
