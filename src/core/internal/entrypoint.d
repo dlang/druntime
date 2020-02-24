@@ -24,7 +24,8 @@ template _d_cmain()
 
         int _Dmain(char[][] args);
 
-        int main(int argc, char **argv)
+        pragma(mangle, "main")
+        int _Cmain(int argc, char **argv)
         {
             return _d_run_main(argc, argv, &_Dmain);
         }
