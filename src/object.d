@@ -18,12 +18,12 @@ module object;
 
 version (D_LP64)
 {
-    alias size_t = ulong;
+    static if (!is(size_t)) alias size_t = ulong;
     alias ptrdiff_t = long;
 }
 else
 {
-    alias size_t = uint;
+    static if (!is(size_t)) alias size_t = uint;
     alias ptrdiff_t = int;
 }
 
