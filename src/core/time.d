@@ -66,8 +66,6 @@
 module core.time;
 
 import core.exception;
-import core.stdc.time;
-import core.stdc.stdio;
 import core.internal.traits : _Unqual = Unqual;
 import core.internal.string;
 
