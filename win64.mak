@@ -47,8 +47,28 @@ $(mak\SRCS)
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
 
-OBJS= errno_c_$(MODEL).obj msvc_$(MODEL).obj msvc_math_$(MODEL).obj
+OBJS= msvc_$(MODEL).obj msvc_math_$(MODEL).obj
 OBJS_TO_DELETE= errno_c_$(MODEL).obj msvc_$(MODEL).obj msvc_math_$(MODEL).obj
+
+# checks if linking against stdc not disabled
+ifndef DRUNTIME_NOSTDC
+$(mak\STDC)
+
+DOCS+=$(STDC_DOCS)
+COPY+=$(STDC_COPY)
+SRCS+=$(STDC_SRCS)
+
+OBJS+= errno_c_$(MODEL).obj
+endif
+
+# checks if linking against stdcpp not disabled
+ifndef DRUNTIME_NOSTDCPP
+$(mak\STDCPP)
+
+DOCS+=$(STDCPP_DOCS)
+COPY+=$(STDCPP_COPY)
+SRCS+=$(STDCPP_SRCS)
+endif
 
 ######################## Header file generation ##############################
 
