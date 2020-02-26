@@ -55,29 +55,6 @@ COPY=\
 	\
 	$(IMPDIR)\core\internal\util\array.d \
 	\
-	$(IMPDIR)\core\stdc\assert_.d \
-	$(IMPDIR)\core\stdc\complex.d \
-	$(IMPDIR)\core\stdc\config.d \
-	$(IMPDIR)\core\stdc\ctype.d \
-	$(IMPDIR)\core\stdc\errno.d \
-	$(IMPDIR)\core\stdc\fenv.d \
-	$(IMPDIR)\core\stdc\float_.d \
-	$(IMPDIR)\core\stdc\inttypes.d \
-	$(IMPDIR)\core\stdc\limits.d \
-	$(IMPDIR)\core\stdc\locale.d \
-	$(IMPDIR)\core\stdc\math.d \
-	$(IMPDIR)\core\stdc\signal.d \
-	$(IMPDIR)\core\stdc\stdarg.d \
-	$(IMPDIR)\core\stdc\stddef.d \
-	$(IMPDIR)\core\stdc\stdint.d \
-	$(IMPDIR)\core\stdc\stdio.d \
-	$(IMPDIR)\core\stdc\stdlib.d \
-	$(IMPDIR)\core\stdc\string.d \
-	$(IMPDIR)\core\stdc\tgmath.d \
-	$(IMPDIR)\core\stdc\time.d \
-	$(IMPDIR)\core\stdc\wchar_.d \
-	$(IMPDIR)\core\stdc\wctype.d \
-	\
 	$(IMPDIR)\core\sync\event.d \
 	\
 	$(IMPDIR)\core\sys\bionic\err.d \

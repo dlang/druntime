@@ -122,21 +122,32 @@ IMPORTS:=$(subst \,/,$(IMPORTS))
 include mak/SRCS
 SRCS:=$(subst \,/,$(SRCS))
 
+# NOTE: trace.d and cover.d are not necessary for a successful build
+#       as both are used for debugging features (profiling and coverage)
+# NOTE: a pre-compiled minit.obj has been provided in dmd for Win32	 and
+#       minit.asm is not used by dmd for Linux
+
+OBJS= $(ROOT)/threadasm.o
+
+# checks if linking against stdc not disabled
+ifndef DRUNTIME_NOSTDC
+include mak/STDC
+
+DOCS+=$(subst \,/,$(STDC_DOCS))
+COPY+=$(subst \,/,$(STDC_COPY))
+SRCS+=$(subst \,/,$(STDC_SRCS))
+
+OBJS+= $(ROOT)/errno_c.o
+endif
+
 # checks if linking against stdcpp not disabled
-ifndef ($(DRUNTIME_NOSTDCPP),1)
+ifndef DRUNTIME_NOSTDCPP
 include mak/STDCPP
 
 DOCS+=$(subst \,/,$(STDCPP_DOCS))
 COPY+=$(subst \,/,$(STDCPP_COPY))
 SRCS+=$(subst \,/,$(STDCPP_SRCS))
 endif
-
-# NOTE: trace.d and cover.d are not necessary for a successful build
-#       as both are used for debugging features (profiling and coverage)
-# NOTE: a pre-compiled minit.obj has been provided in dmd for Win32	 and
-#       minit.asm is not used by dmd for Linux
-
-OBJS= $(ROOT)/errno_c.o $(ROOT)/threadasm.o
 
 # use timelimit to avoid deadlocks if available
 TIMELIMIT:=$(if $(shell which timelimit 2>/dev/null || true),timelimit -t 10 ,)
@@ -171,8 +182,10 @@ $(DOCDIR)/core_internal_%.html : src/core/internal/%.d $(DMD)
 $(DOCDIR)/core_internal_elf_%.html : src/core/internal/elf/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
+ifndef DRUNTIME_NOSTDC
 $(DOCDIR)/core_stdc_%.html : src/core/stdc/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+endif
 
 ifndef DRUNTIME_NOSTDCPP
 $(DOCDIR)/core_stdcpp_%.html : src/core/stdcpp/%.d $(DMD)
@@ -245,9 +258,11 @@ $(ROOT)/%.o : src/rt/%.c
 	@mkdir -p $(dir $@)
 	$(CC) -c $(CFLAGS) $< -o$@
 
+ifndef DRUNTIME_NOSTDC
 $(ROOT)/errno_c.o : src/core/stdc/errno.c
 	@mkdir -p $(dir $@)
 	$(CC) -c $(CFLAGS) $< -o$@
+endif
 
 $(ROOT)/threadasm.o : src/core/threadasm.S
 	@mkdir -p $(dir $@)
@@ -277,8 +292,11 @@ HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
 ifeq ($(HAS_ADDITIONAL_TESTS),1)
 	ADDITIONAL_TESTS:=test/init_fini test/exceptions test/coverage test/profile test/cycles test/allocations test/typeinfo \
 	    test/aa test/cpuid test/gc test/hash \
-	    test/thread test/unittest test/imports test/betterc test/stdcpp test/config
-	ifndef ($(DRUNTIME_NOSTDCPP),1)
+	    test/thread test/unittest test/imports test/config
+	ifndef DRUNTIME_NOSTDC
+		ADDITIONAL_TESTS+=test/betterc #TODO: this test should be splitted into libc and betterc
+	endif
+	ifndef DRUNTIME_NOSTDCPP
 		ADDITIONAL_TESTS+=test/stdcpp
 	endif
 	ADDITIONAL_TESTS+=$(if $(SHARED),test/shared,)
