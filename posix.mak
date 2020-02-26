@@ -122,6 +122,15 @@ IMPORTS:=$(subst \,/,$(IMPORTS))
 include mak/SRCS
 SRCS:=$(subst \,/,$(SRCS))
 
+# checks if linking against stdcpp not disabled
+ifndef ($(DRUNTIME_NOSTDCPP),1)
+include mak/STDCPP
+
+DOCS+=$(subst \,/,$(STDCPP_DOCS))
+COPY+=$(subst \,/,$(STDCPP_COPY))
+SRCS+=$(subst \,/,$(STDCPP_SRCS))
+endif
+
 # NOTE: trace.d and cover.d are not necessary for a successful build
 #       as both are used for debugging features (profiling and coverage)
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32	 and
@@ -165,8 +174,10 @@ $(DOCDIR)/core_internal_elf_%.html : src/core/internal/elf/%.d $(DMD)
 $(DOCDIR)/core_stdc_%.html : src/core/stdc/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
+ifndef DRUNTIME_NOSTDCPP
 $(DOCDIR)/core_stdcpp_%.html : src/core/stdcpp/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+endif
 
 $(DOCDIR)/core_sync_%.html : src/core/sync/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
@@ -267,6 +278,9 @@ ifeq ($(HAS_ADDITIONAL_TESTS),1)
 	ADDITIONAL_TESTS:=test/init_fini test/exceptions test/coverage test/profile test/cycles test/allocations test/typeinfo \
 	    test/aa test/cpuid test/gc test/hash \
 	    test/thread test/unittest test/imports test/betterc test/stdcpp test/config
+	ifndef ($(DRUNTIME_NOSTDCPP),1)
+		ADDITIONAL_TESTS+=test/stdcpp
+	endif
 	ADDITIONAL_TESTS+=$(if $(SHARED),test/shared,)
 endif
 

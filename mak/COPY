@@ -78,18 +78,6 @@ COPY=\
 	$(IMPDIR)\core\stdc\wchar_.d \
 	$(IMPDIR)\core\stdc\wctype.d \
 	\
-	$(IMPDIR)\core\stdcpp\allocator.d \
-	$(IMPDIR)\core\stdcpp\array.d \
-	$(IMPDIR)\core\stdcpp\exception.d \
-	$(IMPDIR)\core\stdcpp\memory.d \
-	$(IMPDIR)\core\stdcpp\new_.d \
-	$(IMPDIR)\core\stdcpp\string.d \
-	$(IMPDIR)\core\stdcpp\string_view.d \
-	$(IMPDIR)\core\stdcpp\type_traits.d \
-	$(IMPDIR)\core\stdcpp\typeinfo.d \
-	$(IMPDIR)\core\stdcpp\vector.d \
-	$(IMPDIR)\core\stdcpp\xutility.d \
-	\
 	$(IMPDIR)\core\sync\event.d \
 	\
 	$(IMPDIR)\core\sys\bionic\err.d \
