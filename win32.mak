@@ -38,8 +38,28 @@ $(mak\SRCS)
 # NOTE: a pre-compiled minit.obj has been provided in dmd for Win32 and
 #       minit.asm is not used by dmd for Linux
 
-OBJS= errno_c_$(MODEL).obj src\rt\minit.obj
+OBJS= src\rt\minit.obj
 OBJS_TO_DELETE= errno_c_$(MODEL).obj
+
+# checks if linking against stdc not disabled
+ifndef DRUNTIME_NOSTDC
+$(mak\STDC)
+
+DOCS+=$(STDC_DOCS)
+COPY+=$(STDC_COPY)
+SRCS+=$(STDC_SRCS)
+
+OBJS+= errno_c_$(MODEL).obj
+endif
+
+# checks if linking against stdcpp not disabled
+ifndef DRUNTIME_NOSTDCPP
+$(mak\STDCPP)
+
+DOCS+=$(STDCPP_DOCS)
+COPY+=$(STDCPP_COPY)
+SRCS+=$(STDCPP_SRCS)
+endif
 
 ######################## Header file generation ##############################
 
@@ -95,8 +115,10 @@ lib\win32\winspool.lib : def\winspool.def
 
 ################### C\ASM Targets ############################
 
+ifndef DRUNTIME_NOSTDC
 errno_c_$(MODEL).obj : src\core\stdc\errno.c
 	$(CC) -c -o$@ $(CFLAGS) src\core\stdc\errno.c
+endif
 
 # only rebuild explicitly
 rebuild_minit_obj : src\rt\minit.asm
