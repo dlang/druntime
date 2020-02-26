@@ -292,9 +292,9 @@ HAS_ADDITIONAL_TESTS:=$(shell test -d test && echo 1)
 ifeq ($(HAS_ADDITIONAL_TESTS),1)
 	ADDITIONAL_TESTS:=test/init_fini test/exceptions test/coverage test/profile test/cycles test/allocations test/typeinfo \
 	    test/aa test/cpuid test/gc test/hash \
-	    test/thread test/unittest test/imports test/config
+	    test/thread test/unittest test/imports test/betterc test/config
 	ifndef DRUNTIME_NOSTDC
-		ADDITIONAL_TESTS+=test/betterc #TODO: this test should be splitted into libc and betterc
+		ADDITIONAL_TESTS+=test/stdc
 	endif
 	ifndef DRUNTIME_NOSTDCPP
 		ADDITIONAL_TESTS+=test/stdcpp
