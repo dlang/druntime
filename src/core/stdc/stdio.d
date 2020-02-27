@@ -349,7 +349,7 @@ else version (CRuntime_UClibc)
 }
 else version (DruntimeAbstractLibc)
 {
-    public import libc.stdio;
+    public import libc.stdio_;
 }
 else
 {
@@ -798,7 +798,7 @@ else version (CRuntime_UClibc)
 }
 else version (DruntimeAbstractLibc)
 {
-    public import libc.stdio;
+    public import libc.stdio_;
 }
 else
 {
@@ -1136,7 +1136,7 @@ else version (CRuntime_UClibc)
 }
 else version (DruntimeAbstractLibc)
 {
-    public import libc.stdio;
+    public import libc.stdio_ : stdin, stdout, stderr;
 }
 else
 {
@@ -1703,7 +1703,7 @@ else version (CRuntime_UClibc)
 }
 else version (DruntimeAbstractLibc)
 {
-    public import libc.stdio;
+    public import libc.stdio_;
 }
 else
 {
