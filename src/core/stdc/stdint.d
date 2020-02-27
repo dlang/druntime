@@ -174,6 +174,10 @@ else version (Posix)
     alias intmax_t  = long;      ///
     alias uintmax_t = ulong;     ///
 }
+else version (DruntimeAbstractLibc)
+{
+    public import libc.stdint;
+}
 else
 {
     static assert(0);

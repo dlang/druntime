@@ -475,6 +475,10 @@ else version (X86_64)
         *dest = *src;
     }
 }
+version (DruntimeAbstractLibc)
+{
+    public import libc.stdarg;
+}
 else
 {
     static assert(false, "Unsupported platform");

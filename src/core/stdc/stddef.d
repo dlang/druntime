@@ -34,3 +34,7 @@ else version (Posix)
     ///
     alias dchar wchar_t;
 }
+else version (DruntimeAbstractLibc)
+{
+    public import libc.stddef;
+}
