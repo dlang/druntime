@@ -15,6 +15,8 @@
  */
 module core.sync.mutex;
 
+version(Posix) version = AnyLibc;
+version(DruntimeAbstractLibc) version = AnyLibc;
 
 public import core.sync.exception;
 
@@ -27,6 +29,10 @@ version (Windows)
 else version (Posix)
 {
     private import core.sys.posix.pthread;
+}
+else version (DruntimeAbstractRt)
+{
+    private import external.core.pthread;
 }
 else
 {
@@ -79,7 +85,7 @@ class Mutex :
         {
             InitializeCriticalSection(cast(CRITICAL_SECTION*) &m_hndl);
         }
-        else version (Posix)
+        else version (AnyLibc)
         {
             import core.internal.abort : abort;
             pthread_mutexattr_t attr = void;
@@ -142,7 +148,7 @@ class Mutex :
         {
             DeleteCriticalSection(&m_hndl);
         }
-        else version (Posix)
+        else version (AnyLibc)
         {
             import core.internal.abort : abort;
             !pthread_mutex_destroy(&m_hndl) ||
@@ -184,7 +190,7 @@ class Mutex :
         {
             EnterCriticalSection(&m_hndl);
         }
-        else version (Posix)
+        else version (AnyLibc)
         {
             if (pthread_mutex_lock(&m_hndl) == 0)
                 return;
@@ -222,7 +228,7 @@ class Mutex :
         {
             LeaveCriticalSection(&m_hndl);
         }
-        else version (Posix)
+        else version (AnyLibc)
         {
             if (pthread_mutex_unlock(&m_hndl) == 0)
                 return;
@@ -264,7 +270,7 @@ class Mutex :
         {
             return TryEnterCriticalSection(&m_hndl) != 0;
         }
-        else version (Posix)
+        else version (AnyLibc)
         {
             return pthread_mutex_trylock(&m_hndl) == 0;
         }
@@ -276,7 +282,7 @@ private:
     {
         CRITICAL_SECTION    m_hndl;
     }
-    else version (Posix)
+    else version (AnyLibc)
     {
         pthread_mutex_t     m_hndl;
     }
@@ -290,7 +296,7 @@ private:
 
 
 package:
-    version (Posix)
+    version (AnyLibc)
     {
         pthread_mutex_t* handleAddr()
         {

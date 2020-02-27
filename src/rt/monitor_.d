@@ -218,6 +218,10 @@ else version (Posix)
         pthread_mutex_unlock(mtx) && assert(0);
     }
 }
+else version (DruntimeAbstractRt)
+{
+    import external.rt.monitor_;
+}
 else
 {
     static assert(0, "Unsupported platform");
