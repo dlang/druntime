@@ -119,7 +119,7 @@ class Condition
                     rc = pthread_condattr_setclock( &attr, CLOCK_MONOTONIC );
                     if ( rc )
                         throw new SyncError( "Unable to initialize condition" );
-                    rc = pthread_cond_init( cast(pthread_cond_t*)&m_hndl, &attr );
+                    rc = pthread_cond_init( cast(pthread_cond_t*) &m_hndl, &attr );
                     if ( rc )
                         throw new SyncError( "Unable to initialize condition" );
                     rc = pthread_condattr_destroy( &attr );
