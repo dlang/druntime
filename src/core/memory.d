@@ -244,6 +244,12 @@ private extern (C) void initialize() @system
         GetSystemInfo(&si);
         (cast() pageSize) = cast(size_t) si.dwPageSize;
     }
+    else version (DruntimeAbstractRt)
+    {
+        import external.core.memory : initialize;
+
+        (cast() pageSize) = initialize();
+    }
     else
         static assert(false, __FUNCTION__ ~ " is not implemented on this platform");
 }
