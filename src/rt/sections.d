@@ -48,6 +48,8 @@ else version (CRuntime_Bionic)
     public import rt.sections_android;
 else version (CRuntime_UClibc)
     public import rt.sections_elf_shared;
+else version (DruntimeAbstractLibc)
+    public import external.rt.sections;
 else
     static assert(0, "unimplemented");
 
