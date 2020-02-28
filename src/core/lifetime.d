@@ -282,7 +282,7 @@ T* emplace(T, Args...)(void[] chunk, auto ref Args args)
     import core.internal.lifetime : emplaceRef;
 
     testEmplaceChunk(chunk, T.sizeof, T.alignof);
-    emplaceRef!(T, Unqual!T)(*cast(Unqual!T*) chunk.ptr, args);
+    emplaceRef!T(*cast(Unqual!T*) chunk.ptr, args);
     return cast(T*) chunk.ptr;
 }
 
