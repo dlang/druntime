@@ -110,6 +110,9 @@ int sched_getaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask);
 int clone(int function(void*), void* child_stack, int flags, void* arg, ...);
 int unshare(int flags) @trusted;
 
+/* Reassociate the calling thread with namespace referred to by fd */
+int setns(int fd, int nstype);
+
 enum CLONE_FILES = 0x400;
 enum CLONE_FS = 0x200;
 enum CLONE_NEWCGROUP = 0x2000000;
