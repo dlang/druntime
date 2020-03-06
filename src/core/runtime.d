@@ -585,12 +585,25 @@ extern (C) UnitTestResult runModuleUnitTests()
         sigfillset( &action.sa_mask ); // block other signals
         action.sa_flags = SA_SIGINFO | SA_RESETHAND;
         action.sa_sigaction = &unittestSegvHandler;
-        sigaction( SIGSEGV, &action, &oldseg );
-        sigaction( SIGBUS, &action, &oldbus );
+
+        sigaction( SIGSEGV, null, &oldseg );
+        if ( oldseg.sa_sigaction == SIG_DFL )
+        {
+            sigaction( SIGSEGV, &action, null );
+        }
+
+        sigaction( SIGBUS, null, &oldbus );
+        if ( oldbus.sa_sigaction == SIG_DFL )
+        {
+            sigaction( SIGBUS, &action, null );
+        }
+
         scope( exit )
         {
-            sigaction( SIGSEGV, &oldseg, null );
-            sigaction( SIGBUS, &oldbus, null );
+            if ( oldseg.sa_sigaction == SIG_DFL )
+                sigaction( SIGSEGV, &oldseg, null );
+            if ( oldbus.sa_sigaction == SIG_DFL )
+                sigaction( SIGBUS, &oldbus, null );
         }
     }
 
