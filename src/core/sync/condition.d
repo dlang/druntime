@@ -129,7 +129,7 @@ class Condition
             }
             else
             {
-                int rc = pthread_cond_init( &m_hndl, null );
+                int rc = pthread_cond_init( cast(pthread_cond_t*) &m_hndl, null );
                 if ( rc )
                     throw new SyncError( "Unable to initialize condition" );
             }
