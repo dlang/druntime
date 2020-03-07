@@ -94,18 +94,18 @@ class Condition
         {
             static if (is(Q == Condition))
             {
-                alias HANDLE_BASE = void*;
+                alias HANDLE_TYPE = void*;
             }
             else
             {
-                alias HANDLE_BASE = shared(void*);
+                alias HANDLE_TYPE = shared(void*);
             }
-            m_blockLock = cast(HANDLE_BASE) CreateSemaphoreA( null, 1, 1, null );
+            m_blockLock = cast(HANDLE_TYPE) CreateSemaphoreA( null, 1, 1, null );
             if ( m_blockLock == m_blockLock.init )
                 throw new SyncError( "Unable to initialize condition" );
             scope(failure) CloseHandle( cast(void*) m_blockLock );
 
-            m_blockQueue = cast(HANDLE_BASE) CreateSemaphoreA( null, 0, int.max, null );
+            m_blockQueue = cast(HANDLE_TYPE) CreateSemaphoreA( null, 0, int.max, null );
             if ( m_blockQueue == m_blockQueue.init )
                 throw new SyncError( "Unable to initialize condition" );
             scope(failure) CloseHandle( cast(void*) m_blockQueue );
