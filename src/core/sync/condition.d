@@ -92,12 +92,20 @@ class Condition
     {
         version (Windows)
         {
-            m_blockLock = cast() CreateSemaphoreA( null, 1, 1, null );
+            static if (is(Q == Condition))
+            {
+                alias HANDLE_BASE = void*;
+            }
+            else
+            {
+                alias HANDLE_BASE = shared(void*);
+            }
+            m_blockLock = cast(HANDLE_BASE) CreateSemaphoreA( null, 1, 1, null );
             if ( m_blockLock == m_blockLock.init )
                 throw new SyncError( "Unable to initialize condition" );
             scope(failure) CloseHandle( cast(void*) m_blockLock );
 
-            m_blockQueue = cast() CreateSemaphoreA( null, 0, int.max, null );
+            m_blockQueue = cast(HANDLE_BASE) CreateSemaphoreA( null, 0, int.max, null );
             if ( m_blockQueue == m_blockQueue.init )
                 throw new SyncError( "Unable to initialize condition" );
             scope(failure) CloseHandle( cast(void*) m_blockQueue );
