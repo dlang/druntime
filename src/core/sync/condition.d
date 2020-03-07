@@ -95,14 +95,14 @@ class Condition
             m_blockLock = cast() CreateSemaphoreA( null, 1, 1, null );
             if ( m_blockLock == m_blockLock.init )
                 throw new SyncError( "Unable to initialize condition" );
-            scope(failure) CloseHandle( cast() m_blockLock );
+            scope(failure) CloseHandle( cast(void*) m_blockLock );
 
             m_blockQueue = cast() CreateSemaphoreA( null, 0, int.max, null );
             if ( m_blockQueue == m_blockQueue.init )
                 throw new SyncError( "Unable to initialize condition" );
-            scope(failure) CloseHandle( cast() m_blockQueue );
+            scope(failure) CloseHandle( cast(void*) m_blockQueue );
 
-            InitializeCriticalSection( cast() &m_unblockLock );
+            InitializeCriticalSection( cast(RTL_CRITICAL_SECTION*) &m_unblockLock );
             m_assocMutex = m;
         }
         else version (Posix)
