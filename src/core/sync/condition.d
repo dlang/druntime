@@ -701,3 +701,169 @@ unittest
     testNotifyAll();
     testWaitTimeout();
 }
+
+unittest
+{
+    import core.thread;
+    import core.sync.mutex;
+    import core.sync.semaphore;
+
+
+    void testNotify()
+    {
+        auto mutex      = new shared Mutex;
+        auto condReady  = new shared Condition( mutex );
+        auto semDone    = new Semaphore;
+        auto synLoop    = new Object;
+        int  numWaiters = 10;
+        int  numTries   = 10;
+        int  numReady   = 0;
+        int  numTotal   = 0;
+        int  numDone    = 0;
+        int  numPost    = 0;
+
+        void waiter()
+        {
+            for ( int i = 0; i < numTries; ++i )
+            {
+                synchronized( mutex )
+                {
+                    while ( numReady < 1 )
+                    {
+                        condReady.wait();
+                    }
+                    --numReady;
+                    ++numTotal;
+                }
+
+                synchronized( synLoop )
+                {
+                    ++numDone;
+                }
+                semDone.wait();
+            }
+        }
+
+        auto group = new ThreadGroup;
+
+        for ( int i = 0; i < numWaiters; ++i )
+            group.create( &waiter );
+
+        for ( int i = 0; i < numTries; ++i )
+        {
+            for ( int j = 0; j < numWaiters; ++j )
+            {
+                synchronized( mutex )
+                {
+                    ++numReady;
+                    condReady.notify();
+                }
+            }
+            while ( true )
+            {
+                synchronized( synLoop )
+                {
+                    if ( numDone >= numWaiters )
+                        break;
+                }
+                Thread.yield();
+            }
+            for ( int j = 0; j < numWaiters; ++j )
+            {
+                semDone.notify();
+            }
+        }
+
+        group.joinAll();
+        assert( numTotal == numWaiters * numTries );
+    }
+
+
+    void testNotifyAll()
+    {
+        auto mutex      = new shared Mutex;
+        auto condReady  = new shared Condition( mutex );
+        int  numWaiters = 10;
+        int  numReady   = 0;
+        int  numDone    = 0;
+        bool alert      = false;
+
+        void waiter()
+        {
+            synchronized( mutex )
+            {
+                ++numReady;
+                while ( !alert )
+                    condReady.wait();
+                ++numDone;
+            }
+        }
+
+        auto group = new ThreadGroup;
+
+        for ( int i = 0; i < numWaiters; ++i )
+            group.create( &waiter );
+
+        while ( true )
+        {
+            synchronized( mutex )
+            {
+                if ( numReady >= numWaiters )
+                {
+                    alert = true;
+                    condReady.notifyAll();
+                    break;
+                }
+            }
+            Thread.yield();
+        }
+        group.joinAll();
+        assert( numReady == numWaiters && numDone == numWaiters );
+    }
+
+
+    void testWaitTimeout()
+    {
+        auto mutex      = new shared Mutex;
+        auto condReady  = new shared Condition( mutex );
+        bool waiting    = false;
+        bool alertedOne = true;
+        bool alertedTwo = true;
+
+        void waiter()
+        {
+            synchronized( mutex )
+            {
+                waiting    = true;
+                // we never want to miss the notification (30s)
+                alertedOne = condReady.wait( dur!"seconds"(30) );
+                // but we don't want to wait long for the timeout (10ms)
+                alertedTwo = condReady.wait( dur!"msecs"(10) );
+            }
+        }
+
+        auto thread = new Thread( &waiter );
+        thread.start();
+
+        while ( true )
+        {
+            synchronized( mutex )
+            {
+                if ( waiting )
+                {
+                    condReady.notify();
+                    break;
+                }
+            }
+            Thread.yield();
+        }
+        thread.join();
+        assert( waiting );
+        assert( alertedOne );
+        assert( !alertedTwo );
+    }
+
+    testNotify();
+    testNotifyAll();
+    testWaitTimeout();
+}
