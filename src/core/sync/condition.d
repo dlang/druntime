@@ -86,23 +86,31 @@ class Condition
     }
 
     //
-    private this(this Q, M)( M m, bool _unused_ ) nothrow @safe
+    private this(this Q, M)( M m, bool _unused_ ) nothrow @trusted
         if ((is(Q == Condition) && is(M == Mutex)) ||
             (is(Q == shared Condition) && is(M == shared Mutex)))
     {
         version (Windows)
         {
-            m_blockLock = CreateSemaphoreA( null, 1, 1, null );
+            static if (is(Q == Codtition))
+            {
+                alias HANDLE_TYPE = void*;
+            }
+            else
+            {
+                alias HANDLE_TYPE = shared(void*);
+            }
+            m_blockLock = cast(HANDLE_TYPE) CreateSemaphoreA( null, 1, 1, null );
             if ( m_blockLock == m_blockLock.init )
                 throw new SyncError( "Unable to initialize condition" );
-            scope(failure) CloseHandle( m_blockLock );
+            scope(failure) CloseHandle( cast() m_blockLock );
 
-            m_blockQueue = CreateSemaphoreA( null, 0, int.max, null );
+            m_blockQueue = cast(HANDLE_TYPE) CreateSemaphoreA( null, 0, int.max, null );
             if ( m_blockQueue == m_blockQueue.init )
                 throw new SyncError( "Unable to initialize condition" );
-            scope(failure) CloseHandle( m_blockQueue );
+            scope(failure) CloseHandle( cast() m_blockQueue );
 
-            InitializeCriticalSection( &m_unblockLock );
+            InitializeCriticalSection( cast() &m_unblockLock );
             m_assocMutex = m;
         }
         else version (Posix)
