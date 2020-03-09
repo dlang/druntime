@@ -350,7 +350,7 @@ class UnicodeException : Exception
 {
     size_t idx;
 
-    this( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__, Throwable next = null ) @safe pure nothrow
+    this( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__, Throwable next = null ) @safe pure nothrow @nogc
     {
         super( msg, file, line, next );
         this.idx = idx;
@@ -628,7 +628,7 @@ extern (C)
 }
 
 // TLS storage shared for all errors, chaining might create circular reference
-private void[128] _store;
+private align(2 * size_t.sizeof) void[128] _store;
 
 // only Errors for now as those are rarely chained
 private T staticError(T, Args...)(auto ref Args args)
