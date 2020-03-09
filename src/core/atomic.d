@@ -14,6 +14,8 @@ import core.internal.atomic;
 import core.internal.attributes : betterC;
 import core.internal.traits : hasUnsharedIndirections;
 
+pragma(inline, true): // LDC
+
 /**
  * Specifies the memory ordering semantics of an atomic operation.
  *
@@ -116,7 +118,24 @@ void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V)(ref T val, V newval) pu
     static assert (!hasElaborateCopyConstructor!T, "`T` may not have an elaborate copy: atomic operations override regular copying semantics.");
 
     // resolve implicit conversions
-    T arg = newval;
+    version (LDC)
+    {
+        import core.internal.traits : Unqual;
+        static if (is(Unqual!T == Unqual!V))
+        {
+            alias arg = newval;
+        }
+        else
+        {
+            // don't construct directly from `newval`, assign instead (`alias this` etc.)
+            T arg;
+            arg = newval;
+        }
+    }
+    else
+    {
+        T arg = newval;
+    }
 
     static if (__traits(isFloating, T))
     {
@@ -540,10 +559,20 @@ void pause() pure nothrow @nogc @safe
  * Returns:
  *  The result of the operation.
  */
-TailShared!T atomicOp(string op, T, V1)(ref shared T val, V1 mod) pure nothrow @nogc @safe
+TailShared!T atomicOp(string op, T, V1)(ref shared T val, V1 mod) pure nothrow @nogc @trusted // LDC: was @safe
     if (__traits(compiles, mixin("*cast(T*)&val" ~ op ~ "mod")))
 in (atomicValueIsProperlyAligned(val))
 {
+    version (LDC)
+    {
+        import ldc.intrinsics;
+
+        enum suitedForLLVMAtomicRmw = (__traits(isIntegral, T) && __traits(isIntegral, V1) &&
+                                       T.sizeof <= AtomicRmwSizeLimit && V1.sizeof <= AtomicRmwSizeLimit);
+    }
+    else
+        enum suitedForLLVMAtomicRmw = false;
+
     // binary operators
     //
     // +    -   *   /   %   ^^  &
@@ -564,7 +593,32 @@ in (atomicValueIsProperlyAligned(val))
     //
     // +=   -=  *=  /=  %=  ^^= &=
     // |=   ^=  <<= >>= >>>=    ~=
-    static if (op == "+=" && __traits(isIntegral, T) && __traits(isIntegral, V1) && T.sizeof <= size_t.sizeof && V1.sizeof <= size_t.sizeof)
+    static if (op == "+=" && suitedForLLVMAtomicRmw)
+    {
+        T m = cast(T) mod;
+        return cast(T) (llvm_atomic_rmw_add(&val, m) + m);
+    }
+    else static if (op == "-=" && suitedForLLVMAtomicRmw)
+    {
+        T m = cast(T) mod;
+        return cast(T) (llvm_atomic_rmw_sub(&val, m) - m);
+    }
+    else static if (op == "&=" && suitedForLLVMAtomicRmw)
+    {
+        T m = cast(T) mod;
+        return cast(T) (llvm_atomic_rmw_and(&val, m) & m);
+    }
+    else static if (op == "|=" && suitedForLLVMAtomicRmw)
+    {
+        T m = cast(T) mod;
+        return cast(T) (llvm_atomic_rmw_or(&val, m) | m);
+    }
+    else static if (op == "^=" && suitedForLLVMAtomicRmw)
+    {
+        T m = cast(T) mod;
+        return cast(T) (llvm_atomic_rmw_xor(&val, m) ^ m);
+    }
+    else static if (op == "+=" && __traits(isIntegral, T) && __traits(isIntegral, V1) && T.sizeof <= size_t.sizeof && V1.sizeof <= size_t.sizeof)
     {
         return cast(T)(atomicFetchAdd(val, mod) + mod);
     }
@@ -591,7 +645,23 @@ in (atomicValueIsProperlyAligned(val))
 }
 
 
-version (D_InlineAsm_X86)
+version (LDC)
+{
+    enum has64BitXCHG = true;
+    enum has64BitCAS = true;
+
+    // Enable 128bit CAS on 64bit platforms if supported.
+    version (D_LP64)
+    {
+        version (PPC64)
+            enum has128BitCAS = false;
+        else
+            enum has128BitCAS = true;
+    }
+    else
+        enum has128BitCAS = false;
+}
+else version (D_InlineAsm_X86)
 {
     version = AsmX86;
     enum has64BitXCHG = false;
@@ -926,11 +996,11 @@ version (CoreUnittest)
 
         testXCHG!(shared int)(42);
 
-        testType!(float)(1.0f);
+        testType!(float)(0.1f);
 
         static if (has64BitCAS)
         {
-            testType!(double)(1.0);
+            testType!(double)(0.1);
             testType!(long)();
             testType!(ulong)();
         }
@@ -970,15 +1040,15 @@ version (CoreUnittest)
         atomicOp!"-="(i, cast(size_t) 1);
         assert(i == 0);
 
-        shared float f = 0;
-        atomicOp!"+="(f, 1);
-        assert(f == 1);
+        shared float f = 0.1f;
+        atomicOp!"+="( f, 0.1f );
+        assert( f > 0.1999f && f < 0.2001f );
 
-        static if (has64BitCAS)
+        static if ( has64BitCAS )
         {
-            shared double d = 0;
-            atomicOp!"+="(d, 1);
-            assert(d == 1);
+            shared double d = 0.1;
+            atomicOp!"+="( d, 0.1 );
+            assert( d > 0.1999 && d < 0.2001 );
         }
     }
 
@@ -1019,6 +1089,43 @@ version (CoreUnittest)
             assert(cas(&head, shared(List)(0, null), shared(List)(1, cast(List*)1)));
             assert(head.gen == 1);
             assert(cast(size_t)head.next == 1);
+        }
+
+        // https://issues.dlang.org/show_bug.cgi?id=20629
+        static struct Struct
+        {
+            uint a, b;
+        }
+        shared Struct s1 = Struct(1, 2);
+        atomicStore(s1, Struct(3, 4));
+        assert(cast(uint) s1.a == 3);
+        assert(cast(uint) s1.b == 4);
+    }
+
+    @betterC pure nothrow unittest
+    {
+        // https://issues.dlang.org/show_bug.cgi?id=17821
+        {
+            shared ulong x = 0x1234_5678_8765_4321;
+            atomicStore(x, 0);
+            assert(x == 0);
+        }
+        {
+            struct S
+            {
+                ulong x;
+                alias x this;
+            }
+            shared S s;
+            s = 0x1234_5678_8765_4321;
+            atomicStore(s, 0);
+            assert(s.x == 0);
+        }
+        {
+            abstract class Logger {}
+            shared Logger s1;
+            Logger s2;
+            atomicStore(s1, cast(shared) s2);
         }
     }
 

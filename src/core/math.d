@@ -25,6 +25,12 @@
  */
 module core.math;
 
+version (LDC)
+{
+    import stdc = core.stdc.math;
+    import ldc.intrinsics;
+}
+
 public:
 @nogc:
 
@@ -40,6 +46,9 @@ public:
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
+version (LDC)
+    alias cos = llvm_cos!real;
+else
 real cos(real x) @safe pure nothrow;       /* intrinsic */
 
 /***********************************
@@ -55,6 +64,9 @@ real cos(real x) @safe pure nothrow;       /* intrinsic */
  *      Results are undefined if |x| >= $(POWER 2,64).
  */
 
+version (LDC)
+    alias sin = llvm_sin!real;
+else
 real sin(real x) @safe pure nothrow;       /* intrinsic */
 
 /*****************************************
@@ -63,6 +75,9 @@ real sin(real x) @safe pure nothrow;       /* intrinsic */
  * greater than long.max, the result is
  * indeterminate.
  */
+version (LDC)
+    alias rndtol = stdc.llroundl;
+else
 long rndtol(real x) @safe pure nothrow;    /* intrinsic */
 
 
@@ -87,9 +102,20 @@ extern (C) real rndtonl(real x);
 
 @safe pure nothrow
 {
+  version (LDC)
+  {
+    // http://llvm.org/docs/LangRef.html#llvm-sqrt-intrinsic
+    // sqrt(x) when x is less than zero is undefined
+    float  sqrt(float  x) { return x < 0 ? float.nan  : llvm_sqrt(x); }
+    double sqrt(double x) { return x < 0 ? double.nan : llvm_sqrt(x); }
+    real   sqrt(real   x) { return x < 0 ? real.nan   : llvm_sqrt(x); }
+  }
+  else
+  {
     float sqrt(float x);    /* intrinsic */
     double sqrt(double x);  /* intrinsic */ /// ditto
     real sqrt(real x);      /* intrinsic */ /// ditto
+  }
 }
 
 /*******************************************
@@ -97,6 +123,52 @@ extern (C) real rndtonl(real x);
  * References: frexp
  */
 
+version (LDC)
+{
+    version (MinGW)
+    {
+        real ldexp(real n, int exp) @safe pure nothrow
+        {
+            // The MinGW runtime only provides a double precision ldexp, and
+            // it doesn't seem to reliably possible to express the fscale
+            // semantics (two FP stack inputs/returns) in an inline asm
+            // expression clobber list.
+            version (D_InlineAsm_X86_64)
+            {
+                asm @trusted pure nothrow
+                {
+                    naked;
+                    push RCX;                // push exp (8 bytes), passed in ECX
+                    fild int ptr [RSP];      // push exp onto FPU stack
+                    pop RCX;                 // return stack to initial state
+                    fld real ptr [RDX];      // push n   onto FPU stack, passed in [RDX]
+                    fscale;                  // ST(0) = ST(0) * 2^ST(1)
+                    fstp ST(1);              // pop stack maintaining top value => function return value
+                    ret;                     // no arguments passed via stack
+                }
+            }
+            else
+            {
+                asm @trusted pure nothrow
+                {
+                    naked;
+                    push EAX;
+                    fild int ptr [ESP];
+                    fld real ptr [ESP+8];
+                    fscale;
+                    fstp ST(1);
+                    pop EAX;
+                    ret 12;
+                }
+            }
+        }
+    }
+    else // !MinGW
+    {
+        alias ldexp = stdc.ldexpl;
+    }
+}
+else
 real ldexp(real n, int exp) @safe pure nothrow;    /* intrinsic */
 
 unittest {
@@ -135,6 +207,9 @@ unittest {
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD +$(INFIN)) )
  *      )
  */
+version (LDC)
+    alias fabs = llvm_fabs!real;
+else
 real fabs(real x) @safe pure nothrow;      /* intrinsic */
 
 /**********************************
@@ -145,6 +220,9 @@ real fabs(real x) @safe pure nothrow;      /* intrinsic */
  * $(B nearbyint) performs
  * the same operation, but does not set the FE_INEXACT exception.
  */
+version (LDC)
+    alias rint = llvm_rint!real;
+else
 real rint(real x) @safe pure nothrow;      /* intrinsic */
 
 /***********************************
@@ -152,8 +230,38 @@ real rint(real x) @safe pure nothrow;      /* intrinsic */
  * translate to a single x87 instruction.
  */
 
+version (LDC)
+{
+    version (X86)    version = X86_Any;
+    version (X86_64) version = X86_Any;
+
+    version (X86_Any)
+    {
+        static if (real.mant_dig == 64)
+        {
+            // y * log2(x)
+            real yl2x(real x, real y)   @safe pure nothrow
+            {
+                real r;
+                asm @safe pure nothrow @nogc { "fyl2x" : "=st" (r) : "st" (x), "st(1)" (y) : "st(1)"; }
+                return r;
+            }
+
+            // y * log2(x + 1)
+            real yl2xp1(real x, real y) @safe pure nothrow
+            {
+                real r;
+                asm @safe pure nothrow @nogc { "fyl2xp1" : "=st" (r) : "st" (x), "st(1)" (y) : "st(1)"; }
+                return r;
+            }
+        }
+    }
+}
+else
+{
 real yl2x(real x, real y)   @safe pure nothrow;       // y * log2(x)
 real yl2xp1(real x, real y) @safe pure nothrow;       // y * log2(x + 1)
+}
 
 unittest
 {
@@ -219,7 +327,6 @@ T toPrec(T:real)(real f)  { pragma(inline, false); return f; }
     r = toPrec!real(d + d);
     r = toPrec!real(r + r);
 
-    /+ Uncomment these once compiler support has been added.
     enum real PIR = 0xc.90fdaa22168c235p-2;
     enum double PID = 0x1.921fb54442d18p+1;
     enum float PIF = 0x1.921fb6p+1;
@@ -233,5 +340,4 @@ T toPrec(T:real)(real f)  { pragma(inline, false); return f; }
     assert(toPrec!float(PIF) == PIF);
     assert(toPrec!double(PIF) == PIF);
     assert(toPrec!real(PIF) == PIF);
-    +/
 }

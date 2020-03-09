@@ -5,6 +5,8 @@
  * License:   $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
  * Authors:   Don Clugston, Sean Kelly, Walter Bright, Alex Rønne Petersen, Thomas Stuart Bockman
  * Source:    $(DRUNTIMESRC core/_bitop.d)
+ *
+ * Some of the LDC-specific parts came »From GDC ... public domain!«
  */
 
 module core.bitop;
@@ -13,7 +15,12 @@ nothrow:
 @safe:
 @nogc:
 
-version (D_InlineAsm_X86_64)
+version (LDC)
+{
+    import ldc.intrinsics;
+    // Do not use the DMD inline assembler.
+}
+else version (D_InlineAsm_X86_64)
     version = AsmX86;
 else version (D_InlineAsm_X86)
     version = AsmX86;
@@ -70,18 +77,36 @@ unittest
  *      The bit number of the first bit set.
  *      The return value is undefined if v is zero.
  */
+pragma(inline, true) // LDC
 int bsf(uint v) pure
 {
+  version (LDC)
+  {
+    if (!__ctfe)
+        return cast(int) llvm_cttz(v, true);
+  }
+  else
+  {
     pragma(inline, false);  // so intrinsic detection will work
+  }
     return softBsf!uint(v);
 }
 
 /// ditto
+pragma(inline, true) // LDC
 int bsf(ulong v) pure
 {
     static if (size_t.sizeof == ulong.sizeof)  // 64 bit code gen
     {
+      version (LDC)
+      {
+        if (!__ctfe)
+            return cast(int) llvm_cttz(v, true);
+      }
+      else
+      {
         pragma(inline, false);   // so intrinsic detection will work
+      }
         return softBsf!ulong(v);
     }
     else
@@ -118,18 +143,36 @@ unittest
  *      The bit number of the first bit set.
  *      The return value is undefined if v is zero.
  */
+pragma(inline, true) // LDC
 int bsr(uint v) pure
 {
+  version (LDC)
+  {
+    if (!__ctfe)
+        return cast(int) (typeof(v).sizeof * 8 - 1 - llvm_ctlz(v, true));
+  }
+  else
+  {
     pragma(inline, false);  // so intrinsic detection will work
+  }
     return softBsr!uint(v);
 }
 
 /// ditto
+pragma(inline, true) // LDC
 int bsr(ulong v) pure
 {
     static if (size_t.sizeof == ulong.sizeof)  // 64 bit code gen
     {
+      version (LDC)
+      {
+        if (!__ctfe)
+            return cast(int) (size_t.sizeof * 8 - 1 - llvm_ctlz(v, true));
+      }
+      else
+      {
         pragma(inline, false);   // so intrinsic detection will work
+      }
         return softBsr!ulong(v);
     }
     else
@@ -267,6 +310,14 @@ unittest
  * (No longer an intrisic - the compiler recognizes the patterns
  * in the body.)
  */
+version (none)
+{
+    // Our implementation returns an arbitrary non-zero value if the bit was
+    // set, which is not what std.bitmanip expects.
+    pragma(LDC_intrinsic, "ldc.bitop.bt")
+        int bt(const scope size_t* p, size_t bitnum) pure @system;
+}
+else
 int bt(const scope size_t* p, size_t bitnum) pure @system
 {
     static if (size_t.sizeof == 8)
@@ -292,12 +343,24 @@ int bt(const scope size_t* p, size_t bitnum) pure @system
 /**
  * Tests and complements the bit.
  */
+version (LDC)
+{
+    pragma(LDC_intrinsic, "ldc.bitop.btc")
+        int btc(size_t* p, size_t bitnum) pure @system;
+}
+else
 int btc(size_t* p, size_t bitnum) pure @system;
 
 
 /**
  * Tests and resets (sets to 0) the bit.
  */
+version (LDC)
+{
+    pragma(LDC_intrinsic, "ldc.bitop.btr")
+        int btr(size_t* p, size_t bitnum) pure @system;
+}
+else
 int btr(size_t* p, size_t bitnum) pure @system;
 
 
@@ -314,6 +377,12 @@ p[index / (size_t.sizeof*8)] & (1 << (index & ((size_t.sizeof*8) - 1)))
  *      A non-zero value if the bit was set, and a zero
  *      if it was clear.
  */
+version (LDC)
+{
+    pragma(LDC_intrinsic, "ldc.bitop.bts")
+        int bts(size_t* p, size_t bitnum) pure @system;
+}
+else
 int bts(size_t* p, size_t bitnum) pure @system;
 
 ///
@@ -499,12 +568,22 @@ struct BitRange
  * byte 3, byte 1 becomes byte 2, byte 2 becomes byte 1, byte 3
  * becomes byte 0.
  */
+version (LDC)
+{
+    alias bswap = llvm_bswap!uint;
+}
+else
 uint bswap(uint v) pure;
 
 /**
  * Swaps bytes in an 8 byte ulong end-to-end, i.e. byte 0 becomes
  * byte 7, byte 1 becomes byte 6, etc.
  */
+version (LDC)
+{
+    alias bswap = llvm_bswap!ulong;
+}
+else
 ulong bswap(ulong v) pure
 {
     auto sv = Split64(v);
@@ -553,15 +632,93 @@ version (DigitalMars) version (AnyX86) @system // not pure
      */
     uint outpl(uint port_address, uint value);
 }
+version (LDC) @system // not pure
+{
+    /**
+     * Reads I/O port at port_address.
+     */
+    uint inp(uint port_address)
+    {
+        assert(false, "inp not yet implemented for LDC.");
+    }
+
+
+    /**
+     * ditto
+     */
+    uint inpw(uint port_address)
+    {
+        assert(false, "inpw not yet implemented for LDC.");
+    }
+
+
+    /**
+     * ditto
+     */
+    uint inpl(uint port_address)
+    {
+        assert(false, "inpl not yet implemented for LDC.");
+    }
+
+
+    /**
+     * Writes and returns value to I/O port at port_address.
+     */
+    ubyte outp(uint port_address, uint value)
+    {
+        assert(false, "outp not yet implemented for LDC.");
+    }
+
+
+    /**
+     * ditto
+     */
+    ushort outpw(uint port_address, uint value)
+    {
+        assert(false, "outpw not yet implemented for LDC.");
+    }
+
+
+    /**
+     * ditto
+     */
+    uint outpl(uint port_address, uint value)
+    {
+        assert(false, "outpl not yet implemented for LDC.");
+    }
+}
+
+version (LDC)
+{
+    alias _popcnt = llvm_ctpop!ushort;
+
+    pragma(inline, true):
+
+    int _popcnt(uint x) pure
+    {
+        return cast(int) llvm_ctpop(x);
+    }
+
+    int _popcnt(ulong x) pure
+    {
+        return cast(int) llvm_ctpop(x);
+    }
+}
 
 
 /**
  *  Calculates the number of set bits in an integer.
  */
+pragma(inline, true) // LDC
 int popcnt(uint x) pure
 {
     // Select the fastest method depending on the compiler and CPU architecture
-    version (DigitalMars)
+    version (LDC)
+    {
+        if (!__ctfe)
+            return _popcnt(x);
+    }
+    else version (DigitalMars)
     {
         static if (is(typeof(_popcnt(uint.max))))
         {
@@ -590,9 +747,16 @@ unittest
 }
 
 /// ditto
+pragma(inline, true) // LDC
 int popcnt(ulong x) pure
 {
     // Select the fastest method depending on the compiler and CPU architecture
+    version (LDC)
+    {
+        if (!__ctfe)
+            return _popcnt(x);
+    }
+
     import core.cpuid;
 
     static if (size_t.sizeof == uint.sizeof)
@@ -741,6 +905,12 @@ uint bitswap( uint x ) pure
 {
     if (!__ctfe)
     {
+        version (LDC)
+        {
+            static if (is(typeof(llvm_bitreverse(x))))
+                return llvm_bitreverse(x);
+        }
+        else
         static if (is(typeof(asmBitswap32(x))))
             return asmBitswap32(x);
     }
@@ -775,6 +945,12 @@ ulong bitswap ( ulong x ) pure
 {
     if (!__ctfe)
     {
+        version (LDC)
+        {
+            static if (is(typeof(llvm_bitreverse(x))))
+                return llvm_bitreverse(x);
+        }
+        else
         static if (is(typeof(asmBitswap64(x))))
             return asmBitswap64(x);
     }
@@ -864,6 +1040,7 @@ version (AsmX86)
     }
 }
 
+version (LDC) {} else
 version (D_InlineAsm_X86_64)
 {
     private ulong asmBitswap64(ulong x) @trusted pure

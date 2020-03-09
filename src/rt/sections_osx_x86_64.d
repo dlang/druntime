@@ -11,6 +11,12 @@
  */
 module rt.sections_osx_x86_64;
 
+version (LDC)
+{
+    // Implemented in rt.sections_elf_shared, but using some helper functions (`getTLSRange(void*)`).
+}
+else:
+
 version (OSX)
     version = Darwin;
 else version (iOS)

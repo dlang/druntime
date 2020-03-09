@@ -38,12 +38,15 @@ private
 
 extern (C)
 {
+    version (LDC) import ldc.attributes;
+
     // do not import GC modules, they might add a dependency to this whole module
     void _d_register_conservative_gc();
     void _d_register_manual_gc();
 
     // if you don't want to include the default GCs, replace during link by another implementation
     void* register_default_gcs()
+    @weak // LDC
     {
         pragma(inline, false);
         // do not call, they register implicitly through pragma(crt_constructor)
@@ -258,8 +261,9 @@ extern (C)
         return instance;
     }
 
-    export
-    {
+    // LDC: Don't export these functions by default for each binary linked statically against druntime.
+    //export
+    //{
         void gc_setProxy( GC proxy )
         {
             foreach (root; instance.rootIter)
@@ -291,5 +295,5 @@ extern (C)
             _instance = proxiedGC;
             proxiedGC = null;
         }
-    }
+    //}
 }

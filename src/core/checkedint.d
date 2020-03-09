@@ -28,6 +28,17 @@
 
 module core.checkedint;
 
+version (LDC)
+{
+    import ldc.intrinsics;
+
+    // llvm.(u)mul.with.overflow.i64 might fall back to a software implementation
+    // in the form of __mulodi4, which only exists in compiler-rt and not
+    // libgcc. Thus, we need to be sure not to emit it for now (see GitHub #818).
+    version (X86_64)
+        version = LDC_HasNativeI64Mul;
+}
+
 nothrow:
 @safe:
 @nogc:
@@ -49,6 +60,15 @@ pure:
 pragma(inline, true)
 int adds()(int x, int y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_sadd_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     long r = cast(long)x + cast(long)y;
     if (r < int.min || r > int.max)
         overflow = true;
@@ -77,6 +97,15 @@ unittest
 pragma(inline, true)
 long adds()(long x, long y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_sadd_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     long r = cast(ulong)x + cast(ulong)y;
     if (x <  0 && y <  0 && r >= 0 ||
         x >= 0 && y >= 0 && r <  0)
@@ -108,6 +137,15 @@ static if (is(cent))
 pragma(inline, true)
 cent adds()(cent x, cent y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_sadd_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     cent r = cast(ucent)x + cast(ucent)y;
     if (x <  0 && y <  0 && r >= 0 ||
         x >= 0 && y >= 0 && r <  0)
@@ -151,6 +189,15 @@ unittest
 pragma(inline, true)
 uint addu()(uint x, uint y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_uadd_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable uint r = x + y;
     if (r < x || r < y)
         overflow = true;
@@ -179,6 +226,15 @@ unittest
 pragma(inline, true)
 ulong addu()(ulong x, ulong y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_uadd_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable ulong r = x + y;
     if (r < x || r < y)
         overflow = true;
@@ -209,6 +265,15 @@ static if (is(ucent))
 pragma(inline, true)
 ucent addu()(ucent x, ucent y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_uadd_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable ucent r = x + y;
     if (r < x || r < y)
         overflow = true;
@@ -251,6 +316,15 @@ unittest
 pragma(inline, true)
 int subs()(int x, int y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_ssub_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable long r = cast(long)x - cast(long)y;
     if (r < int.min || r > int.max)
         overflow = true;
@@ -279,6 +353,15 @@ unittest
 pragma(inline, true)
 long subs()(long x, long y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_ssub_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable long r = cast(ulong)x - cast(ulong)y;
     if (x <  0 && y >= 0 && r >= 0 ||
         x >= 0 && y <  0 && (r <  0 || y == long.min))
@@ -312,6 +395,15 @@ static if (is(cent))
 pragma(inline, true)
 cent subs()(cent x, cent y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_ssub_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable cent r = cast(ucent)x - cast(ucent)y;
     if (x <  0 && y >= 0 && r >= 0 ||
         x >= 0 && y <  0 && (r <  0 || y == long.min))
@@ -357,6 +449,15 @@ unittest
 pragma(inline, true)
 uint subu()(uint x, uint y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_usub_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     if (x < y)
         overflow = true;
     return x - y;
@@ -385,6 +486,15 @@ unittest
 pragma(inline, true)
 ulong subu()(ulong x, ulong y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_usub_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     if (x < y)
         overflow = true;
     return x - y;
@@ -414,6 +524,15 @@ static if (is(ucent))
 pragma(inline, true)
 ucent subu()(ucent x, ucent y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_usub_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     if (x < y)
         overflow = true;
     return x - y;
@@ -540,6 +659,15 @@ unittest
 pragma(inline, true)
 int muls()(int x, int y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_smul_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     long r = cast(long)x * cast(long)y;
     if (r < int.min || r > int.max)
         overflow = true;
@@ -570,6 +698,15 @@ unittest
 pragma(inline, true)
 long muls()(long x, long y, ref bool overflow)
 {
+    version (LDC_HasNativeI64Mul)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_smul_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable long r = cast(ulong)x * cast(ulong)y;
     enum not0or1 = ~1L;
     if ((x & not0or1) && ((r == y)? r : (r / x) != y))
@@ -606,6 +743,15 @@ static if (is(cent))
 pragma(inline, true)
 cent muls()(cent x, cent y, ref bool overflow)
 {
+    version (LDC_HasNativeI64Mul)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_smul_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable cent r = cast(ucent)x * cast(ucent)y;
     enum not0or1 = ~1L;
     if ((x & not0or1) && ((r == y)? r : (r / x) != y))
@@ -654,6 +800,15 @@ unittest
 pragma(inline, true)
 uint mulu()(uint x, uint y, ref bool overflow)
 {
+    version (LDC)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_umul_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable ulong r = ulong(x) * ulong(y);
     if (r >> 32)
         overflow = true;
@@ -695,6 +850,15 @@ ulong mulu()(ulong x, uint y, ref bool overflow)
 pragma(inline, true)
 ulong mulu()(ulong x, ulong y, ref bool overflow)
 {
+    version (LDC_HasNativeI64Mul)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_umul_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable ulong r = x * y;
     if ((x | y) >> 32 &&
             x &&
@@ -753,6 +917,15 @@ static if (is(ucent))
 pragma(inline, true)
 ucent mulu()(ucent x, ucent y, ref bool overflow)
 {
+    version (LDC_HasNativeI64Mul)
+    {
+        if (!__ctfe)
+        {
+            auto res = llvm_umul_with_overflow(x, y);
+            overflow |= res.overflow;
+            return res.result;
+        }
+    }
     immutable ucent r = x * y;
     if (x && (r / x) != y)
         overflow = true;

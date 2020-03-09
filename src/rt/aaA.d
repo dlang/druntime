@@ -905,6 +905,11 @@ extern (C) pure nothrow @nogc @safe
 
 // Most tests are now in test_aa.d
 
+// LDC_FIXME: Cannot compile these tests in this module (and this module only)
+// because the public signatures of the various functions are different from
+// the ones used here (AA vs. void*).
+version (LDC) {} else:
+
 // test postblit for AA literals
 unittest
 {

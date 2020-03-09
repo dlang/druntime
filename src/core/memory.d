@@ -1147,7 +1147,17 @@ void pureFree()(void* ptr) @system pure @nogc nothrow
     // See also: https://issues.dlang.org/show_bug.cgi?id=17956
     void* z = pureMalloc(size_t.max & ~255); // won't affect `errno`
     assert(errno == fakePureErrno()); // errno shouldn't change
+  version (LDC)
+  {
+    // LLVM's 'Combine redundant instructions' optimization pass
+    // completely elides allocating `y` and `z`. Allocations with
+    // sizes > 0 are apparently assumed to always succeed (and
+    // return non-null), so the following assert fails with -O3.
+  }
+  else
+  {
     assert(z is null);
+  }
 }
 
 // locally purified for internal use here only

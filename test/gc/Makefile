@@ -1,7 +1,10 @@
 include ../common.mak
 
-TESTS := sentinel printf memstomp invariant logging precise precisegc forkgc forkgc2 sigmaskgc startbackgc \
-         recoverfree nocollect
+TESTS := sentinel printf memstomp invariant logging precise precisegc recoverfree nocollect
+# LDC: disable POSIX-specific tests on Windows
+ifeq (,$(findstring win,$(OS)))
+TESTS+=forkgc forkgc2 sigmaskgc startbackgc
+endif
 
 SRC_GC = ../../src/gc/impl/conservative/gc.d
 SRC = $(SRC_GC) ../../src/rt/lifetime.d

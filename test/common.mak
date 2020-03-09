@@ -1,5 +1,7 @@
 # set from top makefile
-OS:=
+# LDC: we have no top makefile, include osmodel.mak for OS
+include ../../../../tests/d2/src/osmodel.mak
+#OS:=
 MODEL:=
 BUILD:=
 DMD:=
@@ -18,9 +20,13 @@ ifneq (default,$(MODEL))
 	MODEL_FLAG:=-m$(MODEL)
 endif
 CFLAGS_BASE:= $(MODEL_FLAG) $(PIC) -Wall
-DFLAGS:=$(MODEL_FLAG) $(PIC) -w -I../../src -I../../import -I$(SRC) -defaultlib= -debuglib= -dip1000 -L-lpthread -L-lm
+DFLAGS:=$(MODEL_FLAG) $(PIC) -w -I../../src -I../../import -I$(SRC) -defaultlib= -debuglib= -dip1000
+ifeq (,$(findstring win,$(OS)))
+	DFLAGS += -L-lpthread -L-lm
+endif
 # LINK_SHARED may be set by importing makefile
-DFLAGS+=$(if $(LINK_SHARED),-L$(DRUNTIMESO),-L$(DRUNTIME))
+# LDC: -link-defaultlib-shared enables default rpath
+DFLAGS+=$(if $(LINK_SHARED),-L$(DRUNTIMESO) -link-defaultlib-shared,-L$(DRUNTIME))
 ifeq ($(BUILD),debug)
 	DFLAGS += -g -debug
 	CFLAGS := $(CFLAGS_BASE) -g

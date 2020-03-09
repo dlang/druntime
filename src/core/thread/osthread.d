@@ -15,6 +15,23 @@ module core.thread.osthread;
 import core.time;
 import core.exception : onOutOfMemoryError;
 
+version (LDC)
+{
+    import ldc.attributes;
+    import ldc.llvmasm;
+
+    version (Windows) version = LDC_Windows;
+
+    version (ARM)     version = ARM_Any;
+    version (AArch64) version = ARM_Any;
+
+    version (MIPS32) version = MIPS_Any;
+    version (MIPS64) version = MIPS_Any;
+
+    version (PPC)   version = PPC_Any;
+    version (PPC64) version = PPC_Any;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Platform Detection and Memory Allocation
 ///////////////////////////////////////////////////////////////////////////////
@@ -158,7 +175,8 @@ else version (Windows)
  */
 class ThreadException : Exception
 {
-    @safe pure nothrow this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
+    // LDC: +@nogc
+    @safe pure nothrow @nogc this(string msg, string file = __FILE__, size_t line = __LINE__, Throwable next = null)
     {
         super(msg, file, line, next);
     }
@@ -214,9 +232,11 @@ private
      */
     extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc;
 
-    version (DigitalMars)
+    // LDC: changed from `version (DigitalMars)`
+    version (all)
     {
-        version (Windows)
+        // LDC: changed from `version (Windows)`
+        version (CRuntime_Microsoft)
             alias swapContext = _d_eh_swapContext;
         else
         {
@@ -2525,6 +2545,7 @@ shared static ~this()
 // Used for needLock below.
 private __gshared bool multiThreadedFlag = false;
 
+version (LDC) {} else
 version (PPC64) version = ExternStackShell;
 
 version (ExternStackShell)
@@ -2602,6 +2623,85 @@ else
                 mov [regs + 6 * 8], R15;
 
                 mov sp[RBP], RSP;
+            }
+        }
+        else version (LDC)
+        {
+            version (PPC_Any)
+            {
+                // Nonvolatile registers, according to:
+                // System V Application Binary Interface
+                // PowerPC Processor Supplement, September 1995
+                // ELFv1: 64-bit PowerPC ELF ABI Supplement 1.9, July 2004
+                // ELFv2: Power Architecture, 64-Bit ELV V2 ABI Specification,
+                //        OpenPOWER ABI for Linux Supplement, July 2014
+                size_t[18] regs = void;
+                static foreach (i; 0 .. regs.length)
+                {{
+                    enum int j = 14 + i; // source register
+                    static if (j == 21)
+                    {
+                        // Work around LLVM bug 21443 (http://llvm.org/bugs/show_bug.cgi?id=21443)
+                        // Because we clobber r0 a different register is chosen
+                        asm pure nothrow @nogc { ("std "~j.stringof~", %0") : "=m" (regs[i]) : : "r0"; }
+                    }
+                    else
+                        asm pure nothrow @nogc { ("std "~j.stringof~", %0") : "=m" (regs[i]); }
+                }}
+
+                asm pure nothrow @nogc { "std 1, %0" : "=m" (sp); }
+            }
+            else version (AArch64)
+            {
+                // Callee-save registers, x19-x28 according to AAPCS64, section
+                // 5.1.1.  Include x29 fp because it optionally can be a callee
+                // saved reg
+                size_t[11] regs = void;
+                // store the registers in pairs
+                asm pure nothrow @nogc
+                {
+                    "stp x19, x20, %0" : "=m" (regs[ 0]), "=m" (regs[1]);
+                    "stp x21, x22, %0" : "=m" (regs[ 2]), "=m" (regs[3]);
+                    "stp x23, x24, %0" : "=m" (regs[ 4]), "=m" (regs[5]);
+                    "stp x25, x26, %0" : "=m" (regs[ 6]), "=m" (regs[7]);
+                    "stp x27, x28, %0" : "=m" (regs[ 8]), "=m" (regs[9]);
+                    "str x29, %0"      : "=m" (regs[10]);
+                    "mov %0, sp"       : "=r" (sp);
+                }
+            }
+            else version (ARM)
+            {
+                // Callee-save registers, according to AAPCS, section 5.1.1.
+                // arm and thumb2 instructions
+                size_t[8] regs = void;
+                asm pure nothrow @nogc
+                {
+                    "stm %0, {r4-r11}" : : "r" (regs.ptr) : "memory";
+                    "mov %0, sp"       : "=r" (sp);
+                }
+            }
+            else version (MIPS_Any)
+            {
+                version (MIPS32)      enum store = "sw";
+                else version (MIPS64) enum store = "sd";
+                else static assert(0);
+
+                // Callee-save registers, according to MIPS Calling Convention
+                // and MIPSpro N32 ABI Handbook, chapter 2, table 2-1.
+                // FIXME: Should $28 (gp) and $30 (s8) be saved, too?
+                size_t[8] regs = void;
+                asm pure nothrow @nogc { ".set noat"; }
+                static foreach (i; 0 .. regs.length)
+                {{
+                    enum int j = 16 + i; // source register
+                    asm pure nothrow @nogc { (store ~ " $"~j.stringof~", %0") : "=m" (regs[i]); }
+                }}
+                asm pure nothrow @nogc { (store ~ " $29, %0") : "=m" (sp); }
+                asm pure nothrow @nogc { ".set at"; }
+            }
+            else
+            {
+                static assert(false, "Architecture not supported.");
             }
         }
         else
@@ -3398,6 +3498,52 @@ extern (C) @nogc nothrow
 }
 
 
+version (LDC)
+{
+    version (X86)      version = LDC_stackTopAsm;
+    version (X86_64)   version = LDC_stackTopAsm;
+    version (ARM_Any)  version = LDC_stackTopAsm;
+    version (PPC_Any)  version = LDC_stackTopAsm;
+    version (MIPS_Any) version = LDC_stackTopAsm;
+
+    version (LDC_stackTopAsm)
+    {
+        /* The inline assembler is written in a style that the code can be inlined.
+         * If it isn't, the function is still naked, so the caller's stack pointer
+         * is used nevertheless.
+         */
+        package(core.thread) void* getStackTop() nothrow @nogc @naked
+        {
+            version (X86)
+                return __asm!(void*)("movl %esp, $0", "=r");
+            else version (X86_64)
+                return __asm!(void*)("movq %rsp, $0", "=r");
+            else version (ARM_Any)
+                return __asm!(void*)("mov $0, sp", "=r");
+            else version (PPC_Any)
+                return __asm!(void*)("mr $0, 1", "=r");
+            else version (MIPS_Any)
+                return __asm!(void*)("move $0, $$sp", "=r");
+            else
+                static assert(0);
+        }
+    }
+    else
+    {
+        /* The use of intrinsic llvm_frameaddress is a reasonable default for
+         * cpu architectures without assembler support from LLVM. Because of
+         * the slightly different meaning the function must neither be inlined
+         * nor naked.
+         */
+        package(core.thread) void* getStackTop() nothrow @nogc
+        {
+            import ldc.intrinsics;
+            pragma(LDC_never_inline);
+            return llvm_frameaddress(0);
+        }
+    }
+}
+else
 package(core.thread) void* getStackTop() nothrow @nogc
 {
     version (D_InlineAsm_X86)
@@ -3411,6 +3557,19 @@ package(core.thread) void* getStackTop() nothrow @nogc
 }
 
 
+version (LDC_Windows)
+{
+    package(core.thread) void* getStackBottom() nothrow @nogc @naked
+    {
+        version (X86)
+            return __asm!(void*)("mov %fs:(4), $0", "=r");
+        else version (X86_64)
+            return __asm!(void*)("mov %gs:0($1), $0", "=r,r", 8);
+        else
+            static assert(false, "Architecture not supported.");
+    }
+}
+else
 package(core.thread) void* getStackBottom() nothrow @nogc
 {
     version (Windows)

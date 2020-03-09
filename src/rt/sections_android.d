@@ -45,7 +45,7 @@ struct SectionGroup
         return _moduleGroup;
     }
 
-    @property immutable(FuncTable)[] ehTables() const nothrow @nogc
+    version (DigitalMars) @property immutable(FuncTable)[] ehTables() const nothrow @nogc
     {
         auto pbeg = cast(immutable(FuncTable)*)&__start_deh;
         auto pend = cast(immutable(FuncTable)*)&__stop_deh;
@@ -66,8 +66,16 @@ void initSections() nothrow @nogc
 {
     pthread_key_create(&_tlsKey, null);
 
-    auto mbeg = cast(immutable ModuleInfo**)&__start_minfo;
-    auto mend = cast(immutable ModuleInfo**)&__stop_minfo;
+    version (LDC)
+    {
+        auto mbeg = cast(immutable ModuleInfo**)&__start___minfo;
+        auto mend = cast(immutable ModuleInfo**)&__stop___minfo;
+    }
+    else
+    {
+        auto mbeg = cast(immutable ModuleInfo**)&__start_minfo;
+        auto mend = cast(immutable ModuleInfo**)&__stop_minfo;
+    }
     _sections.moduleGroup = ModuleGroup(mbeg[0 .. mend - mbeg]);
 
     auto pbeg = cast(void*)&_tlsend;
@@ -164,8 +172,16 @@ extern(C)
     {
         void* __start_deh;
         void* __stop_deh;
-        void* __start_minfo;
-        void* __stop_minfo;
+        version (LDC)
+        {
+            void* __start___minfo;
+            void* __stop___minfo;
+        }
+        else
+        {
+            void* __start_minfo;
+            void* __stop_minfo;
+        }
 
         version (X86_Any)
         {

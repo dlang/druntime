@@ -843,43 +843,67 @@ version (Windows)
 }
 else
 {
-    extern (D) void QueryPerformanceCounter(timer_t* ctr)
+    version (LDC)
     {
-        version (D_InlineAsm_X86)
+        version (AArch64)
         {
-            asm
+            // We cannot use ldc.intrinsics.llvm_readcyclecounter because that is not an accurate
+            // time counter (it is a counter of CPU cycles, where here we want a time clock).
+            // Also, priviledged execution rights are needed to enable correct counting with
+            // ldc.intrinsics.llvm_readcyclecounter on AArch64.
+            extern (D) void QueryPerformanceCounter(timer_t* ctr)
             {
-                naked                   ;
-                mov       ECX,EAX       ;
-                rdtsc                   ;
-                mov   [ECX],EAX         ;
-                mov   4[ECX],EDX        ;
-                ret                     ;
+                asm { "mrs %0, cntvct_el0" : "=r" (*ctr); }
             }
-        }
-        else version (D_InlineAsm_X86_64)
-        {
-            asm
+            extern (D) void QueryPerformanceFrequency(timer_t* freq)
             {
-                naked                   ;
-                // rdtsc can produce skewed results without preceding lfence/mfence.
-                // this is what GNU/Linux does, but only use mfence here.
-                // see https://github.com/torvalds/linux/blob/03b9730b769fc4d87e40f6104f4c5b2e43889f19/arch/x86/include/asm/msr.h#L130-L154
-                mfence                  ; // serialize rdtsc instruction.
-                rdtsc                   ;
-                mov   [RDI],EAX         ;
-                mov   4[RDI],EDX        ;
-                ret                     ;
+                asm { "mrs %0, cntfrq_el0" : "=r" (*freq); }
             }
-        }
-        else version (LDC)
-        {
-            import ldc.intrinsics: llvm_readcyclecounter;
-            *ctr = llvm_readcyclecounter();
         }
         else
         {
-            static assert(0);
+            extern (D) void QueryPerformanceCounter(timer_t* ctr)
+            {
+                import ldc.intrinsics: llvm_readcyclecounter;
+                *ctr = llvm_readcyclecounter();
+            }
+        }
+    }
+    else
+    {
+        extern (D) void QueryPerformanceCounter(timer_t* ctr)
+        {
+            version (D_InlineAsm_X86)
+            {
+                asm
+                {
+                    naked                   ;
+                    mov       ECX,EAX       ;
+                    rdtsc                   ;
+                    mov   [ECX],EAX         ;
+                    mov   4[ECX],EDX        ;
+                    ret                     ;
+                }
+            }
+            else version (D_InlineAsm_X86_64)
+            {
+                asm
+                {
+                    naked                   ;
+                    // rdtsc can produce skewed results without preceding lfence/mfence.
+                    // this is what GNU/Linux does, but only use mfence here.
+                    // see https://github.com/torvalds/linux/blob/03b9730b769fc4d87e40f6104f4c5b2e43889f19/arch/x86/include/asm/msr.h#L130-L154
+                    mfence                  ; // serialize rdtsc instruction.
+                    rdtsc                   ;
+                    mov   [RDI],EAX         ;
+                    mov   4[RDI],EDX        ;
+                    ret                     ;
+                }
+            }
+            else
+            {
+                static assert(0);
+            }
         }
     }
 }

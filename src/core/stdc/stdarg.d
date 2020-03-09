@@ -16,8 +16,350 @@ module core.stdc.stdarg;
 //@nogc:    // Not yet, need to make TypeInfo's member functions @nogc first
 nothrow:
 
+version (LDC)
+{
+    version (PPC) version = AnyPPC;
+    version (PPC64) version = AnyPPC;
+    version (MIPS32) version = AnyMIPS;
+    version (MIPS64) version = AnyMIPS;
+
+    version (ARM)
+    {
+        // iOS uses older APCS variant instead of AAPCS
+        version (iOS) {}
+        else version = AAPCS;
+    }
+    version (AArch64)
+    {
+        // iOS, tvOS are AAPCS64, but don't follow it for va_list
+        version (iOS) {}
+        else version (TVOS) {}
+        else version = AAPCS64;
+    }
+
+    version (AArch64)
+    {
+        void va_arg_aarch64(T)(ref __va_list ap, ref T parmn)
+        {
+            assert(false, "Not yet implemented");
+        }
+
+        void va_arg_aarch64()(ref __va_list ap, TypeInfo ti, void* parmn)
+        {
+            assert(false, "Not yet implemented");
+        }
+    }
+
+    version (X86_64)
+    {
+        version (Win64) {}
+        else version = SystemV_AMD64;
+    }
+
+    // Type va_list:
+    // On most platforms, really struct va_list { void* ptr; },
+    // but for compatibility with x86-style code that uses char*,
+    // we just define it as the raw pointer.
+    // For System V AMD64 ABI, really __va_list[1], i.e., a 24-bytes
+    // struct passed by reference. We define va_list as a raw pointer
+    // (to the actual struct) for the byref semantics and allocate
+    // the struct in LDC's va_start and va_copy intrinsics.
+    version (SystemV_AMD64)
+    {
+        alias va_list = __va_list_tag*;
+    }
+    else version (AAPCS64)
+    {
+        alias va_list = __va_list;
+    }
+    else version (ARM)
+    {
+        // __va_list will be defined for ARM AAPCS targets that need
+        // it by object.d.  Use a .ptr property so ARM code below can
+        // be common
+        static if (is(__va_list))
+        {
+            alias va_list = __va_list;
+
+            private ref auto ptr(ref va_list ap) @property
+            {
+                return ap.__ap;
+            }
+            private auto ptr(ref va_list ap, void* ptr) @property
+            {
+                return ap.__ap = ptr;
+            }
+        }
+        else
+        {
+            alias va_list = char*;
+
+            private ref auto ptr(ref va_list ap) @property
+            {
+                return ap;
+            }
+            private auto ptr(ref va_list ap, void* ptr) @property
+            {
+                return ap = cast(va_list)ptr;
+            }
+        }
+    }
+    else
+    {
+        alias va_list = char*;
+    }
+
+    pragma(LDC_va_start)
+        void va_start(T)(out va_list ap, ref T) @nogc;
+
+    private pragma(LDC_va_arg)
+        T va_arg_intrinsic(T)(ref va_list ap);
+
+    T va_arg(T)(ref va_list ap)
+    {
+        version (SystemV_AMD64)
+        {
+            T arg;
+            va_arg(ap, arg);
+            return arg;
+        }
+        else version (AAPCS64)
+        {
+            T arg;
+            va_arg(ap, arg);
+            return arg;
+        }
+        else version (Win64)
+        {
+            // dynamic arrays are passed as 2 separate 64-bit values
+            import std.traits: isDynamicArray;
+            static if (isDynamicArray!T)
+            {
+                auto length = *cast(size_t*)ap;
+                ap += size_t.sizeof;
+                auto ptr = *cast(typeof(T.init.ptr)*)ap;
+                ap += size_t.sizeof;
+                return ptr[0..length];
+            }
+            else
+            {
+                // passed as byval reference if > 64 bits or of a size that is not a power of 2
+                static if (T.sizeof > size_t.sizeof || (T.sizeof & (T.sizeof - 1)) != 0)
+                    T arg = **cast(T**)ap;
+                else
+                    T arg = *cast(T*)ap;
+                ap += size_t.sizeof;
+                return arg;
+            }
+        }
+        else version (X86)
+        {
+            T arg = *cast(T*)ap;
+            ap += (T.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+            return arg;
+        }
+        else version (AArch64)
+        {
+            T arg = *cast(T*)ap;
+            ap += (T.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+            return arg;
+        }
+        else version (ARM)
+        {
+            // AAPCS sec 5.5 B.5: type with alignment >= 8 is 8-byte aligned
+            // instead of normal 4-byte alignment (APCS doesn't do this).
+            version (AAPCS)
+            {
+                if (T.alignof >= 8)
+                    ap.ptr = cast(void*)((cast(size_t)ap.ptr + 7) & ~7);
+            }
+            T arg = *cast(T*)ap.ptr;
+            ap.ptr += (T.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+            return arg;
+        }
+        else version (AnyPPC)
+        {
+            /*
+             * The rules are described in the 64bit PowerPC ELF ABI Supplement 1.9,
+             * available here:
+             * http://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi-1.9.html#PARAM-PASS
+             */
+
+            // Chapter 3.1.4 and 3.2.3: Alignment may require the va_list pointer to first
+            // be aligned before accessing a value.
+            if (T.alignof >= 8)
+                ap = cast(va_list)((cast(size_t)ap + 7) & ~7);
+            version (BigEndian)
+                auto p = (T.sizeof < size_t.sizeof ? ap + (size_t.sizeof - T.sizeof) : ap);
+            version (LittleEndian)
+                auto p = ap;
+            T arg = *cast(T*)p;
+            ap += (T.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+            return arg;
+        }
+        else version (AnyMIPS)
+        {
+            T arg = *cast(T*)ap;
+            ap += (T.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+            return arg;
+        }
+        else
+            return va_arg_intrinsic!T(ap);
+    }
+
+    void va_arg(T)(ref va_list ap, ref T parmn)
+    {
+        version (SystemV_AMD64)
+        {
+            va_arg_x86_64(cast(__va_list*)ap, parmn);
+        }
+        else version (AAPCS64)
+        {
+            va_arg_aarch64(ap, parmn);
+        }
+        else version (Win64)
+        {
+            import std.traits: isDynamicArray;
+            static if (isDynamicArray!T)
+            {
+                parmn = *cast(T*)ap;
+                ap += T.sizeof;
+            }
+            else
+            {
+                static if (T.sizeof > size_t.sizeof || (T.sizeof & (T.sizeof - 1)) != 0)
+                    parmn = **cast(T**)ap;
+                else
+                    parmn = *cast(T*)ap;
+                ap += size_t.sizeof;
+            }
+        }
+        else version (X86)
+        {
+            parmn = *cast(T*)ap;
+            ap += (T.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+        }
+        else version (AArch64)
+        {
+            parmn = *cast(T*)ap;
+            ap += (T.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+        }
+        else version (ARM)
+        {
+            // AAPCS sec 5.5 B.5: type with alignment >= 8 is 8-byte aligned
+            // instead of normal 4-byte alignment (APCS doesn't do this).
+            version (AAPCS)
+            {
+                if (T.alignof >= 8)
+                    ap.ptr = cast(void*)((cast(size_t)ap.ptr + 7) & ~7);
+            }
+            parmn = *cast(T*)ap.ptr;
+            ap.ptr += (T.sizeof + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+        }
+        else
+            parmn = va_arg!T(ap);
+    }
+
+    void va_arg()(ref va_list ap, TypeInfo ti, void* parmn)
+    {
+      version (SystemV_AMD64)
+      {
+        va_arg_x86_64(cast(__va_list*)ap, ti, parmn);
+      }
+      else version (AAPCS64)
+      {
+        va_arg_aarch64(ap, ti, parmn);
+      }
+      else
+      {
+        auto tsize = ti.tsize;
+
+        version (X86)
+        {
+            // Wait until everyone updates to get TypeInfo.talign
+            //auto talign = ti.talign;
+            //auto p = cast(va_list) ((cast(size_t)ap + talign - 1) & ~(talign - 1));
+            auto p = ap;
+            ap = p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1));
+        }
+        else version (Win64)
+        {
+            char* p;
+            auto ti_dynArray = cast(TypeInfo_Array) ti;
+            if (ti_dynArray !is null)
+            {
+                p = ap;
+                ap += tsize;
+            }
+            else
+            {
+                p = (tsize > size_t.sizeof || (tsize & (tsize - 1)) != 0) ? *cast(char**)ap : ap;
+                ap += size_t.sizeof;
+            }
+        }
+        else version (AArch64)
+        {
+            auto p = ap;
+            ap = p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1));
+        }
+        else version (ARM)
+        {
+            // AAPCS sec 5.5 B.5: type with alignment >= 8 is 8-byte aligned
+            // instead of normal 4-byte alignment (APCS doesn't do this).
+            version (AAPCS)
+            {
+                if (ti.talign >= 8)
+                    ap.ptr = cast(void*)((cast(size_t)ap.ptr + 7) & ~7);
+            }
+            auto p = ap.ptr;
+            ap.ptr = p + ((tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1));
+        }
+        else version (AnyPPC)
+        {
+            /*
+             * The rules are described in the 64bit PowerPC ELF ABI Supplement 1.9,
+             * available here:
+             * http://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi-1.9.html#PARAM-PASS
+             */
+
+            // Chapter 3.1.4 and 3.2.3: Alignment may require the va_list pointer to first
+            // be aligned before accessing a value.
+            if (ti.alignof >= 8)
+                ap = cast(va_list)((cast(size_t)ap + 7) & ~7);
+            version (BigEndian)
+                auto p = (tsize < size_t.sizeof ? ap + (size_t.sizeof - tsize) : ap);
+            version (LittleEndian)
+                auto p = ap;
+            ap += (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+        }
+        else version (AnyMIPS)
+        {
+            // This works for all types because only the rules for non-floating,
+            // non-vector types are used.
+            auto p = (tsize < size_t.sizeof ? ap + (size_t.sizeof - tsize) : ap);
+            ap += (tsize + size_t.sizeof - 1) & ~(size_t.sizeof - 1);
+        }
+        else
+        {
+            static assert(false, "Unsupported platform");
+        }
+
+        parmn[0..tsize] = (cast(void*)p)[0..tsize];
+      }
+    }
+
+    pragma(LDC_va_end)
+        void va_end(va_list ap);
+
+    pragma(LDC_va_copy)
+        void va_copy(out va_list dest, va_list src);
+} // version (LDC)
+
+// LDC: we need a few non-Windows x86_64 helpers
 version (X86)
 {
+    version (LDC) {} else:
+
     /*********************
      * The argument pointer type.
      */
@@ -87,6 +429,8 @@ else version (Windows) // Win64
      * Smaller ones are padded out to register size, and larger ones are passed by
      * reference.
      */
+
+    version (LDC) {} else:
 
     /*********************
      * The argument pointer type.
@@ -167,6 +511,12 @@ else version (X86_64)
         enum isVectorType = true;
     }
 
+  version (LDC)
+  {
+    alias __va_list = __va_list_tag;
+  }
+  else
+  {
     // Layout of this struct must match __gnuc_va_list for C ABI compatibility
     struct __va_list_tag
     {
@@ -199,11 +549,11 @@ else version (X86_64)
         va_arg(ap, a);
         return a;
     }
+  }
 
-    ///
-    void va_arg(T)(va_list apx, ref T parmn)
+    // LDC: renamed & minimally adapted
+    private void va_arg_x86_64(T)(__va_list* ap, ref T parmn)
     {
-        __va_list* ap = cast(__va_list*)apx;
         static if (is(T U == __argTypes))
         {
             static if (U.length == 0 || T.sizeof > 16 || (U[0].sizeof > 8 && !isVectorType!(U[0])))
@@ -342,10 +692,9 @@ else version (X86_64)
         }
     }
 
-    ///
-    void va_arg()(va_list apx, TypeInfo ti, void* parmn)
+    // LDC: renamed & minimally adapted
+    private void va_arg_x86_64()(__va_list* ap, TypeInfo ti, void* parmn)
     {
-        __va_list* ap = cast(__va_list*)apx;
         TypeInfo arg1, arg2;
         if (!ti.argTypes(arg1, arg2))
         {
@@ -455,6 +804,8 @@ else version (X86_64)
         }
     }
 
+  version (LDC) {} else
+  {
     ///
     void va_end(va_list ap)
     {
@@ -474,6 +825,7 @@ else version (X86_64)
         dest = cast(va_list)storage;
         *dest = *src;
     }
+  }
 }
 version (DruntimeAbstractLibc)
 {
@@ -481,5 +833,6 @@ version (DruntimeAbstractLibc)
 }
 else
 {
+    version (LDC) {} else
     static assert(false, "Unsupported platform");
 }

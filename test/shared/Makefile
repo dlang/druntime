@@ -2,7 +2,15 @@ LINK_SHARED:=1
 
 include ../common.mak
 
-TESTS:=link load linkD linkDR loadDR host finalize
+TESTS:=link load linkD linkDR loadDR
+# LDC: disable 2 tests on Mac
+ifneq ($(OS),osx)
+	# * `finalize` fails starting with macOS 10.13, as .dylibs with TLS can't be
+	#   unloaded anymore (https://github.com/ldc-developers/ldc/issues/3002).
+	# * `host` loads two modules with the same name, which is currently disallowed
+	#   by the (potentially overly eager) module collision detection on OS X.
+	TESTS+=finalize host
+endif
 TESTS+=link_linkdep load_linkdep link_loaddep load_loaddep load_13414
 
 EXPORT_DYNAMIC=$(if $(findstring $(OS),linux freebsd dragonflybsd),-L--export-dynamic,)

@@ -36,16 +36,22 @@ int _set_output_format(int format); // VS2013-
 int _vsnprintf(char* buffer, int buffer_length, const char* format, void* va_list); // VS2015-
 
 //extern const char* __acrt_iob_func;
+#ifndef LDC
 extern const char* _nullfunc = 0;
+#endif
 
 unsigned char msvcUsesUCRT;
 
 #if defined _M_IX86
     #define C_PREFIX "_"
+  #ifndef LDC
     typedef long size_t;
+  #endif
 #elif defined _M_X64 || defined _M_ARM || defined _M_ARM64
     #define C_PREFIX ""
+  #ifndef LDC
     typedef long long size_t;
+  #endif
 #else
     #error Unsupported architecture
 #endif
@@ -53,12 +59,20 @@ unsigned char msvcUsesUCRT;
 #define DECLARE_ALTERNATE_NAME(name, alternate_name)  \
     __pragma(comment(linker, "/alternatename:" C_PREFIX #name "=" C_PREFIX #alternate_name))
 
+#ifndef LDC
 DECLARE_ALTERNATE_NAME (__acrt_iob_func, _nullfunc);
 DECLARE_ALTERNATE_NAME (__iob_func, _nullfunc);
 DECLARE_ALTERNATE_NAME (_set_output_format, _nullfunc);
+#endif
 
 void init_msvc()
 {
+#ifdef LDC
+    stdin = __acrt_iob_func(0);
+    stdout = __acrt_iob_func(1);
+    stderr = __acrt_iob_func(2);
+    msvcUsesUCRT = 1;
+#else
     if (&__acrt_iob_func != (void*) &_nullfunc)
     {
         stdin = __acrt_iob_func(0);
@@ -78,7 +92,25 @@ void init_msvc()
         const int _TWO_DIGIT_EXPONENT = 1;
         _set_output_format(_TWO_DIGIT_EXPONENT);
     }
+#endif // !LDC
 }
+
+#ifdef LDC
+
+// needed for POSIX names
+#pragma comment(lib, "oldnames.lib")
+// VS2015+: printf/scanf family defined inline in C headers
+#pragma comment(lib, "legacy_stdio_definitions.lib")
+
+// The MinGW-w64 libs don't provide _(_)chkstk; fall back to the
+// implementation in LLVM's builtins compiler-rt lib.
+#ifdef _M_X64
+DECLARE_ALTERNATE_NAME (__chkstk, ___chkstk_ms);
+#else
+DECLARE_ALTERNATE_NAME (_chkstk, __chkstk); // `__chkstk_ms` isn't the MS-compatible one!
+#endif
+
+#else // !LDC
 
 // VS2017+ wraps (v)snprintf into an inlined function calling __stdio_common_vsprintf
 //  wrap it back to the original function if it doesn't exist in the C library
@@ -196,6 +228,8 @@ int  _msvc_fileno(FILE* stream)
 {
     return stream->_file;
 }
+
+#endif // !LDC
 
 
 

@@ -671,6 +671,57 @@ extern (C) UnitTestResult runModuleUnitTests()
     return results;
 }
 
+version (LDC) version (Darwin)
+{
+    nothrow:
+
+    extern (C)
+    {
+        enum _URC_NO_REASON = 0;
+        enum _URC_END_OF_STACK = 5;
+
+        alias _Unwind_Context_Ptr = void*;
+        alias _Unwind_Trace_Fn = int function(_Unwind_Context_Ptr, void*);
+        int _Unwind_Backtrace(_Unwind_Trace_Fn, void*);
+        ptrdiff_t _Unwind_GetIP(_Unwind_Context_Ptr context);
+    }
+
+    // Use our own backtrce() based on _Unwind_Backtrace(), as the former (from
+    // execinfo) doesn't seem to handle missing frame pointers too well.
+    private int backtrace(void** buffer, int maxSize)
+    {
+        if (maxSize < 0) return 0;
+
+        struct State
+        {
+            void** buffer;
+            int maxSize;
+            int entriesWritten = 0;
+        }
+
+        static extern(C) int handler(_Unwind_Context_Ptr context, void* statePtr)
+        {
+            auto state = cast(State*)statePtr;
+            if (state.entriesWritten >= state.maxSize) return _URC_END_OF_STACK;
+
+            auto instructionPtr = _Unwind_GetIP(context);
+            if (!instructionPtr) return _URC_END_OF_STACK;
+
+            state.buffer[state.entriesWritten] = cast(void*)instructionPtr;
+            ++state.entriesWritten;
+
+            return _URC_NO_REASON;
+        }
+
+        State state;
+        state.buffer = buffer;
+        state.maxSize = maxSize;
+        _Unwind_Backtrace(&handler, &state);
+
+        return state.entriesWritten;
+    }
+}
+
 /**
  * Get the default `Throwable.TraceInfo` implementation for the platform
  *
@@ -699,7 +750,9 @@ Throwable.TraceInfo defaultTraceHandler( void* ptr = null )
         static if (__traits(compiles, new StackTrace(0, null)))
         {
             import core.sys.windows.winnt : CONTEXT;
-            version (Win64)
+            version (LDC)
+                enum FIRSTFRAME = 0;
+            else version (Win64)
                 enum FIRSTFRAME = 4;
             else version (Win32)
                 enum FIRSTFRAME = 0;
@@ -739,9 +792,23 @@ static if (hasExecinfo) private class DefaultTraceInfo : Throwable.TraceInfo
 
     this()
     {
-        numframes = 0; //backtrace( callstack, MAXFRAMES );
+        version (LDC)
+        {
+            numframes = backtrace( callstack.ptr, MAXFRAMES );
+        }
+        else
+        {
+            numframes = 0; //backtrace( callstack, MAXFRAMES );
+        }
         if (numframes < 2) // backtrace() failed, do it ourselves
         {
+          version (LDC)
+          {
+            import ldc.intrinsics;
+            auto stackTop = cast(void**) llvm_frameaddress(0);
+          }
+          else
+          {
             static void** getBasePtr()
             {
                 version (D_InlineAsm_X86)
@@ -754,6 +821,7 @@ static if (hasExecinfo) private class DefaultTraceInfo : Throwable.TraceInfo
             }
 
             auto  stackTop    = getBasePtr();
+          }
             auto  stackBottom = cast(void**) thread_stackBottom();
             void* dummy;
 
@@ -772,6 +840,15 @@ static if (hasExecinfo) private class DefaultTraceInfo : Throwable.TraceInfo
                 }
             }
         }
+        else version (LDC)
+        {
+            // Success. Adjust the locations by one byte so they point
+            // inside the function (as required by backtrace_symbols)
+            // even if the call to _d_throw_exception was the very last
+            // instruction in the function.
+            foreach (ref c; callstack) c -= 1;
+            return;
+        }
     }
 
     override int opApply( scope int delegate(ref const(char[])) dg ) const
@@ -784,12 +861,22 @@ static if (hasExecinfo) private class DefaultTraceInfo : Throwable.TraceInfo
 
     override int opApply( scope int delegate(ref size_t, ref const(char[])) dg ) const
     {
-        // NOTE: The first 4 frames with the current implementation are
-        //       inside core.runtime and the object code, so eliminate
-        //       these for readability.  The alternative would be to
-        //       exclude the first N frames that are in a list of
-        //       mangled function names.
-        enum FIRSTFRAME = 4;
+        version (LDC)
+        {
+            // NOTE: On LDC, the number of frames heavily depends on the
+            // runtime build settings, etc., so skipping a fixed number of
+            // them would be very brittle. We should do this by name instead.
+            enum FIRSTFRAME = 0;
+        }
+        else
+        {
+            // NOTE: The first 4 frames with the current implementation are
+            //       inside core.runtime and the object code, so eliminate
+            //       these for readability.  The alternative would be to
+            //       exclude the first N frames that are in a list of
+            //       mangled function names.
+            enum FIRSTFRAME = 4;
+        }
 
         version (linux) enum enableDwarf = true;
         else version (FreeBSD) enum enableDwarf = true;
@@ -801,10 +888,20 @@ static if (hasExecinfo) private class DefaultTraceInfo : Throwable.TraceInfo
         {
             import core.internal.traits : externDFunc;
 
+version (LDC)
+{
+            alias traceHandlerOpApplyImpl = externDFunc!(
+                "rt.backtrace.dwarf.traceHandlerOpApplyImpl",
+                int function(const(void*)[], scope int delegate(ref size_t, ref const(char[])))
+                );
+}
+else
+{
             alias traceHandlerOpApplyImpl = externDFunc!(
                 "rt.backtrace.dwarf.traceHandlerOpApplyImpl",
                 int function(const void*[], scope int delegate(ref size_t, ref const(char[])))
                 );
+}
 
             if (numframes >= FIRSTFRAME)
             {

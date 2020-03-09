@@ -15,6 +15,7 @@ module rt.lifetime;
 import core.memory;
 debug(PRINTF) import core.stdc.stdio;
 static import rt.tlsgc;
+version (LDC) import ldc.attributes;
 
 alias BlkInfo = GC.BlkInfo;
 alias BlkAttr = GC.BlkAttr;
@@ -63,14 +64,29 @@ extern (C) void lifetime_init()
  *
  */
 extern (C) void* _d_allocmemory(size_t sz)
+@weak // LDC
 {
     return GC.malloc(sz);
 }
 
+
+version (LDC)
+{
+
 /**
- *
+ * for allocating a single POD value
  */
-extern (C) Object _d_newclass(const ClassInfo ci)
+extern (C) void* _d_allocmemoryT(TypeInfo ti) @weak
+{
+    return GC.malloc(ti.tsize(), !(ti.flags() & 1) ? BlkAttr.NO_SCAN : 0);
+}
+
+} // version (LDC)
+
+
+// adapted for LDC
+pragma(inline, true)
+private extern (D) Object _d_newclass(bool initialize)(const ClassInfo ci)
 {
     import core.stdc.stdlib;
     import core.exception : onOutOfMemoryError;
@@ -116,11 +132,34 @@ extern (C) Object _d_newclass(const ClassInfo ci)
         printf("init[4] = %x\n", (cast(uint*) init)[4]);
     }
 
+  static if (initialize) // LDC
+  {
     // initialize it
     p[0 .. init.length] = init[];
+  }
 
     debug(PRINTF) printf("initialization done\n");
     return cast(Object) p;
+}
+
+version (LDC)
+{
+
+/**
+ *
+ */
+extern (C) Object _d_newclass(const ClassInfo ci) @weak
+{
+    return _d_newclass!true(ci);
+}
+
+// Initialization is performed in DtoNewClass(), so only allocate
+// the class in druntime (LDC issue #966).
+extern (C) Object _d_allocclass(const ClassInfo ci) @weak
+{
+    return _d_newclass!false(ci);
+}
+
 }
 
 
@@ -148,6 +187,7 @@ private extern (D) alias void function (Object) fp_t;
  *
  */
 extern (C) void _d_delclass(Object* p)
+@weak // LDC
 {
     if (*p)
     {
@@ -183,6 +223,7 @@ extern (C) void _d_delclass(Object* p)
  * but doesn't have an overloaded delete operator.
  */
 extern (C) void _d_delstruct(void** p, TypeInfo_Struct inf)
+@weak // LDC
 {
     if (*p)
     {
@@ -765,6 +806,7 @@ void __doPostblit(void *ptr, size_t len, const TypeInfo ti)
  * actually be stored once the resizing is done.
  */
 extern(C) size_t _d_arraysetcapacity(const TypeInfo ti, size_t newcapacity, void[]* p)
+@weak // LDC
 in
 {
     assert(ti);
@@ -938,6 +980,7 @@ Lcontinue:
  * ti is the type of the resulting array, or pointer to element.
  */
 extern (C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow
+@weak // LDC
 {
     import core.exception : onOutOfMemoryError;
 
@@ -999,6 +1042,7 @@ Lcontinue:
  * (For when the array is initialized to 0)
  */
 extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length) pure nothrow
+@weak // LDC
 {
     import core.stdc.string;
 
@@ -1014,6 +1058,7 @@ extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length) pure nothrow
  * For when the array has a non-zero initializer.
  */
 extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
+@weak // LDC
 {
     import core.internal.traits : AliasSeq;
 
@@ -1048,6 +1093,7 @@ extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
  *
  */
 void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t[] dims)
+@weak // LDC
 {
     debug(PRINTF) printf("_d_newarrayOpT(ndims = %d)\n", dims.length);
     if (dims.length == 0)
@@ -1089,6 +1135,7 @@ void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t[] dims)
  *
  */
 extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t[] dims)
+@weak // LDC
 {
     debug(PRINTF) printf("_d_newarraymT(dims.length = %d)\n", dims.length);
 
@@ -1105,6 +1152,7 @@ extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t[] dims)
  *
  */
 extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims)
+@weak // LDC
 {
     debug(PRINTF) printf("_d_newarraymiT(dims.length = %d)\n", dims.length);
 
@@ -1121,6 +1169,7 @@ extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims)
  * This is an optimization to avoid things needed for arrays like the __arrayPad(size).
  */
 extern (C) void* _d_newitemU(in TypeInfo _ti)
+@weak // LDC
 {
     auto ti = unqualify(_ti);
     auto flags = !(ti.flags & 1) ? BlkAttr.NO_SCAN : 0;
@@ -1144,6 +1193,7 @@ extern (C) void* _d_newitemU(in TypeInfo _ti)
 
 /// Same as above, zero initializes the item.
 extern (C) void* _d_newitemT(in TypeInfo _ti)
+@weak // LDC
 {
     import core.stdc.string;
     auto p = _d_newitemU(_ti);
@@ -1153,6 +1203,7 @@ extern (C) void* _d_newitemT(in TypeInfo _ti)
 
 /// Same as above, for item with non-zero initializer.
 extern (C) void* _d_newitemiT(in TypeInfo _ti)
+@weak // LDC
 {
     import core.stdc.string;
     auto p = _d_newitemU(_ti);
@@ -1188,6 +1239,7 @@ debug(PRINTF)
  *
  */
 extern (C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti)
+@weak // LDC
 {
     if (p)
     {
@@ -1243,6 +1295,7 @@ deprecated unittest
  *
  */
 extern (C) void _d_delmemory(void* *p)
+@weak // LDC
 {
     if (*p)
     {
@@ -1270,6 +1323,7 @@ extern (C) void _d_callinterfacefinalizer(void *p)
  *
  */
 extern (C) void _d_callfinalizer(void* p)
+@weak // LDC
 {
     rt_finalize( p );
 }
@@ -1474,6 +1528,7 @@ extern (C) void rt_finalizeFromGC(void* p, size_t size, uint attr) nothrow
  * Resize dynamic arrays with 0 initializers.
  */
 extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p)
+@weak // LDC
 in
 {
     assert(ti);
@@ -1676,6 +1731,7 @@ do
  *      ...             initializer
  */
 extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p)
+@weak // LDC
 in
 {
     assert(!(*p).length || (*p).ptr);
@@ -1888,6 +1944,7 @@ do
  * Append y[] to array x[]
  */
 extern (C) void[] _d_arrayappendT(const TypeInfo ti, ref byte[] x, byte[] y)
+@weak // LDC
 {
     import core.stdc.string;
     auto length = x.length;
@@ -1990,6 +2047,7 @@ size_t newCapacity(size_t newlength, size_t size)
  */
 extern (C)
 byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
+@weak // LDC
 {
     import core.stdc.string;
     // This is a cut&paste job from _d_arrayappendT(). Should be refactored.
@@ -2209,6 +2267,7 @@ extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c)
  *
  */
 extern (C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y)
+@weak // LDC
 out (result)
 {
     auto tinext = unqualify(ti.next);
@@ -2275,6 +2334,7 @@ do
  *
  */
 extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs)
+@weak // LDC
 {
     import core.stdc.string;
 
@@ -2316,6 +2376,7 @@ extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs)
  */
 extern (C)
 void* _d_arrayliteralTX(const TypeInfo ti, size_t length)
+@weak // LDC
 {
     auto tinext = unqualify(ti.next);
     auto sizeelem = tinext.tsize;              // array element size

@@ -36,6 +36,45 @@ alias string  = immutable(char)[];
 alias wstring = immutable(wchar)[];
 alias dstring = immutable(dchar)[];
 
+version (LDC)
+{
+    // Layout of this struct must match __gnuc_va_list for C ABI compatibility.
+    // Defined here for LDC as it is referenced from implicitly generated code
+    // for D-style variadics, etc., and we do not require people to manually
+    // import core.vararg like DMD does.
+    version (X86_64)
+    {
+        struct __va_list_tag
+        {
+            uint offset_regs = 6 * 8;
+            uint offset_fpregs = 6 * 8 + 8 * 16;
+            void* stack_args;
+            void* reg_args;
+        }
+    }
+    else version (AArch64)
+    {
+        version (iOS) {}
+        else version (TVOS) {}
+        else
+        {
+            static import ldc.internal.vararg;
+            alias __va_list = ldc.internal.vararg.std.__va_list;
+        }
+    }
+    else version (ARM)
+    {
+        // Darwin does not use __va_list
+        version (iOS) {}
+        else version (WatchOS) {}
+        else
+        {
+            static import ldc.internal.vararg;
+            alias __va_list = ldc.internal.vararg.std.__va_list;
+        }
+    }
+}
+
 version (D_ObjectiveC) public import core.attribute : selector;
 
 /**
@@ -369,7 +408,21 @@ class TypeInfo
      * be returned. For static arrays, this returns the default initializer for
      * a single element of the array, use `tsize` to get the correct size.
      */
+version (LDC)
+{
+    // LDC uses TypeInfo's vtable for the typeof(null) type:
+    //   %"typeid(typeof(null))" = type { %object.TypeInfo.__vtbl*, i8* }
+    // Therefore this class cannot be abstract, and all methods need implementations.
+    // Tested by test14754() in runnable/inline.d, and a unittest below.
+    const(void)[] initializer() nothrow pure const @trusted @nogc
+    {
+        return (cast(const(void)*) null)[0 .. typeof(null).sizeof];
+    }
+}
+else
+{
     abstract const(void)[] initializer() nothrow pure const @safe @nogc;
+}
 
     /** Get flags for type: 1 means GC should scan for pointers,
     2 means arg of this type is passed in XMM register */
@@ -398,6 +451,11 @@ class TypeInfo
     /** Return info used by the garbage collector to do precise collection.
      */
     @property immutable(void)* rtInfo() nothrow pure const @safe @nogc { return rtinfoHasPointers; } // better safe than sorry
+}
+
+version (LDC) unittest
+{
+    auto t = new TypeInfo; // test that TypeInfo is not an abstract class. Needed for instantiating typeof(null).
 }
 
 class TypeInfo_Enum : TypeInfo
@@ -2117,7 +2175,19 @@ extern (C)
 {
     // from druntime/src/rt/aaA.d
 
-    private struct AA { void* impl; }
+    version (LDC)
+    {
+        /* https://github.com/ldc-developers/ldc/issues/2782
+         * The real type is (non-importable) struct `rt.aaA.AA`;
+         * the compiler uses `void*` for its prototypes.
+         */
+        private alias AA = void*;
+    }
+    else
+    {
+        private struct AA { void* impl; }
+    }
+
     // size_t _aaLen(in AA aa) pure nothrow @nogc;
     private void* _aaGetY(AA* paa, const TypeInfo_AssociativeArray ti, const size_t valsz, const scope void* pkey) pure nothrow;
     private void* _aaGetX(AA* paa, const TypeInfo_AssociativeArray ti, const size_t valsz, const scope void* pkey, out bool found) pure nothrow;

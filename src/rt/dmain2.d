@@ -198,6 +198,11 @@ extern (C) int rt_init()
         // TODO: fixme - calls GC.addRange -> Initializes GC
         initStaticDataGC();
         lifetime_init();
+        version (LDC) version (CRuntime_Microsoft)
+        {
+            import ldc.eh_msvc;
+            msvc_eh_init();
+        }
         rt_moduleCtor();
         rt_moduleTlsCtor();
         return 1;
@@ -451,6 +456,9 @@ private extern (C) int _d_run_main2(char[][] args, size_t totalArgsLength, MainF
     }
     version (CRuntime_Microsoft)
     {
+        version (LDC)
+            init_msvc();
+
         // enable full precision for reals
         version (GNU)
         {
