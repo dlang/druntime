@@ -77,7 +77,7 @@ else version (Windows)
     ///
     alias c_long clock_t;
 }
-else version(DruntimeAbstractLibc)
+else version(CRuntime_Abstract)
 {
     public import libc.time : time_t, clock_t, tm;
 }
@@ -146,7 +146,7 @@ else version (CRuntime_UClibc)
     enum clock_t CLOCKS_PER_SEC = 1_000_000;
     clock_t clock();
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.time;
 }
@@ -257,7 +257,7 @@ else version (CRuntime_UClibc)
     ///
     extern __gshared const(char)*[2] tzname;
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.time;
 }

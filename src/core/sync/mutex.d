@@ -16,7 +16,7 @@
 module core.sync.mutex;
 
 version(Posix) version = AnyLibc;
-version(DruntimeAbstractLibc) version = AnyLibc;
+version(CRuntime_Abstract) version = AnyLibc;
 
 public import core.sync.exception;
 

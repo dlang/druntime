@@ -153,7 +153,7 @@ else version (Haiku)
         alias errno = _errnop;
     }
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.errno;
 }
@@ -2085,7 +2085,7 @@ else version (Haiku)
     enum B_NO_TRANSLATOR                 = (B_TRANSLATION_ERROR_BASE + 1);
     enum B_ILLEGAL_DATA                  = (B_TRANSLATION_ERROR_BASE + 2);
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.errno;
 }

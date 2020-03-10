@@ -347,7 +347,7 @@ else version (CRuntime_UClibc)
         L_tmpnam     = 20
     }
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.stdio_;
 }
@@ -796,7 +796,7 @@ else version (CRuntime_UClibc)
     ///
     alias shared(__STDIO_FILE_STRUCT) FILE;
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.stdio_;
 }
@@ -1134,7 +1134,7 @@ else version (CRuntime_UClibc)
     ///
     extern shared FILE* stderr;
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.stdio_ : stdin, stdout, stderr;
 }
@@ -1701,7 +1701,7 @@ else version (CRuntime_UClibc)
     ///
     int  vsnprintf(scope char* s, size_t n, scope const char* format, va_list arg);
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.stdio_;
 }

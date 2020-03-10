@@ -95,7 +95,7 @@ else version (Solaris) enum RAND_MAX = 0x7fff;
 else version (CRuntime_Bionic) enum RAND_MAX = 0x7fffffff;
 else version (CRuntime_Musl) enum RAND_MAX = 0x7fffffff;
 else version (CRuntime_UClibc) enum RAND_MAX = 0x7fffffff;
-else version (DruntimeAbstractLibc) public import libc.stdlib: RAND_MAX;
+else version (CRuntime_Abstract) public import libc.stdlib: RAND_MAX;
 else static assert( false, "Unsupported platform" );
 
 ///

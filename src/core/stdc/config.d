@@ -144,7 +144,7 @@ else version (Posix)
     alias ulong cpp_ulonglong;
   }
 }
-else version (DruntimeAbstractLibc)
+else version (CRuntime_Abstract)
 {
     public import libc.config;
 }

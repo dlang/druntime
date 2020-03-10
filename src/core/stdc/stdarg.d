@@ -827,7 +827,7 @@ else version (X86_64)
     }
   }
 }
-version (DruntimeAbstractLibc)
+version (CRuntime_Abstract)
 {
     public import libc.stdarg;
 }
