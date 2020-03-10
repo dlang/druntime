@@ -350,7 +350,13 @@ void finiSections() nothrow @nogc
 void[] initTLSRanges() nothrow @nogc
 {
     debug(PRINTF) printf("initTLSRanges called\n");
-    version (UseELF)
+    version (DruntimeAbstractRt)
+    {
+        import external.rt.sections;
+
+        return externalInitTLSRanges();
+    }
+    else version (UseELF)
     {
         auto rng = getTLSRange(&globalSectionGroup);
         debug(PRINTF) printf("Add range %p %d\n", rng ? rng.ptr : cast(void*)0, rng ? rng.length : 0);
