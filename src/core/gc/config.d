@@ -38,8 +38,8 @@ struct Config
         import core.gc.registry : registeredGCFactories;
 
         printf("GC options are specified as white space separated assignments:
-    disable:0|1    - start disabled (%d)
-    profile:0|1|2  - enable profiling with summary when terminating program (%d)
+    disable:0|1    - start disabled (%hhu)
+    profile:0|1|2  - enable profiling with summary when terminating program (%hhu)
     gc:".ptr, disable, profile);
         foreach (i, entry; registeredGCFactories)
         {
