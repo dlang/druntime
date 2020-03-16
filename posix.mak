@@ -79,7 +79,7 @@ ifeq (solaris,$(OS))
 endif
 
 # Set DFLAGS
-UDFLAGS:=-conf= -Isrc -Iimport -w -de -dip1000 -preview=fieldwise $(MODEL_FLAG) $(PIC) $(OPTIONAL_COVERAGE)
+UDFLAGS:=-conf= -Isrc -Iplatforms/posix -Iimport -w -de -dip1000 -preview=fieldwise $(MODEL_FLAG) $(PIC) $(OPTIONAL_COVERAGE)
 ifeq ($(BUILD),debug)
 	UDFLAGS += -g -debug
 	DFLAGS:=$(UDFLAGS)
@@ -207,7 +207,7 @@ import: $(IMPORTS)
 
 $(IMPDIR)/core/sync/%.di : src/core/sync/%.d $(DMD)
 	@mkdir -p $(dir $@)
-	$(DMD) -conf= -c -o- -Isrc -Iimport -Hf$@ $<
+	$(DMD) -conf= -c -o- -Isrc -Iplatforms/posix -Iimport -Hf$@ $<
 
 ######################## Header .di file copy ##############################
 
@@ -338,7 +338,7 @@ test/shared/.run: $(DRUNTIMESO)
 test/%/.run: test/%/Makefile $(DMD)
 	$(QUIET)$(MAKE) -C test/$* MODEL=$(MODEL) OS=$(OS) DMD=$(abspath $(DMD)) BUILD=$(BUILD) \
 		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) LINKDL=$(LINKDL) \
-		QUIET=$(QUIET) TIMELIMIT='$(TIMELIMIT)' PIC=$(PIC)
+		QUIET=$(QUIET) TIMELIMIT='$(TIMELIMIT)' PIC=$(PIC) PLATFORMS_PATH=platforms/posix
 
 #################### benchmark suite ##########################
 
