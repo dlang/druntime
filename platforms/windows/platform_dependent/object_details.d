@@ -1,0 +1,1 @@
+module platform_dependent.object_details;
