@@ -11,7 +11,7 @@ $(ROOT)/test19924.done: $(ROOT)/%.done : $(ROOT)/%
 	@touch $@
 
 $(ROOT)/%: $(SRC)/%.d
-	$(QUIET)$(DMD) -betterC -I../../$(PLATFORM_PATH) -of$@ $<
+	$(QUIET)$(DMD) -betterC -I$(PLATFORM_PATH) -of$@ $<
 
 clean:
 	rm -rf $(ROOT)
