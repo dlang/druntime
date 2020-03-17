@@ -13,7 +13,7 @@
  * Standards: ISO/IEC 9899:1999 (E)
  */
 
-module platform_dependent.time;
+module platform_dependent.core.stdc.time;
 
 private import core.stdc.config;
 
