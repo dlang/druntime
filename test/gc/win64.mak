@@ -6,7 +6,7 @@ DRUNTIMELIB=druntime64.lib
 
 SRC_GC = src/gc/impl/conservative/gc.d
 SRC = $(SRC_GC) src/rt/lifetime.d src/object.d
-_DFLAGS = -m$(MODEL) -g -conf= -Isrc -defaultlib=$(DRUNTIMELIB)
+_DFLAGS = -m$(MODEL) -g -conf= -Isrc -I$(PLATFORM_PATH) -defaultlib=$(DRUNTIMELIB)
 UDFLAGS = $(_DFLAGS) -unittest -version=CoreUnittest
 RM = del
 

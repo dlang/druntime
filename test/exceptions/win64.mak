@@ -5,6 +5,6 @@ MODEL=64
 DRUNTIMELIB=druntime64.lib
 
 test:
-	$(DMD) -m$(MODEL) -conf= -Isrc -defaultlib=$(DRUNTIMELIB) -g test\exceptions\src\winstack.d
+	$(DMD) -m$(MODEL) -conf= -Isrc -I$(PLATFORM_PATH) -defaultlib=$(DRUNTIMELIB) -g test\exceptions\src\winstack.d
 	winstack.exe
 	del winstack.*
