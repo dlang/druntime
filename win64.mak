@@ -88,40 +88,40 @@ unittest : $(SRCS) $(DRUNTIME)
 CC32=$(CC)\..\..\cl
 
 druntime32mscoff:
-	"$(MAKE)" -f win64.mak "DMD=$(DMD)" MODEL=32mscoff "CC=$(CC32)" "AR=$(AR)" "VCDIR=$(VCDIR)" "SDKDIR=$(SDKDIR)" PLATFORMS_PATH=platforms\windows
+	"$(MAKE)" -f win64.mak "DMD=$(DMD)" MODEL=32mscoff "CC=$(CC32)" "AR=$(AR)" "VCDIR=$(VCDIR)" "SDKDIR=$(SDKDIR)" PLATFORM_PATH=platforms\windows
 
 unittest32mscoff:
-	"$(MAKE)" -f win64.mak "DMD=$(DMD)" MODEL=32mscoff "CC=$(CC32)" "AR=$(AR)" "VCDIR=$(VCDIR)" "SDKDIR=$(SDKDIR)" PLATFORMS_PATH=platforms\windows unittest
+	"$(MAKE)" -f win64.mak "DMD=$(DMD)" MODEL=32mscoff "CC=$(CC32)" "AR=$(AR)" "VCDIR=$(VCDIR)" "SDKDIR=$(SDKDIR)" PLATFORM_PATH=platforms\windows unittest
 
 ################### tests ######################################
 
 test_uuid:
-	"$(MAKE)" -f test\uuid\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) PLATFORMS_PATH=platforms\windows test
+	"$(MAKE)" -f test\uuid\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) PLATFORM_PATH=platforms\windows test
 
 test_aa:
 	"$(DMD)" -m$(MODEL) -conf= -Isrc -Iplatforms\windows -defaultlib=$(DRUNTIME) -run test\aa\src\test_aa.d
 
 test_cpuid:
-	"$(MAKE)" -f test\cpuid\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORMS_PATH=platforms\windows test
+	"$(MAKE)" -f test\cpuid\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORM_PATH=platforms\windows test
 
 test_exceptions:
-	"$(MAKE)" -f test\exceptions\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORMS_PATH=platforms\windows test
+	"$(MAKE)" -f test\exceptions\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORM_PATH=platforms\windows test
 
 test_hash:
 	"$(DMD)" -m$(MODEL) -conf= -Isrc -Iplatforms\windows -defaultlib=$(DRUNTIME) -run test\hash\src\test_hash.d
 
 test_stdcpp:
 	setmscver.bat
-	"$(MAKE)" -f test\stdcpp\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORMS_PATH=platforms\windows test
+	"$(MAKE)" -f test\stdcpp\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORM_PATH=platforms\windows test
 
 test_gc:
-	"$(MAKE)" -f test\gc\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORMS_PATH=platforms\windows test
+	"$(MAKE)" -f test\gc\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORM_PATH=platforms\windows test
 
 custom_gc:
-	$(MAKE) -f test\init_fini\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORMS_PATH=platforms\windows test
+	$(MAKE) -f test\init_fini\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORM_PATH=platforms\windows test
 
 test_shared:
-	$(MAKE) -f test\shared\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORMS_PATH=platforms\windows test
+	$(MAKE) -f test\shared\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" PLATFORM_PATH=platforms\windows test
 
 test_mingw: test_shared test_aa test_cpuid test_exceptions test_hash test_gc custom_gc
 
