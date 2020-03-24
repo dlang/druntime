@@ -13,6 +13,7 @@ module core.sys.windows.stacktrace;
 version (Windows):
 
 import core.demangle;
+import core.internal.cppdemangle;
 import core.runtime;
 import core.stdc.stdlib;
 import core.stdc.string;
@@ -294,7 +295,14 @@ private:
             size_t decodeIndex = 0;
             tempSymName = decodeDmdString(tempSymName, decodeIndex);
         }
-        res ~= demangle(tempSymName, demangleBuf);
+        auto demangledName = demangle(tempSymName, demangleBuf);
+
+        if (demangledName == tempSymName) // Retry with cppdemangle
+        {
+            demangledName = cppdemangle(tempSymName, demangleBuf, true);
+        }
+
+        res ~= demangledName;
         return res;
     }
 

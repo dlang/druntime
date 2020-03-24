@@ -51,7 +51,7 @@ $(ROOT)/startbackgc: startbackgc.d
 	$(DMD) $(UDFLAGS) -of$@ sigmaskgc.d
 
 $(ROOT)/recoverfree: recoverfree.d
-	$(DMD) $(DFLAGS) -of$@ recoverfree.d
+	$(DMD) $(DFLAGS) -L-ldl -of$@ recoverfree.d
 
 $(ROOT)/nocollect: nocollect.d
 	$(DMD) $(DFLAGS) -of$@ nocollect.d

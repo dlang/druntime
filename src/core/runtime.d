@@ -734,6 +734,7 @@ unittest
 static if (hasExecinfo) private class DefaultTraceInfo : Throwable.TraceInfo
 {
     import core.demangle;
+    import core.internal.cppdemangle;
     import core.stdc.stdlib : free;
     import core.stdc.string : strlen, memchr, memmove;
 
@@ -887,6 +888,11 @@ private:
             fixbuf[0 .. symBeg] = buf[0 .. symBeg];
 
             auto sym = demangle(buf[symBeg .. symEnd], fixbuf[symBeg .. $]);
+
+            if (sym == buf[symBeg .. symEnd]) // Retry with cppdemangle
+            {
+                sym = cppdemangle(buf[symBeg .. symEnd], fixbuf[symBeg .. $], true);
+            }
 
             if (sym.ptr !is fixbuf.ptr + symBeg)
             {
