@@ -2649,21 +2649,3 @@ string decodeDmdString( const(char)[] ln, ref size_t p ) nothrow pure @safe
     }
     return s;
 }
-
-// locally purified for internal use here only
-extern (C) private
-{
-    pure @trusted @nogc nothrow pragma(mangle, "fakePureReprintReal") void pureReprintReal(char[] nptr);
-
-    void fakePureReprintReal(char[] nptr)
-    {
-        import core.stdc.stdlib : strtold;
-        import core.stdc.stdio : snprintf;
-        import core.stdc.errno : errno;
-
-        const err = errno;
-        real val = strtold(nptr.ptr, null);
-        snprintf(nptr.ptr, nptr.length, "%#Lg", val);
-        errno = err;
-    }
-}
