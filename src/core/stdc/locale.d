@@ -24,7 +24,7 @@ else version (WatchOS)
     version = Darwin;
 
 extern (C):
-@trusted: // Only setlocale operates on C strings.
+@safe: // Only setlocale operates on C strings.
 nothrow:
 @nogc:
 
@@ -289,4 +289,4 @@ else
 ///
 @system char*  setlocale(int category, const scope char* locale);
 ///
-lconv* localeconv();
+@safe lconv* localeconv();

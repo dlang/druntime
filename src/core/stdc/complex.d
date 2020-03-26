@@ -15,7 +15,7 @@
 module core.stdc.complex;
 
 extern (C):
-@trusted: // All of these operate on floating point values only.
+@safe: // All of these operate on floating point values only.
 nothrow:
 @nogc:
 

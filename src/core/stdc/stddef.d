@@ -15,7 +15,7 @@
 module core.stdc.stddef;
 
 extern (C):
-@trusted: // Types only.
+@safe: // Types only.
 nothrow:
 @nogc:
 

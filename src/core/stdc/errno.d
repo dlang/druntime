@@ -39,7 +39,7 @@ version (SystemZ) version = IBMZ_Any;
 version (X86)     version = X86_Any;
 version (X86_64)  version = X86_Any;
 
-@trusted: // Only manipulates errno.
+@safe: // Only manipulates errno.
 nothrow:
 @nogc:
 
