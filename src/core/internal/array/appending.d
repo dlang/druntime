@@ -40,7 +40,7 @@ template _d_arrayappendcTXImpl(Tarr : T[], T)
             mixin(_d_arrayappendcTXBody);
         }
     else
-        ref Tarr _d_arrayappendcTX(return scope ref Tarr px, size_t n) @trusted pure nothrow
+        ref Tarr _d_arrayappendcTX(return scope ref Tarr px, size_t n) @trusted pure
         {
             pragma(inline, false);
 
@@ -109,19 +109,27 @@ template _d_arrayappendTImpl(Tarr : T[], T)
         }
 
     private enum _d_arrayappendTBody = q{
-        import core.stdc.string : memcpy;
-        import core.internal.traits : Unqual;
+        version (D_TypeInfo)
+        {
+            import core.stdc.string : memcpy;
+            import core.internal.traits : Unqual;
 
-        auto length = x.length;
-        auto sizeelem = T.sizeof;
+            auto length = x.length;
+            auto sizeelem = T.sizeof;
 
-        _d_arrayappendcTXImpl!Tarr._d_arrayappendcTX(x, y.length);
+            if (_d_arrayappendcTXImpl!Tarr._d_arrayappendcTX(x, y.length) is null)
+                assert(0);
 
-        if (y.length)
-            memcpy(cast(Unqual!T *)&x[length], cast(Unqual!T *)&y[0], y.length * sizeelem);
 
-        // do postblit
-        __doPostblit(cast(Unqual!Tarr)x[length .. length + y.length]);
+            if (y.length)
+                memcpy(cast(Unqual!T *)&x[length], cast(Unqual!T *)&y[0], y.length * sizeelem);
+
+            // do postblit
+            if (__doPostblit(cast(Unqual!Tarr)x[length .. length + y.length]) is null)
+                assert(0);
+        }
+        else
+            assert(0, "Cannot append arrays if compiling without support for runtime type information!");
         return x;
     };
 
@@ -139,7 +147,7 @@ template _d_arrayappendTImpl(Tarr : T[], T)
  * Run postblit on `t` if it is a struct and needs it.
  * Or if `t` is a array, run it on the children if they have a postblit.
  */
-private void __doPostblit(T)(auto ref T t) @trusted pure
+private auto __doPostblit(T)(auto ref T t) @trusted pure
 {
     import core.internal.traits : hasElaborateCopyConstructor;
 
@@ -149,14 +157,26 @@ private void __doPostblit(T)(auto ref T t) @trusted pure
         static if (__traits(hasMember, T, "__xpostblit") &&
                 // Bugzilla 14746: Check that it's the exact member of S.
                 __traits(isSame, T, __traits(parent, t.__xpostblit)))
-            t.__xpostblit();
+        {
+            import core.internal.array.utils : isPure;
+            static if (isPure!(t.__xpostblit))
+                t.__xpostblit();
+            else
+                (cast(void delegate() pure)&t.__xpostblit)();
+            return &t;
+        }
     }
-    else static if (is(T U : U[]) && hasElaborateCopyConstructor!U)
+    else static if (is(T U : U[]))
     {
         // only do a postblit if the `U` requires it.
-        foreach (ref el; t)
-            __doPostblit(el);
+        static if (hasElaborateCopyConstructor!U)
+            foreach (ref el; t)
+                __doPostblit(el);
+
+        return t;
     }
+    else
+        static assert(0, "No idea how to postblit " ~ typeof(t).stringof);
 }
 
 @safe unittest
