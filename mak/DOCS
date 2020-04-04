@@ -5,6 +5,7 @@ DOCS=\
 	$(DOCDIR)\core_bitop.html \
 	$(DOCDIR)\core_checkedint.html \
 	$(DOCDIR)\core_cpuid.html \
+	$(DOCDIR)\core_deadbeef.html \
 	$(DOCDIR)\core_demangle.html \
 	$(DOCDIR)\core_exception.html \
 	$(DOCDIR)\core_lifetime.html \

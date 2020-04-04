@@ -6,6 +6,7 @@ SRCS=\
 	src\core\bitop.d \
 	src\core\checkedint.d \
 	src\core\cpuid.d \
+	src\core\deadbeef.d \
 	src\core\demangle.d \
 	src\core\exception.d \
 	src\core\lifetime.d \
