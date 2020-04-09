@@ -37,7 +37,7 @@ extern(System)
     alias DWORD64      function(HANDLE hProcess, DWORD64 dwAddr) SymGetModuleBase64Func;
     alias BOOL         function(HANDLE hProcess, DWORD64 dwAddr, IMAGEHLP_MODULEA64 *ModuleInfo) SymGetModuleInfo64Func;
     alias BOOL         function(HANDLE hProcess, DWORD64 Address, DWORD64 *Displacement, IMAGEHLP_SYMBOLA64 *Symbol) SymGetSymFromAddr64Func;
-    alias DWORD        function(PCTSTR DecoratedName, PTSTR UnDecoratedName, DWORD UndecoratedLength, DWORD Flags) UnDecorateSymbolNameFunc;
+    alias DWORD        function(PCSTR DecoratedName, PSTR UnDecoratedName, DWORD UndecoratedLength, DWORD Flags) UnDecorateSymbolNameFunc;
     alias DWORD64      function(HANDLE hProcess, HANDLE hFile, PCSTR ImageName, PCSTR ModuleName, DWORD64 BaseOfDll, DWORD SizeOfDll) SymLoadModule64Func;
     alias BOOL         function(HANDLE HProcess, PTSTR SearchPath, DWORD SearchPathLength) SymGetSearchPathFunc;
     alias BOOL         function(HANDLE hProcess, DWORD64 Address) SymUnloadModule64Func;
