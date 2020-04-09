@@ -352,10 +352,10 @@ benchmark-compile-only: $(ROOT)/benchmark $(DMD)
 	DMD=$(DMD) $< --repeat=0 --dflags="$(PHOBOS_DFLAGS) -de"
 
 #################### test for undesired white spaces ##########################
-MANIFEST = $(shell git ls-tree --name-only -r HEAD)
+MANIFEST = $(shell git ls-tree --name-only -r HEAD | grep -v \.bat$$)
 
 CWS_MAKEFILES = $(filter mak/% %.mak %/Makefile,$(MANIFEST))
-NOT_MAKEFILES = $(filter-out $(CWS_MAKEFILES) src/rt/minit.obj test/%.exp,$(MANIFEST))
+NOT_MAKEFILES = $(filter-out $(CWS_MAKEFILES) %.bat src/rt/minit.obj test/%.exp,$(MANIFEST))
 GREP = grep
 
 checkwhitespace:

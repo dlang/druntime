@@ -26,7 +26,7 @@ DRUNTIME=lib\$(DRUNTIME_BASE).lib
 
 DOCFMT=
 
-target : import copydir copy $(DRUNTIME)
+target : header_generate import copydir copy $(DRUNTIME)
 
 $(mak\COPY)
 $(mak\DOCS)
@@ -42,15 +42,17 @@ OBJS= errno_c_$(MODEL).obj src\rt\minit.obj
 OBJS_TO_DELETE= errno_c_$(MODEL).obj
 
 ######################## Header file generation ##############################
+header_generate:
+	"$(MAKE)" -f mak/WINDOWS generate
 
 import:
-	$(MAKE) -f mak/WINDOWS import DMD="$(DMD)" IMPDIR="$(IMPDIR)"
+	"$(MAKE)" -f mak/WINDOWS_GENERATED import DMD="$(DMD)" IMPDIR="$(IMPDIR)"
 
 copydir:
-	$(MAKE) -f mak/WINDOWS copydir IMPDIR="$(IMPDIR)"
+	"$(MAKE)" -f mak/WINDOWS_GENERATED copydir DMD="$(DMD)" IMPDIR="$(IMPDIR)"
 
 copy:
-	$(MAKE) -f mak/WINDOWS copy DMD="$(DMD)" IMPDIR="$(IMPDIR)"
+	"$(MAKE)" -f mak/WINDOWS_GENERATED copy DMD="$(DMD)" IMPDIR="$(IMPDIR)"
 
 ################### Win32 Import Libraries ###################
 
@@ -150,7 +152,7 @@ install: druntime.zip
 	unzip -o druntime.zip -d \dmd2\src\druntime
 
 clean:
-	del $(DRUNTIME) $(OBJS_TO_DELETE)
+	del $(DRUNTIME) $(OBJS_TO_DELETE) mak\WINDOWS_GENERATED
 	rmdir /S /Q $(DOCDIR) $(IMPDIR)
 
 auto-tester-build: target
