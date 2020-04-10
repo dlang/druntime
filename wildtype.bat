@@ -1,5 +1,5 @@
 @echo off
-REM Generates makefile sequences for Digital Mars make.exe (it isn't supports wildcards by itself)
+REM Generates makefile sequences for Digital Mars make.exe (it doesn't supports wildcards by itself)
 
 set TEXT=%~1
 set PATH=%2
