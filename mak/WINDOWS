@@ -6,17 +6,13 @@ generate:
 	type mak\WINDOWS.tpl >> $(GENERATED)
 
 	######################## Header .di file generation ##############################
-	wildtype.bat \
+	mak\wildtype.bat \
 		"__FILENAME__i : src\core\sync\__FILENAME__\n\t$$(DMD) -conf= -c -o- -Isrc -Iimport -Hf$$@ $$**\n" \
 		src\core\sync *.d $(GENERATED) 1 "$$(IMPDIR)\core\sync"
 
 	######################## Header .di file copy ##############################
 	echo copy: $$(COPY) >> $(GENERATED)
 
-	#echo $$(IMPDIR)\object.d : src\object.d >> $(GENERATED)
-	#echo 	copy $$** $$@ >> $(GENERATED)
-	#echo 	if exist $$(IMPDIR)\object.di del $$(IMPDIR)\object.di >> $(GENERATED)
-
-	wildtype.bat \
+	mak\wildtype.bat \
 		"__FILENAME__ : src\__FILENAME__\n\tcopy $$** $$@\n\t" \
 		src *.d $(GENERATED) 1 "$$(IMPDIR)"

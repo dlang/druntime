@@ -9,7 +9,7 @@ set REMOVE_FIRST_NUM=%5
 set PREFIX=%~6
 
 set WORKING_DIR=%cd%
-set ROUTINE=%cd%\wroutine.bat
+set ROUTINE=%cd%\mak\wroutine.bat
 
 C:\Windows\System32\forfiles.exe /p %PATH% /m %MASK% /s /c "cmd /c %ROUTINE% @RELPATH"
 
