@@ -1,4 +1,4 @@
-REM Recursively called by wildtype.bat for each found file
+REM Called by wildtype.bat for each found file
 @echo off
 
 set TEXT=%~1
