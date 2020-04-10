@@ -1,12 +1,7 @@
-REM Called by wildtype.bat for each found file
 @echo off
+REM Called by wildtype.bat for each found file
 
-set TEXT=%~1
-set PATH=%~2
-set DESTINATION=%~3
-set REMOVE_FIRST_NUM=%4
-set PREFIX=%~5
-set WORKING_DIR=%6
+set PATH=%~1
 
 set TAB=    
 :: Creating a Newline variable (the two blank lines are required!):
@@ -16,7 +11,6 @@ set \n=^
 set NEWLINE=^^^%\n%%\n%^%\n%%\n%
 
 cd %WORKING_DIR%
-::echo filename: %PATH%
 
 setlocal ENABLEDELAYEDEXPANSION
 set STR=!TEXT:\t=%TAB%!
