@@ -888,6 +888,16 @@ private:
 
             auto sym = demangle(buf[symBeg .. symEnd], fixbuf[symBeg .. $]);
 
+            version (Shared)
+            {
+                import core.internal.cpptrace;
+
+                if (sym == buf[symBeg .. symEnd]) // Retry with demangleCppTrace
+                {
+                    sym = demangleCppTrace(buf[symBeg .. symEnd], fixbuf[symBeg .. $]);
+                }
+            }
+
             if (sym.ptr !is fixbuf.ptr + symBeg)
             {
                 // demangle reallocated the buffer, copy the symbol to fixbuf

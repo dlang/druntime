@@ -369,7 +369,21 @@ const(char)[] getDemangledSymbol(const(char)[] btSymbol, return ref char[1024] b
 {
     import core.demangle;
     const mangledName = getMangledSymbolName(btSymbol);
-    return !mangledName.length ? buffer[0..0] : demangle(mangledName, buffer[]);
+    if (!mangledName.length) return buffer[0..0];
+
+    auto demangledName = demangle(mangledName, buffer[]);
+
+    version (Shared)
+    {
+        import core.internal.cpptrace;
+
+        if (demangledName == mangledName) // Retry with demangleCppTrace
+        {
+            demangledName = demangleCppTrace(mangledName, buffer[]);
+        }
+    }
+
+    return demangledName;
 }
 
 T read(T)(ref const(ubyte)[] buffer) @nogc nothrow

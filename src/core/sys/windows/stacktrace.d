@@ -15,6 +15,7 @@ version (Windows):
 
 import core.demangle;
 import core.runtime;
+import core.internal.cpptrace;
 import core.stdc.stdlib;
 import core.stdc.string;
 import core.sys.windows.dbghelp;
@@ -295,7 +296,14 @@ private:
             size_t decodeIndex = 0;
             tempSymName = decodeDmdString(tempSymName, decodeIndex);
         }
-        res ~= demangle(tempSymName, demangleBuf);
+        auto demangledName = demangle(tempSymName, demangleBuf);
+
+        if (demangledName == tempSymName) // Retry with demangleCppTrace
+        {
+            demangledName = demangleCppTrace(tempSymName, demangleBuf);
+        }
+
+        res ~= demangledName;
         return res;
     }
 

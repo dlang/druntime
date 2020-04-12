@@ -3,9 +3,16 @@ include ../common.mak
 TESTS=stderr_msg unittest_assert invalid_memory_operation unknown_gc static_dtor \
 	  future_message refcounted rt_trap_exceptions_drt catch_in_finally
 
+ifeq ($(shell test -e $(DRUNTIMESO) && echo 0), 0)
+	SHARED=1
+endif
+
 ifeq ($(OS)-$(BUILD),linux-debug)
 	TESTS+=line_trace long_backtrace_trunc rt_trap_exceptions
 	LINE_TRACE_DFLAGS:=-L--export-dynamic
+	ifeq ($(SHARED), 1)
+		TESTS+=cpp_trace
+	endif
 endif
 ifeq ($(OS),linux)
 	TESTS+=rt_trap_exceptions_drt_gdb
@@ -13,14 +20,23 @@ endif
 ifeq ($(OS)-$(BUILD),freebsd-debug)
 	TESTS+=line_trace long_backtrace_trunc
 	LINE_TRACE_DFLAGS:=-L--export-dynamic
+	ifeq (SHARED, 1)
+		TESTS+=cpp_trace
+	endif
 endif
 ifeq ($(OS)-$(BUILD),dragonflybsd-debug)
 	TESTS+=line_trace long_backtrace_trunc
 	LINE_TRACE_DFLAGS:=-L--export-dynamic
+	ifeq (SHARED, 1)
+		TESTS+=cpp_trace
+	endif
 endif
 ifeq ($(OS)-$(BUILD),osx-debug)
 	TESTS+=line_trace long_backtrace_trunc
 	LINE_TRACE_DFLAGS:=
+	ifeq (SHARED, 1)
+		TESTS+=cpp_trace
+	endif
 endif
 
 ifeq ($(BUILD),debug)
@@ -54,6 +70,14 @@ $(ROOT)/chain.done: $(ROOT)/chain
 	@echo Testing chain
 	$(QUIET)$(TIMELIMIT)$(ROOT)/chain $(RUN_ARGS) > $(ROOT)/chain.output
 	@rm -f $(ROOT)/chain.output
+	@touch $@
+
+$(ROOT)/cpp_trace.done: $(ROOT)/cpp_trace
+	@echo Testing cpp_trace
+	$(QUIET)$(TIMELIMIT)$(ROOT)/cpp_trace $(RUN_ARGS) > $(ROOT)/cpp_trace.output
+	# Use sed to canonicalize cpp_trace.output and compare against expected output in cpp_trace.exp
+	$(QUIET)$(SED) "s/\[0x[0-9a-f]*\]/\[ADDR\]/g; s/scope //g; s/Nl//g" $(ROOT)/cpp_trace.output | $(DIFF) cpp_trace.exp -
+	@rm -f $(ROOT)/cpp_trace.output
 	@touch $@
 
 $(ROOT)/stderr_msg.done: STDERR_EXP="stderr_msg msg"
@@ -99,6 +123,8 @@ $(ROOT)/line_trace: DFLAGS+=$(LINE_TRACE_DFLAGS)
 $(ROOT)/rt_trap_exceptions_drt: DFLAGS+=-g
 $(ROOT)/assert_fail: DFLAGS+=-checkaction=context
 $(ROOT)/refcounted: DFLAGS+=-dip1008
+$(ROOT)/cpp_trace.done: RUN_ARGS="--DRT-cpptrace=enable:y"
+$(ROOT)/cpp_trace: DFLAGS+=-L$(DRUNTIMESO) $(LINE_TRACE_DFLAGS)
 
 $(ROOT)/%: $(SRC)/%.d $(DMD) $(DRUNTIME)
 	$(QUIET)$(DMD) $(DFLAGS) -of$@ $<

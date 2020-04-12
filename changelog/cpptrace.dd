@@ -1,0 +1,51 @@
+Added experimental `C++` symbol demanling in the stacktrace
+
+This feature is availableby  passing the following switches to your executable (not to the compiler):
+- `--DRT-cpptrace=enable:y`: Enable demangling of C++ symbols
+- `--DRT-cpptrace=prefix:<your_prefix>`: Change the prefix preceding the demangled C++ name (by default would be `[C++]`)
+- `--DRT-cpptrace=noprefix:n`: Disable adding the prefix to C ++ demangle names
+
+To use this function in the Posix platform you will need to link your executable to the phobos shared library, compile the program by passing -defaultlib=libphobos2.so to DMD.
+
+Example:
+
+```
+module cpp_trace.d
+
+extern(C++) void f1()
+{
+    throw new Exception("exception");
+}
+
+void main()
+{
+    try
+    {
+        f1();
+    }
+    catch (Exception e)
+    {
+        import core.stdc.stdio;
+        auto str = e.toString();
+        printf("%.*s\n", cast(int)str.length, str.ptr);
+    }
+}
+```
+
+If you run the executable with the following switches `./<executable> --DRT-cpptrace=enable:y`, you would get this output:
+
+```
+object.Exception@cpp_trace.d(3): exception
+----------------
+src/cpp_trace.d:5 [C++] f1() [ADDR]
+src/cpp_trace.d:12 _Dmain [ADDR]
+```
+
+Instead, if you run the executable with the following switches `./<executable> --DRT-cpptrace=enable:y --DRT-cpptrace=prefix:CPP`, you would get this output:
+
+```
+object.Exception@cpp_trace.d(5): exception
+----------------
+src/cpp_trace.d:5 [CPP] f1() [ADDR]
+src/cpp_trace.d:12 _Dmain [ADDR]
+```
