@@ -332,6 +332,9 @@ else version (OpenBSD)                      // as of OpenBSD 5.4
     version = HaveMemstream;
 else version (CRuntime_UClibc)
     version = HaveMemstream;
+// http://git.musl-libc.org/cgit/musl/commit/src/stdio/open_memstream.c?id=b158b32a44d56ef20407d4285b58180447ffff1f
+else version (CRuntime_Musl)
+    version = HaveMemstream;
 
 version (HaveMemstream)
 {
