@@ -334,6 +334,9 @@ $(ROOT)/unittest/% : $(ROOT)/unittest/test_runner
 
 $(addsuffix /.run,$(filter-out test/shared,$(ADDITIONAL_TESTS))): $(DRUNTIME)
 test/shared/.run: $(DRUNTIMESO)
+ifeq (1,$(SHARED))
+    test/exceptions/.run: $(DRUNTIMESO) $(DRUNTIME)
+endif
 
 test/%/.run: test/%/Makefile $(DMD)
 	$(QUIET)$(MAKE) -C test/$* MODEL=$(MODEL) OS=$(OS) DMD=$(abspath $(DMD)) BUILD=$(BUILD) \

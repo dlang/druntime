@@ -1,0 +1,12 @@
+object.Exception@src/cpp_trace.d(40): exception
+----------------
+src/cpp_trace.d:40 [C++] f1() [ADDR]
+src/cpp_trace.d:5 _Dmain [ADDR]
+object.Exception@src/cpp_trace.d(47): exception
+----------------
+src/cpp_trace.d:47 [C++] S1::f1() [ADDR]
+src/cpp_trace.d:16 _Dmain [ADDR]
+object.Exception@src/cpp_trace.d(57): exception
+----------------
+src/cpp_trace.d:57 [C++] C1<unsigned char>::f1(unsigned char, unsigned char*, unsigned char&) [ADDR]
+src/cpp_trace.d:28 _Dmain [ADDR]

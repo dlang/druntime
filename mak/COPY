@@ -25,6 +25,8 @@ COPY=\
 	$(IMPDIR)\core\internal\atomic.d \
 	$(IMPDIR)\core\internal\attributes.d \
 	$(IMPDIR)\core\internal\convert.d \
+	$(IMPDIR)\core\internal\cppdemangle.d \
+	$(IMPDIR)\core\internal\cpptrace.d \
 	$(IMPDIR)\core\internal\dassert.d \
 	$(IMPDIR)\core\internal\destruction.d \
 	$(IMPDIR)\core\internal\entrypoint.d \
