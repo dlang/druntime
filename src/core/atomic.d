@@ -116,7 +116,17 @@ void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V)(ref T val, V newval) pu
     static assert (!hasElaborateCopyConstructor!T, "`T` may not have an elaborate copy: atomic operations override regular copying semantics.");
 
     // resolve implicit conversions
-    T arg = newval;
+    import core.internal.traits : Unqual;
+    static if (is(Unqual!T == Unqual!V))
+    {
+        alias arg = newval;
+    }
+    else
+    {
+        // don't construct directly from `newval`, assign instead (`alias this` etc.)
+        T arg;
+        arg = newval;
+    }
 
     static if (__traits(isFloating, T))
     {
