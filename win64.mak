@@ -124,9 +124,11 @@ custom_gc:
 test_shared:
 	$(MAKE) -f test\shared\win64.mak "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" test
 
+test_thread:
+	$(MAKE) -f test\thread\Mkefile "DMD=$(DMD)" MODEL=$(MODEL) "VCDIR=$(VCDIR)" DRUNTIMELIB=$(DRUNTIME) "CC=$(CC)" all
 test_mingw: test_shared test_aa test_cpuid test_exceptions test_hash test_gc custom_gc
 
-test_all: test_mingw test_uuid test_stdcpp
+test_all: test_mingw test_uuid test_stdcpp test_thread
 
 ################### zip/install/clean ##########################
 
