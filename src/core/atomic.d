@@ -1204,4 +1204,16 @@ version (CoreUnittest)
         shared NoIndirections n;
         static assert(is(typeof(atomicLoad(n)) == NoIndirections));
     }
+
+    unittest
+    {
+        static struct S
+        {
+            int a;
+            alias a this;
+        }
+
+        S s;
+        atomicStore(s, 123);
+    }
 }
