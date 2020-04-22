@@ -323,7 +323,7 @@ class Condition
     {
         version (Windows)
         {
-            notify( false );
+            notify_( false );
         }
         else version (Posix)
         {
@@ -371,7 +371,7 @@ class Condition
     {
         version (Windows)
         {
-            notify( true );
+            notify_( true );
         }
         else version (Posix)
         {
@@ -510,7 +510,7 @@ private:
         }
 
 
-        void notify( bool all )
+        void notify_( bool all )
         {
             DWORD rc;
 
