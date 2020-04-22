@@ -402,22 +402,24 @@ private:
         bool timedWait(this Q)( DWORD timeout )
             if (is(Q == Condition) || is(Q == shared Condition))
         {
+            import core.atomic: atomicOp;
+
             int   numSignalsLeft;
             int   numWaitersGone;
             DWORD rc;
 
-            rc = WaitForSingleObject( m_blockLock, INFINITE );
+            rc = WaitForSingleObject( cast(HANDLE) m_blockLock, INFINITE );
             assert( rc == WAIT_OBJECT_0 );
 
-            m_numWaitersBlocked++;
+            atomicOp!"+="(m_numWaitersBlocked, 1);
 
-            rc = ReleaseSemaphore( m_blockLock, 1, null );
+            rc = ReleaseSemaphore( cast(HANDLE) m_blockLock, 1, null );
             assert( rc );
 
             m_assocMutex.unlock();
             scope(failure) m_assocMutex.lock();
 
-            rc = WaitForSingleObject( m_blockQueue, timeout );
+            rc = WaitForSingleObject( cast(HANDLE) m_blockQueue, timeout );
             assert( rc == WAIT_OBJECT_0 || rc == WAIT_TIMEOUT );
             bool timedOut = (rc == WAIT_TIMEOUT);
 
@@ -431,7 +433,7 @@ private:
                     // timeout (or canceled)
                     if ( m_numWaitersBlocked != 0 )
                     {
-                        m_numWaitersBlocked--;
+                        atomicOp!"-="(m_numWaitersBlocked, 1);
                         // do not unblock next waiter below (already unblocked)
                         numSignalsLeft = 0;
                     }
@@ -446,7 +448,7 @@ private:
                     if ( m_numWaitersBlocked != 0 )
                     {
                         // open the gate
-                        rc = ReleaseSemaphore( m_blockLock, 1, null );
+                        rc = ReleaseSemaphore( cast(HANDLE) m_blockLock, 1, null );
                         assert( rc );
                         // do not open the gate below again
                         numSignalsLeft = 0;
@@ -460,11 +462,11 @@ private:
             else if ( ++m_numWaitersGone == int.max / 2 )
             {
                 // timeout/canceled or spurious event :-)
-                rc = WaitForSingleObject( m_blockLock, INFINITE );
+                rc = WaitForSingleObject( cast(HANDLE) m_blockLock, INFINITE );
                 assert( rc == WAIT_OBJECT_0 );
                 // something is going on here - test of timeouts?
-                m_numWaitersBlocked -= m_numWaitersGone;
-                rc = ReleaseSemaphore( m_blockLock, 1, null );
+                atomicOp!"-="(m_numWaitersBlocked, m_numWaitersGone);
+                rc = ReleaseSemaphore( cast(HANDLE) m_blockLock, 1, null );
                 assert( rc == WAIT_OBJECT_0 );
                 m_numWaitersGone = 0;
             }
@@ -476,17 +478,17 @@ private:
                 // better now than spurious later (same as ResetEvent)
                 for ( ; numWaitersGone > 0; --numWaitersGone )
                 {
-                    rc = WaitForSingleObject( m_blockQueue, INFINITE );
+                    rc = WaitForSingleObject( cast(HANDLE) m_blockQueue, INFINITE );
                     assert( rc == WAIT_OBJECT_0 );
                 }
                 // open the gate
-                rc = ReleaseSemaphore( m_blockLock, 1, null );
+                rc = ReleaseSemaphore( cast(HANDLE) m_blockLock, 1, null );
                 assert( rc );
             }
             else if ( numSignalsLeft != 0 )
             {
                 // unblock next waiter
-                rc = ReleaseSemaphore( m_blockQueue, 1, null );
+                rc = ReleaseSemaphore( cast(HANDLE) m_blockQueue, 1, null );
                 assert( rc );
             }
             m_assocMutex.lock();
