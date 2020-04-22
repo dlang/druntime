@@ -208,7 +208,19 @@ class Condition
      * Throws:
      *  SyncError on error.
      */
-    void wait(this Q)()
+    void wait()
+    {
+        wait!(typeof(this))(true);
+    }
+
+    /// ditto
+    void wait() shared
+    {
+        wait!(typeof(this))(true);
+    }
+
+    /// ditto
+    void wait(this Q)( bool _unused_ )
         if (is(Q == Condition) || is(Q == shared Condition))
     {
         version (Windows)
@@ -239,7 +251,19 @@ class Condition
      * Returns:
      *  true if notified before the timeout and false if not.
      */
-    bool wait(this Q)( Duration val )
+    bool wait( Duration val )
+    {
+        return wait!(typeof(this))(val, true);
+    }
+
+    /// ditto
+    bool wait( Duration val ) shared
+    {
+        return wait!(typeof(this))(val, true);
+    }
+
+    /// ditto
+    bool wait(this Q)( Duration val, bool _unused_ )
         if (is(Q == Condition) || is(Q == shared Condition))
     in
     {
@@ -282,7 +306,19 @@ class Condition
      * Throws:
      *  SyncError on error.
      */
-    void notify(this Q)()
+    void notify()
+    {
+        notify!(typeof(this))(true);
+    }
+
+    /// ditto
+    void notify() shared
+    {
+        notify!(typeof(this))(true);
+    }
+
+    /// ditto
+    void notify(this Q)( bool _unused_ )
         if (is(Q == Condition) || is(Q == shared Condition))
     {
         version (Windows)
@@ -318,7 +354,19 @@ class Condition
      * Throws:
      *  SyncError on error.
      */
-    void notifyAll(this Q)()
+    void notifyAll()
+    {
+        notifyAll!(typeof(this))(true);
+    }
+
+    /// ditto
+    void notifyAll() shared
+    {
+        notifyAll!(typeof(this))(true);
+    }
+
+    /// ditto
+    void notifyAll(this Q)( bool _unused_ )
         if (is(Q == Condition) || is(Q == shared Condition))
     {
         version (Windows)
