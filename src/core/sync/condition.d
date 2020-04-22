@@ -399,7 +399,8 @@ class Condition
 private:
     version (Windows)
     {
-        bool timedWait( DWORD timeout )
+        bool timedWait(this Q)( DWORD timeout )
+            if (is(Q == Condition) || is(Q == shared Condition))
         {
             int   numSignalsLeft;
             int   numWaitersGone;
