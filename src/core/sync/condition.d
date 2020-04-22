@@ -404,6 +404,21 @@ private:
         {
             import core.atomic: atomicOp;
 
+            static if (is(Q == Condition))
+            {
+                auto op(string op, T, V1)(ref shared T val, V1 mod)
+                {
+                    return mixin("val " ~ op ~ "mod");
+                }
+            }
+            else
+            {
+                auto op(string op, T, V1)(ref shared T val, V1 mod)
+                {
+                    return atomicOp!op(val, mod);
+                }
+            }
+
             int   numSignalsLeft;
             int   numWaitersGone;
             DWORD rc;
@@ -443,7 +458,7 @@ private:
                         m_numWaitersGone = 1;
                     }
                 }
-                if ( --m_numWaitersToUnblock == 0 )
+                if ( atomicOp!"-="(m_numWaitersToUnblock, 1) == 0 )
                 {
                     if ( m_numWaitersBlocked != 0 )
                     {
@@ -459,7 +474,7 @@ private:
                     }
                 }
             }
-            else if ( ++m_numWaitersGone == int.max / 2 )
+            else if ( atomicOp!"+="(m_numWaitersGone, 1) == int.max / 2 )
             {
                 // timeout/canceled or spurious event :-)
                 rc = WaitForSingleObject( cast(HANDLE) m_blockLock, INFINITE );
