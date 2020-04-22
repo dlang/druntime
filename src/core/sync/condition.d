@@ -402,11 +402,9 @@ private:
         bool timedWait(this Q)( DWORD timeout )
             if (is(Q == Condition) || is(Q == shared Condition))
         {
-            import core.atomic: atomicOp;
-
             static if (is(Q == Condition))
             {
-                auto op(string op, T, V1)(ref shared T val, V1 mod)
+                auto op(string op, T, V1)(ref T val, V1 mod)
                 {
                     return mixin("val " ~ op ~ "mod");
                 }
@@ -414,7 +412,8 @@ private:
             else
             {
                 auto op(string op, T, V1)(ref shared T val, V1 mod)
-                {
+                {            
+                    import core.atomic: atomicOp;
                     return atomicOp!op(val, mod);
                 }
             }
