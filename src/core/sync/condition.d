@@ -208,7 +208,8 @@ class Condition
      * Throws:
      *  SyncError on error.
      */
-    void wait()
+    void wait(this Q)()
+        if (is(Q == Condition) || is(Q == shared Condition))
     {
         version (Windows)
         {
@@ -216,16 +217,10 @@ class Condition
         }
         else version (Posix)
         {
-            int rc = pthread_cond_wait( &m_hndl, m_assocMutex.handleAddr() );
+            int rc = pthread_cond_wait( cast(pthread_cond_t*) &m_hndl, (cast(Mutex) m_assocMutex).handleAddr() );
             if ( rc )
                 throw new SyncError( "Unable to wait for condition" );
         }
-    }
-
-    /// ditto
-    void wait() shared
-    {
-        (cast()this).wait();
     }
 
     /**
@@ -244,7 +239,8 @@ class Condition
      * Returns:
      *  true if notified before the timeout and false if not.
      */
-    bool wait( Duration val )
+    bool wait(this Q)( Duration val )
+        if (is(Q == Condition) || is(Q == shared Condition))
     in
     {
         assert( !val.isNegative );
@@ -269,8 +265,8 @@ class Condition
             timespec t = void;
             mktspec( t, val );
 
-            int rc = pthread_cond_timedwait( &m_hndl,
-                                             m_assocMutex.handleAddr(),
+            int rc = pthread_cond_timedwait( cast(pthread_cond_t*) &m_hndl,
+                                             (cast(Mutex) m_assocMutex).handleAddr(),
                                              &t );
             if ( !rc )
                 return true;
@@ -280,19 +276,14 @@ class Condition
         }
     }
 
-    /// ditto
-    bool wait( Duration val ) shared
-    {
-        return (cast()this).wait(val);
-    }
-
     /**
      * Notifies one waiter.
      *
      * Throws:
      *  SyncError on error.
      */
-    void notify()
+    void notify(this Q)()
+        if (is(Q == Condition) || is(Q == shared Condition))
     {
         version (Windows)
         {
@@ -314,17 +305,11 @@ class Condition
 
             int rc;
             do {
-                rc = pthread_cond_signal( &m_hndl );
+                rc = pthread_cond_signal( cast(pthread_cond_t*) &m_hndl );
             } while ( rc == EAGAIN );
             if ( rc )
                 throw new SyncError( "Unable to notify condition" );
         }
-    }
-
-    /// ditto
-    void notify() shared
-    {
-        (cast()this).notify();
     }
 
     /**
@@ -333,7 +318,8 @@ class Condition
      * Throws:
      *  SyncError on error.
      */
-    void notifyAll()
+    void notifyAll(this Q)()
+        if (is(Q == Condition) || is(Q == shared Condition))
     {
         version (Windows)
         {
@@ -355,17 +341,11 @@ class Condition
 
             int rc;
             do {
-                rc = pthread_cond_broadcast( &m_hndl );
+                rc = pthread_cond_broadcast( cast(pthread_cond_t*) &m_hndl );
             } while ( rc == EAGAIN );
             if ( rc )
                 throw new SyncError( "Unable to notify condition" );
         }
-    }
-
-    /// ditto
-    void notifyAll() shared
-    {
-        (cast()this).notifyAll();
     }
 
 private:

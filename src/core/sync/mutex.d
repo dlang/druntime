@@ -296,11 +296,6 @@ package:
         {
             return &m_hndl;
         }
-
-        shared(pthread_mutex_t*) handleAddr() shared
-        {
-            return &m_hndl;
-        }
     }
 }
 
