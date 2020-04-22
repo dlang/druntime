@@ -426,7 +426,7 @@ private:
             rc = WaitForSingleObject( cast(HANDLE) m_blockLock, INFINITE );
             assert( rc == WAIT_OBJECT_0 );
 
-            atomicOp!"+="(m_numWaitersBlocked, 1);
+            op!"+="(m_numWaitersBlocked, 1);
 
             rc = ReleaseSemaphore( cast(HANDLE) m_blockLock, 1, null );
             assert( rc );
@@ -448,7 +448,7 @@ private:
                     // timeout (or canceled)
                     if ( m_numWaitersBlocked != 0 )
                     {
-                        atomicOp!"-="(m_numWaitersBlocked, 1);
+                        op!"-="(m_numWaitersBlocked, 1);
                         // do not unblock next waiter below (already unblocked)
                         numSignalsLeft = 0;
                     }
@@ -458,7 +458,7 @@ private:
                         m_numWaitersGone = 1;
                     }
                 }
-                if ( atomicOp!"-="(m_numWaitersToUnblock, 1) == 0 )
+                if ( op!"-="(m_numWaitersToUnblock, 1) == 0 )
                 {
                     if ( m_numWaitersBlocked != 0 )
                     {
@@ -474,13 +474,13 @@ private:
                     }
                 }
             }
-            else if ( atomicOp!"+="(m_numWaitersGone, 1) == int.max / 2 )
+            else if ( op!"+="(m_numWaitersGone, 1) == int.max / 2 )
             {
                 // timeout/canceled or spurious event :-)
                 rc = WaitForSingleObject( cast(HANDLE) m_blockLock, INFINITE );
                 assert( rc == WAIT_OBJECT_0 );
                 // something is going on here - test of timeouts?
-                atomicOp!"-="(m_numWaitersBlocked, m_numWaitersGone);
+                op!"-="(m_numWaitersBlocked, m_numWaitersGone);
                 rc = ReleaseSemaphore( cast(HANDLE) m_blockLock, 1, null );
                 assert( rc == WAIT_OBJECT_0 );
                 m_numWaitersGone = 0;
