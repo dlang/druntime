@@ -510,7 +510,8 @@ private:
         }
 
 
-        void notify_( bool all )
+        void notify_(this Q)( bool all )
+            if (is(Q == Condition) || is(Q == shared Condition))
         {
             DWORD rc;
 
