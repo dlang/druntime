@@ -513,6 +513,22 @@ private:
         void notify_(this Q)( bool all )
             if (is(Q == Condition) || is(Q == shared Condition))
         {
+            static if (is(Q == Condition))
+            {
+                auto op(string o, T, V1)(ref T val, V1 mod)
+                {
+                    return mixin("val " ~ o ~ "mod");
+                }
+            }
+            else
+            {
+                auto op(string o, T, V1)(ref shared T val, V1 mod)
+                {
+                    import core.atomic: atomicOp;
+                    return atomicOp!o(val, mod);
+                }
+            }
+
             DWORD rc;
 
             EnterCriticalSection( &m_unblockLock );
@@ -527,23 +543,23 @@ private:
                 }
                 if ( all )
                 {
-                    m_numWaitersToUnblock += m_numWaitersBlocked;
+                    op!"+="(m_numWaitersToUnblock, m_numWaitersBlocked);
                     m_numWaitersBlocked = 0;
                 }
                 else
                 {
-                    m_numWaitersToUnblock++;
-                    m_numWaitersBlocked--;
+                    op!"+="(m_numWaitersToUnblock, 1);
+                    op!"-="(m_numWaitersBlocked, 1);
                 }
                 LeaveCriticalSection( &m_unblockLock );
             }
             else if ( m_numWaitersBlocked > m_numWaitersGone )
             {
-                rc = WaitForSingleObject( m_blockLock, INFINITE );
+                rc = WaitForSingleObject( cast(HANDLE) m_blockLock, INFINITE );
                 assert( rc == WAIT_OBJECT_0 );
                 if ( 0 != m_numWaitersGone )
                 {
-                    m_numWaitersBlocked -= m_numWaitersGone;
+                    op!"-="(m_numWaitersBlocked, m_numWaitersGone);
                     m_numWaitersGone = 0;
                 }
                 if ( all )
@@ -554,10 +570,10 @@ private:
                 else
                 {
                     m_numWaitersToUnblock = 1;
-                    m_numWaitersBlocked--;
+                    op!"-="(m_numWaitersBlocked, 1);
                 }
                 LeaveCriticalSection( &m_unblockLock );
-                rc = ReleaseSemaphore( m_blockQueue, 1, null );
+                rc = ReleaseSemaphore( cast(HANDLE) m_blockQueue, 1, null );
                 assert( rc );
             }
             else
