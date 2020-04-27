@@ -11,6 +11,7 @@
 
 module core.thread.fiber;
 
+import core.memory;
 import core.thread.osthread;
 import core.thread.context;
 
@@ -549,8 +550,8 @@ class Fiber
      * In:
      *  fn must not be null.
      */
-    this( void function() fn, size_t sz = PAGESIZE * defaultStackPages,
-          size_t guardPageSize = PAGESIZE ) nothrow
+    this( void function() fn, size_t sz = pageSize * defaultStackPages,
+          size_t guardPageSize = pageSize ) nothrow
     in
     {
         assert( fn );
@@ -577,8 +578,8 @@ class Fiber
      * In:
      *  dg must not be null.
      */
-    this( void delegate() dg, size_t sz = PAGESIZE * defaultStackPages,
-          size_t guardPageSize = PAGESIZE ) nothrow
+    this( void delegate() dg, size_t sz = pageSize * defaultStackPages,
+          size_t guardPageSize = pageSize ) nothrow
     in
     {
         assert( dg );
@@ -892,9 +893,9 @@ private:
     }
     do
     {
-        // adjust alloc size to a multiple of PAGESIZE
-        sz += PAGESIZE - 1;
-        sz -= sz % PAGESIZE;
+        // adjust alloc size to a multiple of pageSize
+        sz += pageSize - 1;
+        sz -= sz % pageSize;
 
         // NOTE: This instance of Thread.Context is dynamic so Fiber objects
         //       can be collected by the GC so long as no user level references

@@ -1,3 +1,4 @@
+import core.memory;
 import core.thread;
 import core.sys.posix.sys.mman;
 
@@ -8,25 +9,23 @@ else struct optStrategy { string a; }
 // (taken from core.thread)
 version = StackGrowsDown;
 
-enum stackSize = 4096;
-
 // Simple method that causes a stack overflow
 @optStrategy("none")
 void stackMethod()
 {
     // Over the stack size, so it overflows the stack
-    int[stackSize/int.sizeof+100] x;
+    int[minimumPageSize/int.sizeof+100] x;
 }
 
 void main()
 {
-    auto test_fiber = new Fiber(&stackMethod, stackSize, stackSize);
+    auto test_fiber = new Fiber(&stackMethod, pageSize, pageSize);
 
     // allocate a page below (above) the fiber's stack to make stack overflows possible (w/o segfaulting)
     version (StackGrowsDown)
     {
         auto stackBottom = __traits(getMember, test_fiber, "m_pmem");
-        auto p = mmap(stackBottom - 8 * stackSize, 8 * stackSize,
+        auto p = mmap(stackBottom - 8 * pageSize, 8 * pageSize,
                       PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
         assert(p !is null, "failed to allocate page");
     }
@@ -36,7 +35,7 @@ void main()
         auto m_pmem = __traits(getMember, test_fiber, "m_pmem");
 
         auto stackTop = m_pmem + m_sz;
-        auto p = mmap(stackTop, 8 * stackSize,
+        auto p = mmap(stackTop, 8 * pageSize,
                       PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
         assert(p !is null, "failed to allocate page");
     }
