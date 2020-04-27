@@ -35,7 +35,6 @@ private
         LARGEPREFIX = 16, // 16 bytes padding at the front of the array
         LARGEPAD = LARGEPREFIX + 1,
         MAXSMALLSIZE = 256-SMALLPAD,
-        MAXMEDSIZE = (PAGESIZE / 2) - MEDPAD
     }
 }
 
@@ -410,6 +409,7 @@ void *__arrayStart(BlkInfo info) nothrow pure
   */
 size_t __arrayPad(size_t size, const TypeInfo tinext) nothrow pure @trusted
 {
+    immutable MAXMEDSIZE = (pageSize / 2) - MEDPAD;
     return size > MAXMEDSIZE ? LARGEPAD : ((size > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + structTypeInfoSize(tinext));
 }
 
@@ -437,17 +437,15 @@ BlkInfo __arrayAlloc(size_t arrsize, const TypeInfo ti, const TypeInfo tinext) n
 {
     import core.checkedint;
 
-    size_t typeInfoSize = structTypeInfoSize(tinext);
-    size_t padsize = arrsize > MAXMEDSIZE ? LARGEPAD : ((arrsize > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + typeInfoSize);
-
     bool overflow;
-    auto padded_size = addu(arrsize, padsize, overflow);
+    immutable padsize = __arrayPad(arrsize, tinext);
+    immutable padded_size = addu(arrsize, padsize, overflow);
 
     if (overflow)
         return BlkInfo();
 
     uint attr = (!(tinext.flags & 1) ? BlkAttr.NO_SCAN : 0) | BlkAttr.APPENDABLE;
-    if (typeInfoSize)
+    if (structTypeInfoSize(tinext))
         attr |= BlkAttr.STRUCTFINAL | BlkAttr.FINALIZE;
 
     auto bi = GC.qalloc(padded_size, attr, tinext);
