@@ -895,7 +895,9 @@ private:
     {
         // adjust alloc size to a multiple of pageSize
         sz += pageSize - 1;
-        sz -= sz % pageSize;
+        // A faster version of `sz % pageSize`,
+        // as we know pageSize is a power of 2
+        sz -= sz & (pageSize - 1);
 
         // NOTE: This instance of Thread.Context is dynamic so Fiber objects
         //       can be collected by the GC so long as no user level references
