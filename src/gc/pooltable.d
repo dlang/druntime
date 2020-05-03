@@ -7,6 +7,7 @@
  */
 module gc.pooltable;
 
+import core.memory : pageSize;
 static import cstdlib=core.stdc.stdlib;
 
 struct PoolTable(Pool)
@@ -178,7 +179,6 @@ unittest
 {
     enum NPOOLS = 6;
     enum NPAGES = 10;
-    enum PAGESIZE = 4096;
 
     static struct MockPool
     {
@@ -254,8 +254,8 @@ unittest
         size_t i;
         foreach (pool; pooltable[0 .. NPOOLS])
         {
-            pool.baseAddr = cast(byte*)(i++ * NPAGES * PAGESIZE);
-            pool.topAddr = pool.baseAddr + NPAGES * PAGESIZE;
+            pool.baseAddr = cast(byte*)(i++ * NPAGES * pageSize);
+            pool.topAddr = pool.baseAddr + NPAGES * pageSize;
         }
         base = pooltable[0].baseAddr;
         top = pooltable[NPOOLS - 1].topAddr;

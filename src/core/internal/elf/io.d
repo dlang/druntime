@@ -13,6 +13,7 @@ module core.internal.elf.io;
 
 version (Posix):
 
+import core.memory : pageSize;
 import core.lifetime : move;
 import core.sys.posix.fcntl;
 import core.sys.posix.sys.mman;
@@ -291,7 +292,6 @@ private struct MMapRegion(T)
         if (fd == -1)
             return;
 
-        const pageSize = sysconf(_SC_PAGESIZE);
         const pagedOffset = (offset / pageSize) * pageSize;
         const offsetDiff = offset - pagedOffset;
         const mappedSize = length * T.sizeof + offsetDiff;

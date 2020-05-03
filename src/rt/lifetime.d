@@ -28,14 +28,13 @@ private
 
     enum : size_t
     {
-        PAGESIZE = 4096,
-        BIGLENGTHMASK = ~(PAGESIZE - 1),
+        LARGEALLOCSIZE = 4096,
+        BIGLENGTHMASK = ~(LARGEALLOCSIZE - 1),
         SMALLPAD = 1,
         MEDPAD = ushort.sizeof,
         LARGEPREFIX = 16, // 16 bytes padding at the front of the array
         LARGEPAD = LARGEPREFIX + 1,
         MAXSMALLSIZE = 256-SMALLPAD,
-        MAXMEDSIZE = (PAGESIZE / 2) - MEDPAD
     }
 }
 
@@ -240,7 +239,7 @@ private class ArrayAllocLengthLock
   Set the allocated length of the array block.  This is called
   any time an array is appended to or its length is set.
 
-  The allocated block looks like this for blocks < PAGESIZE:
+  The allocated block looks like this for blocks < LARGEALLOCSIZE:
 
   |elem0|elem1|elem2|...|elemN-1|emptyspace|N*elemsize|
 
@@ -316,7 +315,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, co
             *typeInfo = cast() tinext;
         }
     }
-    else if (info.size < PAGESIZE)
+    else if (info.size < LARGEALLOCSIZE)
     {
         if (newlength + MEDPAD + typeInfoSize > info.size)
             // new size does not fit inside block
@@ -389,7 +388,7 @@ size_t __arrayAllocLength(ref BlkInfo info, const TypeInfo tinext) pure nothrow
     if (info.size <= 256)
         return *cast(ubyte *)(info.base + info.size - structTypeInfoSize(tinext) - SMALLPAD);
 
-    if (info.size < PAGESIZE)
+    if (info.size < LARGEALLOCSIZE)
         return *cast(ushort *)(info.base + info.size - structTypeInfoSize(tinext) - MEDPAD);
 
     return *cast(size_t *)(info.base);
@@ -410,6 +409,7 @@ void *__arrayStart(BlkInfo info) nothrow pure
   */
 size_t __arrayPad(size_t size, const TypeInfo tinext) nothrow pure @trusted
 {
+    immutable MAXMEDSIZE = (pageSize / 2) - MEDPAD;
     return size > MAXMEDSIZE ? LARGEPAD : ((size > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + structTypeInfoSize(tinext));
 }
 
@@ -422,7 +422,7 @@ private void __arrayClearPad(ref BlkInfo info, size_t arrsize, size_t padsize) n
     import core.stdc.string;
     if (padsize > MEDPAD && !(info.attr & BlkAttr.NO_SCAN) && info.base)
     {
-        if (info.size < PAGESIZE)
+        if (info.size < LARGEALLOCSIZE)
             memset(info.base + arrsize, 0, padsize);
         else
             memset(info.base, 0, LARGEPREFIX);
@@ -437,17 +437,15 @@ BlkInfo __arrayAlloc(size_t arrsize, const TypeInfo ti, const TypeInfo tinext) n
 {
     import core.checkedint;
 
-    size_t typeInfoSize = structTypeInfoSize(tinext);
-    size_t padsize = arrsize > MAXMEDSIZE ? LARGEPAD : ((arrsize > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + typeInfoSize);
-
     bool overflow;
-    auto padded_size = addu(arrsize, padsize, overflow);
+    immutable padsize = __arrayPad(arrsize, tinext);
+    immutable padded_size = addu(arrsize, padsize, overflow);
 
     if (overflow)
         return BlkInfo();
 
     uint attr = (!(tinext.flags & 1) ? BlkAttr.NO_SCAN : 0) | BlkAttr.APPENDABLE;
-    if (typeInfoSize)
+    if (structTypeInfoSize(tinext))
         attr |= BlkAttr.STRUCTFINAL | BlkAttr.FINALIZE;
 
     auto bi = GC.qalloc(padded_size, attr, tinext);
@@ -834,7 +832,7 @@ Lcontinue:
             arraypad = SMALLPAD + structTypeInfoSize(tinext);
             curallocsize = *(cast(ubyte *)(info.base + info.size - arraypad));
         }
-        else if (info.size < PAGESIZE)
+        else if (info.size < LARGEALLOCSIZE)
         {
             arraypad = MEDPAD + structTypeInfoSize(tinext);
             curallocsize = *(cast(ushort *)(info.base + info.size - arraypad));
@@ -871,7 +869,7 @@ Lcontinue:
     }
 
     // step 3, try to extend the array in place.
-    if (info.size >= PAGESIZE && curcapacity != 0)
+    if (info.size >= LARGEALLOCSIZE && curcapacity != 0)
     {
         auto extendsize = reqsize + offset + LARGEPAD - info.size;
         auto u = GC.extend(info.base, extendsize, extendsize);
@@ -924,7 +922,7 @@ Lcontinue:
     // the pad.
     if (info.size <= 256)
         arraypad = SMALLPAD + structTypeInfoSize(tinext);
-    else if (info.size < PAGESIZE)
+    else if (info.size < LARGEALLOCSIZE)
         arraypad = MEDPAD + structTypeInfoSize(tinext);
     else
         arraypad = LARGEPAD;
@@ -1336,7 +1334,7 @@ int hasArrayFinalizerInSegment(void* p, size_t size, in void[] segment) nothrow
         return false;
 
     TypeInfo_Struct si = void;
-    if (size < PAGESIZE)
+    if (size < LARGEALLOCSIZE)
         si = *cast(TypeInfo_Struct*)(p + size - size_t.sizeof);
     else
         si = *cast(TypeInfo_Struct*)(p + size_t.sizeof);
@@ -1355,7 +1353,7 @@ void finalize_array2(void* p, size_t size) nothrow
         si = *cast(TypeInfo_Struct*)(p + size - size_t.sizeof);
         size = *cast(ubyte*)(p + size - size_t.sizeof - SMALLPAD);
     }
-    else if (size < PAGESIZE)
+    else if (size < LARGEALLOCSIZE)
     {
         si = *cast(TypeInfo_Struct*)(p + size - size_t.sizeof);
         size = *cast(ushort*)(p + size - size_t.sizeof - MEDPAD);
@@ -1573,7 +1571,7 @@ do
     {
         // calculate the extent of the array given the base.
         const size_t offset = (*p).ptr - __arrayStart(info);
-        if (info.size >= PAGESIZE)
+        if (info.size >= LARGEALLOCSIZE)
         {
             // size of array is at the front of the block
             if (!__setArrayAllocLength(info, newsize + offset, isshared, tinext, size + offset))
@@ -1792,7 +1790,7 @@ do
     {
         // calculate the extent of the array given the base.
         const size_t offset = (*p).ptr - __arrayStart(info);
-        if (info.size >= PAGESIZE)
+        if (info.size >= LARGEALLOCSIZE)
         {
             // size of array is at the front of the block
             if (!__setArrayAllocLength(info, newsize + offset, isshared, tinext, size + offset))
@@ -1917,10 +1915,10 @@ size_t newCapacity(size_t newlength, size_t size)
          * Better version by Dave Fladebo:
          * This uses an inverse logorithmic algorithm to pre-allocate a bit more
          * space for larger arrays.
-         * - Arrays smaller than PAGESIZE bytes are left as-is, so for the most
-         * common cases, memory allocation is 1 to 1. The small overhead added
-         * doesn't affect small array perf. (it's virtually the same as
-         * current).
+         * - Arrays smaller than `LARGEALLOCSIZE` bytes are left as-is,
+         *   so for the most common cases, memory allocation is 1 to 1.
+         *   The small overhead added doesn't affect small array perf
+         *   (it's virtually the same as current).
          * - Larger arrays have some space pre-allocated.
          * - As the arrays grow, the relative pre-allocated space shrinks.
          * - The logorithmic algorithm allocates relatively more space for
@@ -1934,7 +1932,7 @@ size_t newCapacity(size_t newlength, size_t size)
         size_t newcap = newlength * size;
         size_t newext = 0;
 
-        if (newcap > PAGESIZE)
+        if (newcap > LARGEALLOCSIZE)
         {
             //double mult2 = 1.0 + (size / log10(pow(newcap * 2.0,2.0)));
 
@@ -2010,7 +2008,7 @@ byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
     size_t offset = cast(void*)px.ptr - __arrayStart(info);
     if (info.base && (info.attr & BlkAttr.APPENDABLE))
     {
-        if (info.size >= PAGESIZE)
+        if (info.size >= LARGEALLOCSIZE)
         {
             // size of array is at the front of the block
             if (!__setArrayAllocLength(info, newsize + offset, isshared, tinext, size + offset))
@@ -2508,7 +2506,7 @@ unittest
 unittest
 {
     // bugzilla 13854
-    auto arr = new ubyte[PAGESIZE]; // ensure page size
+    auto arr = new ubyte[LARGEALLOCSIZE]; // ensure we go over the limit
     auto info1 = GC.query(arr.ptr);
     assert(info1.base !is arr.ptr); // offset is required for page size or larger
 
@@ -2528,7 +2526,7 @@ unittest
     assert(info2.base is arr2.ptr); // no offset, the capacity is small.
 
     // do the same for char[] since we need a type with an initializer to test certain runtime functions
-    auto carr = new char[PAGESIZE];
+    auto carr = new char[LARGEALLOCSIZE];
     info1 = GC.query(carr.ptr);
     assert(info1.base !is carr.ptr); // offset is required for page size or larger
 
@@ -2867,7 +2865,9 @@ unittest
         ~this() { assert(&this == thisptr); thisptr = null;}
     }
 
-    S[] test14126 = new S[2048]; // make sure we allocate at least a PAGE
+    // make sure we allocate at least LARGEALLOCSIZE bytes
+    static assert ((S[2048]).sizeof >= LARGEALLOCSIZE);
+    S[] test14126 = new S[2048];
     foreach (ref s; test14126)
     {
         s.thisptr = &s;

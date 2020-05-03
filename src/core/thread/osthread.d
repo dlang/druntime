@@ -70,29 +70,13 @@ version (Posix)
 
 package(core.thread)
 {
-    static immutable size_t PAGESIZE;
     version (Posix) static immutable size_t PTHREAD_STACK_MIN;
 }
 
 shared static this()
 {
-    version (Windows)
-    {
-        SYSTEM_INFO info;
-        GetSystemInfo(&info);
-
-        PAGESIZE = info.dwPageSize;
-        assert(PAGESIZE < int.max);
-    }
-    else version (Posix)
-    {
-        PAGESIZE = cast(size_t)sysconf(_SC_PAGESIZE);
+    version (Posix)
         PTHREAD_STACK_MIN = cast(size_t)sysconf(_SC_THREAD_STACK_MIN);
-    }
-    else
-    {
-        static assert(0, "unimplemented");
-    }
 }
 
 private
@@ -3195,7 +3179,7 @@ private size_t adjustStackSize(size_t sz) nothrow @nogc
     }
 
     // stack size must be a multiple of PAGESIZE
-    sz = ((sz + PAGESIZE - 1) & ~(PAGESIZE - 1));
+    sz = ((sz + pageSize - 1) & ~(pageSize - 1));
 
     return sz;
 }
@@ -3666,8 +3650,8 @@ version (DragonFlyBSD) unittest
 
 unittest
 {
-    // use >PAGESIZE to avoid stack overflow (e.g. in an syscall)
-    auto thr = new Thread(function{}, 4096 + 1).start();
+    // use > pageSize to avoid stack overflow (e.g. in an syscall)
+    auto thr = new Thread(function{}, pageSize + 1).start();
     thr.join();
 }
 
