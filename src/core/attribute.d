@@ -221,12 +221,12 @@ version (UdaOptional)
  * }
  * Tagged1_2 inst1;
  * // ---- foo.d
- * @gnuAbiTag("tag1", "tag2") struct Tagged1_2
+ * @gnuAbiTag(["tag1", "tag2"]) struct Tagged1_2
  * {
  *     // Notice the repetition
- *     @gnuAbiTag("tag1", "tag2", "tag3") struct Tagged3
+ *     @gnuAbiTag(["tag1", "tag2", "tag3"]) struct Tagged3
  *     {
- *         @gnuAbiTag("tag1", "tag2", "tag3", "tag4") int Tagged4 ();
+ *         @gnuAbiTag(["tag1", "tag2", "tag3", "tag4"]) int Tagged4 ();
  *     }
  * }
  * extern __gshared Tagged1_2 inst1;
@@ -236,8 +236,14 @@ version (UdaGNUAbiTag) struct gnuAbiTag
 {
     string[] tags;
 
-    this(string[] tags...)
+    this(scope string[] tags)
     {
         this.tags = tags;
     }
+
+    /* Overloads for backwards compatibility
+     */
+    this(string s1)                       { this.tags = [s1]; }
+    this(string s1, string s2)            { this.tags = [s1, s2]; }
+    this(string s1, string s2, string s3) { this.tags = [s1, s2, s3]; }
 }
