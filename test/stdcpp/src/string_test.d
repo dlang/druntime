@@ -79,6 +79,7 @@ unittest
 
 
 extern(C++):
+@system:
 
 // test the ABI for calls to C++
 int sumOfElements_val(std_string);

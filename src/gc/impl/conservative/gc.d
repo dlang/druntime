@@ -83,7 +83,7 @@ ulong bytesAllocated;   // thread local counter
 
 private
 {
-    extern (C)
+    extern (C) @system
     {
         // to allow compilation of this module without access to the rt package,
         //  make these functions available from rt.lifetime

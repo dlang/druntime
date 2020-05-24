@@ -48,7 +48,7 @@ else
 static if (Glibc_Qsort_R)
 {
     alias extern (C) int function(scope const void *, scope const void *, scope void *) Cmp;
-    extern (C) void qsort_r(scope void *base, size_t nmemb, size_t size, Cmp cmp, scope void *arg);
+    extern (C) void qsort_r(scope void *base, size_t nmemb, size_t size, Cmp cmp, scope void *arg) @system;
 
     extern (C) void[] _adSort(return scope void[] a, TypeInfo ti)
     {

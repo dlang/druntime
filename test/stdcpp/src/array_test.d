@@ -29,8 +29,8 @@ extern (C++) int test_array()
 extern(C++):
 
 // test the ABI for calls to C++
-array!(int, 5) sumOfElements_val(array!(int, 5) arr);
-ref array!(int, 5) sumOfElements_ref(return ref array!(int, 5) arr);
+array!(int, 5) sumOfElements_val(array!(int, 5) arr) @system;
+ref array!(int, 5) sumOfElements_ref(return ref array!(int, 5) arr) @system;
 
 // test the ABI for calls from C++
 array!(int, 5) fromC_val(array!(int, 5) arr)

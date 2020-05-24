@@ -2,8 +2,8 @@ import core.sys.posix.pthread;
 import core.memory;
 import core.thread;
 
-extern (C) void  rt_moduleTlsCtor();
-extern (C) void  rt_moduleTlsDtor();
+extern (C) void  rt_moduleTlsCtor() @system;
+extern (C) void  rt_moduleTlsDtor() @system;
 
 extern(C)
 void* entry_point1(void*)

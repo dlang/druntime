@@ -23,6 +23,7 @@ version (CppRuntime_Clang)
 
 extern (C++, "std"):
 @nogc:
+@system:
 
 ///
 alias terminate_handler = void function() nothrow;

@@ -276,7 +276,7 @@ bool opEquals(const Object lhs, const Object rhs)
     assert(gEquals == 1);
 }
 
-private extern(C) void _d_setSameMutex(shared Object ownee, shared Object owner) nothrow;
+private extern(C) void _d_setSameMutex(shared Object ownee, shared Object owner) nothrow @system;
 
 void setSameMutex(shared Object ownee, shared Object owner)
 {
@@ -980,7 +980,7 @@ class TypeInfo_Delegate : TypeInfo
     override @property immutable(void)* rtInfo() nothrow pure const @safe { return RTInfo!(int delegate()); }
 }
 
-private extern (C) Object _d_newclass(const TypeInfo_Class ci);
+private extern (C) Object _d_newclass(const TypeInfo_Class ci) @system;
 private extern (C) int _d_isbaseof(scope TypeInfo_Class child,
     scope const TypeInfo_Class parent) @nogc nothrow pure @safe; // rt.cast_
 
@@ -2199,7 +2199,7 @@ class Error : Throwable
     }
 }
 
-extern (C)
+extern (C) @system
 {
     // from druntime/src/rt/aaA.d
 
@@ -3115,7 +3115,7 @@ private U[] _dup(T, U)(T[] a) // pure nothrow depends on postblit
 
 // HACK:  This is a lie.  `_d_arraysetcapacity` is neither `nothrow` nor `pure`, but this lie is
 // necessary for now to prevent breaking code.
-private extern (C) size_t _d_arraysetcapacity(const TypeInfo ti, size_t newcapacity, void[]* arrptr) pure nothrow;
+private extern (C) size_t _d_arraysetcapacity(const TypeInfo ti, size_t newcapacity, void[]* arrptr) pure nothrow @system;
 
 /**
 (Property) Gets the current _capacity of a slice. The _capacity is the size
@@ -3214,7 +3214,7 @@ size_t reserve(T)(ref T[] arr, size_t newcapacity) pure nothrow @trusted
 
 // HACK:  This is a lie.  `_d_arrayshrinkfit` is not `nothrow`, but this lie is necessary
 // for now to prevent breaking code.
-private extern (C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) nothrow;
+private extern (C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) nothrow @system;
 
 /**
 Assume that it is safe to append to this array. Appends made to this array
@@ -3300,7 +3300,7 @@ auto ref inout(T[]) assumeSafeAppend(T)(auto ref inout(T[]) arr) nothrow @system
     assert(is(typeof(b3) == immutable(int[])));
 }
 
-private extern (C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow;
+private extern (C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow @system;
 
 
 /**************
@@ -3561,7 +3561,7 @@ nothrow @safe @nogc unittest
     }
 }
 
-private extern (C) void rt_finalize(void *data, bool det=true) nothrow;
+private extern (C) void rt_finalize(void *data, bool det=true) nothrow @system;
 
 /// ditto
 void destroy(bool initialize = true, T)(T obj) if (is(T == class))

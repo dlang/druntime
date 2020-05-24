@@ -10,8 +10,8 @@
 module core.internal.array.capacity;
 
 // HACK: `nothrow` and `pure` is faked.
-private extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) nothrow pure;
-private extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) nothrow pure;
+private extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) nothrow pure @system;
+private extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) nothrow pure @system;
 
 /*
  * This template is needed because there need to be a `_d_arraysetlengthTTrace!Tarr` instance for every

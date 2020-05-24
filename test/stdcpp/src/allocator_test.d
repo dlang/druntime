@@ -7,8 +7,8 @@ extern(C++) struct MyStruct
     MyStruct* c;
 }
 
-extern(C++) MyStruct cpp_alloc();
-extern(C++) void cpp_free(ref MyStruct s);
+extern(C++) MyStruct cpp_alloc() @system;
+extern(C++) void cpp_free(ref MyStruct s) @system;
 
 unittest
 {

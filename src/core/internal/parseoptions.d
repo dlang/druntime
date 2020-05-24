@@ -272,7 +272,7 @@ unittest
         float heapSizeFactor = 2.0; // heap size to used memory ratio
 
         @nogc nothrow:
-        void help();
+        void help() @system;
         string errorName() @nogc nothrow { return "GC"; }
     }
     Config conf;

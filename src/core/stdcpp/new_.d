@@ -75,6 +75,7 @@ void cpp_delete(T)(T instance) if (is(T == class))
 
 // raw C++ functions
 extern(C++):
+@system:
 
 /// Binding for ::operator new(std::size_t count)
 pragma(mangle, __new_mangle)

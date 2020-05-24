@@ -17,6 +17,7 @@ version (ARM)
 }
 
 extern (C):
+@system:
 
 alias uintptr_t _Unwind_Word;
 alias intptr_t _Unwind_Sword;

@@ -28,7 +28,7 @@ else version (WatchOS)
     version = Darwin;
 
 version (Posix):
-extern (C) nothrow @nogc:
+extern (C) nothrow @nogc @system:
 
 //
 // Required

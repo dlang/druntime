@@ -851,7 +851,7 @@ struct tls_index
     }
 }
 
-extern(C) void* __tls_get_addr(tls_index* ti) nothrow @nogc;
+extern(C) void* __tls_get_addr(tls_index* ti) nothrow @nogc @system;
 
 /* The dynamic thread vector (DTV) pointers may point 0x8000 past the start of
  * each TLS block. This is at least true for PowerPC and Mips platforms.

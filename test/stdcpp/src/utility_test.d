@@ -24,6 +24,7 @@ unittest
 }
 
 extern(C++):
+@system:
 
 __gshared int opt_pairRefCount = 0;
 

@@ -31,7 +31,7 @@ else version (WatchOS)
 //debug=PRINTF;
 debug(PRINTF) import core.stdc.stdio : printf;
 
-extern (C)
+extern (C) @system
 {
     int _d_isbaseof(ClassInfo oc, ClassInfo c);
     void _d_createTrace(Throwable o, void* context);

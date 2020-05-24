@@ -8,10 +8,10 @@ extern(C++) struct MyStruct
     MyStruct* c;
 }
 
-extern(C++) MyStruct cpp_new();
-extern(C++) void cpp_delete(ref MyStruct s);
-extern(C++) size_t defaultAlignment();
-extern(C++) bool hasAlignedNew();
+extern(C++) MyStruct cpp_new() @system;
+extern(C++) void cpp_delete(ref MyStruct s) @system;
+extern(C++) size_t defaultAlignment() @system;
+extern(C++) bool hasAlignedNew() @system;
 
 unittest
 {

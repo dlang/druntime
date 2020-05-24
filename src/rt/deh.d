@@ -11,7 +11,7 @@
 
 module rt.deh;
 
-extern (C)
+extern (C) @system
 {
     Throwable.TraceInfo _d_traceContext(void* ptr = null);
     void _d_createTrace(Throwable t, void* context)

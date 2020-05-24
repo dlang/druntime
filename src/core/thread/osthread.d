@@ -201,8 +201,8 @@ private
     //
     // exposed by compiler runtime
     //
-    extern (C) void  rt_moduleTlsCtor();
-    extern (C) void  rt_moduleTlsDtor();
+    extern (C) void  rt_moduleTlsCtor() @system;
+    extern (C) void  rt_moduleTlsDtor() @system;
 
     /**
      * Hook for whatever EH implementation is used to save/restore some data
@@ -213,7 +213,7 @@ private
      *         where the stack was last swapped out, or null when a fiber stack
      *         is switched in for the first time.
      */
-    extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc;
+    extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc @system;
 
     version (DigitalMars)
     {
@@ -221,7 +221,7 @@ private
             alias swapContext = _d_eh_swapContext;
         else
         {
-            extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc;
+            extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc @system;
 
             void* swapContext(void* newContext) nothrow @nogc
             {
@@ -2156,7 +2156,7 @@ extern (C) void thread_init() @nogc
 
 private __gshared align(Thread.alignof) void[__traits(classInstanceSize, Thread)] _mainThreadStore;
 
-extern (C) void _d_monitordelete_nogc(Object h) @nogc;
+extern (C) void _d_monitordelete_nogc(Object h) @nogc @system;
 
 /**
  * Terminates the thread module. No other thread routine may be called
@@ -3329,7 +3329,7 @@ extern(C) void thread_processGCMarks( scope IsMarkedDg isMarked ) nothrow
 }
 
 
-extern (C) @nogc nothrow
+extern (C) @nogc nothrow @system
 {
     version (CRuntime_Glibc)  version = PThread_Getattr_NP;
     version (CRuntime_Bionic) version = PThread_Getattr_NP;

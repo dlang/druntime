@@ -22,17 +22,17 @@ else version (WatchOS)
     version = Darwin;
 
 /// C interface for Runtime.loadLibrary
-extern (C) void* rt_loadLibrary(const char* name);
+extern (C) void* rt_loadLibrary(const char* name) @system;
 /// ditto
 version (Windows) extern (C) void* rt_loadLibraryW(const wchar* name);
 
 /// C interface for Runtime.unloadLibrary, returns 1/0 instead of bool
-extern (C) int rt_unloadLibrary(void* ptr);
+extern (C) int rt_unloadLibrary(void* ptr) @system;
 
 /// C interface for Runtime.initialize, returns 1/0 instead of bool
-extern(C) int rt_init();
+extern(C) int rt_init() @system;
 /// C interface for Runtime.terminate, returns 1/0 instead of bool
-extern(C) int rt_term();
+extern(C) int rt_term() @system;
 
 /**
  * This type is returned by the module unit test handler to indicate testing
@@ -89,19 +89,19 @@ private
     alias bool function(Object) CollectHandler;
     alias Throwable.TraceInfo function( void* ptr ) TraceHandler;
 
-    extern (C) void rt_setCollectHandler( CollectHandler h );
-    extern (C) CollectHandler rt_getCollectHandler();
+    extern (C) void rt_setCollectHandler( CollectHandler h ) @system;
+    extern (C) CollectHandler rt_getCollectHandler() @system;
 
-    extern (C) void rt_setTraceHandler( TraceHandler h );
-    extern (C) TraceHandler rt_getTraceHandler();
+    extern (C) void rt_setTraceHandler( TraceHandler h ) @system;
+    extern (C) TraceHandler rt_getTraceHandler() @system;
 
     alias void delegate( Throwable ) ExceptionHandler;
-    extern (C) void _d_print_throwable(Throwable t);
+    extern (C) void _d_print_throwable(Throwable t) @system;
 
-    extern (C) void* thread_stackBottom();
+    extern (C) void* thread_stackBottom() @system;
 
-    extern (C) string[] rt_args();
-    extern (C) CArgs rt_cArgs() @nogc;
+    extern (C) string[] rt_args() @system;
+    extern (C) CArgs rt_cArgs() @nogc @system;
 }
 
 
@@ -461,7 +461,7 @@ private:
  * Note:
  *  This is a dmd specific setting.
  */
-extern (C) void dmd_coverSourcePath(string path);
+extern (C) void dmd_coverSourcePath(string path) @system;
 
 /**
  * Set output path for coverage reports.
@@ -471,7 +471,7 @@ extern (C) void dmd_coverSourcePath(string path);
  * Note:
  *  This is a dmd specific setting.
  */
-extern (C) void dmd_coverDestPath(string path);
+extern (C) void dmd_coverDestPath(string path) @system;
 
 /**
  * Enable merging of coverage reports with existing data.
@@ -481,7 +481,7 @@ extern (C) void dmd_coverDestPath(string path);
  * Note:
  *  This is a dmd specific setting.
  */
-extern (C) void dmd_coverSetMerge(bool flag);
+extern (C) void dmd_coverSetMerge(bool flag) @system;
 
 /**
  * Set the output file name for profile reports (-profile switch).
@@ -492,7 +492,7 @@ extern (C) void dmd_coverSetMerge(bool flag);
  * Note:
  *  This is a dmd specific setting.
  */
-extern (C) void trace_setlogfilename(string name);
+extern (C) void trace_setlogfilename(string name) @system;
 
 /**
  * Set the output file name for the optimized profile linker DEF file (-profile switch).
@@ -503,7 +503,7 @@ extern (C) void trace_setlogfilename(string name);
  * Note:
  *  This is a dmd specific setting.
  */
-extern (C) void trace_setdeffilename(string name);
+extern (C) void trace_setdeffilename(string name) @system;
 
 /**
  * Set the output file name for memory profile reports (-profile=gc switch).
@@ -514,7 +514,7 @@ extern (C) void trace_setdeffilename(string name);
  * Note:
  *  This is a dmd specific setting.
  */
-extern (C) void profilegc_setlogfilename(string name);
+extern (C) void profilegc_setlogfilename(string name) @system;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Overridable Callbacks

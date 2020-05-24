@@ -18,7 +18,7 @@ import rt.unwind;
 import core.stdc.stdio;
 import core.stdc.stdlib;
 
-extern (C)
+extern (C) @system
 {
     int _d_isbaseof(ClassInfo b, ClassInfo c);
     void _d_createTrace(Throwable o, void* context);
@@ -904,7 +904,7 @@ void* getCppPtrToThrownObject(_Unwind_Exception* exceptionObject, CppTypeInfo st
     return (sti is tt || sti.__do_catch(tt, &p, 1)) ? p : null;
 }
 
-extern (C++)
+extern (C++) @system
 {
     /**
      * Access C++ std::type_info's virtual functions from D,

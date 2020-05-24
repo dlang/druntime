@@ -158,8 +158,8 @@ template staticIota(int beg, int end)
 
 private struct __InoutWorkaroundStruct {}
 @property T rvalueOf(T)(T val) { return val; }
-@property T rvalueOf(T)(inout __InoutWorkaroundStruct = __InoutWorkaroundStruct.init);
-@property ref T lvalueOf(T)(inout __InoutWorkaroundStruct = __InoutWorkaroundStruct.init);
+@property T rvalueOf(T)(inout __InoutWorkaroundStruct = __InoutWorkaroundStruct.init) @system;
+@property ref T lvalueOf(T)(inout __InoutWorkaroundStruct = __InoutWorkaroundStruct.init) @system;
 
 // taken from std.traits.isAssignable
 template isAssignable(Lhs, Rhs = Lhs)
@@ -557,9 +557,9 @@ if (func.length == 1 /*&& isCallable!func*/)
 
 @system unittest
 {
-    int test(int a);
-    int propGet() @property;
-    int propSet(int a) @property;
+    int test(int a) @system;
+    int propGet() @property @system;
+    int propSet(int a) @property @system;
     int function(int) test_fp;
     int delegate(int) test_dg;
     static assert(is( typeof(test) == FunctionTypeOf!(typeof(test)) ));
@@ -628,7 +628,7 @@ if (func.length == 1 /*&& isCallable!func*/)
 //
 @safe unittest
 {
-    int foo();
+    int foo() @system;
     ReturnType!foo x;   // x is declared as int
 }
 
@@ -688,9 +688,9 @@ if (func.length == 1 /*&& isCallable!func*/)
 //
 @safe unittest
 {
-    int foo(int, long);
-    void bar(Parameters!foo);      // declares void bar(int, long);
-    void abc(Parameters!foo[1]);   // declares void abc(long);
+    int foo(int, long) @system;
+    void bar(Parameters!foo) @system;      // declares void bar(int, long);
+    void abc(Parameters!foo[1]) @system;   // declares void abc(long);
 }
 
 @safe unittest

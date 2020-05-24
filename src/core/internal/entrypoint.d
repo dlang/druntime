@@ -18,7 +18,7 @@ this code into the module.
 */
 template _d_cmain()
 {
-    extern(C)
+    extern(C) @system
     {
         int _d_run_main(int argc, char **argv, void* mainFunc);
 

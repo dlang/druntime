@@ -61,22 +61,22 @@ struct UnitTestResult
     bool summarize;
 }
 
-extern (C) void _d_monitor_staticctor();
-extern (C) void _d_monitor_staticdtor();
-extern (C) void _d_critical_init();
-extern (C) void _d_critical_term();
-extern (C) void gc_init();
-extern (C) void gc_term();
-extern (C) void thread_init() @nogc;
-extern (C) void thread_term() @nogc;
-extern (C) void lifetime_init();
-extern (C) void rt_moduleCtor();
-extern (C) void rt_moduleTlsCtor();
-extern (C) void rt_moduleDtor();
-extern (C) void rt_moduleTlsDtor();
-extern (C) void thread_joinAll();
-extern (C) UnitTestResult runModuleUnitTests();
-extern (C) void _d_initMonoTime();
+extern (C) void _d_monitor_staticctor() @system;
+extern (C) void _d_monitor_staticdtor() @system;
+extern (C) void _d_critical_init() @system;
+extern (C) void _d_critical_term() @system;
+extern (C) void gc_init() @system;
+extern (C) void gc_term() @system;
+extern (C) void thread_init() @nogc @system;
+extern (C) void thread_term() @nogc @system;
+extern (C) void lifetime_init() @system;
+extern (C) void rt_moduleCtor() @system;
+extern (C) void rt_moduleTlsCtor() @system;
+extern (C) void rt_moduleDtor() @system;
+extern (C) void rt_moduleTlsDtor() @system;
+extern (C) void thread_joinAll() @system;
+extern (C) UnitTestResult runModuleUnitTests() @system;
+extern (C) void _d_initMonoTime() @system;
 
 version (CRuntime_Microsoft)
 {
@@ -87,7 +87,7 @@ version (CRuntime_Microsoft)
  * These are a temporary means of providing a GC hook for DLL use.  They may be
  * replaced with some other similar functionality later.
  */
-extern (C)
+extern (C) @system
 {
     void* gc_getProxy();
     void  gc_setProxy(void* p);

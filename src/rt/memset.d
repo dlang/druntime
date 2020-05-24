@@ -13,7 +13,7 @@
  */
 module rt.memset;
 
-extern (C)
+extern (C) @system
 {
     // Functions from the C library.
     void *memcpy(void *, void *, size_t);

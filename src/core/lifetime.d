@@ -349,7 +349,7 @@ T* emplace(T, Args...)(void[] chunk, auto ref Args args)
 
     struct S2
     {
-        void opAssign(S2);
+        void opAssign(S2) @system;
     }
 
     S1 s1 = void;

@@ -118,28 +118,28 @@ else version (WatchOS)
 
 private
 {
-    extern (C) void gc_init();
-    extern (C) void gc_term();
+    extern (C) void gc_init() @system;
+    extern (C) void gc_term() @system;
 
-    extern (C) void gc_enable() nothrow;
-    extern (C) void gc_disable() nothrow;
-    extern (C) void gc_collect() nothrow;
-    extern (C) void gc_minimize() nothrow;
+    extern (C) void gc_enable() nothrow @system;
+    extern (C) void gc_disable() nothrow @system;
+    extern (C) void gc_collect() nothrow @system;
+    extern (C) void gc_minimize() nothrow @system;
 
-    extern (C) uint gc_getAttr( void* p ) pure nothrow;
-    extern (C) uint gc_setAttr( void* p, uint a ) pure nothrow;
-    extern (C) uint gc_clrAttr( void* p, uint a ) pure nothrow;
+    extern (C) uint gc_getAttr( void* p ) pure nothrow @system;
+    extern (C) uint gc_setAttr( void* p, uint a ) pure nothrow @system;
+    extern (C) uint gc_clrAttr( void* p, uint a ) pure nothrow @system;
 
-    extern (C) void*    gc_malloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
-    extern (C) void*    gc_calloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
-    extern (C) BlkInfo_ gc_qalloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
-    extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
-    extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz, const TypeInfo = null ) pure nothrow;
-    extern (C) size_t   gc_reserve( size_t sz ) nothrow;
-    extern (C) void     gc_free( void* p ) pure nothrow @nogc;
+    extern (C) void*    gc_malloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow @system;
+    extern (C) void*    gc_calloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow @system;
+    extern (C) BlkInfo_ gc_qalloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow @system;
+    extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow @system;
+    extern (C) size_t   gc_extend( void* p, size_t mx, size_t sz, const TypeInfo = null ) pure nothrow @system;
+    extern (C) size_t   gc_reserve( size_t sz ) nothrow @system;
+    extern (C) void     gc_free( void* p ) pure nothrow @nogc @system;
 
-    extern (C) void*   gc_addrOf( void* p ) pure nothrow @nogc;
-    extern (C) size_t  gc_sizeOf( void* p ) pure nothrow @nogc;
+    extern (C) void*   gc_addrOf( void* p ) pure nothrow @nogc @system;
+    extern (C) size_t  gc_sizeOf( void* p ) pure nothrow @nogc @system;
 
     struct BlkInfo_
     {
@@ -148,16 +148,16 @@ private
         uint   attr;
     }
 
-    extern (C) BlkInfo_ gc_query( void* p ) pure nothrow;
-    extern (C) GC.Stats gc_stats ( ) nothrow @nogc;
+    extern (C) BlkInfo_ gc_query( void* p ) pure nothrow @system;
+    extern (C) GC.Stats gc_stats ( ) nothrow @nogc @system;
     extern (C) GC.ProfileStats gc_profileStats ( ) nothrow @nogc @safe;
 
-    extern (C) void gc_addRoot(const void* p ) nothrow @nogc;
-    extern (C) void gc_addRange(const void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc;
+    extern (C) void gc_addRoot(const void* p ) nothrow @nogc @system;
+    extern (C) void gc_addRange(const void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc @system;
 
-    extern (C) void gc_removeRoot(const void* p ) nothrow @nogc;
-    extern (C) void gc_removeRange(const void* p ) nothrow @nogc;
-    extern (C) void gc_runFinalizers( const scope void[] segment );
+    extern (C) void gc_removeRoot(const void* p ) nothrow @nogc @system;
+    extern (C) void gc_removeRange(const void* p ) nothrow @nogc @system;
+    extern (C) void gc_runFinalizers( const scope void[] segment ) @system;
 
     package extern (C) bool gc_inFinalizer() nothrow @nogc @safe;
 }
@@ -225,7 +225,7 @@ unittest
 // * The extern function declaration also has the side effect of making it
 // impossible to manually call the function with standard syntax. This is to
 // make it more difficult to call the function again, manually.
-private void initialize();
+private void initialize() @system;
 pragma(crt_constructor)
 pragma(mangle, `_D` ~ initialize.mangleof)
 private extern (C) void initialize() @system

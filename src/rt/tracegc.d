@@ -17,32 +17,32 @@ module rt.tracegc;
 
 // version = tracegc;
 
-extern (C) Object _d_newclass(const ClassInfo ci);
-extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length);
-extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length);
-extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t[] dims);
-extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims);
-extern (C) void* _d_newitemT(in TypeInfo ti);
-extern (C) void* _d_newitemiT(in TypeInfo ti);
-extern (C) void _d_callfinalizer(void* p);
-extern (C) void _d_callinterfacefinalizer(void *p);
-extern (C) void _d_delclass(Object* p);
-extern (C) void _d_delinterface(void** p);
-extern (C) void _d_delstruct(void** p, TypeInfo_Struct inf);
-extern (C) void _d_delarray_t(void[]* p, const TypeInfo_Struct _);
-extern (C) void _d_delmemory(void* *p);
-extern (C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y);
-extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs);
-extern (C) void* _d_arrayliteralTX(const TypeInfo ti, size_t length);
+extern (C) Object _d_newclass(const ClassInfo ci) @system;
+extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length) @system;
+extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) @system;
+extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t[] dims) @system;
+extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims) @system;
+extern (C) void* _d_newitemT(in TypeInfo ti) @system;
+extern (C) void* _d_newitemiT(in TypeInfo ti) @system;
+extern (C) void _d_callfinalizer(void* p) @system;
+extern (C) void _d_callinterfacefinalizer(void *p) @system;
+extern (C) void _d_delclass(Object* p) @system;
+extern (C) void _d_delinterface(void** p) @system;
+extern (C) void _d_delstruct(void** p, TypeInfo_Struct inf) @system;
+extern (C) void _d_delarray_t(void[]* p, const TypeInfo_Struct _) @system;
+extern (C) void _d_delmemory(void* *p) @system;
+extern (C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y) @system;
+extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs) @system;
+extern (C) void* _d_arrayliteralTX(const TypeInfo ti, size_t length) @system;
 extern (C) void* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti,
-    void[] keys, void[] vals);
-extern (C) void[] _d_arrayappendT(const TypeInfo ti, ref byte[] x, byte[] y);
-extern (C) byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n);
-extern (C) void[] _d_arrayappendcd(ref byte[] x, dchar c);
-extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c);
-extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p);
-extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p);
-extern (C) void* _d_allocmemory(size_t sz);
+    void[] keys, void[] vals) @system;
+extern (C) void[] _d_arrayappendT(const TypeInfo ti, ref byte[] x, byte[] y) @system;
+extern (C) byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n) @system;
+extern (C) void[] _d_arrayappendcd(ref byte[] x, dchar c) @system;
+extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c) @system;
+extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) @system;
+extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) @system;
+extern (C) void* _d_allocmemory(size_t sz) @system;
 
 // Used as wrapper function body to get actual stats.
 //

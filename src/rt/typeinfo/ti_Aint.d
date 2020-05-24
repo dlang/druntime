@@ -15,7 +15,7 @@ module rt.typeinfo.ti_Aint;
 
 private import core.stdc.string;
 
-extern (C) void[] _adSort(void[] a, TypeInfo ti);
+extern (C) void[] _adSort(void[] a, TypeInfo ti) @system;
 
 // int[]
 

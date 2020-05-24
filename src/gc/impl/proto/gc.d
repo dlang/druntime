@@ -12,20 +12,20 @@ extern (C) void onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure
 
 private
 {
-    extern (C) void gc_init_nothrow() nothrow @nogc;
-    extern (C) void gc_term();
+    extern (C) void gc_init_nothrow() nothrow @nogc @system;
+    extern (C) void gc_term() @system;
 
-    extern (C) void gc_enable() nothrow;
-    extern (C) void gc_disable() nothrow;
+    extern (C) void gc_enable() nothrow @system;
+    extern (C) void gc_disable() nothrow @system;
 
-    extern (C) void*    gc_malloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
-    extern (C) void*    gc_calloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
-    extern (C) BlkInfo gc_qalloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
-    extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow;
-    extern (C) size_t   gc_reserve( size_t sz ) nothrow;
+    extern (C) void*    gc_malloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow @system;
+    extern (C) void*    gc_calloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow @system;
+    extern (C) BlkInfo gc_qalloc( size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow @system;
+    extern (C) void*    gc_realloc( void* p, size_t sz, uint ba = 0, const TypeInfo = null ) pure nothrow @system;
+    extern (C) size_t   gc_reserve( size_t sz ) nothrow @system;
 
-    extern (C) void gc_addRange(const void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc;
-    extern (C) void gc_addRoot(const void* p ) nothrow @nogc;
+    extern (C) void gc_addRange(const void* p, size_t sz, const TypeInfo ti = null ) nothrow @nogc @system;
+    extern (C) void gc_addRoot(const void* p ) nothrow @nogc @system;
 }
 
 class ProtoGC : GC

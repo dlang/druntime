@@ -2400,10 +2400,10 @@ private template hasPlainMangling(FT) if (is(FT == function))
 
 @safe pure nothrow unittest
 {
-    static extern(D) void fooD();
-    static extern(C) void fooC();
-    static extern(Windows) void fooW();
-    static extern(C++) void fooCPP();
+    static extern(D) void fooD() @system;
+    static extern(C) void fooC() @system;
+    static extern(Windows) void fooW() @system;
+    static extern(C++) void fooCPP() @system;
 
     bool check(FT)(bool isD, bool isCPP, bool isPlain)
     {

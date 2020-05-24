@@ -36,7 +36,7 @@ private
     GC instance() { return _instance; }
 }
 
-extern (C)
+extern (C) @system
 {
     // do not import GC modules, they might add a dependency to this whole module
     void _d_register_conservative_gc();
