@@ -17,7 +17,7 @@ module rt.typeinfo.ti_n;
 
 class TypeInfo_n : TypeInfo
 {
-    override string toString() const @safe { return "typeof(null)"; }
+    override string toStringImpl(ToStringContext) const @safe { return "typeof(null)"; }
 
     override size_t getHash(scope const void* p) const
     {

@@ -21,7 +21,7 @@ class TypeInfo_Al : TypeInfo_Array
 {
     override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override string toString() const { return "long[]"; }
+    override string toStringImpl(ToStringContext) const { return "long[]"; }
 
     override size_t getHash(scope const void* p) @trusted const
     {
@@ -72,7 +72,7 @@ class TypeInfo_Al : TypeInfo_Array
 
 class TypeInfo_Am : TypeInfo_Al
 {
-    override string toString() const { return "ulong[]"; }
+    override string toStringImpl(ToStringContext) const { return "ulong[]"; }
 
     override int compare(in void* p1, in void* p2) const
     {

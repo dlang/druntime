@@ -23,5 +23,5 @@ class TypeInfo_o : TypeInfo_f
   nothrow:
   @safe:
 
-    override string toString() const { return ifloat.stringof; }
+    override string toStringImpl(ToStringContext) const { return ifloat.stringof; }
 }

@@ -22,7 +22,7 @@ class TypeInfo_t : TypeInfo
     pure:
     nothrow:
 
-    override string toString() const pure nothrow @safe { return "ushort"; }
+    override string toStringImpl(ToStringContext) const pure nothrow @safe { return "ushort"; }
 
     override size_t getHash(scope const void* p)
     {

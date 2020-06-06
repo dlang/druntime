@@ -23,5 +23,5 @@ class TypeInfo_p : TypeInfo_d
   nothrow:
   @safe:
 
-    override string toString() const { return idouble.stringof; }
+    override string toStringImpl(ToStringContext) const { return idouble.stringof; }
 }

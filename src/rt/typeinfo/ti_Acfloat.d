@@ -23,7 +23,7 @@ class TypeInfo_Aq : TypeInfo_Array
 
     override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override string toString() const { return (F[]).stringof; }
+    override string toStringImpl(ToStringContext) const { return (F[]).stringof; }
 
     override size_t getHash(scope const void* p) @trusted const
     {

@@ -22,7 +22,7 @@ class TypeInfo_u : TypeInfo
     pure:
     nothrow:
 
-    override string toString() { return "wchar"; }
+    override string toStringImpl(ToStringContext) { return "wchar"; }
 
     override size_t getHash(scope const void* p)
     {

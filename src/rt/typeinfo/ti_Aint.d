@@ -23,7 +23,7 @@ class TypeInfo_Ai : TypeInfo_Array
 {
     override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override string toString() const { return "int[]"; }
+    override string toStringImpl(ToStringContext) const { return "int[]"; }
 
     override size_t getHash(scope const void* p) @trusted const
     {
@@ -94,7 +94,7 @@ unittest
 
 class TypeInfo_Ak : TypeInfo_Ai
 {
-    override string toString() const { return "uint[]"; }
+    override string toStringImpl(ToStringContext) const { return "uint[]"; }
 
     override int compare(in void* p1, in void* p2) const
     {
@@ -142,7 +142,7 @@ unittest
 
 class TypeInfo_Aw : TypeInfo_Ak
 {
-    override string toString() const { return "dchar[]"; }
+    override string toStringImpl(ToStringContext) const { return "dchar[]"; }
 
     override @property inout(TypeInfo) next() inout
     {

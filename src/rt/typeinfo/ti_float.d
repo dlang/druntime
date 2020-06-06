@@ -25,7 +25,7 @@ class TypeInfo_f : TypeInfo
 
     alias F = float;
 
-    override string toString() const { return F.stringof; }
+    override string toStringImpl(ToStringContext) const { return F.stringof; }
 
     override size_t getHash(scope const void* p) const @trusted
     {

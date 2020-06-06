@@ -23,7 +23,7 @@ class TypeInfo_Af : TypeInfo_Array
 
     override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
-    override string toString() const { return (F[]).stringof; }
+    override string toStringImpl(ToStringContext) const { return (F[]).stringof; }
 
     override size_t getHash(scope const void* p) @trusted const
     {
@@ -52,7 +52,7 @@ class TypeInfo_Ao : TypeInfo_Af
 {
     alias F = ifloat;
 
-    override string toString() const { return (F[]).stringof; }
+    override string toStringImpl(ToStringContext) const { return (F[]).stringof; }
 
     override @property inout(TypeInfo) next() inout
     {

@@ -305,6 +305,14 @@ struct OffsetTypeInfo
     TypeInfo ti;        /// TypeInfo for this member
 }
 
+enum ToStringContext
+{
+    none    = 0x00,
+    const_  = 0x01,
+    shared_ = 0x02,
+    inout_  = 0x04,
+}
+
 /**
  * Runtime type information about a type.
  * Can be retrieved for any type using a
@@ -312,9 +320,14 @@ struct OffsetTypeInfo
  */
 class TypeInfo
 {
-    override string toString() const pure @safe nothrow
+    string toStringImpl(ToStringContext flags) const pure @safe nothrow
     {
         return typeid(this).name;
+    }
+
+    override final string toString() const pure @safe nothrow
+    {
+        return toStringImpl(ToStringContext.init);
     }
 
     override size_t toHash() @trusted const nothrow
@@ -424,7 +437,7 @@ class TypeInfo
 
 class TypeInfo_Enum : TypeInfo
 {
-    override string toString() const { return name; }
+    override string toStringImpl(ToStringContext) const { return name; }
 
     override bool opEquals(Object o)
     {
@@ -473,7 +486,7 @@ class TypeInfo_Enum : TypeInfo
 // Please make sure to keep this in sync with TypeInfo_P (src/rt/typeinfo/ti_ptr.d)
 class TypeInfo_Pointer : TypeInfo
 {
-    override string toString() const { return m_next.toString() ~ "*"; }
+    override string toStringImpl(ToStringContext) const { return m_next.toString() ~ "*"; }
 
     override bool opEquals(Object o)
     {
@@ -529,7 +542,7 @@ class TypeInfo_Pointer : TypeInfo
 
 class TypeInfo_Array : TypeInfo
 {
-    override string toString() const { return value.toString() ~ "[]"; }
+    override string toStringImpl(ToStringContext flags) const { return value.toStringImpl(flags) ~ "[]"; }
 
     override bool opEquals(Object o)
     {
@@ -621,12 +634,12 @@ class TypeInfo_Array : TypeInfo
 
 class TypeInfo_StaticArray : TypeInfo
 {
-    override string toString() const
+    override string toStringImpl(ToStringContext flags) const
     {
         import core.internal.string : unsignedToTempString;
 
         char[20] tmpBuff = void;
-        return value.toString() ~ "[" ~ unsignedToTempString(len, tmpBuff, 10) ~ "]";
+        return value.toStringImpl(flags) ~ "[" ~ unsignedToTempString(len, tmpBuff, 10) ~ "]";
     }
 
     override bool opEquals(Object o)
@@ -748,9 +761,12 @@ class TypeInfo_StaticArray : TypeInfo
 
 class TypeInfo_AssociativeArray : TypeInfo
 {
-    override string toString() const
+    override string toStringImpl(ToStringContext flags) const
     {
-        return value.toString() ~ "[" ~ key.toString() ~ "]";
+        if (flags & ToStringContext.const_)
+            return value.toStringImpl(ToStringContext.const_) ~ "[" ~ key.toString() ~ "]";
+        else
+            return value.toString() ~ "[" ~ key.toString() ~ "]";
     }
 
     override bool opEquals(Object o)
@@ -804,7 +820,7 @@ class TypeInfo_AssociativeArray : TypeInfo
 
 class TypeInfo_Vector : TypeInfo
 {
-    override string toString() const { return "__vector(" ~ base.toString() ~ ")"; }
+    override string toStringImpl(ToStringContext flags) const { return "__vector(" ~ base.toStringImpl(flags) ~ ")"; }
 
     override bool opEquals(Object o)
     {
@@ -840,7 +856,7 @@ class TypeInfo_Vector : TypeInfo
 
 class TypeInfo_Function : TypeInfo
 {
-    override string toString() const
+    override string toStringImpl(ToStringContext) const
     {
         import core.demangle : demangleType;
 
@@ -897,7 +913,7 @@ class TypeInfo_Function : TypeInfo
 
 class TypeInfo_Delegate : TypeInfo
 {
-    override string toString() const
+    override string toStringImpl(ToStringContext) const
     {
         import core.demangle : demangleType;
 
@@ -991,7 +1007,7 @@ private extern (C) int _d_isbaseof(scope TypeInfo_Class child,
  */
 class TypeInfo_Class : TypeInfo
 {
-    override string toString() const { return info.name; }
+    override string toStringImpl(ToStringContext) const { return info.name; }
 
     override bool opEquals(Object o)
     {
@@ -1176,7 +1192,7 @@ alias ClassInfo = TypeInfo_Class;
 
 class TypeInfo_Interface : TypeInfo
 {
-    override string toString() const { return info.name; }
+    override string toStringImpl(ToStringContext) const { return info.name; }
 
     override bool opEquals(Object o)
     {
@@ -1281,7 +1297,7 @@ class TypeInfo_Interface : TypeInfo
 
 class TypeInfo_Struct : TypeInfo
 {
-    override string toString() const { return name; }
+    override string toStringImpl(ToStringContext) const { return name; }
 
     override bool opEquals(Object o)
     {
@@ -1433,7 +1449,7 @@ class TypeInfo_Tuple : TypeInfo
 {
     TypeInfo[] elements;
 
-    override string toString() const
+    override string toStringImpl(ToStringContext) const
     {
         string s = "(";
         foreach (i, element; elements)
@@ -1517,9 +1533,12 @@ class TypeInfo_Tuple : TypeInfo
 
 class TypeInfo_Const : TypeInfo
 {
-    override string toString() const
+    override string toStringImpl(ToStringContext flags) const pure @safe nothrow
     {
-        return cast(string) ("const(" ~ base.toString() ~ ")");
+        if (flags & ToStringContext.const_)
+            return base.toStringImpl(flags);
+        else
+            return cast(string) ("const(" ~ base.toStringImpl(flags | ToStringContext.const_) ~ ")");
     }
 
     //override bool opEquals(Object o) { return base.opEquals(o); }
@@ -1559,27 +1578,63 @@ class TypeInfo_Const : TypeInfo
     TypeInfo base;
 }
 
+unittest
+{
+    alias A = const(int[]);
+    alias B = const(const(int)[]);
+    assert(typeid(A) == typeid(B));
+    assert(typeid(A).toString() == typeid(B).toString());
+}
+
 class TypeInfo_Invariant : TypeInfo_Const
 {
-    override string toString() const
+    override string toStringImpl(ToStringContext flags) const
     {
-        return cast(string) ("immutable(" ~ base.toString() ~ ")");
+        if (flags & ToStringContext.const_)
+            return base.toStringImpl(flags);
+        else
+            return cast(string) ("immutable(" ~ base.toStringImpl(flags | ToStringContext.const_) ~ ")");
     }
+}
+
+unittest
+{
+    alias A = immutable(int[]);
+    alias B = immutable(const(int)[]);
+    alias C = immutable(immutable(int)[]);
+    assert(typeid(A) == typeid(B));
+    assert(typeid(B) == typeid(C));
+    assert(typeid(A).toString() == typeid(B).toString());
+    assert(typeid(B).toString() == typeid(C).toString());
 }
 
 class TypeInfo_Shared : TypeInfo_Const
 {
-    override string toString() const
+    override string toStringImpl(ToStringContext flags) const
     {
-        return cast(string) ("shared(" ~ base.toString() ~ ")");
+        if (flags & ToStringContext.shared_)
+            return base.toStringImpl(flags);
+        else
+            return cast(string) ("shared(" ~ base.toStringImpl(flags | ToStringContext.shared_) ~ ")");
     }
+}
+
+unittest
+{
+    alias A = shared(int[]);
+    alias B = shared(shared(int)[]);
+    assert(typeid(A) == typeid(B));
+    assert(typeid(A).toString() == typeid(B).toString());
 }
 
 class TypeInfo_Inout : TypeInfo_Const
 {
-    override string toString() const
+    override string toStringImpl(ToStringContext flags) const
     {
-        return cast(string) ("inout(" ~ base.toString() ~ ")");
+        if (flags & ToStringContext.inout_)
+            return base.toStringImpl(flags);
+        else
+            return cast(string) ("inout(" ~ base.toStringImpl(flags | ToStringContext.inout_) ~ ")");
     }
 }
 
