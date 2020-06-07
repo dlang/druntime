@@ -88,30 +88,33 @@ if (is(UT == core.internal.traits.Unqual!UT))
 Emplaces T.init.
 In contrast to `emplaceRef(chunk)`, there are no checks for disabled default
 constructors etc.
+The keepContext template argument instructs this function to keep a nested struct's
+context pointer intact (used by move et al.).
 +/
-void emplaceInitializer(T)(scope ref T chunk) nothrow pure @trusted
+void emplaceInitializer(T,bool keepContext = false)(scope ref T chunk) nothrow pure @trusted
     if (!is(T == const) && !is(T == immutable) && !is(T == inout))
 {
     import core.internal.traits : hasElaborateAssign;
 
-    static if (!hasElaborateAssign!T && __traits(compiles, chunk = T.init))
+    static if (keepContext) {
+        static assert(is(T == struct) && __traits(isNested, T),
+                      "keepContext should only be set to true when keeping a nested struct's context pointer is required");
+        enum sizeToBlit = T.sizeof - (void*).sizeof;
+    } else
+        enum sizeToBlit = T.sizeof;
+
+    static if (!keepContext && !hasElaborateAssign!T && __traits(compiles, chunk = T.init))
     {
         chunk = T.init;
     }
     else static if (__traits(isZeroInit, T))
     {
-        static if (is(T U == shared U))
-            alias Unshared = U;
-        else
-            alias Unshared = T;
-
-        import core.stdc.string : memset;
-        memset(cast(Unshared*) &chunk, 0, T.sizeof);
+        *cast(ubyte[sizeToBlit]*) &chunk = 0;
     }
     else
     {
         // emplace T.init (an rvalue) without extra variable (and according destruction)
-        alias RawBytes = void[T.sizeof];
+        alias RawBytes = void[sizeToBlit];
 
         static union U
         {
@@ -164,6 +167,22 @@ void emplaceInitializer(T)(scope ref T chunk) nothrow pure @trusted
     testInitializer!double();
     testInitializer!ElaborateAndZero();
     testInitializer!ElaborateAndNonZero();
+}
+
+unittest
+{
+    int x;
+    struct Nested
+    {
+        void foo() { ++x; }
+    }
+    Nested n;
+    scope ptr = n.tupleof[$-1];
+    assert(ptr);
+    emplaceInitializer!(Nested,true)(n);
+    assert(ptr == n.tupleof[$-1]);
+    emplaceInitializer!(Nested,false)(n);
+    assert(!n.tupleof[$-1]);
 }
 
 /*
