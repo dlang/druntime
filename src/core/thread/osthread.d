@@ -978,7 +978,7 @@ class Thread : ThreadBase
      * Returns:
      *  true if the thread is running, false if not.
      */
-    final @property bool isRunning() nothrow @nogc
+    override final @property bool isRunning() nothrow @nogc
     {
         if ( m_addr == m_addr.init )
         {

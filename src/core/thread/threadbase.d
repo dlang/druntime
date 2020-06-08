@@ -44,4 +44,6 @@ package abstract class ThreadBase
         this(sz);
         m_call = dg;
     }
+
+    bool isRunning() nothrow @nogc;
 }
