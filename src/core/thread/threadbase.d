@@ -15,6 +15,7 @@ module core.thread.threadbase;
 import core.thread.context;
 import core.thread.osthread; //FIXME: remove it
 import core.sync.mutex;
+import core.sys.posix.stdlib : realloc;
 
 // Handling unaligned mutexes are not supported on all platforms, so we must
 // ensure that the address of all shared data are appropriately aligned.
@@ -124,6 +125,85 @@ package abstract class ThreadBase
     Thread              prev;
     Thread              next;
 
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Global Context List Operations
+    ///////////////////////////////////////////////////////////////////////////
+
+
+    //
+    // Add a context to the global context list.
+    //
+    static void add( StackContext* c ) nothrow @nogc
+    in
+    {
+        assert( c );
+        assert( !c.next && !c.prev );
+    }
+    do
+    {
+        slock.lock_nothrow();
+        scope(exit) slock.unlock_nothrow();
+        assert(!suspendDepth); // must be 0 b/c it's only set with slock held
+
+        if (sm_cbeg)
+        {
+            c.next = sm_cbeg;
+            sm_cbeg.prev = c;
+        }
+        sm_cbeg = c;
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Global Thread List Operations
+    ///////////////////////////////////////////////////////////////////////////
+
+
+    //
+    // Add a thread to the global thread list.
+    //
+    static void add( Thread t, bool rmAboutToStart = true ) nothrow @nogc
+    in
+    {
+        assert( t );
+        assert( !t.next && !t.prev );
+    }
+    do
+    {
+        slock.lock_nothrow();
+        scope(exit) slock.unlock_nothrow();
+        assert(t.isRunning); // check this with slock to ensure pthread_create already returned
+        assert(!suspendDepth); // must be 0 b/c it's only set with slock held
+
+        if (rmAboutToStart)
+        {
+            size_t idx = -1;
+            foreach (i, thr; pAboutToStart[0 .. nAboutToStart])
+            {
+                if (thr is t)
+                {
+                    idx = i;
+                    break;
+                }
+            }
+            assert(idx != -1);
+            import core.stdc.string : memmove;
+            memmove(pAboutToStart + idx, pAboutToStart + idx + 1, Thread.sizeof * (nAboutToStart - idx - 1));
+            pAboutToStart =
+                cast(Thread*)realloc(pAboutToStart, Thread.sizeof * --nAboutToStart);
+        }
+
+        if (sm_tbeg)
+        {
+            t.next = sm_tbeg;
+            sm_tbeg.prev = t;
+        }
+        sm_tbeg = t;
+        ++sm_tlen;
+    }
+
+
     this(size_t sz = 0) @safe pure nothrow @nogc
     {
         m_sz = sz;
@@ -146,3 +226,7 @@ package abstract class ThreadBase
 
     bool isRunning() nothrow @nogc;
 }
+
+
+// Used for suspendAll/resumeAll below.
+package __gshared uint suspendDepth = 0;

@@ -1755,30 +1755,6 @@ package(core.thread):
     // Global Context List Operations
     ///////////////////////////////////////////////////////////////////////////
 
-
-    //
-    // Add a context to the global context list.
-    //
-    static void add( StackContext* c ) nothrow @nogc
-    in
-    {
-        assert( c );
-        assert( !c.next && !c.prev );
-    }
-    do
-    {
-        slock.lock_nothrow();
-        scope(exit) slock.unlock_nothrow();
-        assert(!suspendDepth); // must be 0 b/c it's only set with slock held
-
-        if (sm_cbeg)
-        {
-            c.next = sm_cbeg;
-            sm_cbeg.prev = c;
-        }
-        sm_cbeg = c;
-    }
-
     //
     // Remove a context from the global context list.
     //
@@ -1810,51 +1786,6 @@ package(core.thread):
     ///////////////////////////////////////////////////////////////////////////
     // Global Thread List Operations
     ///////////////////////////////////////////////////////////////////////////
-
-
-    //
-    // Add a thread to the global thread list.
-    //
-    static void add( Thread t, bool rmAboutToStart = true ) nothrow @nogc
-    in
-    {
-        assert( t );
-        assert( !t.next && !t.prev );
-    }
-    do
-    {
-        slock.lock_nothrow();
-        scope(exit) slock.unlock_nothrow();
-        assert(t.isRunning); // check this with slock to ensure pthread_create already returned
-        assert(!suspendDepth); // must be 0 b/c it's only set with slock held
-
-        if (rmAboutToStart)
-        {
-            size_t idx = -1;
-            foreach (i, thr; pAboutToStart[0 .. nAboutToStart])
-            {
-                if (thr is t)
-                {
-                    idx = i;
-                    break;
-                }
-            }
-            assert(idx != -1);
-            import core.stdc.string : memmove;
-            memmove(pAboutToStart + idx, pAboutToStart + idx + 1, Thread.sizeof * (nAboutToStart - idx - 1));
-            pAboutToStart =
-                cast(Thread*)realloc(pAboutToStart, Thread.sizeof * --nAboutToStart);
-        }
-
-        if (sm_tbeg)
-        {
-            t.next = sm_tbeg;
-            sm_tbeg.prev = t;
-        }
-        sm_tbeg = t;
-        ++sm_tlen;
-    }
-
 
     //
     // Remove a thread from the global thread list.
@@ -2507,9 +2438,6 @@ do
 
     fn(sp);
 }
-
-// Used for suspendAll/resumeAll below.
-private __gshared uint suspendDepth = 0;
 
 /**
  * Suspend the specified thread and load stack and register information for
