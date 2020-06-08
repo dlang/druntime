@@ -12,6 +12,7 @@
 
 module core.thread.osthread;
 
+import core.thread.threadbase;
 import core.thread.context;
 import core.time;
 import core.exception : onOutOfMemoryError;
@@ -626,7 +627,7 @@ else
  * A new thread may be created using either derivation or composition, as
  * in the following example.
  */
-class Thread
+class Thread : ThreadBase
 {
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
@@ -1597,9 +1598,7 @@ private:
         mach_port_t     m_tmach;
     }
     ThreadID            m_addr;
-    Callable            m_call;
     string              m_name;
-    size_t              m_sz;
     version (Posix)
     {
         shared bool     m_isRunning;
