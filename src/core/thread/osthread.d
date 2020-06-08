@@ -646,15 +646,8 @@ class Thread : ThreadBase
      *  fn must not be null.
      */
     this( void function() fn, size_t sz = 0 ) @safe pure nothrow @nogc
-    in
     {
-        assert( fn );
-    }
-    do
-    {
-        this(sz);
-        m_call = fn;
-        m_curr = &m_main;
+        super(fn, sz);
     }
 
 
@@ -670,15 +663,8 @@ class Thread : ThreadBase
      *  dg must not be null.
      */
     this( void delegate() dg, size_t sz = 0 ) @safe pure nothrow @nogc
-    in
     {
-        assert( dg );
-    }
-    do
-    {
-        this(sz);
-        m_call = dg;
-        m_curr = &m_main;
+        super(dg, sz);
     }
 
 
@@ -1539,8 +1525,7 @@ private:
     //
     this(size_t sz = 0) @safe pure nothrow @nogc
     {
-        m_sz = sz;
-        m_curr = &m_main;
+        super(sz);
     }
 
 
@@ -1628,8 +1613,6 @@ private:
 
 package(core.thread):
 
-    StackContext        m_main;
-    StackContext*       m_curr;
     bool                m_lock;
     void*               m_tlsgcdata;
 
