@@ -283,6 +283,24 @@ package abstract class ThreadBase
     ///////////////////////////////////////////////////////////////////////////
 
     /**
+     * Sets the daemon status for this thread.  While the runtime will wait for
+     * all normal threads to complete before tearing down the process, daemon
+     * threads are effectively ignored and thus will not prevent the process
+     * from terminating.  In effect, daemon threads will be terminated
+     * automatically by the OS when the process exits.
+     *
+     * Params:
+     *  val = The new daemon status for this thread.
+     */
+    final @property void isDaemon( bool val ) @safe @nogc
+    {
+        synchronized( this )
+        {
+            m_isDaemon = val;
+        }
+    }
+
+    /**
      * Gets the daemon status for this thread.  While the runtime will wait for
      * all normal threads to complete before tearing down the process, daemon
      * threads are effectively ignored and thus will not prevent the process
