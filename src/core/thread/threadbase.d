@@ -13,6 +13,7 @@
 module core.thread.threadbase;
 
 import core.thread.context;
+import core.thread.osthread; //FIXME: temporary
 
 abstract class ThreadBase
 {
