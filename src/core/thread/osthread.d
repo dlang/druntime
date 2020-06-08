@@ -1735,20 +1735,20 @@ package(core.thread):
     //       itself, and Fibers are expected to add/remove their Context struct
     //       on construction/deletion.
 
-    __gshared StackContext*  sm_cbeg;
+    //~ __gshared StackContext*  sm_cbeg;
 
-    __gshared Thread    sm_tbeg;
-    __gshared size_t    sm_tlen;
+    //~ __gshared Thread    sm_tbeg;
+    //~ __gshared size_t    sm_tlen;
 
-    // can't use core.internal.util.array in public code
-    __gshared Thread* pAboutToStart;
-    __gshared size_t nAboutToStart;
+    //~ // can't use core.internal.util.array in public code
+    //~ __gshared Thread* pAboutToStart;
+    //~ __gshared size_t nAboutToStart;
 
-    //
-    // Used for ordering threads in the global thread list.
-    //
-    Thread              prev;
-    Thread              next;
+    //~ //
+    //~ // Used for ordering threads in the global thread list.
+    //~ //
+    //~ Thread              prev;
+    //~ Thread              next;
 
 
     ///////////////////////////////////////////////////////////////////////////

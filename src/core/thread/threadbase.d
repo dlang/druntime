@@ -109,6 +109,21 @@ package abstract class ThreadBase
         (cast(Mutex)_criticalRegionLock.ptr).__dtor();
     }
 
+    __gshared StackContext*  sm_cbeg;
+
+    __gshared Thread    sm_tbeg;
+    __gshared size_t    sm_tlen;
+
+    // can't use core.internal.util.array in public code
+    __gshared Thread* pAboutToStart;
+    __gshared size_t nAboutToStart;
+
+    //
+    // Used for ordering threads in the global thread list.
+    //
+    Thread              prev;
+    Thread              next;
+
     this(size_t sz = 0) @safe pure nothrow @nogc
     {
         m_sz = sz;
