@@ -922,26 +922,6 @@ class Thread : ThreadBase
         }
     }
 
-
-    /**
-     * Gets the daemon status for this thread.  While the runtime will wait for
-     * all normal threads to complete before tearing down the process, daemon
-     * threads are effectively ignored and thus will not prevent the process
-     * from terminating.  In effect, daemon threads will be terminated
-     * automatically by the OS when the process exits.
-     *
-     * Returns:
-     *  true if this is a daemon thread.
-     */
-    final @property bool isDaemon() @safe @nogc
-    {
-        synchronized( this )
-        {
-            return m_isDaemon;
-        }
-    }
-
-
     /**
      * Sets the daemon status for this thread.  While the runtime will wait for
      * all normal threads to complete before tearing down the process, daemon
@@ -1418,32 +1398,8 @@ class Thread : ThreadBase
      */
     static Thread getThis() @safe nothrow @nogc
     {
-        // NOTE: This function may not be called until thread_init has
-        //       completed.  See thread_suspendAll for more information
-        //       on why this might occur.
-        return sm_this;
+        return cast(Thread) ThreadBase.getThis();
     }
-
-
-    /**
-     * Provides a list of all threads currently being tracked by the system.
-     * Note that threads in the returned array might no longer run (see
-     * $(D Thread.)$(LREF isRunning)).
-     *
-     * Returns:
-     *  An array containing references to all threads currently being
-     *  tracked by the system.  The result of deleting any contained
-     *  objects is undefined.
-     */
-    static Thread[] getAll()
-    {
-        static void resize(ref Thread[] buf, size_t nlen)
-        {
-            buf.length = nlen;
-        }
-        return getAllImpl!resize();
-    }
-
 
     /**
      * Operates on all threads currently being tracked by the system.  The
@@ -1457,13 +1413,13 @@ class Thread : ThreadBase
      * Returns:
      *  Zero if all elemented are visited, nonzero if not.
      */
-    static int opApply(scope int delegate(ref Thread) dg)
+    static int opApply(scope int delegate(ref ThreadBase) dg)
     {
         import core.stdc.stdlib : free, realloc;
 
-        static void resize(ref Thread[] buf, size_t nlen)
+        static void resize(ref ThreadBase[] buf, size_t nlen)
         {
-            buf = (cast(Thread*)realloc(buf.ptr, nlen * Thread.sizeof))[0 .. nlen];
+            buf = (cast(ThreadBase*)realloc(buf.ptr, nlen * Thread.sizeof))[0 .. nlen];
         }
         auto buf = getAllImpl!resize;
         scope(exit) if (buf.ptr) free(buf.ptr);
@@ -1490,28 +1446,6 @@ class Thread : ThreadBase
         t2.join();
     }
 
-    private static Thread[] getAllImpl(alias resize)()
-    {
-        import core.atomic;
-
-        Thread[] buf;
-        while (true)
-        {
-            immutable len = atomicLoad!(MemoryOrder.raw)(*cast(shared)&sm_tlen);
-            resize(buf, len);
-            assert(buf.length == len);
-            synchronized (slock)
-            {
-                if (len == sm_tlen)
-                {
-                    size_t pos;
-                    for (Thread t = sm_tbeg; t; t = t.next)
-                        buf[pos++] = t;
-                    return buf;
-                }
-            }
-        }
-    }
 
     ///////////////////////////////////////////////////////////////////////////
     // Stuff That Should Go Away
@@ -1553,17 +1487,6 @@ private:
     }
 
 
-    //
-    // Local storage
-    //
-    static Thread       sm_this;
-
-
-    //
-    // Main process thread
-    //
-    __gshared Thread    sm_main;
-
     version (FreeBSD)
     {
         // set when suspend failed and should be retried, see Issue 13416
@@ -1582,13 +1505,11 @@ private:
     {
         mach_port_t     m_tmach;
     }
-    ThreadID            m_addr;
     string              m_name;
     version (Posix)
     {
         shared bool     m_isRunning;
     }
-    bool                m_isDaemon;
     bool                m_isInCriticalRegion;
     Throwable           m_unhandled;
 
@@ -1698,6 +1619,11 @@ private:
             static assert(false, "Architecture not supported." );
         }
     }
+}
+
+extern (C) size_t threadClassSize() pure @nogc nothrow
+{
+    return Thread.sizeof;
 }
 
 ///
@@ -2120,6 +2046,7 @@ unittest
 }
 
 
+//FIXME: move to base
 /**
  * Search the list of all threads for a thread with the given thread identifier.
  *
@@ -2141,7 +2068,7 @@ static Thread thread_findByAddr( ThreadID addr )
 
     foreach (t; Thread)
         if (t.m_addr == addr)
-            return t;
+            return cast(Thread) t; //FIXME: remove cast
 
     return null;
 }
@@ -2197,7 +2124,7 @@ extern (C) void thread_joinAll()
         else
         {
             Thread.slock.unlock_nothrow();
-            t.join(); // might rethrow
+            (/*FIXME*/cast(Thread)t).join(); // might rethrow
             goto Lagain; // must restart iteration b/c of unlock
         }
     }
@@ -2322,7 +2249,7 @@ do
  * Returns:
  *  Whether the thread is now suspended (true) or terminated (false).
  */
-private bool suspend( Thread t ) nothrow
+private bool thread_suspend( Thread t ) nothrow
 {
     Duration waittime = dur!"usecs"(10);
  Lagain:
@@ -2551,7 +2478,7 @@ extern (C) void thread_suspendAll() nothrow
     if ( !multiThreadedFlag && Thread.sm_tbeg )
     {
         if ( ++suspendDepth == 1 )
-            suspend( Thread.getThis() );
+            thread_suspend(/*FIXME*/cast(Thread) Thread.getThis() );
 
         return;
     }
@@ -2568,7 +2495,7 @@ extern (C) void thread_suspendAll() nothrow
         while (t)
         {
             auto tn = t.next;
-            if (suspend(t))
+            if (thread_suspend(/*FIXME*/cast(Thread) t))
                 ++cnt;
             t = tn;
         }
@@ -2623,7 +2550,7 @@ extern (C) void thread_suspendAll() nothrow
  * Throws:
  *  ThreadError if the resume fails for a running thread.
  */
-private void resume( Thread t ) nothrow
+private void thread_resume( Thread t ) nothrow
 {
     version (Windows)
     {
@@ -2700,7 +2627,7 @@ do
     if ( !multiThreadedFlag && Thread.sm_tbeg )
     {
         if ( --suspendDepth == 0 )
-            resume( Thread.getThis() );
+            thread_resume( Thread.getThis() );
         return;
     }
 
@@ -2709,11 +2636,11 @@ do
         if ( --suspendDepth > 0 )
             return;
 
-        for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+        for ( ThreadBase t = Thread.sm_tbeg; t; t = t.next )
         {
             // NOTE: We do not need to care about critical regions at all
             //       here. thread_suspendAll takes care of everything.
-            resume( t );
+            thread_resume( /*FIXME*/cast(Thread) t );
         }
     }
 }
@@ -2799,7 +2726,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         }
     }
 
-    for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+    for ( ThreadBase t = Thread.sm_tbeg; t; t = t.next )
     {
         version (Windows)
         {
@@ -2808,8 +2735,8 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
             scan( ScanType.stack, t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
         }
 
-        if (t.m_tlsgcdata !is null)
-            rt_tlsgc_scan(t.m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
+        if ((/*FIXME*/cast(Thread) t).m_tlsgcdata !is null)
+            rt_tlsgc_scan((/*FIXME*/cast(Thread) t).m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
     }
 }
 
@@ -3059,13 +2986,13 @@ alias IsMarkedDg = int delegate( void* addr ) nothrow; /// The isMarked callback
  */
 extern(C) void thread_processGCMarks( scope IsMarkedDg isMarked ) nothrow
 {
-    for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+    for ( ThreadBase t = Thread.sm_tbeg; t; t = t.next )
     {
         /* Can be null if collection was triggered between adding a
          * thread and calling rt_tlsgc_init.
          */
-        if (t.m_tlsgcdata !is null)
-            rt_tlsgc_processGCMarks(t.m_tlsgcdata, isMarked);
+        if ((/*FIXME*/cast(Thread) t).m_tlsgcdata !is null)
+            rt_tlsgc_processGCMarks((/*FIXME*/cast(Thread) t).m_tlsgcdata, isMarked);
     }
 }
 

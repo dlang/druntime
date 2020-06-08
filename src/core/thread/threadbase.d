@@ -26,13 +26,18 @@ private enum mutexClassInstanceSize = __traits(classInstanceSize, Mutex);
 
 package abstract class ThreadBase
 {
+    static Thread       sm_this; /// Local storage
+    __gshared Thread    sm_main; /// Main process thread
+
     //
     // Standard thread data
     //
-    Callable m_call; /// The thread function.
-    size_t m_sz; /// The stack size for this thread.
-    StackContext m_main;
-    StackContext* m_curr;
+    Callable        m_call; /// The thread function.
+    size_t          m_sz;   /// The stack size for this thread.
+    StackContext    m_main;
+    StackContext*   m_curr;
+    ThreadID        m_addr;
+    bool            m_isDaemon;
 
     //
     // Storage of Active Thread
@@ -112,7 +117,7 @@ package abstract class ThreadBase
 
     __gshared StackContext*  sm_cbeg;
 
-    __gshared Thread    sm_tbeg;
+    __gshared ThreadBase    sm_tbeg;
     __gshared size_t    sm_tlen;
 
     // can't use core.internal.util.array in public code
@@ -122,8 +127,8 @@ package abstract class ThreadBase
     //
     // Used for ordering threads in the global thread list.
     //
-    Thread              prev;
-    Thread              next;
+    ThreadBase          prev;
+    ThreadBase          next;
 
 
     ///////////////////////////////////////////////////////////////////////////
@@ -217,9 +222,9 @@ package abstract class ThreadBase
             }
             assert(idx != -1);
             import core.stdc.string : memmove;
-            memmove(pAboutToStart + idx, pAboutToStart + idx + 1, Thread.sizeof * (nAboutToStart - idx - 1));
+            memmove(pAboutToStart + idx, pAboutToStart + idx + 1, threadClassSize * (nAboutToStart - idx - 1));
             pAboutToStart =
-                cast(Thread*)realloc(pAboutToStart, Thread.sizeof * --nAboutToStart);
+                cast(Thread*)realloc(pAboutToStart, threadClassSize * --nAboutToStart);
         }
 
         if (sm_tbeg)
@@ -234,12 +239,8 @@ package abstract class ThreadBase
     //
     // Remove a thread from the global thread list.
     //
-    static void remove( Thread t ) nothrow @nogc
-    in
-    {
-        assert( t );
-    }
-    do
+    static void remove( ThreadBase t ) nothrow @nogc
+    in( t )
     {
         // Thread was already removed earlier, might happen b/c of thread_detachInstance
         if (!t.next && !t.prev && (sm_tbeg !is t))
@@ -277,6 +278,29 @@ package abstract class ThreadBase
     }
 
 
+    ///////////////////////////////////////////////////////////////////////////
+    // General Properties
+    ///////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Gets the daemon status for this thread.  While the runtime will wait for
+     * all normal threads to complete before tearing down the process, daemon
+     * threads are effectively ignored and thus will not prevent the process
+     * from terminating.  In effect, daemon threads will be terminated
+     * automatically by the OS when the process exits.
+     *
+     * Returns:
+     *  true if this is a daemon thread.
+     */
+    final @property bool isDaemon() @safe @nogc
+    {
+        synchronized( this )
+        {
+            return m_isDaemon;
+        }
+    }
+
+
     this(size_t sz = 0) @safe pure nothrow @nogc
     {
         m_sz = sz;
@@ -298,8 +322,73 @@ package abstract class ThreadBase
     }
 
     bool isRunning() nothrow @nogc;
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Thread Accessors
+    ///////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Provides a reference to the calling thread.
+     *
+     * Returns:
+     *  The thread object representing the calling thread.  The result of
+     *  deleting this object is undefined.  If the current thread is not
+     *  attached to the runtime, a null reference is returned.
+     */
+    static ThreadBase getThis() @safe nothrow @nogc
+    {
+        // NOTE: This function may not be called until thread_init has
+        //       completed.  See thread_suspendAll for more information
+        //       on why this might occur.
+        return sm_this;
+    }
+
+
+    /**
+     * Provides a list of all threads currently being tracked by the system.
+     * Note that threads in the returned array might no longer run (see
+     * $(D Thread.)$(LREF isRunning)).
+     *
+     * Returns:
+     *  An array containing references to all threads currently being
+     *  tracked by the system.  The result of deleting any contained
+     *  objects is undefined.
+     */
+    static ThreadBase[] getAll()
+    {
+        static void resize(ref ThreadBase[] buf, size_t nlen)
+        {
+            buf.length = nlen;
+        }
+        return getAllImpl!resize();
+    }
+
+    package static ThreadBase[] getAllImpl(alias resize)()
+    {
+        import core.atomic;
+
+        ThreadBase[] buf;
+        while (true)
+        {
+            immutable len = atomicLoad!(MemoryOrder.raw)(*cast(shared)&sm_tlen);
+            resize(buf, len);
+            assert(buf.length == len);
+            synchronized (slock)
+            {
+                if (len == sm_tlen)
+                {
+                    size_t pos;
+                    for (ThreadBase t = sm_tbeg; t; t = t.next)
+                        buf[pos++] = t;
+                    return buf;
+                }
+            }
+        }
+    }
 }
 
+extern (C) size_t threadClassSize() pure @nogc nothrow;
 
 // Used for suspendAll/resumeAll below.
 package __gshared uint suspendDepth = 0;
