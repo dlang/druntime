@@ -155,6 +155,34 @@ package abstract class ThreadBase
     }
 
 
+    //
+    // Remove a context from the global context list.
+    //
+    // This assumes slock being acquired. This isn't done here to
+    // avoid double locking when called from remove(Thread)
+    static void remove( StackContext* c ) nothrow @nogc
+    in
+    {
+        assert( c );
+        assert( c.next || c.prev );
+    }
+    do
+    {
+        if ( c.prev )
+            c.prev.next = c.next;
+        if ( c.next )
+            c.next.prev = c.prev;
+        if ( sm_cbeg == c )
+            sm_cbeg = c.next;
+        // NOTE: Don't null out c.next or c.prev because opApply currently
+        //       follows c.next after removing a node.  This could be easily
+        //       addressed by simply returning the next node from this
+        //       function, however, a context should never be re-added to the
+        //       list anyway and having next and prev be non-null is a good way
+        //       to ensure that.
+    }
+
+
     ///////////////////////////////////////////////////////////////////////////
     // Global Thread List Operations
     ///////////////////////////////////////////////////////////////////////////
@@ -201,6 +229,51 @@ package abstract class ThreadBase
         }
         sm_tbeg = t;
         ++sm_tlen;
+    }
+
+    //
+    // Remove a thread from the global thread list.
+    //
+    static void remove( Thread t ) nothrow @nogc
+    in
+    {
+        assert( t );
+    }
+    do
+    {
+        // Thread was already removed earlier, might happen b/c of thread_detachInstance
+        if (!t.next && !t.prev && (sm_tbeg !is t))
+            return;
+
+        slock.lock_nothrow();
+        {
+            // NOTE: When a thread is removed from the global thread list its
+            //       main context is invalid and should be removed as well.
+            //       It is possible that t.m_curr could reference more
+            //       than just the main context if the thread exited abnormally
+            //       (if it was terminated), but we must assume that the user
+            //       retains a reference to them and that they may be re-used
+            //       elsewhere.  Therefore, it is the responsibility of any
+            //       object that creates contexts to clean them up properly
+            //       when it is done with them.
+            remove( &t.m_main );
+
+            if ( t.prev )
+                t.prev.next = t.next;
+            if ( t.next )
+                t.next.prev = t.prev;
+            if ( sm_tbeg is t )
+                sm_tbeg = t.next;
+            t.prev = t.next = null;
+            --sm_tlen;
+        }
+        // NOTE: Don't null out t.next or t.prev because opApply currently
+        //       follows t.next after removing a node.  This could be easily
+        //       addressed by simply returning the next node from this
+        //       function, however, a thread should never be re-added to the
+        //       list anyway and having next and prev be non-null is a good way
+        //       to ensure that.
+        slock.unlock_nothrow();
     }
 
 
