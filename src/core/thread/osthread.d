@@ -192,12 +192,12 @@ private
 {
     import core.atomic, core.memory, core.sync.mutex;
 
-    // Handling unaligned mutexes are not supported on all platforms, so we must
-    // ensure that the address of all shared data are appropriately aligned.
-    import core.internal.traits : classInstanceAlignment;
+    //~ // Handling unaligned mutexes are not supported on all platforms, so we must
+    //~ // ensure that the address of all shared data are appropriately aligned.
+    import core.internal.traits : classInstanceAlignment; //FIXME: remove
 
-    enum mutexAlign = classInstanceAlignment!Mutex;
-    enum mutexClassInstanceSize = __traits(classInstanceSize, Mutex);
+    enum mutexAlign = classInstanceAlignment!Mutex; //FIXME: remove
+    enum mutexClassInstanceSize = __traits(classInstanceSize, Mutex); //FIXME: remove
 
     //
     // exposed by compiler runtime
@@ -1613,7 +1613,6 @@ private:
 
 package(core.thread):
 
-    bool                m_lock;
     void*               m_tlsgcdata;
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1735,41 +1734,6 @@ package(core.thread):
     //       context, however, will be tied to the lifetime of the Fiber object
     //       itself, and Fibers are expected to add/remove their Context struct
     //       on construction/deletion.
-
-
-    //
-    // All use of the global thread lists/array should synchronize on this lock.
-    //
-    // Careful as the GC acquires this lock after the GC lock to suspend all
-    // threads any GC usage with slock held can result in a deadlock through
-    // lock order inversion.
-    @property static Mutex slock() nothrow @nogc
-    {
-        return cast(Mutex)_slock.ptr;
-    }
-
-    @property static Mutex criticalRegionLock() nothrow @nogc
-    {
-        return cast(Mutex)_criticalRegionLock.ptr;
-    }
-
-    __gshared align(mutexAlign) void[mutexClassInstanceSize] _slock;
-    __gshared align(mutexAlign) void[mutexClassInstanceSize] _criticalRegionLock;
-
-    static void initLocks() @nogc
-    {
-        _slock[] = typeid(Mutex).initializer[];
-        (cast(Mutex)_slock.ptr).__ctor();
-
-        _criticalRegionLock[] = typeid(Mutex).initializer[];
-        (cast(Mutex)_criticalRegionLock.ptr).__ctor();
-    }
-
-    static void termLocks() @nogc
-    {
-        (cast(Mutex)_slock.ptr).__dtor();
-        (cast(Mutex)_criticalRegionLock.ptr).__dtor();
-    }
 
     __gshared StackContext*  sm_cbeg;
 
