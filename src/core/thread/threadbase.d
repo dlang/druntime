@@ -1474,26 +1474,28 @@ class ThreadBase
     {
         HANDLE          m_hndl;
     }
-    else version (Darwin)
-    {
-        mach_port_t     m_tmach;
-    }
+    //FIXME: move to osthread and enable versions
+    //~ else version (Darwin)
+    //~ {
+        //~ mach_port_t     m_tmach;
+    //~ }
+    uint m_tmach; //FIXME:remove
     ThreadID            m_addr;
     Callable            m_call;
     string              m_name;
     size_t              m_sz;
-    version (Posix)
-    {
+    //~ version (Posix)
+    //~ {
         /* FIXME: remove package */ package shared bool     m_isRunning;
-    }
+    //~ }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
     Throwable           m_unhandled;
 
-    version (Solaris)
-    {
+    //~ version (Solaris)
+    //~ {
         __gshared bool m_isRTClass;
-    }
+    //~ }
 
 private:
     ///////////////////////////////////////////////////////////////////////////
