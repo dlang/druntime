@@ -199,9 +199,22 @@ class Thread : ThreadBase
     {
         super(sz);
     }
+
+    /**
+     * Provides a reference to the calling thread.
+     *
+     * Returns:
+     *  The thread object representing the calling thread.  The result of
+     *  deleting this object is undefined.  If the current thread is not
+     *  attached to the runtime, a null reference is returned.
+     */
+    static Thread getThis() @safe nothrow @nogc
+    {
+        return ThreadBase.getThis().toThread;
+    }
 }
 
-package Thread toThread(ThreadBase t)
+package /*FIXME:private*/ Thread toThread(ThreadBase t) @safe nothrow @nogc pure
 {
     return cast(Thread) t;
 }

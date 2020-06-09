@@ -1311,7 +1311,7 @@ class ThreadBase
      *  deleting this object is undefined.  If the current thread is not
      *  attached to the runtime, a null reference is returned.
      */
-    static Thread getThis() @safe nothrow @nogc
+    static ThreadBase getThis() @safe nothrow @nogc
     {
         // NOTE: This function may not be called until thread_init has
         //       completed.  See thread_suspendAll for more information
@@ -1458,7 +1458,7 @@ class ThreadBase
     //
     // Main process thread
     //
-    __gshared Thread    sm_main;
+    __gshared ThreadBase    sm_main;
 
     version (FreeBSD)
     {
