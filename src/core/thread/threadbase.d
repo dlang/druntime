@@ -1625,7 +1625,7 @@ package(core.thread):
         c.within = null;
     }
 
-private:
+//~ private: //FIXME
 
     final StackContext* topContext() nothrow @nogc
     in
