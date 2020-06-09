@@ -193,7 +193,8 @@ version (all)
 
 version (Windows)
 {
-    private
+    //~ private //FIXME
+    version (all)
     {
         import core.stdc.stdint : uintptr_t; // for _beginthreadex decl below
         import core.stdc.stdlib;             // for malloc, atexit
