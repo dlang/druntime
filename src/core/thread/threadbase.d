@@ -37,6 +37,7 @@ package abstract class ThreadBase
     StackContext    m_main;
     StackContext*   m_curr;
     ThreadID        m_addr;
+    private string  m_name;
     bool            m_isDaemon;
 
     //
@@ -441,6 +442,72 @@ package abstract class ThreadBase
             }
         }
     }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // General Properties
+    ///////////////////////////////////////////////////////////////////////////
+
+
+    /**
+     * Gets the OS identifier for this thread.
+     *
+     * Returns:
+     *  If the thread hasn't been started yet, returns $(LREF ThreadID)$(D.init).
+     *  Otherwise, returns the result of $(D GetCurrentThreadId) on Windows,
+     *  and $(D pthread_self) on POSIX.
+     *
+     *  The value is unique for the current process.
+     */
+    final @property ThreadID id() @safe @nogc
+    {
+        synchronized( this )
+        {
+            return m_addr;
+        }
+    }
+
+
+    /**
+     * Gets the user-readable label for this thread.
+     *
+     * Returns:
+     *  The name of this thread.
+     */
+    final @property string name() @safe @nogc
+    {
+        synchronized( this )
+        {
+            return m_name;
+        }
+    }
+
+
+    /**
+     * Sets the user-readable label for this thread.
+     *
+     * Params:
+     *  val = The new name of this thread.
+     */
+    final @property void name( string val ) @safe @nogc
+    {
+        synchronized( this )
+        {
+            m_name = val;
+        }
+    }
+
+    /**
+     * Tests whether this thread is the main thread, i.e. the thread
+     * that initialized the runtime
+     *
+     * Returns:
+     *  true if the thread is the main thread
+     */
+    final @property bool isMainThread() nothrow @nogc
+    {
+        return this is sm_main;
+    }
 }
 
 extern (C) size_t threadClassSize() pure @nogc nothrow;
@@ -462,6 +529,15 @@ private
 
     alias rt_tlsgc_processGCMarks =
         externDFunc!("rt.tlsgc.processGCMarks", void function(void*, scope IsMarkedDg) nothrow);
+}
+
+
+/**
+ *
+ */
+extern (C) bool thread_isMainThread() nothrow @nogc
+{
+    return ThreadBase.getThis() is ThreadBase.sm_main;
 }
 
 
