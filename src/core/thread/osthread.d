@@ -289,18 +289,14 @@ version (Windows)
             Thread  obj = cast(Thread) arg;
             assert( obj );
 
-            assert( obj.m_curr is &obj.m_main );
-            obj.m_main.bstack = getStackBottom();
-            obj.m_main.tstack = obj.m_main.bstack;
-            obj.m_tlsgcdata = rt_tlsgc_init();
+            dataStorageInit();
 
             Thread.setThis(obj);
             Thread.add(obj);
             scope (exit)
             {
                 Thread.remove(obj);
-                rt_tlsgc_destroy( obj.m_tlsgcdata );
-                obj.m_tlsgcdata = null;
+                dataStorageDestroy();
             }
             Thread.add(&obj.m_main);
 
@@ -1929,7 +1925,7 @@ version (Windows)
         if ( addr == GetCurrentThreadId() )
         {
             thisThread.m_hndl = GetCurrentThreadHandle();
-            thisThread.m_tlsgcdata = rt_tlsgc_init();
+            tlsGCdataInit();
             Thread.setThis( thisThread );
         }
         else
@@ -1937,7 +1933,7 @@ version (Windows)
             thisThread.m_hndl = OpenThreadHandle( addr );
             impersonate_thread(addr,
             {
-                thisThread.m_tlsgcdata = rt_tlsgc_init();
+                tlsGCdataInit();
                 Thread.setThis( thisThread );
             });
         }

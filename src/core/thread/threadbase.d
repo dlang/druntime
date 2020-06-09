@@ -365,7 +365,7 @@ package abstract class ThreadBase
 
     void dataStorageDestroyIfAvail() nothrow @nogc
     {
-        if( m_tlsgcdata )
+        if (m_tlsgcdata)
             dataStorageDestroy();
     }
 
