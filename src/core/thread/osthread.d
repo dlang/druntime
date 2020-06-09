@@ -2231,7 +2231,7 @@ do
  * Returns:
  *  Whether the thread is now suspended (true) or terminated (false).
  */
-private bool thread_suspend( ThreadBase _t ) nothrow
+private bool _thread_suspend( ThreadBase _t ) nothrow
 {
     Thread t = cast(Thread) _t; //FIXME: remove
 
@@ -2462,7 +2462,7 @@ extern (C) void thread_suspendAll() nothrow
     if ( !multiThreadedFlag && Thread.sm_tbeg )
     {
         if ( ++suspendDepth == 1 )
-            thread_suspend(Thread.getThis() );
+            _thread_suspend(Thread.getThis() );
 
         return;
     }
@@ -2479,7 +2479,7 @@ extern (C) void thread_suspendAll() nothrow
         while (t)
         {
             auto tn = t.next;
-            if (thread_suspend(t))
+            if (_thread_suspend(t))
                 ++cnt;
             t = tn;
         }
@@ -2534,7 +2534,7 @@ extern (C) void thread_suspendAll() nothrow
  * Throws:
  *  ThreadError if the resume fails for a running thread.
  */
-private void thread_resume( Thread t ) nothrow
+private void _thread_resume( Thread t ) nothrow
 {
     version (Windows)
     {
@@ -2611,7 +2611,7 @@ do
     if ( !multiThreadedFlag && Thread.sm_tbeg )
     {
         if ( --suspendDepth == 0 )
-            thread_resume( Thread.getThis() );
+            _thread_resume( Thread.getThis() );
         return;
     }
 
@@ -2624,7 +2624,7 @@ do
         {
             // NOTE: We do not need to care about critical regions at all
             //       here. thread_suspendAll takes care of everything.
-            thread_resume( /*FIXME*/cast(Thread) t );
+            _thread_resume( /*FIXME*/cast(Thread) t );
         }
     }
 }
