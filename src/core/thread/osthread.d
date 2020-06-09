@@ -1483,20 +1483,6 @@ private:
         __gshared bool m_isRTClass;
     }
 
-private:
-    ///////////////////////////////////////////////////////////////////////////
-    // Storage of Active Thread
-    ///////////////////////////////////////////////////////////////////////////
-
-
-    //
-    // Sets a thread-local reference to the current thread object.
-    //
-    static void setThis( Thread t ) nothrow @nogc
-    {
-        sm_this = t;
-    }
-
 package(core.thread):
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1800,7 +1786,7 @@ extern (C) void thread_term() @nogc
     assert(_mainThreadStore.ptr is cast(void*) Thread.sm_main);
 
     // destruct manually as object.destroy is not @nogc
-    Thread.sm_main.__dtor();
+    (/* FIXME */ cast(Thread) ThreadBase.sm_main).__dtor();
     _d_monitordelete_nogc(Thread.sm_main);
     if (typeid(Thread).initializer.ptr)
         _mainThreadStore[] = typeid(Thread).initializer[];
@@ -2006,50 +1992,6 @@ unittest
     foreach (t2; Thread)
         assert(t !is t2);
     t.join();
-}
-
-
-//FIXME: move to base
-/**
- * Search the list of all threads for a thread with the given thread identifier.
- *
- * Params:
- *  addr = The thread identifier to search for.
- * Returns:
- *  The thread object associated with the thread identifier, null if not found.
- */
-static Thread thread_findByAddr( ThreadID addr )
-{
-    Thread.slock.lock_nothrow();
-    scope(exit) Thread.slock.unlock_nothrow();
-
-    // also return just spawned thread so that
-    // DLL_THREAD_ATTACH knows it's a D thread
-    foreach (t; Thread.pAboutToStart[0 .. Thread.nAboutToStart])
-        if (t.m_addr == addr)
-            return t;
-
-    foreach (t; Thread)
-        if (t.m_addr == addr)
-            return cast(Thread) t; //FIXME: remove cast
-
-    return null;
-}
-
-
-/**
- * Sets the current thread to a specific reference. Only to be used
- * when dealing with externally-created threads (in e.g. C code).
- * The primary use of this function is when Thread.getThis() must
- * return a sensible value in, for example, TLS destructors. In
- * other words, don't touch this unless you know what you're doing.
- *
- * Params:
- *  t = A reference to the current thread. May be null.
- */
-extern (C) void thread_setThis(Thread t) nothrow @nogc
-{
-    Thread.setThis(t);
 }
 
 

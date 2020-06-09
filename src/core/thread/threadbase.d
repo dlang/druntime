@@ -26,8 +26,8 @@ private enum mutexClassInstanceSize = __traits(classInstanceSize, Mutex);
 
 package abstract class ThreadBase
 {
-    static Thread       sm_this; /// Local storage
-    __gshared Thread    sm_main; /// Main process thread
+    static ThreadBase       sm_this; /// Local storage
+    __gshared ThreadBase    sm_main; /// Main process thread
 
     //
     // Standard thread data
@@ -46,6 +46,13 @@ package abstract class ThreadBase
     bool m_lock;
     void*               m_tlsgcdata;
 
+    //
+    // Sets a thread-local reference to the current thread object.
+    //
+    static void setThis( ThreadBase t ) nothrow @nogc
+    {
+        sm_this = t;
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // GC Scanning Support
@@ -455,4 +462,47 @@ private
 
     alias rt_tlsgc_processGCMarks =
         externDFunc!("rt.tlsgc.processGCMarks", void function(void*, scope IsMarkedDg) nothrow);
+}
+
+
+/**
+ * Search the list of all threads for a thread with the given thread identifier.
+ *
+ * Params:
+ *  addr = The thread identifier to search for.
+ * Returns:
+ *  The thread object associated with the thread identifier, null if not found.
+ */
+static ThreadBase thread_findByAddr( ThreadID addr )
+{
+    Thread.slock.lock_nothrow();
+    scope(exit) ThreadBase.slock.unlock_nothrow();
+
+    // also return just spawned thread so that
+    // DLL_THREAD_ATTACH knows it's a D thread
+    foreach (t; ThreadBase.pAboutToStart[0 .. ThreadBase.nAboutToStart])
+        if (t.m_addr == addr)
+            return t;
+
+    foreach (t; Thread)
+        if (t.m_addr == addr)
+            return t;
+
+    return null;
+}
+
+
+/**
+ * Sets the current thread to a specific reference. Only to be used
+ * when dealing with externally-created threads (in e.g. C code).
+ * The primary use of this function is when Thread.getThis() must
+ * return a sensible value in, for example, TLS destructors. In
+ * other words, don't touch this unless you know what you're doing.
+ *
+ * Params:
+ *  t = A reference to the current thread. May be null.
+ */
+extern (C) void thread_setThis(ThreadBase t) nothrow @nogc
+{
+    ThreadBase.setThis(t);
 }
