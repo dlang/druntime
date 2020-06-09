@@ -1504,7 +1504,7 @@ private:
     //
     // Sets a thread-local reference to the current thread object.
     //
-    /*FIXME: remove package*/ package static void setThis( Thread t ) nothrow @nogc
+    /*FIXME: remove package*/ package static void setThis( ThreadBase t ) nothrow @nogc
     {
         sm_this = t;
     }
@@ -1751,7 +1751,7 @@ package(core.thread):
     //
     // Add a thread to the global thread list.
     //
-    static void add( Thread t, bool rmAboutToStart = true ) nothrow @nogc
+    static void add( ThreadBase t, bool rmAboutToStart = true ) nothrow @nogc
     in
     {
         assert( t );
@@ -2037,6 +2037,7 @@ extern (C) void thread_init() @nogc
 }
 
 private __gshared align(Thread.alignof) void[__traits(classInstanceSize, Thread)] _mainThreadStore;
+extern (C) ThreadBase attachThread(ThreadBase thisThread) @nogc;
 
 extern (C) void _d_monitordelete_nogc(Object h) @nogc;
 
@@ -2088,111 +2089,12 @@ extern (C) bool thread_isMainThread() nothrow @nogc
  *
  *       extern (C) void rt_moduleTlsCtor();
  */
-extern (C) Thread thread_attachThis()
+extern (C) ThreadBase thread_attachThis()
 {
     if (auto t = Thread.getThis())
         return t;
 
     return attachThread(new Thread());
-}
-
-private Thread attachThread(Thread thisThread) @nogc
-{
-    StackContext* thisContext = &thisThread.m_main;
-    assert( thisContext == thisThread.m_curr );
-
-    version (Windows)
-    {
-        thisThread.m_addr  = GetCurrentThreadId();
-        thisThread.m_hndl  = GetCurrentThreadHandle();
-        thisContext.bstack = getStackBottom();
-        thisContext.tstack = thisContext.bstack;
-    }
-    else version (Posix)
-    {
-        thisThread.m_addr  = pthread_self();
-        thisContext.bstack = getStackBottom();
-        thisContext.tstack = thisContext.bstack;
-
-        atomicStore!(MemoryOrder.raw)(thisThread.m_isRunning, true);
-    }
-    thisThread.m_isDaemon = true;
-    thisThread.m_tlsgcdata = rt_tlsgc_init();
-    Thread.setThis( thisThread );
-
-    version (Darwin)
-    {
-        thisThread.m_tmach = pthread_mach_thread_np( thisThread.m_addr );
-        assert( thisThread.m_tmach != thisThread.m_tmach.init );
-    }
-
-    Thread.add( thisThread, false );
-    Thread.add( thisContext );
-    if ( Thread.sm_main !is null )
-        multiThreadedFlag = true;
-    return thisThread;
-}
-
-
-version (Windows)
-{
-    // NOTE: These calls are not safe on Posix systems that use signals to
-    //       perform garbage collection.  The suspendHandler uses getThis()
-    //       to get the thread handle so getThis() must be a simple call.
-    //       Mutexes can't safely be acquired inside signal handlers, and
-    //       even if they could, the mutex needed (Thread.slock) is held by
-    //       thread_suspendAll().  So in short, these routines will remain
-    //       Windows-specific.  If they are truly needed elsewhere, the
-    //       suspendHandler will need a way to call a version of getThis()
-    //       that only does the TLS lookup without the fancy fallback stuff.
-
-    /// ditto
-    extern (C) Thread thread_attachByAddr( ThreadID addr )
-    {
-        return thread_attachByAddrB( addr, getThreadStackBottom( addr ) );
-    }
-
-
-    /// ditto
-    extern (C) Thread thread_attachByAddrB( ThreadID addr, void* bstack )
-    {
-        GC.disable(); scope(exit) GC.enable();
-
-        if (auto t = thread_findByAddr(addr).toThread)
-            return t;
-
-        Thread        thisThread  = new Thread();
-        StackContext* thisContext = &thisThread.m_main;
-        assert( thisContext == thisThread.m_curr );
-
-        thisThread.m_addr  = addr;
-        thisContext.bstack = bstack;
-        thisContext.tstack = thisContext.bstack;
-
-        thisThread.m_isDaemon = true;
-
-        if ( addr == GetCurrentThreadId() )
-        {
-            thisThread.m_hndl = GetCurrentThreadHandle();
-            thisThread.m_tlsgcdata = rt_tlsgc_init();
-            Thread.setThis( thisThread );
-        }
-        else
-        {
-            thisThread.m_hndl = OpenThreadHandle( addr );
-            impersonate_thread(addr,
-            {
-                thisThread.m_tlsgcdata = rt_tlsgc_init();
-                Thread.setThis( thisThread );
-            });
-        }
-
-        Thread.add( thisThread, false );
-        Thread.add( thisContext );
-        if ( Thread.sm_main !is null )
-            multiThreadedFlag = true;
-        return thisThread;
-    }
 }
 
 
@@ -2350,7 +2252,7 @@ extern (C) void thread_joinAll()
 
 
 // Used for needLock below.
-private __gshared bool multiThreadedFlag = false;
+package /*FIXME:private*/ __gshared bool multiThreadedFlag = false;
 
 // Used for suspendAll/resumeAll below.
 private __gshared uint suspendDepth = 0;
