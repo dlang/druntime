@@ -289,14 +289,14 @@ version (Windows)
             Thread  obj = cast(Thread) arg;
             assert( obj );
 
-            dataStorageInit();
+            obj.dataStorageInit();
 
             Thread.setThis(obj);
             Thread.add(obj);
             scope (exit)
             {
                 Thread.remove(obj);
-                dataStorageDestroy();
+                obj.dataStorageDestroy();
             }
             Thread.add(&obj.m_main);
 
@@ -1925,7 +1925,7 @@ version (Windows)
         if ( addr == GetCurrentThreadId() )
         {
             thisThread.m_hndl = GetCurrentThreadHandle();
-            tlsGCdataInit();
+            thisThread.tlsGCdataInit();
             Thread.setThis( thisThread );
         }
         else
@@ -1933,7 +1933,7 @@ version (Windows)
             thisThread.m_hndl = OpenThreadHandle( addr );
             impersonate_thread(addr,
             {
-                tlsGCdataInit();
+                thisThread.tlsGCdataInit();
                 Thread.setThis( thisThread );
             });
         }
