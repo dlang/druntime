@@ -1452,7 +1452,7 @@ class ThreadBase
     //
     // Local storage
     //
-    static Thread       sm_this;
+    static ThreadBase       sm_this;
 
 
     //
