@@ -2710,8 +2710,10 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         }
     }
 
-    for ( ThreadBase t = Thread.sm_tbeg; t; t = t.next )
+    for ( ThreadBase _t = Thread.sm_tbeg; _t; _t = _t.next )
     {
+        auto t = cast(Thread) _t; //FIXME: remove it
+
         version (Windows)
         {
             // Ideally, we'd pass ScanType.regs or something like that, but this
@@ -2720,7 +2722,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         }
 
         if ((/*FIXME*/cast(Thread) t).m_tlsgcdata !is null)
-            rt_tlsgc_scan((/*FIXME*/cast(Thread) t).m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
+            rt_tlsgc_scan(t.m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
     }
 }
 
