@@ -2505,11 +2505,11 @@ extern (C) void thread_suspendAll() nothrow
             version (FreeBSD)
             {
                 // avoid deadlocks, see Issue 13416
-                t = Thread.sm_tbeg;
+                t = /*FIXME*/ cast(Thread) Thread.sm_tbeg;
                 while (t)
                 {
                     auto tn = t.next;
-                    if (t.m_suspendagain && suspend(t))
+                    if (t.m_suspendagain && _thread_suspend(t))
                         ++cnt;
                     t = tn;
                 }
@@ -2721,7 +2721,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
             scan( ScanType.stack, t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
         }
 
-        if ((/*FIXME*/cast(Thread) t).m_tlsgcdata !is null)
+        if (t.m_tlsgcdata !is null)
             rt_tlsgc_scan(t.m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
     }
 }
