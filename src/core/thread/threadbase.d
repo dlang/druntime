@@ -129,7 +129,7 @@ package abstract class ThreadBase
     __gshared size_t    sm_tlen;
 
     // can't use core.internal.util.array in public code
-    __gshared Thread* pAboutToStart;
+    __gshared ThreadBase* pAboutToStart;
     __gshared size_t nAboutToStart;
 
     //
@@ -204,7 +204,7 @@ package abstract class ThreadBase
     //
     // Add a thread to the global thread list.
     //
-    static void add( Thread t, bool rmAboutToStart = true ) nothrow @nogc
+    static void add( ThreadBase t, bool rmAboutToStart = true ) nothrow @nogc
     in
     {
         assert( t );
@@ -232,7 +232,7 @@ package abstract class ThreadBase
             import core.stdc.string : memmove;
             memmove(pAboutToStart + idx, pAboutToStart + idx + 1, threadClassSize * (nAboutToStart - idx - 1));
             pAboutToStart =
-                cast(Thread*)realloc(pAboutToStart, threadClassSize * --nAboutToStart);
+                cast(ThreadBase*)realloc(pAboutToStart, threadClassSize * --nAboutToStart);
         }
 
         if (sm_tbeg)
