@@ -567,7 +567,7 @@ unittest
 }
 
 /// ditto
-pragma(inline, true)
+pragma(inline, false) // false as workaround to http://issues.dlang.org/show_bug.cgi?id=20906
 long muls()(long x, long y, ref bool overflow)
 {
     immutable long r = cast(ulong)x * cast(ulong)y;
