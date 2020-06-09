@@ -2505,11 +2505,11 @@ extern (C) void thread_suspendAll() nothrow
             version (FreeBSD)
             {
                 // avoid deadlocks, see Issue 13416
-                t = /*FIXME*/ cast(Thread) Thread.sm_tbeg;
+                t = Thread.sm_tbeg;
                 while (t)
                 {
                     auto tn = t.next;
-                    if (t.m_suspendagain && _thread_suspend(t))
+                    if ((/*FIXME*/ cast(Thread) t).m_suspendagain && _thread_suspend(t))
                         ++cnt;
                     t = tn;
                 }

@@ -318,8 +318,11 @@ package abstract class ThreadBase
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // Initialization
+    ///////////////////////////////////////////////////////////////////////////
 
-    this(size_t sz = 0) @safe pure nothrow @nogc
+    package this(size_t sz = 0) @safe pure nothrow @nogc
     {
         m_sz = sz;
         m_curr = &m_main;
