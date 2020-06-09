@@ -664,7 +664,7 @@ class ThreadBase
         scope(exit) slock.unlock_nothrow();
         {
             ++nAboutToStart;
-            pAboutToStart = cast(Thread*)realloc(pAboutToStart, Thread.sizeof * nAboutToStart);
+            pAboutToStart = cast(ThreadBase*)realloc(pAboutToStart, Thread.sizeof * nAboutToStart);
             pAboutToStart[nAboutToStart - 1] = cast(Thread) this; //FIXME: remove cast
             version (Windows)
             {
@@ -1330,9 +1330,9 @@ class ThreadBase
      *  tracked by the system.  The result of deleting any contained
      *  objects is undefined.
      */
-    static Thread[] getAll()
+    static ThreadBase[] getAll()
     {
-        static void resize(ref Thread[] buf, size_t nlen)
+        static void resize(ref ThreadBase[] buf, size_t nlen)
         {
             buf.length = nlen;
         }
@@ -1352,13 +1352,13 @@ class ThreadBase
      * Returns:
      *  Zero if all elemented are visited, nonzero if not.
      */
-    static int opApply(scope int delegate(ref Thread) dg)
+    static int opApply(scope int delegate(ref ThreadBase) dg)
     {
         import core.stdc.stdlib : free, realloc;
 
-        static void resize(ref Thread[] buf, size_t nlen)
+        static void resize(ref ThreadBase[] buf, size_t nlen)
         {
-            buf = (cast(Thread*)realloc(buf.ptr, nlen * Thread.sizeof))[0 .. nlen];
+            buf = (cast(ThreadBase*)realloc(buf.ptr, nlen * Thread.sizeof))[0 .. nlen];
         }
         auto buf = getAllImpl!resize;
         scope(exit) if (buf.ptr) free(buf.ptr);
@@ -1385,11 +1385,11 @@ class ThreadBase
         t2.join();
     }
 
-    private static Thread[] getAllImpl(alias resize)()
+    private static ThreadBase[] getAllImpl(alias resize)()
     {
         import core.atomic;
 
-        Thread[] buf;
+        ThreadBase[] buf;
         while (true)
         {
             immutable len = atomicLoad!(MemoryOrder.raw)(*cast(shared)&sm_tlen);
@@ -1400,7 +1400,7 @@ class ThreadBase
                 if (len == sm_tlen)
                 {
                     size_t pos;
-                    for (Thread t = sm_tbeg; t; t = t.next)
+                    for (ThreadBase t = sm_tbeg; t; t = t.next)
                         buf[pos++] = t;
                     return buf;
                 }
@@ -1673,18 +1673,18 @@ package(core.thread):
 
     __gshared StackContext*  sm_cbeg;
 
-    __gshared Thread    sm_tbeg;
-    __gshared size_t    sm_tlen;
+    __gshared ThreadBase    sm_tbeg;
+    __gshared size_t        sm_tlen;
 
     // can't use core.internal.util.array in public code
-    __gshared Thread* pAboutToStart;
-    __gshared size_t nAboutToStart;
+    __gshared ThreadBase* pAboutToStart;
+    __gshared size_t      nAboutToStart;
 
     //
     // Used for ordering threads in the global thread list.
     //
-    Thread              prev;
-    Thread              next;
+    ThreadBase          prev;
+    ThreadBase          next;
 
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1779,7 +1779,7 @@ package(core.thread):
             import core.stdc.string : memmove;
             memmove(pAboutToStart + idx, pAboutToStart + idx + 1, Thread.sizeof * (nAboutToStart - idx - 1));
             pAboutToStart =
-                cast(Thread*)realloc(pAboutToStart, Thread.sizeof * --nAboutToStart);
+                cast(ThreadBase*)realloc(pAboutToStart, Thread.sizeof * --nAboutToStart);
         }
 
         if (sm_tbeg)
@@ -1795,7 +1795,7 @@ package(core.thread):
     //
     // Remove a thread from the global thread list.
     //
-    static void remove( Thread t ) nothrow @nogc
+    static void remove( ThreadBase t ) nothrow @nogc
     in
     {
         assert( t );
@@ -2228,7 +2228,7 @@ extern (C) void thread_detachThis() nothrow @nogc
 extern (C) void thread_detachByAddr( ThreadID addr )
 {
     if ( auto t = thread_findByAddr( addr ) )
-        Thread.remove( t );
+        ThreadBase.remove( t );
 }
 
 
@@ -2266,14 +2266,14 @@ unittest
  * Returns:
  *  The thread object associated with the thread identifier, null if not found.
  */
-static Thread thread_findByAddr( ThreadID addr )
+static ThreadBase thread_findByAddr( ThreadID addr )
 {
     Thread.slock.lock_nothrow();
     scope(exit) Thread.slock.unlock_nothrow();
 
     // also return just spawned thread so that
     // DLL_THREAD_ATTACH knows it's a D thread
-    foreach (t; Thread.pAboutToStart[0 .. Thread.nAboutToStart])
+    foreach (t; ThreadBase.pAboutToStart[0 .. ThreadBase.nAboutToStart])
         if (t.m_addr == addr)
             return t;
 
@@ -2371,8 +2371,10 @@ private __gshared uint suspendDepth = 0;
  * Returns:
  *  Whether the thread is now suspended (true) or terminated (false).
  */
-private bool suspend( Thread t ) nothrow
+private bool suspend( ThreadBase __t ) nothrow
 {
+    auto t = cast(Thread) __t; //FIXME: move whole function to osthread.d
+
     Duration waittime = dur!"usecs"(10);
  Lagain:
     if (!t.isRunning)
@@ -2672,8 +2674,10 @@ extern (C) void thread_suspendAll() nothrow
  * Throws:
  *  ThreadError if the resume fails for a running thread.
  */
-private void resume( Thread t ) nothrow
+private void resume( ThreadBase __t ) nothrow
 {
+    auto t = cast(Thread) __t; //FIXME: move whole function to osthread.d
+
     version (Windows)
     {
         if ( t.m_addr != GetCurrentThreadId() && ResumeThread( t.m_hndl ) == 0xFFFFFFFF )
@@ -2758,7 +2762,7 @@ do
         if ( --suspendDepth > 0 )
             return;
 
-        for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+        for ( ThreadBase t = ThreadBase.sm_tbeg; t; t = t.next )
         {
             // NOTE: We do not need to care about critical regions at all
             //       here. thread_suspendAll takes care of everything.
@@ -2848,7 +2852,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         }
     }
 
-    for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+    for ( ThreadBase t = ThreadBase.sm_tbeg; t; t = t.next )
     {
         version (Windows)
         {
@@ -3108,7 +3112,7 @@ alias IsMarkedDg = int delegate( void* addr ) nothrow; /// The isMarked callback
  */
 extern(C) void thread_processGCMarks( scope IsMarkedDg isMarked ) nothrow
 {
-    for ( Thread t = Thread.sm_tbeg; t; t = t.next )
+    for ( ThreadBase t = ThreadBase.sm_tbeg; t; t = t.next )
     {
         /* Can be null if collection was triggered between adding a
          * thread and calling rt_tlsgc_init.
