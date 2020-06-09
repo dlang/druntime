@@ -2231,8 +2231,10 @@ do
  * Returns:
  *  Whether the thread is now suspended (true) or terminated (false).
  */
-private bool thread_suspend( Thread t ) nothrow
+private bool thread_suspend( ThreadBase _t ) nothrow
 {
+    Thread t = cast(Thread) _t; //FIXME: remove
+
     Duration waittime = dur!"usecs"(10);
  Lagain:
     if (!t.isRunning)
@@ -2460,7 +2462,7 @@ extern (C) void thread_suspendAll() nothrow
     if ( !multiThreadedFlag && Thread.sm_tbeg )
     {
         if ( ++suspendDepth == 1 )
-            thread_suspend(/*FIXME*/cast(Thread) Thread.getThis() );
+            thread_suspend(Thread.getThis() );
 
         return;
     }
@@ -2477,7 +2479,7 @@ extern (C) void thread_suspendAll() nothrow
         while (t)
         {
             auto tn = t.next;
-            if (thread_suspend(/*FIXME*/cast(Thread) t))
+            if (thread_suspend(t))
                 ++cnt;
             t = tn;
         }
