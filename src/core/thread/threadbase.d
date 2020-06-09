@@ -44,6 +44,7 @@ package abstract class ThreadBase
     //
 
     bool m_lock;
+    void*               m_tlsgcdata;
 
 
     ///////////////////////////////////////////////////////////////////////////
@@ -342,6 +343,32 @@ package abstract class ThreadBase
         m_call = dg;
     }
 
+    void tlsGCdataInit() nothrow @nogc
+    {
+        m_tlsgcdata = rt_tlsgc_init();
+    }
+
+    void dataStorageInit() nothrow
+    {
+        assert( m_curr is &m_main );
+
+        m_main.bstack = getStackBottom();
+        m_main.tstack = m_main.bstack;
+        tlsGCdataInit();
+    }
+
+    void dataStorageDestroy() nothrow @nogc
+    {
+        rt_tlsgc_destroy( m_tlsgcdata );
+        m_tlsgcdata = null;
+    }
+
+    void dataStorageDestroyIfAvail() nothrow @nogc
+    {
+        if( m_tlsgcdata )
+            dataStorageDestroy();
+    }
+
     bool isRunning() nothrow @nogc;
 
 
@@ -413,3 +440,19 @@ extern (C) size_t threadClassSize() pure @nogc nothrow;
 
 // Used for suspendAll/resumeAll below.
 package __gshared uint suspendDepth = 0;
+
+private
+{
+    // interface to rt.tlsgc
+    import core.internal.traits : externDFunc;
+
+    alias rt_tlsgc_init = externDFunc!("rt.tlsgc.init", void* function() nothrow @nogc);
+    alias rt_tlsgc_destroy = externDFunc!("rt.tlsgc.destroy", void function(void*) nothrow @nogc);
+
+    alias ScanDg = void delegate(void* pstart, void* pend) nothrow;
+    alias rt_tlsgc_scan =
+        externDFunc!("rt.tlsgc.scan", void function(void*, scope ScanDg) nothrow);
+
+    alias rt_tlsgc_processGCMarks =
+        externDFunc!("rt.tlsgc.processGCMarks", void function(void*, scope IsMarkedDg) nothrow);
+}

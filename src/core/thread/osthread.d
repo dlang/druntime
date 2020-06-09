@@ -16,6 +16,7 @@ import core.thread.threadbase;
 import core.thread.context;
 import core.time;
 import core.exception : onOutOfMemoryError;
+import core.internal.traits : externDFunc;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Platform Detection and Memory Allocation
@@ -98,12 +99,6 @@ shared static this()
 
 private
 {
-    // interface to rt.tlsgc
-    import core.internal.traits : externDFunc;
-
-    alias rt_tlsgc_init = externDFunc!("rt.tlsgc.init", void* function() nothrow @nogc);
-    alias rt_tlsgc_destroy = externDFunc!("rt.tlsgc.destroy", void function(void*) nothrow @nogc);
-
     alias ScanDg = void delegate(void* pstart, void* pend) nothrow;
     alias rt_tlsgc_scan =
         externDFunc!("rt.tlsgc.scan", void function(void*, scope ScanDg) nothrow);
@@ -405,10 +400,7 @@ else version (Posix)
                              void function(void*) @nogc nothrow)(loadedLibraries);
             }
 
-            assert( obj.m_curr is &obj.m_main );
-            obj.m_main.bstack = getStackBottom();
-            obj.m_main.tstack = obj.m_main.bstack;
-            obj.m_tlsgcdata = rt_tlsgc_init();
+            obj.dataStorageInit();
 
             atomicStore!(MemoryOrder.raw)(obj.m_isRunning, true);
             Thread.setThis(obj); // allocates lazy TLS (see Issue 11981)
@@ -417,8 +409,7 @@ else version (Posix)
             {
                 Thread.remove(obj);
                 atomicStore!(MemoryOrder.raw)(obj.m_isRunning, false);
-                rt_tlsgc_destroy( obj.m_tlsgcdata );
-                obj.m_tlsgcdata = null;
+                obj.dataStorageDestroy();
             }
             Thread.add(&obj.m_main);
 
@@ -673,11 +664,7 @@ class Thread : ThreadBase
      */
     ~this() nothrow @nogc
     {
-        if (m_tlsgcdata !is null)
-        {
-            rt_tlsgc_destroy( m_tlsgcdata );
-            m_tlsgcdata = null;
-        }
+        dataStorageDestroyIfAvail();
 
         bool no_context = m_addr == m_addr.init;
         bool not_registered = !next && !prev && (sm_tbeg !is this);
@@ -1516,8 +1503,6 @@ private:
 
 package(core.thread):
 
-    void*               m_tlsgcdata;
-
     ///////////////////////////////////////////////////////////////////////////
     // Thread Context and GC Scanning Support
     ///////////////////////////////////////////////////////////////////////////
@@ -1887,7 +1872,7 @@ private Thread attachThread(Thread thisThread) @nogc
         atomicStore!(MemoryOrder.raw)(thisThread.m_isRunning, true);
     }
     thisThread.m_isDaemon = true;
-    thisThread.m_tlsgcdata = rt_tlsgc_init();
+    thisThread.tlsGCdataInit();
     Thread.setThis( thisThread );
 
     version (Darwin)
