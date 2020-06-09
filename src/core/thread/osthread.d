@@ -67,6 +67,39 @@ version (Posix)
     }
 }
 
+version (Windows)
+{
+    import core.stdc.stdint : uintptr_t; // for _beginthreadex decl below
+    import core.stdc.stdlib;             // for malloc, atexit
+    import core.sys.windows.basetsd /+: HANDLE+/;
+    import core.sys.windows.threadaux /+: getThreadStackBottom, impersonate_thread, OpenThreadHandle+/;
+    import core.sys.windows.winbase /+: CloseHandle, CREATE_SUSPENDED, DuplicateHandle, GetCurrentThread,
+        GetCurrentThreadId, GetCurrentProcess, GetExitCodeThread, GetSystemInfo, GetThreadContext,
+        GetThreadPriority, INFINITE, ResumeThread, SetThreadPriority, Sleep,  STILL_ACTIVE,
+        SuspendThread, SwitchToThread, SYSTEM_INFO, THREAD_PRIORITY_IDLE, THREAD_PRIORITY_NORMAL,
+        THREAD_PRIORITY_TIME_CRITICAL, WAIT_OBJECT_0, WaitForSingleObject+/;
+    import core.sys.windows.windef /+: TRUE+/;
+    import core.sys.windows.winnt /+: CONTEXT, CONTEXT_CONTROL, CONTEXT_INTEGER+/;
+
+    private extern (Windows) alias btex_fptr = uint function(void*);
+    private extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow @nogc;
+}
+else version (Posix)
+{
+    import core.stdc.errno;
+    import core.sys.posix.semaphore;
+    import core.sys.posix.stdlib; // for malloc, valloc, free, atexit
+    import core.sys.posix.pthread;
+    import core.sys.posix.signal;
+    import core.sys.posix.time;
+
+    version (Darwin)
+    {
+        import core.sys.darwin.mach.thread_act;
+        import core.sys.darwin.pthread : pthread_mach_thread_np;
+    }
+}
+
 package(core.thread)
 {
     static immutable size_t PAGESIZE;
