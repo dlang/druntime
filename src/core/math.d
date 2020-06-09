@@ -214,7 +214,7 @@ T toPrec(T:real)(double f) { pragma(inline, false); return f; }
 /// ditto
 T toPrec(T:real)(real f)  { pragma(inline, false); return f; }
 
-version(none)
+version (none)
 @safe unittest
 {
     // Test all instantiations work with all combinations of float.

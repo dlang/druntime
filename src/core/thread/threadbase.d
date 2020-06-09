@@ -96,7 +96,8 @@ shared static this()
     }
 }
 
-private
+//private
+package //FIXME
 {
     // interface to rt.tlsgc
     import core.internal.traits : externDFunc;
@@ -188,7 +189,8 @@ class ThreadError : Error
     }
 }
 
-private
+//~ private //FIXME
+version(all)
 {
     import core.atomic, core.memory, core.sync.mutex;
 
@@ -619,68 +621,25 @@ else
 ///////////////////////////////////////////////////////////////////////////////
 
 
-/**
- * This class encapsulates all threading functionality for the D
- * programming language.  As thread manipulation is a required facility
- * for garbage collection, all user threads should derive from this
- * class, and instances of this class should never be explicitly deleted.
- * A new thread may be created using either derivation or composition, as
- * in the following example.
- */
-class Thread
+class ThreadBase
 {
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
     ///////////////////////////////////////////////////////////////////////////
 
-
-    /**
-     * Initializes a thread object which is associated with a static
-     * D function.
-     *
-     * Params:
-     *  fn = The thread function.
-     *  sz = The stack size for this thread.
-     *
-     * In:
-     *  fn must not be null.
-     */
     this( void function() fn, size_t sz = 0 ) @safe pure nothrow @nogc
-    in
-    {
-        assert( fn );
-    }
-    do
+    in( fn )
     {
         this(sz);
         m_call = fn;
-        m_curr = &m_main;
     }
 
-
-    /**
-     * Initializes a thread object which is associated with a dynamic
-     * D function.
-     *
-     * Params:
-     *  dg = The thread function.
-     *  sz = The stack size for this thread.
-     *
-     * In:
-     *  dg must not be null.
-     */
     this( void delegate() dg, size_t sz = 0 ) @safe pure nothrow @nogc
-    in
-    {
-        assert( dg );
-    }
-    do
+    in( dg )
     {
         this(sz);
         m_call = dg;
-        m_curr = &m_main;
     }
-
 
     /**
      * Cleans up any remaining resources used by this object.
@@ -784,7 +743,7 @@ class Thread
         {
             ++nAboutToStart;
             pAboutToStart = cast(Thread*)realloc(pAboutToStart, Thread.sizeof * nAboutToStart);
-            pAboutToStart[nAboutToStart - 1] = this;
+            pAboutToStart[nAboutToStart - 1] = cast(Thread) this; //FIXME: remove cast
             version (Windows)
             {
                 if ( ResumeThread( m_hndl ) == -1 )
@@ -830,7 +789,7 @@ class Thread
                     onThreadError( "Error creating thread" );
             }
 
-            return this;
+            return cast(Thread) this; //FIXME cast
         }
     }
 
@@ -1532,12 +1491,12 @@ class Thread
     ///////////////////////////////////////////////////////////////////////////
 
 
-private:
+//~ private: //FIXME
     //
     // Initializes a thread object which has no associated executable function.
     // This is used for the main thread initialized in thread_init().
     //
-    this(size_t sz = 0) @safe pure nothrow @nogc
+    package this(size_t sz = 0) @safe pure nothrow @nogc
     {
         m_sz = sz;
         m_curr = &m_main;
@@ -1553,7 +1512,7 @@ private:
         m_call();
     }
 
-private:
+//~ private: //FIXME
 
     //
     // Standard types
@@ -1603,7 +1562,7 @@ private:
     size_t              m_sz;
     version (Posix)
     {
-        shared bool     m_isRunning;
+        /* FIXME: remove package */ package shared bool     m_isRunning;
     }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
@@ -1623,7 +1582,7 @@ private:
     //
     // Sets a thread-local reference to the current thread object.
     //
-    static void setThis( Thread t ) nothrow @nogc
+    /*FIXME: remove package*/ package static void setThis( Thread t ) nothrow @nogc
     {
         sm_this = t;
     }
@@ -3460,13 +3419,9 @@ do
  *  The address of the stack bottom.
  */
 extern (C) void* thread_stackBottom() nothrow @nogc
-in
+in (ThreadBase.getThis())
 {
-    assert(Thread.getThis());
-}
-do
-{
-    return Thread.getThis().topContext().bstack;
+    return (cast(ThreadBase) ThreadBase.getThis()).topContext().bstack; //FIXME: cast
 }
 
 
