@@ -201,6 +201,11 @@ class Thread : ThreadBase
     }
 }
 
+package Thread toThread(ThreadBase t)
+{
+    return cast(Thread) t;
+}
+
 
 // Calls the given delegate, passing the current thread's stack pointer to it.
 package void callWithStackShell(scope void delegate(void* sp) nothrow fn) nothrow

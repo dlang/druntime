@@ -2158,7 +2158,7 @@ version (Windows)
     {
         GC.disable(); scope(exit) GC.enable();
 
-        if (auto t = thread_findByAddr(addr))
+        if (auto t = thread_findByAddr(addr).toThread)
             return t;
 
         Thread        thisThread  = new Thread();
