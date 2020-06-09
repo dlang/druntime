@@ -190,7 +190,7 @@ class ThreadError : Error
 }
 
 //~ private //FIXME
-version(all)
+version (all)
 {
     import core.atomic, core.memory, core.sync.mutex;
 
