@@ -171,7 +171,7 @@ private extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc;
 
 private mixin template swapContextDefault()
 {
-    extern(C) void* swapContext()(void* newContext) nothrow @nogc
+    extern(C) void* swapContext(void* newContext) nothrow @nogc
     {
         return _d_eh_swapContext(newContext);
     }
