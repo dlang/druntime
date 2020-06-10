@@ -265,7 +265,7 @@ class ThreadBase
      *  Any exception not handled by this thread if rethrow = false, null
      *  otherwise.
      */
-    Throwable join( bool rethrow = true );
+    abstract Throwable join( bool rethrow = true );
 
 
     ///////////////////////////////////////////////////////////////////////////
