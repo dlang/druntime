@@ -1428,30 +1428,6 @@ package void onThreadError(string msg) nothrow @nogc
     throw error;
 }
 
-//FIXME: private, move to osthread.d
-version (Posix)
-package size_t adjustStackSize(size_t sz) nothrow @nogc
-{
-    if (sz == 0)
-        return 0;
-
-    // stack size must be at least PTHREAD_STACK_MIN for most platforms.
-    if (PTHREAD_STACK_MIN > sz)
-        sz = PTHREAD_STACK_MIN;
-
-    version (CRuntime_Glibc)
-    {
-        // On glibc, TLS uses the top of the stack, so add its size to the requested size
-        sz += externDFunc!("rt.sections_elf_shared.sizeOfTLS",
-                           size_t function() @nogc nothrow)();
-    }
-
-    // stack size must be a multiple of PAGESIZE
-    sz = ((sz + PAGESIZE - 1) & ~(PAGESIZE - 1));
-
-    return sz;
-}
-
 unittest
 {
     assert(!thread_inCriticalRegion());
