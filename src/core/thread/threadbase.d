@@ -33,13 +33,6 @@ package //FIXME
         externDFunc!("rt.tlsgc.processGCMarks", void function(void*, scope IsMarkedDg) nothrow);
 }
 
-version (Solaris)
-{
-    import core.sys.solaris.sys.priocntl;
-    import core.sys.solaris.sys.types;
-    import core.sys.posix.sys.wait : idtype_t;
-}
-
 //FIXME: remove this block, already moved
 version (GNU)
 {
