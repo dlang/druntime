@@ -219,18 +219,14 @@ version (Windows)
             Thread  obj = cast(Thread) arg;
             assert( obj );
 
-            assert( obj.m_curr is &obj.m_main );
-            obj.m_main.bstack = getStackBottom();
-            obj.m_main.tstack = obj.m_main.bstack;
-            obj.m_tlsgcdata = rt_tlsgc_init();
+            obj.dataStorageInit();
 
             Thread.setThis(obj);
             Thread.add(obj);
             scope (exit)
             {
                 Thread.remove(obj);
-                rt_tlsgc_destroy( obj.m_tlsgcdata );
-                obj.m_tlsgcdata = null;
+                obj.dataStorageDestroy();
             }
             Thread.add(&obj.m_main);
 
@@ -330,10 +326,7 @@ else version (Posix)
                              void function(void*) @nogc nothrow)(loadedLibraries);
             }
 
-            assert( obj.m_curr is &obj.m_main );
-            obj.m_main.bstack = getStackBottom();
-            obj.m_main.tstack = obj.m_main.bstack;
-            obj.m_tlsgcdata = rt_tlsgc_init();
+            obj.dataStorageInit();
 
             atomicStore!(MemoryOrder.raw)(obj.m_isRunning, true);
             Thread.setThis(obj); // allocates lazy TLS (see Issue 11981)
@@ -342,8 +335,7 @@ else version (Posix)
             {
                 Thread.remove(obj);
                 atomicStore!(MemoryOrder.raw)(obj.m_isRunning, false);
-                rt_tlsgc_destroy( obj.m_tlsgcdata );
-                obj.m_tlsgcdata = null;
+                obj.dataStorageDestroy();
             }
             Thread.add(&obj.m_main);
 
@@ -569,11 +561,7 @@ class ThreadBase
      */
     ~this() nothrow @nogc
     {
-        if (m_tlsgcdata !is null)
-        {
-            rt_tlsgc_destroy( m_tlsgcdata );
-            m_tlsgcdata = null;
-        }
+        dataStorageDestroyIfAvail();
 
         bool no_context = m_addr == m_addr.init;
         bool not_registered = !next && !prev && (sm_tbeg !is this);
@@ -598,6 +586,32 @@ class ThreadBase
         {
             m_tmach = m_tmach.init;
         }
+    }
+
+    package void tlsGCdataInit() nothrow @nogc
+    {
+        m_tlsgcdata = rt_tlsgc_init();
+    }
+
+    package void dataStorageInit() nothrow
+    {
+        assert( m_curr is &m_main );
+
+        m_main.bstack = getStackBottom();
+        m_main.tstack = m_main.bstack;
+        tlsGCdataInit();
+    }
+
+    package void dataStorageDestroy() nothrow @nogc
+    {
+        rt_tlsgc_destroy( m_tlsgcdata );
+        m_tlsgcdata = null;
+    }
+
+    package void dataStorageDestroyIfAvail() nothrow @nogc
+    {
+        if (m_tlsgcdata)
+            dataStorageDestroy();
     }
 
 
@@ -1517,7 +1531,7 @@ package(core.thread):
     StackContext        m_main;
     StackContext*       m_curr;
     bool                m_lock;
-    void*               m_tlsgcdata;
+    private void*       m_tlsgcdata;
 
     ///////////////////////////////////////////////////////////////////////////
     // Thread Context and GC Scanning Support

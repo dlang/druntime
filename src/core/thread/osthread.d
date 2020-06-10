@@ -244,7 +244,7 @@ private extern (C) ThreadBase attachThread(ThreadBase thisThread) @nogc
         atomicStore!(MemoryOrder.raw)(thisThread.m_isRunning, true);
     }
     thisThread.m_isDaemon = true;
-    thisThread.m_tlsgcdata = rt_tlsgc_init();
+    thisThread.tlsGCdataInit();
     Thread.setThis( thisThread );
 
     version (Darwin)
@@ -301,7 +301,7 @@ version (Windows)
         if ( addr == GetCurrentThreadId() )
         {
             thisThread.m_hndl = GetCurrentThreadHandle();
-            thisThread.m_tlsgcdata = rt_tlsgc_init();
+            thisThread.tlsGCdataInit();
             Thread.setThis( thisThread );
         }
         else
@@ -309,7 +309,7 @@ version (Windows)
             thisThread.m_hndl = OpenThreadHandle( addr );
             impersonate_thread(addr,
             {
-                thisThread.m_tlsgcdata = rt_tlsgc_init();
+                thisThread.tlsGCdataInit();
                 Thread.setThis( thisThread );
             });
         }
