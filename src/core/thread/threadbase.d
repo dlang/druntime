@@ -1012,6 +1012,7 @@ class ThreadBase
     //
     version (Windows)
     {
+        import core.sys.windows.basetsd; //FIXME: remove
         HANDLE          m_hndl;
     }
     ThreadID            m_addr;
