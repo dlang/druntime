@@ -1343,6 +1343,91 @@ private extern (C) bool suspend( Thread t ) nothrow
 }
 
 /**
+ * Suspend all threads but the calling thread for "stop the world" garbage
+ * collection runs.  This function may be called multiple times, and must
+ * be followed by a matching number of calls to thread_resumeAll before
+ * processing is resumed.
+ *
+ * Throws:
+ *  ThreadError if the suspend operation fails for a running thread.
+ */
+extern (C) void thread_suspendAll() nothrow
+{
+    // NOTE: We've got an odd chicken & egg problem here, because while the GC
+    //       is required to call thread_init before calling any other thread
+    //       routines, thread_init may allocate memory which could in turn
+    //       trigger a collection.  Thus, thread_suspendAll, thread_scanAll,
+    //       and thread_resumeAll must be callable before thread_init
+    //       completes, with the assumption that no other GC memory has yet
+    //       been allocated by the system, and thus there is no risk of losing
+    //       data if the global thread list is empty.  The check of
+    //       Thread.sm_tbeg below is done to ensure thread_init has completed,
+    //       and therefore that calling Thread.getThis will not result in an
+    //       error.  For the short time when Thread.sm_tbeg is null, there is
+    //       no reason not to simply call the multithreaded code below, with
+    //       the expectation that the foreach loop will never be entered.
+    if ( !multiThreadedFlag && Thread.sm_tbeg )
+    {
+        if ( ++suspendDepth == 1 )
+            suspend( Thread.getThis() );
+
+        return;
+    }
+
+    Thread.slock.lock_nothrow();
+    {
+        if ( ++suspendDepth > 1 )
+            return;
+
+        Thread.criticalRegionLock.lock_nothrow();
+        scope (exit) Thread.criticalRegionLock.unlock_nothrow();
+        size_t cnt;
+        auto t = ThreadBase.sm_tbeg.toThread;
+        while (t)
+        {
+            auto tn = t.next.toThread;
+            if (suspend(t))
+                ++cnt;
+            t = tn;
+        }
+
+        version (Darwin)
+        {}
+        else version (Posix)
+        {
+            // subtract own thread
+            assert(cnt >= 1);
+            --cnt;
+        Lagain:
+            // wait for semaphore notifications
+            for (; cnt; --cnt)
+            {
+                while (sem_wait(&suspendCount) != 0)
+                {
+                    if (errno != EINTR)
+                        onThreadError("Unable to wait for semaphore");
+                    errno = 0;
+                }
+            }
+            version (FreeBSD)
+            {
+                // avoid deadlocks, see Issue 13416
+                t = Thread.sm_tbeg;
+                while (t)
+                {
+                    auto tn = t.next;
+                    if (t.m_suspendagain && suspend(t))
+                        ++cnt;
+                    t = tn;
+                }
+                if (cnt)
+                    goto Lagain;
+             }
+        }
+    }
+}
+
+/**
  * Resume the specified thread and unload stack and register information.
  * If the supplied thread is the calling thread, stack and register
  * information will be unloaded but the thread will not be resumed.  If
