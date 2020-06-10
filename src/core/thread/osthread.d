@@ -19,6 +19,7 @@ import core.atomic;
 import core.memory : GC;
 import core.time;
 import core.exception : onOutOfMemoryError;
+import core.internal.traits : externDFunc;
 
 
 ///////////////////////////////////////////////////////////////////////////////

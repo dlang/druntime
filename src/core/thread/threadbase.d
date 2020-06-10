@@ -19,8 +19,7 @@ import core.time;
 import core.sync.mutex;
 import core.stdc.stdlib : free, realloc;
 
-//private
-package //FIXME
+private
 {
     // interface to rt.tlsgc
     import core.internal.traits : externDFunc;
