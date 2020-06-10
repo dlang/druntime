@@ -175,16 +175,22 @@ class Thread : ThreadBase
     version (FreeBSD)
     {
         // set when suspend failed and should be retried, see Issue 13416
-        shared bool m_suspendagain;
+        private shared bool m_suspendagain;
     }
 
     //
     // Standard thread data
     //
+    version (Windows)
+    {
+        private HANDLE          m_hndl;
+    }
+
     version (Posix)
     {
         private shared bool     m_isRunning;
     }
+
     version (Darwin)
     {
         private mach_port_t     m_tmach;

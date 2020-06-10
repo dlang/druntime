@@ -538,10 +538,6 @@ class ThreadBase
     //
     // Standard thread data
     //
-    version (Windows)
-    {
-        HANDLE          m_hndl;
-    }
     ThreadID            m_addr;
     Callable            m_call;
     string              m_name;
