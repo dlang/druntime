@@ -1444,7 +1444,7 @@ class ThreadBase
     // Thread entry point.  Invokes the function or delegate passed on
     // construction (if any).
     //
-    final void run()
+    package final void run()
     {
         m_call();
     }
