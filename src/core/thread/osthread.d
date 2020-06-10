@@ -1372,7 +1372,7 @@ extern (C) @nogc nothrow
 }
 
 
-package(core.thread) void* getStackTop() nothrow @nogc
+package extern(C) void* getStackTop() nothrow @nogc
 {
     version (D_InlineAsm_X86)
         asm pure nothrow @nogc { naked; mov EAX, ESP; ret; }
@@ -1385,7 +1385,7 @@ package(core.thread) void* getStackTop() nothrow @nogc
 }
 
 
-package(core.thread) void* getStackBottom() nothrow @nogc
+package extern(C) void* getStackBottom() nothrow @nogc
 {
     version (Windows)
     {

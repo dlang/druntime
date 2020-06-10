@@ -86,6 +86,9 @@ private
     extern(C) void* swapContext(void* newContext) nothrow @nogc;
 
     extern extern(C) immutable size_t threadSizeof;
+
+    extern(C) void* getStackBottom() nothrow @nogc;
+    extern(C) void* getStackTop() nothrow @nogc;
 }
 
 
