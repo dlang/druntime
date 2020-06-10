@@ -12,7 +12,7 @@
 
 module core.thread.threadbase;
 
-public import core.thread.osthread; //FIXME: remove
+public import core.thread.osthread; //FIXME:remove
 import core.thread.context;
 import core.thread.types;
 import core.time;
