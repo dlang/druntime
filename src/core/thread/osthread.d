@@ -218,7 +218,7 @@ class Thread : ThreadBase
      */
     ~this() nothrow @nogc
     {
-        if(super.destructBeforeDtor())
+        if (super.destructBeforeDtor())
             return;
 
         version (Windows)
