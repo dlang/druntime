@@ -349,6 +349,15 @@ class Thread : ThreadBase
         }
     }
 
+    //
+    // Thread entry point.  Invokes the function or delegate passed on
+    // construction (if any).
+    //
+    private final void run()
+    {
+        super.run();
+    }
+
     /**
      * Provides a reference to the calling thread.
      *
