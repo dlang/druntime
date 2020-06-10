@@ -265,37 +265,7 @@ class ThreadBase
      *  Any exception not handled by this thread if rethrow = false, null
      *  otherwise.
      */
-    final Throwable join( bool rethrow = true )
-    {
-        version (Windows)
-        {
-            if ( WaitForSingleObject( m_hndl, INFINITE ) != WAIT_OBJECT_0 )
-                throw new ThreadException( "Unable to join thread" );
-            // NOTE: m_addr must be cleared before m_hndl is closed to avoid
-            //       a race condition with isRunning. The operation is done
-            //       with atomicStore to prevent compiler reordering.
-            atomicStore!(MemoryOrder.raw)(*cast(shared)&m_addr, m_addr.init);
-            CloseHandle( m_hndl );
-            m_hndl = m_hndl.init;
-        }
-        else version (Posix)
-        {
-            if ( pthread_join( m_addr, null ) != 0 )
-                throw new ThreadException( "Unable to join thread" );
-            // NOTE: pthread_join acts as a substitute for pthread_detach,
-            //       which is normally called by the dtor.  Setting m_addr
-            //       to zero ensures that pthread_detach will not be called
-            //       on object destruction.
-            m_addr = m_addr.init;
-        }
-        if ( m_unhandled )
-        {
-            if ( rethrow )
-                throw m_unhandled;
-            return m_unhandled;
-        }
-        return null;
-    }
+    Throwable join( bool rethrow = true );
 
 
     ///////////////////////////////////////////////////////////////////////////
