@@ -16,6 +16,7 @@ public import core.thread.osthread; //FIXME: remove
 import core.thread.context;
 import core.time;
 import core.sync.mutex;
+import core.stdc.stdlib : free, realloc;
 
 //private
 package //FIXME
@@ -361,8 +362,6 @@ class ThreadBase
      */
     static int opApply(scope int delegate(ref ThreadBase) dg)
     {
-        import core.stdc.stdlib : free, realloc;
-
         static void resize(ref ThreadBase[] buf, size_t nlen)
         {
             buf = (cast(ThreadBase*)realloc(buf.ptr, nlen * Thread.sizeof))[0 .. nlen];
