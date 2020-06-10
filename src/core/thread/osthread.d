@@ -1085,3 +1085,349 @@ extern (C) void thread_init() @nogc
 }
 
 package __gshared align(Thread.alignof) void[__traits(classInstanceSize, Thread)] _mainThreadStore;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Thread Entry Point and Signal Handlers
+///////////////////////////////////////////////////////////////////////////////
+
+
+version (Windows)
+{
+    //~ private //FIXME
+    version (all)
+    {
+        import core.stdc.stdint : uintptr_t; // for _beginthreadex decl below
+        import core.stdc.stdlib;             // for malloc, atexit
+        import core.sys.windows.basetsd /+: HANDLE+/;
+        import core.sys.windows.threadaux /+: getThreadStackBottom, impersonate_thread, OpenThreadHandle+/;
+        import core.sys.windows.winbase /+: CloseHandle, CREATE_SUSPENDED, DuplicateHandle, GetCurrentThread,
+            GetCurrentThreadId, GetCurrentProcess, GetExitCodeThread, GetSystemInfo, GetThreadContext,
+            GetThreadPriority, INFINITE, ResumeThread, SetThreadPriority, Sleep,  STILL_ACTIVE,
+            SuspendThread, SwitchToThread, SYSTEM_INFO, THREAD_PRIORITY_IDLE, THREAD_PRIORITY_NORMAL,
+            THREAD_PRIORITY_TIME_CRITICAL, WAIT_OBJECT_0, WaitForSingleObject+/;
+        import core.sys.windows.windef /+: TRUE+/;
+        import core.sys.windows.winnt /+: CONTEXT, CONTEXT_CONTROL, CONTEXT_INTEGER+/;
+
+        extern (Windows) alias btex_fptr = uint function(void*);
+        extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow @nogc;
+
+        //
+        // Entry point for Windows threads
+        //
+        extern (Windows) uint thread_entryPoint( void* arg ) nothrow
+        {
+            Thread  obj = cast(Thread) arg;
+            assert( obj );
+
+            obj.dataStorageInit();
+
+            Thread.setThis(obj);
+            Thread.add(obj);
+            scope (exit)
+            {
+                Thread.remove(obj);
+                obj.dataStorageDestroy();
+            }
+            Thread.add(&obj.m_main);
+
+            // NOTE: No GC allocations may occur until the stack pointers have
+            //       been set and Thread.getThis returns a valid reference to
+            //       this thread object (this latter condition is not strictly
+            //       necessary on Windows but it should be followed for the
+            //       sake of consistency).
+
+            // TODO: Consider putting an auto exception object here (using
+            //       alloca) forOutOfMemoryError plus something to track
+            //       whether an exception is in-flight?
+
+            void append( Throwable t )
+            {
+                obj.m_unhandled = Throwable.chainTogether(obj.m_unhandled, t);
+            }
+
+            version (D_InlineAsm_X86)
+            {
+                asm nothrow @nogc { fninit; }
+            }
+
+            try
+            {
+                rt_moduleTlsCtor();
+                try
+                {
+                    obj.run();
+                }
+                catch ( Throwable t )
+                {
+                    append( t );
+                }
+                rt_moduleTlsDtor();
+            }
+            catch ( Throwable t )
+            {
+                append( t );
+            }
+            return 0;
+        }
+
+
+        HANDLE GetCurrentThreadHandle() nothrow @nogc
+        {
+            const uint DUPLICATE_SAME_ACCESS = 0x00000002;
+
+            HANDLE curr = GetCurrentThread(),
+                   proc = GetCurrentProcess(),
+                   hndl;
+
+            DuplicateHandle( proc, curr, proc, &hndl, 0, TRUE, DUPLICATE_SAME_ACCESS );
+            return hndl;
+        }
+    }
+}
+else version (Posix)
+{
+    //~ private //FIXME
+    version (all)
+    {
+        import core.stdc.errno;
+        import core.sys.posix.semaphore;
+        import core.sys.posix.stdlib; // for malloc, valloc, free, atexit
+        import core.sys.posix.pthread;
+        import core.sys.posix.signal;
+        import core.sys.posix.time;
+
+        version (Darwin)
+        {
+            import core.sys.darwin.mach.thread_act;
+            import core.sys.darwin.pthread : pthread_mach_thread_np;
+        }
+
+        //
+        // Entry point for POSIX threads
+        //
+        extern (C) void* thread_entryPoint( void* arg ) nothrow
+        {
+            version (Shared)
+            {
+                Thread obj = cast(Thread)(cast(void**)arg)[0];
+                auto loadedLibraries = (cast(void**)arg)[1];
+                .free(arg);
+            }
+            else
+            {
+                Thread obj = cast(Thread)arg;
+            }
+            assert( obj );
+
+            // loadedLibraries need to be inherited from parent thread
+            // before initilizing GC for TLS (rt_tlsgc_init)
+            version (Shared)
+            {
+                externDFunc!("rt.sections_elf_shared.inheritLoadedLibraries",
+                             void function(void*) @nogc nothrow)(loadedLibraries);
+            }
+
+            obj.dataStorageInit();
+
+            atomicStore!(MemoryOrder.raw)(obj.m_isRunning, true);
+            Thread.setThis(obj); // allocates lazy TLS (see Issue 11981)
+            Thread.add(obj);     // can only receive signals from here on
+            scope (exit)
+            {
+                Thread.remove(obj);
+                atomicStore!(MemoryOrder.raw)(obj.m_isRunning, false);
+                obj.dataStorageDestroy();
+            }
+            Thread.add(&obj.m_main);
+
+            static extern (C) void thread_cleanupHandler( void* arg ) nothrow @nogc
+            {
+                Thread  obj = cast(Thread) arg;
+                assert( obj );
+
+                // NOTE: If the thread terminated abnormally, just set it as
+                //       not running and let thread_suspendAll remove it from
+                //       the thread list.  This is safer and is consistent
+                //       with the Windows thread code.
+                atomicStore!(MemoryOrder.raw)(obj.m_isRunning,false);
+            }
+
+            // NOTE: Using void to skip the initialization here relies on
+            //       knowledge of how pthread_cleanup is implemented.  It may
+            //       not be appropriate for all platforms.  However, it does
+            //       avoid the need to link the pthread module.  If any
+            //       implementation actually requires default initialization
+            //       then pthread_cleanup should be restructured to maintain
+            //       the current lack of a link dependency.
+            static if ( __traits( compiles, pthread_cleanup ) )
+            {
+                pthread_cleanup cleanup = void;
+                cleanup.push( &thread_cleanupHandler, cast(void*) obj );
+            }
+            else static if ( __traits( compiles, pthread_cleanup_push ) )
+            {
+                pthread_cleanup_push( &thread_cleanupHandler, cast(void*) obj );
+            }
+            else
+            {
+                static assert( false, "Platform not supported." );
+            }
+
+            // NOTE: No GC allocations may occur until the stack pointers have
+            //       been set and Thread.getThis returns a valid reference to
+            //       this thread object (this latter condition is not strictly
+            //       necessary on Windows but it should be followed for the
+            //       sake of consistency).
+
+            // TODO: Consider putting an auto exception object here (using
+            //       alloca) forOutOfMemoryError plus something to track
+            //       whether an exception is in-flight?
+
+            void append( Throwable t )
+            {
+                obj.m_unhandled = Throwable.chainTogether(obj.m_unhandled, t);
+            }
+            try
+            {
+                rt_moduleTlsCtor();
+                try
+                {
+                    obj.run();
+                }
+                catch ( Throwable t )
+                {
+                    append( t );
+                }
+                rt_moduleTlsDtor();
+                version (Shared)
+                {
+                    externDFunc!("rt.sections_elf_shared.cleanupLoadedLibraries",
+                                 void function() @nogc nothrow)();
+                }
+            }
+            catch ( Throwable t )
+            {
+                append( t );
+            }
+
+            // NOTE: Normal cleanup is handled by scope(exit).
+
+            static if ( __traits( compiles, pthread_cleanup ) )
+            {
+                cleanup.pop( 0 );
+            }
+            else static if ( __traits( compiles, pthread_cleanup_push ) )
+            {
+                pthread_cleanup_pop( 0 );
+            }
+
+            return null;
+        }
+
+
+        //
+        // Used to track the number of suspended threads
+        //
+        __gshared sem_t suspendCount;
+
+
+        extern (C) void thread_suspendHandler( int sig ) nothrow
+        in
+        {
+            assert( sig == suspendSignalNumber );
+        }
+        do
+        {
+            void op(void* sp) nothrow
+            {
+                // NOTE: Since registers are being pushed and popped from the
+                //       stack, any other stack data used by this function should
+                //       be gone before the stack cleanup code is called below.
+                Thread obj = Thread.getThis();
+                assert(obj !is null);
+
+                if ( !obj.m_lock )
+                {
+                    obj.m_curr.tstack = getStackTop();
+                }
+
+                sigset_t    sigres = void;
+                int         status;
+
+                status = sigfillset( &sigres );
+                assert( status == 0 );
+
+                status = sigdelset( &sigres, resumeSignalNumber );
+                assert( status == 0 );
+
+                version (FreeBSD) obj.m_suspendagain = false;
+                status = sem_post( &suspendCount );
+                assert( status == 0 );
+
+                sigsuspend( &sigres );
+
+                if ( !obj.m_lock )
+                {
+                    obj.m_curr.tstack = obj.m_curr.bstack;
+                }
+            }
+
+            // avoid deadlocks on FreeBSD, see Issue 13416
+            version (FreeBSD)
+            {
+                auto obj = Thread.getThis();
+                if (THR_IN_CRITICAL(obj.m_addr))
+                {
+                    obj.m_suspendagain = true;
+                    if (sem_post(&suspendCount)) assert(0);
+                    return;
+                }
+            }
+
+            callWithStackShell(&op);
+        }
+
+
+        extern (C) void thread_resumeHandler( int sig ) nothrow
+        in
+        {
+            assert( sig == resumeSignalNumber );
+        }
+        do
+        {
+
+        }
+
+        // HACK libthr internal (thr_private.h) macro, used to
+        // avoid deadlocks in signal handler, see Issue 13416
+        version (FreeBSD) bool THR_IN_CRITICAL(pthread_t p) nothrow @nogc
+        {
+            import core.sys.posix.config : c_long;
+            import core.sys.posix.sys.types : lwpid_t;
+
+            // If the begin of pthread would be changed in libthr (unlikely)
+            // we'll run into undefined behavior, compare with thr_private.h.
+            static struct pthread
+            {
+                c_long tid;
+                static struct umutex { lwpid_t owner; uint flags; uint[2] ceilings; uint[4] spare; }
+                umutex lock;
+                uint cycle;
+                int locklevel;
+                int critical_count;
+                // ...
+            }
+            auto priv = cast(pthread*)p;
+            return priv.locklevel > 0 || priv.critical_count > 0;
+        }
+    }
+}
+else
+{
+    // NOTE: This is the only place threading versions are checked.  If a new
+    //       version is added, the module code will need to be searched for
+    //       places where version-specific code may be required.  This can be
+    //       easily accomlished by searching for 'Windows' or 'Posix'.
+    static assert( false, "Unknown threading implementation." );
+}
