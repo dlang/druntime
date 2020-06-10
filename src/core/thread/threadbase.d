@@ -878,7 +878,7 @@ extern (C) void thread_detachByAddr( ThreadID addr )
 
 
 /// ditto
-extern (C) void thread_detachInstance( Thread t ) nothrow @nogc
+extern (C) void thread_detachInstance( ThreadBase t ) nothrow @nogc
 {
     ThreadBase.remove( t );
 }
@@ -940,7 +940,7 @@ static ThreadBase thread_findByAddr( ThreadID addr )
  * Params:
  *  t = A reference to the current thread. May be null.
  */
-extern (C) void thread_setThis(Thread t) nothrow @nogc
+extern (C) void thread_setThis(ThreadBase t) nothrow @nogc
 {
     ThreadBase.setThis(t);
 }
