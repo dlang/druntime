@@ -2303,25 +2303,6 @@ void joinLowLevelThread(ThreadID tid) nothrow @nogc
     }
 }
 
-/**
- * Check whether a thread was created by `createLowLevelThread`.
- *
- * Params:
- *  tid = the platform specific thread ID.
- *
- * Returns: `true` if the thread was created by `createLowLevelThread` and is still running.
- */
-bool findLowLevelThread(ThreadID tid) nothrow @nogc
-{
-    lowlevelLock.lock_nothrow();
-    scope(exit) lowlevelLock.unlock_nothrow();
-
-    foreach (i; 0 .. ll_nThreads)
-        if (tid is ll_pThreads[i].tid)
-            return true;
-    return false;
-}
-
 nothrow @nogc unittest
 {
     struct TaskWithContect
