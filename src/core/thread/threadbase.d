@@ -2459,8 +2459,6 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
     }
 }
 
-private extern (C) void scanAllTypeImplWindowsSpecial(ref Thread t);
-
 /**
  * The main entry point for garbage collection.  The supplied delegate
  * will be passed ranges representing both stack and register values.
