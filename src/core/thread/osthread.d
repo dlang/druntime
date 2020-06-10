@@ -1028,6 +1028,68 @@ private extern(C) static void thread_sleep(Duration val) @nogc nothrow
     Thread.sleep(val);
 }
 
+///
+unittest
+{
+    class DerivedThread : Thread
+    {
+        this()
+        {
+            super(&run);
+        }
+
+    private:
+        void run()
+        {
+            // Derived thread running.
+        }
+    }
+
+    void threadFunc()
+    {
+        // Composed thread running.
+    }
+
+    // create and start instances of each type
+    auto derived = new DerivedThread().start();
+    auto composed = new Thread(&threadFunc).start();
+    new Thread({
+        // Codes to run in the newly created thread.
+    }).start();
+}
+
+unittest
+{
+    int x = 0;
+
+    new Thread(
+    {
+        x++;
+    }).start().join();
+    assert( x == 1 );
+}
+
+
+unittest
+{
+    enum MSG = "Test message.";
+    string caughtMsg;
+
+    try
+    {
+        new Thread(
+        {
+            throw new Exception( MSG );
+        }).start().join();
+        assert( false, "Expected rethrown exception." );
+    }
+    catch ( Throwable t )
+    {
+        assert( t.msg == MSG );
+    }
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // GC Support Routines
 ///////////////////////////////////////////////////////////////////////////////
