@@ -420,6 +420,9 @@ class ThreadBase
         m_curr = &m_main;
     }
 
+    private ~this() nothrow @nogc
+    {
+    }
 
     //
     // Thread entry point.  Invokes the function or delegate passed on
@@ -835,7 +838,7 @@ extern (C) void thread_term() @nogc
     assert(_mainThreadStore.ptr is cast(void*) Thread.sm_main);
 
     // destruct manually as object.destroy is not @nogc
-    Thread.sm_main.toThread.__dtor();
+    ThreadBase.sm_main.__dtor();
     _d_monitordelete_nogc(Thread.sm_main);
     if (typeid(Thread).initializer.ptr)
         _mainThreadStore[] = typeid(Thread).initializer[];
