@@ -524,10 +524,8 @@ package(core.thread) void* getStackBottom() nothrow @nogc
  * Returns:
  *  Whether the thread is now suspended (true) or terminated (false).
  */
-private extern (C) bool suspend( ThreadBase __t ) nothrow
+private extern (C) bool suspend( Thread t ) nothrow
 {
-    auto t = cast(Thread) __t; //FIXME: move whole function to osthread.d
-
     Duration waittime = dur!"usecs"(10);
  Lagain:
     if (!t.isRunning)
