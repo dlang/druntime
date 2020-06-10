@@ -1234,18 +1234,6 @@ version (Solaris)
     import core.sys.posix.sys.wait : idtype_t;
 }
 
-version (GNU)
-{
-    import gcc.builtins;
-    version (GNU_StackGrowsDown)
-        public version = StackGrowsDown;
-}
-else
-{
-    // this should be true for most architectures
-    public version = StackGrowsDown;
-}
-
 /**
  * Returns the process ID of the calling process, which is guaranteed to be
  * unique on the system. This call is always successful.
@@ -1325,7 +1313,7 @@ package(core.thread) void* getStackBottom() nothrow @nogc
         pthread_getattr_np(pthread_self(), &attr);
         pthread_attr_getstack(&attr, &addr, &size);
         pthread_attr_destroy(&attr);
-        version (StackGrowsDown)
+        static if (isStackGrowsDown)
             addr += size;
         return addr;
     }
@@ -1338,7 +1326,7 @@ package(core.thread) void* getStackBottom() nothrow @nogc
         pthread_attr_get_np(pthread_self(), &attr);
         pthread_attr_getstack(&attr, &addr, &size);
         pthread_attr_destroy(&attr);
-        version (StackGrowsDown)
+        static if (isStackGrowsDown)
             addr += size;
         return addr;
     }

@@ -31,3 +31,18 @@ struct ll_ThreadData
     version (Windows)
         void delegate() nothrow cbDllUnload;
 }
+
+version (GNU)
+{
+    import gcc.builtins;
+
+    version (GNU_StackGrowsDown)
+        enum isStackGrowsDown = true;
+    else
+        enum isStackGrowsDown = false;
+}
+else
+{
+    // this should be true for most architectures
+    enum isStackGrowsDown = true;
+}

@@ -36,19 +36,6 @@ package //FIXME
         externDFunc!("rt.tlsgc.processGCMarks", void function(void*, scope IsMarkedDg) nothrow);
 }
 
-//FIXME: remove this block, already moved
-version (GNU)
-{
-    import gcc.builtins;
-    version (GNU_StackGrowsDown)
-        version = StackGrowsDown;
-}
-else
-{
-    // this should be true for most architectures
-    version = StackGrowsDown;
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread and Fiber Exceptions
@@ -1164,10 +1151,10 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
 
     for ( StackContext* c = Thread.sm_cbeg; c; c = c.next )
     {
-        version (StackGrowsDown)
+        static if (isStackGrowsDown)
         {
             // NOTE: We can't index past the bottom of the stack
-            //       so don't do the "+1" for StackGrowsDown.
+            //       so don't do the "+1" if isStackGrowsDown.
             if ( c.tstack && c.tstack < c.bstack )
                 scan( ScanType.stack, c.tstack, c.bstack );
         }
