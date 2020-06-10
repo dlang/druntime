@@ -1600,7 +1600,7 @@ extern (C) void thread_suspendAll() nothrow
         Thread.criticalRegionLock.lock_nothrow();
         scope (exit) Thread.criticalRegionLock.unlock_nothrow();
         size_t cnt;
-        auto t = ThreadBase.sm_tbeg.toThread;
+        Thread t = ThreadBase.sm_tbeg.toThread;
         while (t)
         {
             auto tn = t.next.toThread;
@@ -1630,13 +1630,13 @@ extern (C) void thread_suspendAll() nothrow
             version (FreeBSD)
             {
                 // avoid deadlocks, see Issue 13416
-                t = Thread.sm_tbeg;
+                t = ThreadBase.sm_tbeg.toThread;
                 while (t)
                 {
                     auto tn = t.next;
                     if (t.m_suspendagain && suspend(t))
                         ++cnt;
-                    t = tn;
+                    t = tn.toThread;
                 }
                 if (cnt)
                     goto Lagain;
