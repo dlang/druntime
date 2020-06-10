@@ -1245,6 +1245,23 @@ else
     public version = StackGrowsDown;
 }
 
+/**
+ * Returns the process ID of the calling process, which is guaranteed to be
+ * unique on the system. This call is always successful.
+ *
+ * Example:
+ * ---
+ * writefln("Current process id: %s", getpid());
+ * ---
+ */
+version (Posix)
+{
+    alias getpid = core.sys.posix.unistd.getpid;
+}
+else version (Windows)
+{
+    alias getpid = core.sys.windows.winbase.GetCurrentProcessId;
+}
 
 extern (C) @nogc nothrow
 {
