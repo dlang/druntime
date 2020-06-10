@@ -793,15 +793,15 @@ extern (C) void _d_monitordelete_nogc(Object h) @nogc;
  * Terminates the thread module. No other thread routine may be called
  * afterwards.
  */
-extern (C) void thread_term() @nogc
+void thread_term_tpl(ThreadT)() @nogc
 {
     assert(_mainThreadStore.ptr is cast(void*) ThreadBase.sm_main);
 
     // destruct manually as object.destroy is not @nogc
     ThreadBase.sm_main.__dtor();
     _d_monitordelete_nogc(ThreadBase.sm_main);
-    if (typeid(Thread).initializer.ptr)
-        _mainThreadStore[] = typeid(Thread).initializer[];
+    if (typeid(ThreadT).initializer.ptr)
+        _mainThreadStore[] = typeid(ThreadT).initializer[];
     else
         (cast(ubyte[])_mainThreadStore)[] = 0;
     ThreadBase.sm_main = null;
