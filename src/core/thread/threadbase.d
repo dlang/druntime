@@ -1167,20 +1167,19 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
 
     for ( ThreadBase t = ThreadBase.sm_tbeg; t; t = t.next )
     {
-        //FIXME: remove it
         version (Windows)
         {
-            auto tt = cast(Thread) t;
-
             // Ideally, we'd pass ScanType.regs or something like that, but this
             // would make portability annoying because it only makes sense on Windows.
-            scan( ScanType.stack, tt.m_reg.ptr, tt.m_reg.ptr + tt.m_reg.length );
+            scanWindowsOnly(scan, t);
         }
 
         if (t.m_tlsgcdata !is null)
             rt_tlsgc_scan(t.m_tlsgcdata, (p1, p2) => scan(ScanType.tls, p1, p2));
     }
 }
+
+private extern (C) void scanWindowsOnly(scope ScanAllThreadsTypeFn scan, ThreadBase) nothrow;
 
 /**
  * The main entry point for garbage collection.  The supplied delegate

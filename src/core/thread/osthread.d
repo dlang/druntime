@@ -1243,6 +1243,16 @@ version (Solaris)
     import core.sys.posix.sys.wait : idtype_t;
 }
 
+
+version (Windows)
+private extern (C) void scanWindowsOnly(scope ScanAllThreadsTypeFn scan, ThreadBase _t) nothrow
+{
+    auto t = cast(Thread) _t;
+
+    scan( ScanType.stack, t.m_reg.ptr, t.m_reg.ptr + t.m_reg.length );
+}
+
+
 /**
  * Returns the process ID of the calling process, which is guaranteed to be
  * unique on the system. This call is always successful.
