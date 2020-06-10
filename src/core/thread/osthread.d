@@ -172,6 +172,10 @@ class Thread : ThreadBase
     //
     // Standard thread data
     //
+    version (Posix)
+    {
+        private shared bool     m_isRunning;
+    }
     version (Darwin)
     {
         private mach_port_t     m_tmach;
@@ -179,7 +183,7 @@ class Thread : ThreadBase
 
     version (Solaris)
     {
-        __gshared bool m_isRTClass;
+        private __gshared bool m_isRTClass;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -743,6 +747,29 @@ class Thread : ThreadBase
         thr.priority = PRIORITY_MAX; // setting priority doesn't cause error
         auto prio = thr.priority;    // getting priority doesn't cause error
         assert(prio >= PRIORITY_MIN && prio <= PRIORITY_MAX);
+    }
+
+    /**
+     * Tests whether this thread is running.
+     *
+     * Returns:
+     *  true if the thread is running, false if not.
+     */
+    override final @property bool isRunning() nothrow @nogc
+    {
+        if (!super.isRunning())
+            return false;
+
+        version (Windows)
+        {
+            uint ecode = 0;
+            GetExitCodeThread( m_hndl, &ecode );
+            return ecode == STILL_ACTIVE;
+        }
+        else version (Posix)
+        {
+            return atomicLoad(m_isRunning);
+        }
     }
 }
 

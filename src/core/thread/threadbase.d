@@ -407,23 +407,12 @@ class ThreadBase
      * Returns:
      *  true if the thread is running, false if not.
      */
-    final @property bool isRunning() nothrow @nogc
+    @property bool isRunning() nothrow @nogc
     {
         if ( m_addr == m_addr.init )
-        {
             return false;
-        }
 
-        version (Windows)
-        {
-            uint ecode = 0;
-            GetExitCodeThread( m_hndl, &ecode );
-            return ecode == STILL_ACTIVE;
-        }
-        else version (Posix)
-        {
-            return atomicLoad(m_isRunning);
-        }
+        return true;
     }
 
 
@@ -692,10 +681,6 @@ class ThreadBase
     Callable            m_call;
     string              m_name;
     size_t              m_sz;
-    version (Posix)
-    {
-        /* FIXME: remove package */ package shared bool     m_isRunning;
-    }
     bool                m_isDaemon;
     bool                m_isInCriticalRegion;
     Throwable           m_unhandled;
