@@ -793,7 +793,7 @@ extern (C) void _d_monitordelete_nogc(Object h) @nogc;
  * Terminates the thread module. No other thread routine may be called
  * afterwards.
  */
-void thread_term_tpl(ThreadT)() @nogc
+package void thread_term_tpl(ThreadT)() @nogc
 {
     assert(_mainThreadStore.ptr is cast(void*) ThreadBase.sm_main);
 
@@ -837,12 +837,12 @@ extern (C) bool thread_isMainThread() nothrow @nogc
  *
  *       extern (C) void rt_moduleTlsCtor();
  */
-extern (C) ThreadBase thread_attachThis()
+package ThreadT thread_attachThis_tpl(ThreadT)()
 {
-    if (auto t = ThreadBase.getThis())
+    if (auto t = ThreadT.getThis())
         return t;
 
-    return attachThread(new Thread());
+    return cast(ThreadT) attachThread(new ThreadT());
 }
 
 
