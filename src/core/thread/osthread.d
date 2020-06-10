@@ -186,6 +186,18 @@ class Thread : ThreadBase
         private __gshared bool m_isRTClass;
     }
 
+    //
+    // Standard types
+    //
+    version (Windows)
+    {
+        alias TLSKey = uint;
+    }
+    else version (Posix)
+    {
+        alias TLSKey = pthread_key_t;
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Initialization
     ///////////////////////////////////////////////////////////////////////////

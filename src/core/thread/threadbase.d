@@ -610,19 +610,6 @@ class ThreadBase
 //~ private: //FIXME
 
     //
-    // Standard types
-    //
-    version (Windows)
-    {
-        alias TLSKey = uint;
-    }
-    else version (Posix)
-    {
-        alias TLSKey = pthread_key_t;
-    }
-
-
-    //
     // Local storage
     //
     static ThreadBase       sm_this;
