@@ -12,6 +12,7 @@
 module core.thread.fiber;
 
 import core.thread.osthread;
+import core.thread.threadgroup;
 import core.thread.context;
 
 ///////////////////////////////////////////////////////////////////////////////
