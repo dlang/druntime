@@ -534,12 +534,6 @@ class ThreadBase
     //
     __gshared ThreadBase    sm_main;
 
-    version (FreeBSD)
-    {
-        // set when suspend failed and should be retried, see Issue 13416
-        shared bool m_suspendagain;
-    }
-
 
     //
     // Standard thread data

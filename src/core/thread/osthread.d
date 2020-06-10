@@ -170,6 +170,15 @@ shared static ~this()
 class Thread : ThreadBase
 {
     //
+    // Main process thread
+    //
+    version (FreeBSD)
+    {
+        // set when suspend failed and should be retried, see Issue 13416
+        shared bool m_suspendagain;
+    }
+
+    //
     // Standard thread data
     //
     version (Posix)
