@@ -1575,47 +1575,6 @@ package(core.thread):
         return m_curr;
     }
 
-    version (Windows)
-    {
-        version (X86)
-        {
-            uint[8]         m_reg; // edi,esi,ebp,esp,ebx,edx,ecx,eax
-        }
-        else version (X86_64)
-        {
-            ulong[16]       m_reg; // rdi,rsi,rbp,rsp,rbx,rdx,rcx,rax
-                                   // r8,r9,r10,r11,r12,r13,r14,r15
-        }
-        else
-        {
-            static assert(false, "Architecture not supported." );
-        }
-    }
-    else version (Darwin)
-    {
-        version (X86)
-        {
-            uint[8]         m_reg; // edi,esi,ebp,esp,ebx,edx,ecx,eax
-        }
-        else version (X86_64)
-        {
-            ulong[16]       m_reg; // rdi,rsi,rbp,rsp,rbx,rdx,rcx,rax
-                                   // r8,r9,r10,r11,r12,r13,r14,r15
-        }
-        else version (AArch64)
-        {
-            ulong[33]       m_reg; // x0-x31, pc
-        }
-        else version (ARM)
-        {
-            uint[16]        m_reg; // r0-r15
-        }
-        else
-        {
-            static assert(false, "Architecture not supported." );
-        }
-    }
-
 
 package(core.thread):
     ///////////////////////////////////////////////////////////////////////////
@@ -2360,76 +2319,7 @@ extern (C) void thread_suspendAll() nothrow
     }
 }
 
-/**
- * Resume the specified thread and unload stack and register information.
- * If the supplied thread is the calling thread, stack and register
- * information will be unloaded but the thread will not be resumed.  If
- * the resume operation fails and the thread is not running then it will
- * be removed from the global thread list, otherwise an exception will be
- * thrown.
- *
- * Params:
- *  t = The thread to resume.
- *
- * Throws:
- *  ThreadError if the resume fails for a running thread.
- */
-private void resume( ThreadBase __t ) nothrow
-{
-    auto t = cast(Thread) __t; //FIXME: move whole function to osthread.d
-
-    version (Windows)
-    {
-        if ( t.m_addr != GetCurrentThreadId() && ResumeThread( t.m_hndl ) == 0xFFFFFFFF )
-        {
-            if ( !t.isRunning )
-            {
-                Thread.remove( t );
-                return;
-            }
-            onThreadError( "Unable to resume thread" );
-        }
-
-        if ( !t.m_lock )
-            t.m_curr.tstack = t.m_curr.bstack;
-        t.m_reg[0 .. $] = 0;
-    }
-    else version (Darwin)
-    {
-        if ( t.m_addr != pthread_self() && thread_resume( t.m_tmach ) != KERN_SUCCESS )
-        {
-            if ( !t.isRunning )
-            {
-                Thread.remove( t );
-                return;
-            }
-            onThreadError( "Unable to resume thread" );
-        }
-
-        if ( !t.m_lock )
-            t.m_curr.tstack = t.m_curr.bstack;
-        t.m_reg[0 .. $] = 0;
-    }
-    else version (Posix)
-    {
-        if ( t.m_addr != pthread_self() )
-        {
-            if ( pthread_kill( t.m_addr, resumeSignalNumber ) != 0 )
-            {
-                if ( !t.isRunning )
-                {
-                    Thread.remove( t );
-                    return;
-                }
-                onThreadError( "Unable to resume thread" );
-            }
-        }
-        else if ( !t.m_lock )
-        {
-            t.m_curr.tstack = t.m_curr.bstack;
-        }
-    }
-}
+private extern (C) void resume( ThreadBase ) nothrow;
 
 /**
  * Resume all threads but the calling thread for "stop the world" garbage
