@@ -1512,7 +1512,6 @@ class ThreadBase
         __gshared bool m_isRTClass;
     //~ }
 
-private:
     ///////////////////////////////////////////////////////////////////////////
     // Storage of Active Thread
     ///////////////////////////////////////////////////////////////////////////
@@ -1521,7 +1520,7 @@ private:
     //
     // Sets a thread-local reference to the current thread object.
     //
-    /*FIXME: remove package*/ package static void setThis( ThreadBase t ) nothrow @nogc
+    package static void setThis( ThreadBase t ) nothrow @nogc
     {
         sm_this = t;
     }
@@ -2274,225 +2273,7 @@ package /*FIXME:private*/ __gshared bool multiThreadedFlag = false;
 // Used for suspendAll/resumeAll below.
 private __gshared uint suspendDepth = 0;
 
-/**
- * Suspend the specified thread and load stack and register information for
- * use by thread_scanAll.  If the supplied thread is the calling thread,
- * stack and register information will be loaded but the thread will not
- * be suspended.  If the suspend operation fails and the thread is not
- * running then it will be removed from the global thread list, otherwise
- * an exception will be thrown.
- *
- * Params:
- *  t = The thread to suspend.
- *
- * Throws:
- *  ThreadError if the suspend operation fails for a running thread.
- * Returns:
- *  Whether the thread is now suspended (true) or terminated (false).
- */
-private bool suspend( ThreadBase __t ) nothrow
-{
-    auto t = cast(Thread) __t; //FIXME: move whole function to osthread.d
-
-    Duration waittime = dur!"usecs"(10);
- Lagain:
-    if (!t.isRunning)
-    {
-        Thread.remove(t);
-        return false;
-    }
-    else if (t.m_isInCriticalRegion)
-    {
-        Thread.criticalRegionLock.unlock_nothrow();
-        Thread.sleep(waittime);
-        if (waittime < dur!"msecs"(10)) waittime *= 2;
-        Thread.criticalRegionLock.lock_nothrow();
-        goto Lagain;
-    }
-
-    version (Windows)
-    {
-        if ( t.m_addr != GetCurrentThreadId() && SuspendThread( t.m_hndl ) == 0xFFFFFFFF )
-        {
-            if ( !t.isRunning )
-            {
-                Thread.remove( t );
-                return false;
-            }
-            onThreadError( "Unable to suspend thread" );
-        }
-
-        CONTEXT context = void;
-        context.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL;
-
-        if ( !GetThreadContext( t.m_hndl, &context ) )
-            onThreadError( "Unable to load thread context" );
-        version (X86)
-        {
-            if ( !t.m_lock )
-                t.m_curr.tstack = cast(void*) context.Esp;
-            // eax,ebx,ecx,edx,edi,esi,ebp,esp
-            t.m_reg[0] = context.Eax;
-            t.m_reg[1] = context.Ebx;
-            t.m_reg[2] = context.Ecx;
-            t.m_reg[3] = context.Edx;
-            t.m_reg[4] = context.Edi;
-            t.m_reg[5] = context.Esi;
-            t.m_reg[6] = context.Ebp;
-            t.m_reg[7] = context.Esp;
-        }
-        else version (X86_64)
-        {
-            if ( !t.m_lock )
-                t.m_curr.tstack = cast(void*) context.Rsp;
-            // rax,rbx,rcx,rdx,rdi,rsi,rbp,rsp
-            t.m_reg[0] = context.Rax;
-            t.m_reg[1] = context.Rbx;
-            t.m_reg[2] = context.Rcx;
-            t.m_reg[3] = context.Rdx;
-            t.m_reg[4] = context.Rdi;
-            t.m_reg[5] = context.Rsi;
-            t.m_reg[6] = context.Rbp;
-            t.m_reg[7] = context.Rsp;
-            // r8,r9,r10,r11,r12,r13,r14,r15
-            t.m_reg[8]  = context.R8;
-            t.m_reg[9]  = context.R9;
-            t.m_reg[10] = context.R10;
-            t.m_reg[11] = context.R11;
-            t.m_reg[12] = context.R12;
-            t.m_reg[13] = context.R13;
-            t.m_reg[14] = context.R14;
-            t.m_reg[15] = context.R15;
-        }
-        else
-        {
-            static assert(false, "Architecture not supported." );
-        }
-    }
-    else version (Darwin)
-    {
-        if ( t.m_addr != pthread_self() && thread_suspend( t.m_tmach ) != KERN_SUCCESS )
-        {
-            if ( !t.isRunning )
-            {
-                Thread.remove( t );
-                return false;
-            }
-            onThreadError( "Unable to suspend thread" );
-        }
-
-        version (X86)
-        {
-            x86_thread_state32_t    state = void;
-            mach_msg_type_number_t  count = x86_THREAD_STATE32_COUNT;
-
-            if ( thread_get_state( t.m_tmach, x86_THREAD_STATE32, &state, &count ) != KERN_SUCCESS )
-                onThreadError( "Unable to load thread state" );
-            if ( !t.m_lock )
-                t.m_curr.tstack = cast(void*) state.esp;
-            // eax,ebx,ecx,edx,edi,esi,ebp,esp
-            t.m_reg[0] = state.eax;
-            t.m_reg[1] = state.ebx;
-            t.m_reg[2] = state.ecx;
-            t.m_reg[3] = state.edx;
-            t.m_reg[4] = state.edi;
-            t.m_reg[5] = state.esi;
-            t.m_reg[6] = state.ebp;
-            t.m_reg[7] = state.esp;
-        }
-        else version (X86_64)
-        {
-            x86_thread_state64_t    state = void;
-            mach_msg_type_number_t  count = x86_THREAD_STATE64_COUNT;
-
-            if ( thread_get_state( t.m_tmach, x86_THREAD_STATE64, &state, &count ) != KERN_SUCCESS )
-                onThreadError( "Unable to load thread state" );
-            if ( !t.m_lock )
-                t.m_curr.tstack = cast(void*) state.rsp;
-            // rax,rbx,rcx,rdx,rdi,rsi,rbp,rsp
-            t.m_reg[0] = state.rax;
-            t.m_reg[1] = state.rbx;
-            t.m_reg[2] = state.rcx;
-            t.m_reg[3] = state.rdx;
-            t.m_reg[4] = state.rdi;
-            t.m_reg[5] = state.rsi;
-            t.m_reg[6] = state.rbp;
-            t.m_reg[7] = state.rsp;
-            // r8,r9,r10,r11,r12,r13,r14,r15
-            t.m_reg[8]  = state.r8;
-            t.m_reg[9]  = state.r9;
-            t.m_reg[10] = state.r10;
-            t.m_reg[11] = state.r11;
-            t.m_reg[12] = state.r12;
-            t.m_reg[13] = state.r13;
-            t.m_reg[14] = state.r14;
-            t.m_reg[15] = state.r15;
-        }
-        else version (AArch64)
-        {
-            arm_thread_state64_t state = void;
-            mach_msg_type_number_t count = ARM_THREAD_STATE64_COUNT;
-
-            if (thread_get_state(t.m_tmach, ARM_THREAD_STATE64, &state, &count) != KERN_SUCCESS)
-                onThreadError("Unable to load thread state");
-            // TODO: ThreadException here recurses forever!  Does it
-            //still using onThreadError?
-            //printf("state count %d (expect %d)\n", count ,ARM_THREAD_STATE64_COUNT);
-            if (!t.m_lock)
-                t.m_curr.tstack = cast(void*) state.sp;
-
-            t.m_reg[0..29] = state.x;  // x0-x28
-            t.m_reg[29] = state.fp;    // x29
-            t.m_reg[30] = state.lr;    // x30
-            t.m_reg[31] = state.sp;    // x31
-            t.m_reg[32] = state.pc;
-        }
-        else version (ARM)
-        {
-            arm_thread_state32_t state = void;
-            mach_msg_type_number_t count = ARM_THREAD_STATE32_COUNT;
-
-            // Thought this would be ARM_THREAD_STATE32, but that fails.
-            // Mystery
-            if (thread_get_state(t.m_tmach, ARM_THREAD_STATE, &state, &count) != KERN_SUCCESS)
-                onThreadError("Unable to load thread state");
-            // TODO: in past, ThreadException here recurses forever!  Does it
-            //still using onThreadError?
-            //printf("state count %d (expect %d)\n", count ,ARM_THREAD_STATE32_COUNT);
-            if (!t.m_lock)
-                t.m_curr.tstack = cast(void*) state.sp;
-
-            t.m_reg[0..13] = state.r;  // r0 - r13
-            t.m_reg[13] = state.sp;
-            t.m_reg[14] = state.lr;
-            t.m_reg[15] = state.pc;
-        }
-        else
-        {
-            static assert(false, "Architecture not supported." );
-        }
-    }
-    else version (Posix)
-    {
-        if ( t.m_addr != pthread_self() )
-        {
-            if ( pthread_kill( t.m_addr, suspendSignalNumber ) != 0 )
-            {
-                if ( !t.isRunning )
-                {
-                    Thread.remove( t );
-                    return false;
-                }
-                onThreadError( "Unable to suspend thread" );
-            }
-        }
-        else if ( !t.m_lock )
-        {
-            t.m_curr.tstack = getStackTop();
-        }
-    }
-    return true;
-}
+private extern (C) bool suspend( ThreadBase ) nothrow;
 
 /**
  * Suspend all threads but the calling thread for "stop the world" garbage
@@ -2880,7 +2661,7 @@ do
 * Throws:
 *  ThreadError.
 */
-private void onThreadError(string msg) nothrow @nogc
+package void onThreadError(string msg) nothrow @nogc
 {
     __gshared ThreadError error = new ThreadError(null);
     error.msg = msg;
