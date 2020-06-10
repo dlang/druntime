@@ -84,6 +84,8 @@ private
     enum mutexClassInstanceSize = __traits(classInstanceSize, Mutex);
 
     extern(C) void* swapContext(void* newContext) nothrow @nogc;
+
+    extern extern(C) immutable size_t threadSizeof;
 }
 
 
@@ -351,7 +353,7 @@ class ThreadBase
     {
         static void resize(ref ThreadBase[] buf, size_t nlen)
         {
-            buf = (cast(ThreadBase*)realloc(buf.ptr, nlen * Thread.sizeof))[0 .. nlen];
+            buf = (cast(ThreadBase*)realloc(buf.ptr, nlen * threadSizeof))[0 .. nlen];
         }
         auto buf = getAllImpl!resize;
         scope(exit) if (buf.ptr) free(buf.ptr);
@@ -714,9 +716,9 @@ package(core.thread):
             }
             assert(idx != -1);
             import core.stdc.string : memmove;
-            memmove(pAboutToStart + idx, pAboutToStart + idx + 1, Thread.sizeof * (nAboutToStart - idx - 1));
+            memmove(pAboutToStart + idx, pAboutToStart + idx + 1, threadSizeof * (nAboutToStart - idx - 1));
             pAboutToStart =
-                cast(ThreadBase*)realloc(pAboutToStart, Thread.sizeof * --nAboutToStart);
+                cast(ThreadBase*)realloc(pAboutToStart, threadSizeof * --nAboutToStart);
         }
 
         if (sm_tbeg)

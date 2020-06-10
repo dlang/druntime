@@ -134,6 +134,8 @@ shared static this()
     }
 }
 
+package extern(C) immutable size_t threadSizeof = Thread.sizeof;;
+
 version (Solaris)
 {
     import core.sys.solaris.sys.priocntl;
