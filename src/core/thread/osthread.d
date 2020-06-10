@@ -1191,7 +1191,7 @@ private extern (C) Thread attachThread(Thread thisThread) @nogc
  *
  *       extern (C) void rt_moduleTlsCtor();
  */
-package Thread thread_attachThis()
+package extern (C) Thread thread_attachThis()
 {
     return thread_attachThis_tpl!Thread();
 }
