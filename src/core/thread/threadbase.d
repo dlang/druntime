@@ -319,7 +319,7 @@ class ThreadBase
     /**
      * Provides a list of all threads currently being tracked by the system.
      * Note that threads in the returned array might no longer run (see
-     * $(D Thread.)$(LREF isRunning)).
+     * $(D ThreadBase.)$(LREF isRunning)).
      *
      * Returns:
      *  An array containing references to all threads currently being
@@ -340,7 +340,7 @@ class ThreadBase
      * Operates on all threads currently being tracked by the system.  The
      * result of deleting any Thread object is undefined.
      * Note that threads passed to the callback might no longer run (see
-     * $(D Thread.)$(LREF isRunning)).
+     * $(D ThreadBase.)$(LREF isRunning)).
      *
      * Params:
      *  dg = The supplied code as a delegate.
@@ -371,7 +371,7 @@ class ThreadBase
 
         auto t1 = new Thread({
             foreach (_; 0 .. 20)
-                Thread.getAll;
+                ThreadBase.getAll;
         }).start;
         auto t2 = new Thread({
             foreach (_; 0 .. 20)
@@ -402,6 +402,23 @@ class ThreadBase
                 }
             }
         }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Actions on Calling Thread
+    ///////////////////////////////////////////////////////////////////////////
+
+    private static void sleep( Duration val ) @nogc nothrow
+    {
+        thread_sleep(val);
+    }
+
+    /**
+     * Forces a context switch to occur away from the calling thread.
+     */
+    private static void yield() @nogc nothrow
+    {
+        thread_yield();
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -835,25 +852,25 @@ extern (C) void _d_monitordelete_nogc(Object h) @nogc;
  */
 extern (C) void thread_term() @nogc
 {
-    assert(_mainThreadStore.ptr is cast(void*) Thread.sm_main);
+    assert(_mainThreadStore.ptr is cast(void*) ThreadBase.sm_main);
 
     // destruct manually as object.destroy is not @nogc
     ThreadBase.sm_main.__dtor();
-    _d_monitordelete_nogc(Thread.sm_main);
+    _d_monitordelete_nogc(ThreadBase.sm_main);
     if (typeid(Thread).initializer.ptr)
         _mainThreadStore[] = typeid(Thread).initializer[];
     else
         (cast(ubyte[])_mainThreadStore)[] = 0;
-    Thread.sm_main = null;
+    ThreadBase.sm_main = null;
 
-    assert(Thread.sm_tbeg && Thread.sm_tlen == 1);
-    assert(!Thread.nAboutToStart);
-    if (Thread.pAboutToStart) // in case realloc(p, 0) doesn't return null
+    assert(ThreadBase.sm_tbeg && ThreadBase.sm_tlen == 1);
+    assert(!ThreadBase.nAboutToStart);
+    if (ThreadBase.pAboutToStart) // in case realloc(p, 0) doesn't return null
     {
-        free(Thread.pAboutToStart);
-        Thread.pAboutToStart = null;
+        free(ThreadBase.pAboutToStart);
+        ThreadBase.pAboutToStart = null;
     }
-    Thread.termLocks();
+    ThreadBase.termLocks();
     termLowlevelThreads();
 }
 
@@ -863,7 +880,7 @@ extern (C) void thread_term() @nogc
  */
 extern (C) bool thread_isMainThread() nothrow @nogc
 {
-    return Thread.getThis() is Thread.sm_main;
+    return ThreadBase.getThis() is ThreadBase.sm_main;
 }
 
 
@@ -879,7 +896,7 @@ extern (C) bool thread_isMainThread() nothrow @nogc
  */
 extern (C) ThreadBase thread_attachThis()
 {
-    if (auto t = Thread.getThis())
+    if (auto t = ThreadBase.getThis())
         return t;
 
     return attachThread(new Thread());
@@ -899,8 +916,8 @@ extern (C) ThreadBase thread_attachThis()
  */
 extern (C) void thread_detachThis() nothrow @nogc
 {
-    if (auto t = Thread.getThis())
-        Thread.remove(t);
+    if (auto t = ThreadBase.getThis())
+        ThreadBase.remove(t);
 }
 
 
@@ -925,7 +942,7 @@ extern (C) void thread_detachByAddr( ThreadID addr )
 /// ditto
 extern (C) void thread_detachInstance( Thread t ) nothrow @nogc
 {
-    Thread.remove( t );
+    ThreadBase.remove( t );
 }
 
 
@@ -937,7 +954,7 @@ unittest
     auto t = new Thread(
     {
         sem.notify();
-        Thread.sleep(100.msecs);
+        ThreadBase.sleep(100.msecs);
     }).start();
 
     sem.wait(); // thread cannot be detached while being started
@@ -958,8 +975,8 @@ unittest
  */
 static ThreadBase thread_findByAddr( ThreadID addr )
 {
-    Thread.slock.lock_nothrow();
-    scope(exit) Thread.slock.unlock_nothrow();
+    ThreadBase.slock.lock_nothrow();
+    scope(exit) ThreadBase.slock.unlock_nothrow();
 
     // also return just spawned thread so that
     // DLL_THREAD_ATTACH knows it's a D thread
@@ -978,7 +995,7 @@ static ThreadBase thread_findByAddr( ThreadID addr )
 /**
  * Sets the current thread to a specific reference. Only to be used
  * when dealing with externally-created threads (in e.g. C code).
- * The primary use of this function is when Thread.getThis() must
+ * The primary use of this function is when ThreadBase.getThis() must
  * return a sensible value in, for example, TLS destructors. In
  * other words, don't touch this unless you know what you're doing.
  *
@@ -987,7 +1004,7 @@ static ThreadBase thread_findByAddr( ThreadID addr )
  */
 extern (C) void thread_setThis(Thread t) nothrow @nogc
 {
-    Thread.setThis(t);
+    ThreadBase.setThis(t);
 }
 
 
@@ -999,23 +1016,23 @@ extern (C) void thread_setThis(Thread t) nothrow @nogc
 extern (C) void thread_joinAll()
 {
  Lagain:
-    Thread.slock.lock_nothrow();
+    ThreadBase.slock.lock_nothrow();
     // wait for just spawned threads
-    if (Thread.nAboutToStart)
+    if (ThreadBase.nAboutToStart)
     {
-        Thread.slock.unlock_nothrow();
-        Thread.yield();
+        ThreadBase.slock.unlock_nothrow();
+        ThreadBase.yield();
         goto Lagain;
     }
 
     // join all non-daemon threads, the main thread is also a daemon
-    auto t = Thread.sm_tbeg;
+    auto t = ThreadBase.sm_tbeg;
     while (t)
     {
         if (!t.isRunning)
         {
             auto tn = t.next;
-            Thread.remove(t);
+            ThreadBase.remove(t);
             t = tn;
         }
         else if (t.isDaemon)
@@ -1024,12 +1041,12 @@ extern (C) void thread_joinAll()
         }
         else
         {
-            Thread.slock.unlock_nothrow();
+            ThreadBase.slock.unlock_nothrow();
             t.join(); // might rethrow
             goto Lagain; // must restart iteration b/c of unlock
         }
     }
-    Thread.slock.unlock_nothrow();
+    ThreadBase.slock.unlock_nothrow();
 }
 
 
@@ -1066,14 +1083,14 @@ in
 do
 {
     // NOTE: See thread_suspendAll for the logic behind this.
-    if ( !multiThreadedFlag && Thread.sm_tbeg )
+    if ( !multiThreadedFlag && ThreadBase.sm_tbeg )
     {
         if ( --suspendDepth == 0 )
-            resume( Thread.getThis() );
+            resume( ThreadBase.getThis() );
         return;
     }
 
-    scope(exit) Thread.slock.unlock_nothrow();
+    scope(exit) ThreadBase.slock.unlock_nothrow();
     {
         if ( --suspendDepth > 0 )
             return;
@@ -1122,12 +1139,12 @@ do
 
 private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop ) nothrow
 {
-    Thread  thisThread  = null;
+    ThreadBase  thisThread  = null;
     void*   oldStackTop = null;
 
-    if ( Thread.sm_tbeg )
+    if ( ThreadBase.sm_tbeg )
     {
-        thisThread  = Thread.getThis();
+        thisThread  = ThreadBase.getThis();
         if ( !thisThread.m_lock )
         {
             oldStackTop = thisThread.m_curr.tstack;
@@ -1137,7 +1154,7 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
 
     scope( exit )
     {
-        if ( Thread.sm_tbeg )
+        if ( ThreadBase.sm_tbeg )
         {
             if ( !thisThread.m_lock )
             {
@@ -1146,13 +1163,13 @@ private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop
         }
     }
 
-    // NOTE: Synchronizing on Thread.slock is not needed because this
+    // NOTE: Synchronizing on ThreadBase.slock is not needed because this
     //       function may only be called after all other threads have
     //       been suspended from within the same lock.
-    if (Thread.nAboutToStart)
-        scan(ScanType.stack, Thread.pAboutToStart, Thread.pAboutToStart + Thread.nAboutToStart);
+    if (ThreadBase.nAboutToStart)
+        scan(ScanType.stack, ThreadBase.pAboutToStart, ThreadBase.pAboutToStart + ThreadBase.nAboutToStart);
 
-    for ( StackContext* c = Thread.sm_cbeg; c; c = c.next )
+    for ( StackContext* c = ThreadBase.sm_cbeg; c; c = c.next )
     {
         static if (isStackGrowsDown)
         {
@@ -1199,6 +1216,9 @@ extern (C) void thread_scanAll( scope ScanAllThreadsFn scan ) nothrow
     thread_scanAllType((type, p1, p2) => scan(p1, p2));
 }
 
+private extern (C) static void thread_yield() @nogc nothrow;
+
+private extern (C) static void thread_sleep(Duration val) @nogc nothrow;
 
 /**
  * Signals that the code following this call is a critical region. Any code in
@@ -1224,12 +1244,12 @@ extern (C) void thread_scanAll( scope ScanAllThreadsFn scan ) nothrow
 extern (C) void thread_enterCriticalRegion() @nogc
 in
 {
-    assert(Thread.getThis());
+    assert(ThreadBase.getThis());
 }
 do
 {
-    synchronized (Thread.criticalRegionLock)
-        Thread.getThis().m_isInCriticalRegion = true;
+    synchronized (ThreadBase.criticalRegionLock)
+        ThreadBase.getThis().m_isInCriticalRegion = true;
 }
 
 
@@ -1243,12 +1263,12 @@ do
 extern (C) void thread_exitCriticalRegion() @nogc
 in
 {
-    assert(Thread.getThis());
+    assert(ThreadBase.getThis());
 }
 do
 {
-    synchronized (Thread.criticalRegionLock)
-        Thread.getThis().m_isInCriticalRegion = false;
+    synchronized (ThreadBase.criticalRegionLock)
+        ThreadBase.getThis().m_isInCriticalRegion = false;
 }
 
 
@@ -1261,12 +1281,12 @@ do
 extern (C) bool thread_inCriticalRegion() @nogc
 in
 {
-    assert(Thread.getThis());
+    assert(ThreadBase.getThis());
 }
 do
 {
-    synchronized (Thread.criticalRegionLock)
-        return Thread.getThis().m_isInCriticalRegion;
+    synchronized (ThreadBase.criticalRegionLock)
+        return ThreadBase.getThis().m_isInCriticalRegion;
 }
 
 
@@ -1339,12 +1359,12 @@ unittest
     thr.start();
 
     sema.wait();
-    synchronized (Thread.criticalRegionLock)
+    synchronized (ThreadBase.criticalRegionLock)
         assert(thr.m_isInCriticalRegion);
     semb.notify();
 
     sema.wait();
-    synchronized (Thread.criticalRegionLock)
+    synchronized (ThreadBase.criticalRegionLock)
         assert(!thr.m_isInCriticalRegion);
     semb.notify();
 
@@ -1366,7 +1386,7 @@ unittest
         sema.notify();
         semb.wait();
 
-        Thread.sleep(dur!"msecs"(1));
+        ThreadBase.sleep(dur!"msecs"(1));
         inCriticalRegion = false;
         thread_exitCriticalRegion();
     });
@@ -1432,7 +1452,7 @@ extern (C) void* thread_stackTop() nothrow @nogc
 in
 {
     // Not strictly required, but it gives us more flexibility.
-    assert(Thread.getThis());
+    assert(ThreadBase.getThis());
 }
 do
 {
