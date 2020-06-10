@@ -1144,7 +1144,7 @@ version (Posix)
     __gshared int resumeSignalNumber;
 }
 
-private extern (C) ThreadBase attachThread(Thread thisThread) @nogc
+private extern (C) Thread attachThread(Thread thisThread) @nogc
 {
     StackContext* thisContext = &thisThread.m_main;
     assert( thisContext == thisThread.m_curr );
@@ -1179,6 +1179,21 @@ private extern (C) ThreadBase attachThread(Thread thisThread) @nogc
     if ( Thread.sm_main !is null )
         multiThreadedFlag = true;
     return thisThread;
+}
+
+/**
+ * Registers the calling thread for use with the D Runtime.  If this routine
+ * is called for a thread which is already registered, no action is performed.
+ *
+ * NOTE: This routine does not run thread-local static constructors when called.
+ *       If full functionality as a D thread is desired, the following function
+ *       must be called after thread_attachThis:
+ *
+ *       extern (C) void rt_moduleTlsCtor();
+ */
+package Thread thread_attachThis()
+{
+    return thread_attachThis_tpl!Thread();
 }
 
 
