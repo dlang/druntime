@@ -106,6 +106,8 @@ class ThreadError : Error
 
 private
 {
+    // Handling unaligned mutexes are not supported on all platforms, so we must
+    // ensure that the address of all shared data are appropriately aligned.
     import core.internal.traits : classInstanceAlignment;
 
     enum mutexAlign = classInstanceAlignment!Mutex;
