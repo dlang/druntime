@@ -1007,6 +1007,49 @@ package /*FIXME:private*/ Thread toThread(ThreadBase t) @safe nothrow @nogc pure
     return cast(Thread) t;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// GC Support Routines
+///////////////////////////////////////////////////////////////////////////////
+
+version (CoreDdoc)
+{
+    /**
+     * Instruct the thread module, when initialized, to use a different set of
+     * signals besides SIGUSR1 and SIGUSR2 for suspension and resumption of threads.
+     * This function should be called at most once, prior to thread_init().
+     * This function is Posix-only.
+     */
+    extern (C) void thread_setGCSignals(int suspendSignalNo, int resumeSignalNo) nothrow @nogc
+    {
+    }
+}
+else version (Posix)
+{
+    extern (C) void thread_setGCSignals(int suspendSignalNo, int resumeSignalNo) nothrow @nogc
+    in
+    {
+        assert(suspendSignalNumber == 0);
+        assert(resumeSignalNumber  == 0);
+        assert(suspendSignalNo != 0);
+        assert(resumeSignalNo  != 0);
+    }
+    out
+    {
+        assert(suspendSignalNumber != 0);
+        assert(resumeSignalNumber  != 0);
+    }
+    do
+    {
+        suspendSignalNumber = suspendSignalNo;
+        resumeSignalNumber  = resumeSignalNo;
+    }
+}
+
+version (Posix)
+{
+    __gshared int suspendSignalNumber;
+    __gshared int resumeSignalNumber;
+}
 
 private extern (C) ThreadBase attachThread(Thread thisThread) @nogc
 {
