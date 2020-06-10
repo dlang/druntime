@@ -1614,17 +1614,6 @@ unittest
     thr.join();
 }
 
-//FIXME:remove
-version (Posix)
-{
-    import core.stdc.errno;
-    import core.sys.posix.semaphore;
-    import core.sys.posix.stdlib; // for malloc, valloc, free, atexit
-    import core.sys.posix.pthread;
-    import core.sys.posix.signal;
-    import core.sys.posix.time;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // lowlovel threading support
 //~ private //FIXME
