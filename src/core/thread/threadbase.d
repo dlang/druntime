@@ -15,6 +15,7 @@ module core.thread.threadbase;
 public import core.thread.osthread; //FIXME: remove
 import core.thread.context;
 import core.time;
+import core.sync.mutex;
 
 //private
 package //FIXME
@@ -103,72 +104,14 @@ class ThreadError : Error
     }
 }
 
-//~ private //FIXME
-version (all)
+private
 {
-    import core.atomic, core.memory, core.sync.mutex;
-
-    // Handling unaligned mutexes are not supported on all platforms, so we must
-    // ensure that the address of all shared data are appropriately aligned.
     import core.internal.traits : classInstanceAlignment;
 
     enum mutexAlign = classInstanceAlignment!Mutex;
     enum mutexClassInstanceSize = __traits(classInstanceSize, Mutex);
 
-    /**
-     * Hook for whatever EH implementation is used to save/restore some data
-     * per stack.
-     *
-     * Params:
-     *     newContext = The return value of the prior call to this function
-     *         where the stack was last swapped out, or null when a fiber stack
-     *         is switched in for the first time.
-     */
-    extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc;
-
-    version (DigitalMars)
-    {
-        version (Windows)
-            alias swapContext = _d_eh_swapContext;
-        else
-        {
-            extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc;
-
-            void* swapContext(void* newContext) nothrow @nogc
-            {
-                /* Detect at runtime which scheme is being used.
-                 * Eventually, determine it statically.
-                 */
-                static int which = 0;
-                final switch (which)
-                {
-                    case 0:
-                    {
-                        assert(newContext == null);
-                        auto p = _d_eh_swapContext(newContext);
-                        auto pdwarf = _d_eh_swapContextDwarf(newContext);
-                        if (p)
-                        {
-                            which = 1;
-                            return p;
-                        }
-                        else if (pdwarf)
-                        {
-                            which = 2;
-                            return pdwarf;
-                        }
-                        return null;
-                    }
-                    case 1:
-                        return _d_eh_swapContext(newContext);
-                    case 2:
-                        return _d_eh_swapContextDwarf(newContext);
-                }
-            }
-        }
-    }
-    else
-        alias swapContext = _d_eh_swapContext;
+    extern(C) void* swapContext(void* newContext) nothrow @nogc;
 }
 
 
@@ -453,6 +396,8 @@ class ThreadBase
 
     unittest
     {
+        import core.memory : GC;
+
         auto t1 = new Thread({
             foreach (_; 0 .. 20)
                 Thread.getAll;

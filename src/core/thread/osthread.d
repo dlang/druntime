@@ -158,6 +158,73 @@ shared static ~this()
     }
 }
 
+/**
+ * Hook for whatever EH implementation is used to save/restore some data
+ * per stack.
+ *
+ * Params:
+ *     newContext = The return value of the prior call to this function
+ *         where the stack was last swapped out, or null when a fiber stack
+ *         is switched in for the first time.
+ */
+private extern(C) void* _d_eh_swapContext(void* newContext) nothrow @nogc;
+
+private mixin template swapContextDefault()
+{
+    extern(C) void* swapContext()(void* newContext) nothrow @nogc
+    {
+        return _d_eh_swapContext(newContext);
+    }
+}
+
+version (DigitalMars)
+{
+    version (Windows)
+        mixin swapContextDefault;
+    else
+    {
+        extern(C) void* _d_eh_swapContextDwarf(void* newContext) nothrow @nogc;
+
+        extern(C) void* swapContext(void* newContext) nothrow @nogc
+        {
+            /* Detect at runtime which scheme is being used.
+             * Eventually, determine it statically.
+             */
+            static int which = 0;
+            final switch (which)
+            {
+                case 0:
+                {
+                    assert(newContext == null);
+                    auto p = _d_eh_swapContext(newContext);
+                    auto pdwarf = _d_eh_swapContextDwarf(newContext);
+                    if (p)
+                    {
+                        which = 1;
+                        return p;
+                    }
+                    else if (pdwarf)
+                    {
+                        which = 2;
+                        return pdwarf;
+                    }
+                    return null;
+                }
+                case 1:
+                    return _d_eh_swapContext(newContext);
+                case 2:
+                    return _d_eh_swapContextDwarf(newContext);
+            }
+        }
+    }
+}
+else
+    mixin swapContextDefault;
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Thread
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * This class encapsulates all threading functionality for the D
