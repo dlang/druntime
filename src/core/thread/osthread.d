@@ -2023,8 +2023,323 @@ else
     static assert( false, "Unknown threading implementation." );
 }
 
+//
+// exposed by compiler runtime
+//
+extern (C) void  rt_moduleTlsCtor();
+extern (C) void  rt_moduleTlsDtor();
+
+///////////////////////////////////////////////////////////////////////////////
+// lowlovel threading support
+///////////////////////////////////////////////////////////////////////////////
+
+//~ private //FIXME
+version (all)
+{
+    version (Windows):
+    // If the runtime is dynamically loaded as a DLL, there is a problem with
+    // threads still running when the DLL is supposed to be unloaded:
     //
-    // exposed by compiler runtime
+    // - with the VC runtime starting with VS2015 (i.e. using the Universal CRT)
+    //   a thread created with _beginthreadex increments the DLL reference count
+    //   and decrements it when done, so that the DLL is no longer unloaded unless
+    //   all the threads have terminated. With the DLL reference count held up
+    //   by a thread that is only stopped by a signal from a static destructor or
+    //   the termination of the runtime will cause the DLL to never be unloaded.
     //
-    extern (C) void  rt_moduleTlsCtor();
-    extern (C) void  rt_moduleTlsDtor();
+    // - with the DigitalMars runtime and VC runtime up to VS2013, the thread
+    //   continues to run, but crashes once the DLL is unloaded from memory as
+    //   the code memory is no longer accessible. Stopping the threads is not possible
+    //   from within the runtime termination as it is invoked from
+    //   DllMain(DLL_PROCESS_DETACH) holding a lock that prevents threads from
+    //   terminating.
+    //
+    // Solution: start a watchdog thread that keeps the DLL reference count above 0 and
+    // checks it periodically. If it is equal to 1 (plus the number of started threads), no
+    // external references to the DLL exist anymore, threads can be stopped
+    // and runtime termination and DLL unload can be invoked via FreeLibraryAndExitThread.
+    // Note: runtime termination is then performed by a different thread than at startup.
+    //
+    // Note: if the DLL is never unloaded, process termination kills all threads
+    // and signals their handles before unconditionally calling DllMain(DLL_PROCESS_DETACH).
+
+    import core.sys.windows.winbase : FreeLibraryAndExitThread, GetModuleHandleExW,
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT;
+    import core.sys.windows.windef : HMODULE;
+    import core.sys.windows.dll : dll_getRefCount;
+
+    version (CRuntime_Microsoft)
+        extern(C) extern __gshared ubyte msvcUsesUCRT; // from rt/msvc.c
+
+    /// set during termination of a DLL on Windows, i.e. while executing DllMain(DLL_PROCESS_DETACH)
+    public __gshared bool thread_DLLProcessDetaching;
+
+    __gshared HMODULE ll_dllModule;
+    __gshared ThreadID ll_dllMonitorThread;
+
+    int ll_countLowLevelThreadsWithDLLUnloadCallback() nothrow
+    {
+        lowlevelLock.lock_nothrow();
+        scope(exit) lowlevelLock.unlock_nothrow();
+
+        int cnt = 0;
+        foreach (i; 0 .. ll_nThreads)
+            if (ll_pThreads[i].cbDllUnload)
+                cnt++;
+        return cnt;
+    }
+
+    bool ll_dllHasExternalReferences() nothrow
+    {
+        version (CRuntime_DigitalMars)
+            enum internalReferences = 1; // only the watchdog thread
+        else
+            int internalReferences =  msvcUsesUCRT ? 1 + ll_countLowLevelThreadsWithDLLUnloadCallback() : 1;
+
+        int refcnt = dll_getRefCount(ll_dllModule);
+        return refcnt > internalReferences;
+    }
+
+    private void monitorDLLRefCnt() nothrow
+    {
+        // this thread keeps the DLL alive until all external references are gone
+        while (ll_dllHasExternalReferences())
+        {
+            Thread.sleep(100.msecs);
+        }
+
+        // the current thread will be terminated below
+        ll_removeThread(GetCurrentThreadId());
+
+        for (;;)
+        {
+            ThreadID tid;
+            void delegate() nothrow cbDllUnload;
+            {
+                lowlevelLock.lock_nothrow();
+                scope(exit) lowlevelLock.unlock_nothrow();
+
+                foreach (i; 0 .. ll_nThreads)
+                    if (ll_pThreads[i].cbDllUnload)
+                    {
+                        cbDllUnload = ll_pThreads[i].cbDllUnload;
+                        tid = ll_pThreads[0].tid;
+                    }
+            }
+            if (!cbDllUnload)
+                break;
+            cbDllUnload();
+            assert(!findLowLevelThread(tid));
+        }
+
+        FreeLibraryAndExitThread(ll_dllModule, 0);
+    }
+
+    int ll_getDLLRefCount() nothrow @nogc
+    {
+        if (!ll_dllModule &&
+            !GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                cast(const(wchar)*) &ll_getDLLRefCount, &ll_dllModule))
+            return -1;
+        return dll_getRefCount(ll_dllModule);
+    }
+
+    bool ll_startDLLUnloadThread() nothrow @nogc
+    {
+        int refcnt = ll_getDLLRefCount();
+        if (refcnt < 0)
+            return false; // not a dynamically loaded DLL
+
+        if (ll_dllMonitorThread !is ThreadID.init)
+            return true;
+
+        // if a thread is created from a DLL, the MS runtime (starting with VC2015) increments the DLL reference count
+        // to avoid the DLL being unloaded while the thread is still running. Mimick this behavior here for all
+        // runtimes not doing this
+        version (CRuntime_DigitalMars)
+            enum needRef = true;
+        else
+            bool needRef = !msvcUsesUCRT;
+
+        if (needRef)
+        {
+            HMODULE hmod;
+            GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, cast(const(wchar)*) &ll_getDLLRefCount, &hmod);
+        }
+
+        ll_dllMonitorThread = createLowLevelThread(() { monitorDLLRefCnt(); });
+        return ll_dllMonitorThread != ThreadID.init;
+    }
+}
+
+/**
+ * Create a thread not under control of the runtime, i.e. TLS module constructors are
+ * not run and the GC does not suspend it during a collection.
+ *
+ * Params:
+ *  dg        = delegate to execute in the created thread.
+ *  stacksize = size of the stack of the created thread. The default of 0 will select the
+ *              platform-specific default size.
+ *  cbDllUnload = Windows only: if running in a dynamically loaded DLL, this delegate will be called
+ *              if the DLL is supposed to be unloaded, but the thread is still running.
+ *              The thread must be terminated via `joinLowLevelThread` by the callback.
+ *
+ * Returns: the platform specific thread ID of the new thread. If an error occurs, `ThreadID.init`
+ *  is returned.
+ */
+ThreadID createLowLevelThread(void delegate() nothrow dg, uint stacksize = 0,
+                              void delegate() nothrow cbDllUnload = null) nothrow @nogc
+{
+    void delegate() nothrow* context = cast(void delegate() nothrow*)malloc(dg.sizeof);
+    *context = dg;
+
+    ThreadID tid;
+    version (Windows)
+    {
+        // the thread won't start until after the DLL is unloaded
+        if (thread_DLLProcessDetaching)
+            return ThreadID.init;
+
+        static extern (Windows) uint thread_lowlevelEntry(void* ctx) nothrow
+        {
+            auto dg = *cast(void delegate() nothrow*)ctx;
+            free(ctx);
+
+            dg();
+            ll_removeThread(GetCurrentThreadId());
+            return 0;
+        }
+
+        // see Thread.start() for why thread is created in suspended state
+        HANDLE hThread = cast(HANDLE) _beginthreadex(null, stacksize, &thread_lowlevelEntry,
+                                                     context, CREATE_SUSPENDED, &tid);
+        if (!hThread)
+            return ThreadID.init;
+    }
+
+    lowlevelLock.lock_nothrow();
+    scope(exit) lowlevelLock.unlock_nothrow();
+
+    ll_nThreads++;
+    ll_pThreads = cast(ll_ThreadData*)realloc(ll_pThreads, ll_ThreadData.sizeof * ll_nThreads);
+
+    version (Windows)
+    {
+        ll_pThreads[ll_nThreads - 1].tid = tid;
+        ll_pThreads[ll_nThreads - 1].cbDllUnload = cbDllUnload;
+        if (ResumeThread(hThread) == -1)
+            onThreadError("Error resuming thread");
+        CloseHandle(hThread);
+
+        if (cbDllUnload)
+            ll_startDLLUnloadThread();
+    }
+    else version (Posix)
+    {
+        static extern (C) void* thread_lowlevelEntry(void* ctx) nothrow
+        {
+            auto dg = *cast(void delegate() nothrow*)ctx;
+            free(ctx);
+
+            dg();
+            ll_removeThread(pthread_self());
+            return null;
+        }
+
+        size_t stksz = adjustStackSize(stacksize);
+
+        pthread_attr_t  attr;
+
+        int rc;
+        if ((rc = pthread_attr_init(&attr)) != 0)
+            return ThreadID.init;
+        if (stksz && (rc = pthread_attr_setstacksize(&attr, stksz)) != 0)
+            return ThreadID.init;
+        if ((rc = pthread_create(&tid, &attr, &thread_lowlevelEntry, context)) != 0)
+            return ThreadID.init;
+        if ((rc = pthread_attr_destroy(&attr)) != 0)
+            return ThreadID.init;
+
+        ll_pThreads[ll_nThreads - 1].tid = tid;
+    }
+    return tid;
+}
+
+/**
+ * Wait for a thread created with `createLowLevelThread` to terminate.
+ *
+ * Note: In a Windows DLL, if this function is called via DllMain with
+ *       argument DLL_PROCESS_DETACH, the thread is terminated forcefully
+ *       without proper cleanup as a deadlock would happen otherwise.
+ *
+ * Params:
+ *  tid = the thread ID returned by `createLowLevelThread`.
+ */
+void joinLowLevelThread(ThreadID tid) nothrow @nogc
+{
+    version (Windows)
+    {
+        HANDLE handle = OpenThreadHandle(tid);
+        if (!handle)
+            return;
+
+        if (thread_DLLProcessDetaching)
+        {
+            // When being called from DllMain/DLL_DETACH_PROCESS, threads cannot stop
+            //  due to the loader lock being held by the current thread.
+            // On the other hand, the thread must not continue to run as it will crash
+            //  if the DLL is unloaded. The best guess is to terminate it immediately.
+            TerminateThread(handle, 1);
+            WaitForSingleObject(handle, 10); // give it some time to terminate, but don't wait indefinitely
+        }
+        else
+            WaitForSingleObject(handle, INFINITE);
+        CloseHandle(handle);
+    }
+    else version (Posix)
+    {
+        if (pthread_join(tid, null) != 0)
+            onThreadError("Unable to join thread");
+    }
+}
+
+/**
+ * Check whether a thread was created by `createLowLevelThread`.
+ *
+ * Params:
+ *  tid = the platform specific thread ID.
+ *
+ * Returns: `true` if the thread was created by `createLowLevelThread` and is still running.
+ */
+bool findLowLevelThread(ThreadID tid) nothrow @nogc
+{
+    lowlevelLock.lock_nothrow();
+    scope(exit) lowlevelLock.unlock_nothrow();
+
+    foreach (i; 0 .. ll_nThreads)
+        if (tid is ll_pThreads[i].tid)
+            return true;
+    return false;
+}
+
+nothrow @nogc unittest
+{
+    struct TaskWithContect
+    {
+        shared int n = 0;
+        void run() nothrow
+        {
+            n.atomicOp!"+="(1);
+        }
+    }
+    TaskWithContect task;
+
+    ThreadID[8] tids;
+    for (int i = 0; i < tids.length; i++)
+        tids[i] = createLowLevelThread(&task.run);
+
+    for (int i = 0; i < tids.length; i++)
+        joinLowLevelThread(tids[i]);
+
+    assert(task.n == tids.length);
+}
