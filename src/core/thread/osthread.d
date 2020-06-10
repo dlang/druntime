@@ -87,7 +87,7 @@ version (Windows)
     import core.sys.windows.winnt /+: CONTEXT, CONTEXT_CONTROL, CONTEXT_INTEGER+/;
 
     private extern (Windows) alias btex_fptr = uint function(void*);
-    private extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow @nogc;
+    package /* FIXME:private */ extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow @nogc;
 }
 else version (Posix)
 {
@@ -1416,3 +1416,9 @@ else
     //       easily accomlished by searching for 'Windows' or 'Posix'.
     static assert( false, "Unknown threading implementation." );
 }
+
+    //
+    // exposed by compiler runtime
+    //
+    extern (C) void  rt_moduleTlsCtor();
+    extern (C) void  rt_moduleTlsDtor();

@@ -122,12 +122,6 @@ version (all)
     enum mutexAlign = classInstanceAlignment!Mutex;
     enum mutexClassInstanceSize = __traits(classInstanceSize, Mutex);
 
-    //
-    // exposed by compiler runtime
-    //
-    extern (C) void  rt_moduleTlsCtor();
-    extern (C) void  rt_moduleTlsDtor();
-
     /**
      * Hook for whatever EH implementation is used to save/restore some data
      * per stack.
