@@ -14,6 +14,7 @@ module core.thread.osthread;
 
 public import core.thread.threadbase; //FIXME: remove public
 import core.thread.context;
+import core.thread.types;
 import core.atomic;
 import core.memory : GC;
 import core.time;

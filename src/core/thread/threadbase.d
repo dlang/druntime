@@ -14,6 +14,7 @@ module core.thread.threadbase;
 
 public import core.thread.osthread; //FIXME: remove
 import core.thread.context;
+import core.thread.types;
 import core.time;
 import core.sync.mutex;
 import core.stdc.stdlib : free, realloc;
@@ -1637,28 +1638,11 @@ version (Posix)
     import core.sys.posix.time;
 }
 
-/**
- * Represents the ID of a thread, as returned by $(D Thread.)$(LREF id).
- * The exact type varies from platform to platform.
- */
-version (Windows)
-    alias ThreadID = uint;
-else
-version (Posix)
-    alias ThreadID = pthread_t;
-
 ///////////////////////////////////////////////////////////////////////////////
 // lowlovel threading support
 //~ private //FIXME
 version (all)
 {
-    struct ll_ThreadData
-    {
-        ThreadID tid;
-        version (Windows)
-            void delegate() nothrow cbDllUnload;
-    }
-
     __gshared size_t ll_nThreads;
     __gshared ll_ThreadData* ll_pThreads;
 
