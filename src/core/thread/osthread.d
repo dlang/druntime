@@ -205,6 +205,31 @@ class Thread : ThreadBase
     }
 
     /**
+     * Cleans up any remaining resources used by this object.
+     */
+    ~this() nothrow @nogc
+    {
+        if(super.destructBeforeDtor())
+            return;
+
+        version (Windows)
+        {
+            m_addr = m_addr.init;
+            CloseHandle( m_hndl );
+            m_hndl = m_hndl.init;
+        }
+        else version (Posix)
+        {
+            pthread_detach( m_addr );
+            m_addr = m_addr.init;
+        }
+        version (Darwin)
+        {
+            m_tmach = m_tmach.init;
+        }
+    }
+
+    /**
      * Provides a reference to the calling thread.
      *
      * Returns:
@@ -840,3 +865,98 @@ private extern (C) void resume( Thread t ) nothrow
         }
     }
 }
+
+
+/**
+ * Initializes the thread module.  This function must be called by the
+ * garbage collector on startup and before any other thread routines
+ * are called.
+ */
+extern (C) void thread_init() @nogc
+{
+    // NOTE: If thread_init itself performs any allocations then the thread
+    //       routines reserved for garbage collector use may be called while
+    //       thread_init is being processed.  However, since no memory should
+    //       exist to be scanned at this point, it is sufficient for these
+    //       functions to detect the condition and return immediately.
+
+    initLowlevelThreads();
+    Thread.initLocks();
+
+    // The Android VM runtime intercepts SIGUSR1 and apparently doesn't allow
+    // its signal handler to run, so swap the two signals on Android, since
+    // thread_resumeHandler does nothing.
+    version (Android) thread_setGCSignals(SIGUSR2, SIGUSR1);
+
+    version (Darwin)
+    {
+        // thread id different in forked child process
+        static extern(C) void initChildAfterFork()
+        {
+            auto thisThread = Thread.getThis();
+            thisThread.m_addr = pthread_self();
+            assert( thisThread.m_addr != thisThread.m_addr.init );
+            thisThread.m_tmach = pthread_mach_thread_np( thisThread.m_addr );
+            assert( thisThread.m_tmach != thisThread.m_tmach.init );
+       }
+        pthread_atfork(null, null, &initChildAfterFork);
+    }
+    else version (Posix)
+    {
+        if ( suspendSignalNumber == 0 )
+        {
+            suspendSignalNumber = SIGUSR1;
+        }
+
+        if ( resumeSignalNumber == 0 )
+        {
+            resumeSignalNumber = SIGUSR2;
+        }
+
+        int         status;
+        sigaction_t sigusr1 = void;
+        sigaction_t sigusr2 = void;
+
+        // This is a quick way to zero-initialize the structs without using
+        // memset or creating a link dependency on their static initializer.
+        (cast(byte*) &sigusr1)[0 .. sigaction_t.sizeof] = 0;
+        (cast(byte*) &sigusr2)[0 .. sigaction_t.sizeof] = 0;
+
+        // NOTE: SA_RESTART indicates that system calls should restart if they
+        //       are interrupted by a signal, but this is not available on all
+        //       Posix systems, even those that support multithreading.
+        static if ( __traits( compiles, SA_RESTART ) )
+            sigusr1.sa_flags = SA_RESTART;
+        else
+            sigusr1.sa_flags   = 0;
+        sigusr1.sa_handler = &thread_suspendHandler;
+        // NOTE: We want to ignore all signals while in this handler, so fill
+        //       sa_mask to indicate this.
+        status = sigfillset( &sigusr1.sa_mask );
+        assert( status == 0 );
+
+        // NOTE: Since resumeSignalNumber should only be issued for threads within the
+        //       suspend handler, we don't want this signal to trigger a
+        //       restart.
+        sigusr2.sa_flags   = 0;
+        sigusr2.sa_handler = &thread_resumeHandler;
+        // NOTE: We want to ignore all signals while in this handler, so fill
+        //       sa_mask to indicate this.
+        status = sigfillset( &sigusr2.sa_mask );
+        assert( status == 0 );
+
+        status = sigaction( suspendSignalNumber, &sigusr1, null );
+        assert( status == 0 );
+
+        status = sigaction( resumeSignalNumber, &sigusr2, null );
+        assert( status == 0 );
+
+        status = sem_init( &suspendCount, 0, 0 );
+        assert( status == 0 );
+    }
+    if (typeid(Thread).initializer.ptr)
+        _mainThreadStore[] = typeid(Thread).initializer[];
+    Thread.sm_main = attachThread((cast(Thread)_mainThreadStore.ptr).__ctor());
+}
+
+package __gshared align(Thread.alignof) void[__traits(classInstanceSize, Thread)] _mainThreadStore;
