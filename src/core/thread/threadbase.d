@@ -15,7 +15,6 @@ module core.thread.threadbase;
 public import core.thread.osthread; //FIXME: remove
 import core.thread.context;
 import core.time;
-import core.exception : onOutOfMemoryError;
 
 //private
 package //FIXME
@@ -601,116 +600,6 @@ class ThreadBase
     // General Actions
     ///////////////////////////////////////////////////////////////////////////
 
-
-    /**
-     * Starts the thread and invokes the function or delegate passed upon
-     * construction.
-     *
-     * In:
-     *  This routine may only be called once per thread instance.
-     *
-     * Throws:
-     *  ThreadException if the thread fails to start.
-     */
-    final Thread start() nothrow
-    in
-    {
-        assert( !next && !prev );
-    }
-    do
-    {
-        auto wasThreaded  = multiThreadedFlag;
-        multiThreadedFlag = true;
-        scope( failure )
-        {
-            if ( !wasThreaded )
-                multiThreadedFlag = false;
-        }
-
-        version (Windows) {} else
-        version (Posix)
-        {
-            size_t stksz = adjustStackSize( m_sz );
-
-            pthread_attr_t  attr;
-
-            if ( pthread_attr_init( &attr ) )
-                onThreadError( "Error initializing thread attributes" );
-            if ( stksz && pthread_attr_setstacksize( &attr, stksz ) )
-                onThreadError( "Error initializing thread stack size" );
-        }
-
-        version (Windows)
-        {
-            // NOTE: If a thread is just executing DllMain()
-            //       while another thread is started here, it holds an OS internal
-            //       lock that serializes DllMain with CreateThread. As the code
-            //       might request a synchronization on slock (e.g. in thread_findByAddr()),
-            //       we cannot hold that lock while creating the thread without
-            //       creating a deadlock
-            //
-            // Solution: Create the thread in suspended state and then
-            //       add and resume it with slock acquired
-            assert(m_sz <= uint.max, "m_sz must be less than or equal to uint.max");
-            m_hndl = cast(HANDLE) _beginthreadex( null, cast(uint) m_sz, &thread_entryPoint, cast(void*) this, CREATE_SUSPENDED, &m_addr );
-            if ( cast(size_t) m_hndl == 0 )
-                onThreadError( "Error creating thread" );
-        }
-
-        slock.lock_nothrow();
-        scope(exit) slock.unlock_nothrow();
-        {
-            ++nAboutToStart;
-            pAboutToStart = cast(ThreadBase*)realloc(pAboutToStart, Thread.sizeof * nAboutToStart);
-            pAboutToStart[nAboutToStart - 1] = cast(Thread) this; //FIXME: remove cast
-            version (Windows)
-            {
-                if ( ResumeThread( m_hndl ) == -1 )
-                    onThreadError( "Error resuming thread" );
-            }
-            else version (Posix)
-            {
-                // NOTE: This is also set to true by thread_entryPoint, but set it
-                //       here as well so the calling thread will see the isRunning
-                //       state immediately.
-                atomicStore!(MemoryOrder.raw)(m_isRunning, true);
-                scope( failure ) atomicStore!(MemoryOrder.raw)(m_isRunning, false);
-
-                version (Shared)
-                {
-                    auto libs = externDFunc!("rt.sections_elf_shared.pinLoadedLibraries",
-                                             void* function() @nogc nothrow)();
-
-                    auto ps = cast(void**).malloc(2 * size_t.sizeof);
-                    if (ps is null) onOutOfMemoryError();
-                    ps[0] = cast(void*)this;
-                    ps[1] = cast(void*)libs;
-                    if ( pthread_create( &m_addr, &attr, &thread_entryPoint, ps ) != 0 )
-                    {
-                        externDFunc!("rt.sections_elf_shared.unpinLoadedLibraries",
-                                     void function(void*) @nogc nothrow)(libs);
-                        .free(ps);
-                        onThreadError( "Error creating thread" );
-                    }
-                }
-                else
-                {
-                    if ( pthread_create( &m_addr, &attr, &thread_entryPoint, cast(void*) this ) != 0 )
-                        onThreadError( "Error creating thread" );
-                }
-                if ( pthread_attr_destroy( &attr ) != 0 )
-                    onThreadError( "Error destroying thread attributes" );
-            }
-            version (Darwin)
-            {
-                m_tmach = pthread_mach_thread_np( m_addr );
-                if ( m_tmach == m_tmach.init )
-                    onThreadError( "Error creating thread" );
-            }
-
-            return cast(Thread) this; //FIXME cast
-        }
-    }
 
     /**
      * Waits for this thread to complete.  If the thread terminated as the
@@ -1476,7 +1365,6 @@ class ThreadBase
     //~ {
         //~ mach_port_t     m_tmach;
     //~ }
-    uint m_tmach; //FIXME:remove
     ThreadID            m_addr;
     Callable            m_call;
     string              m_name;
@@ -2453,8 +2341,9 @@ package void onThreadError(string msg) nothrow @nogc
     throw error;
 }
 
+//FIXME: private, move to osthread.d
 version (Posix)
-private size_t adjustStackSize(size_t sz) nothrow @nogc
+package size_t adjustStackSize(size_t sz) nothrow @nogc
 {
     if (sz == 0)
         return 0;
