@@ -167,7 +167,7 @@ class Thread : ThreadBase
     //
     version (Darwin)
     {
-        mach_port_t     m_tmach;
+        private mach_port_t     m_tmach;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -420,7 +420,7 @@ package /*FIXME:private*/ Thread toThread(ThreadBase t) @safe nothrow @nogc pure
 }
 
 
-private extern (C) ThreadBase attachThread(ThreadBase thisThread) @nogc
+private extern (C) ThreadBase attachThread(Thread thisThread) @nogc
 {
     StackContext* thisContext = &thisThread.m_main;
     assert( thisContext == thisThread.m_curr );
