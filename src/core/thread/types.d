@@ -46,3 +46,7 @@ else
     // this should be true for most architectures
     enum isStackGrowsDown = true;
 }
+
+import core.thread.osthread : Thread;
+
+package __gshared align(Thread.alignof) void[__traits(classInstanceSize, Thread)] _mainThreadStore;

@@ -1940,8 +1940,6 @@ extern (C) void thread_term() @nogc
 }
 
 
-package __gshared align(Thread.alignof) void[__traits(classInstanceSize, Thread)] _mainThreadStore;
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread Entry Point and Signal Handlers
