@@ -87,7 +87,7 @@ version (Windows)
     import core.sys.windows.winnt /+: CONTEXT, CONTEXT_CONTROL, CONTEXT_INTEGER+/;
 
     private extern (Windows) alias btex_fptr = uint function(void*);
-    package /* FIXME:private */ extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow @nogc;
+    private extern (C) uintptr_t _beginthreadex(void*, uint, btex_fptr, void*, uint, uint*) nothrow @nogc;
 }
 else version (Posix)
 {
@@ -274,7 +274,7 @@ class Thread : ThreadBase
         super(dg, sz);
     }
 
-    package /*FIXME: private!*/ this( size_t sz = 0 ) @safe pure nothrow @nogc
+    package this( size_t sz = 0 ) @safe pure nothrow @nogc
     {
         super(sz);
     }
@@ -438,7 +438,7 @@ class Thread : ThreadBase
         {
             ++nAboutToStart;
             pAboutToStart = cast(ThreadBase*)realloc(pAboutToStart, Thread.sizeof * nAboutToStart);
-            pAboutToStart[nAboutToStart - 1] = cast(Thread) this; //FIXME: remove cast
+            pAboutToStart[nAboutToStart - 1] = this;
             version (Windows)
             {
                 if ( ResumeThread( m_hndl ) == -1 )
@@ -484,7 +484,7 @@ class Thread : ThreadBase
                     onThreadError( "Error creating thread" );
             }
 
-            return cast(Thread) this; //FIXME cast
+            return this;
         }
     }
 
