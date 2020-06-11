@@ -1,6 +1,6 @@
 /**
- * The osthread module provides low-level, OS-dependent code
- * for thread creation and management.
+ * The threadbase module provides OS-independent code
+ * for thread storage and management.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2012.
  * License: Distributed under the
