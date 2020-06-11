@@ -2009,8 +2009,7 @@ extern (C) void thread_term() @nogc
 
 version (Windows)
 {
-    //~ private //FIXME
-    version (all)
+    private
     {
         //
         // Entry point for Windows threads
@@ -2087,8 +2086,7 @@ version (Windows)
 }
 else version (Posix)
 {
-    //~ private //FIXME
-    version (all)
+    private
     {
         import core.stdc.errno;
         import core.sys.posix.semaphore;
@@ -2387,8 +2385,7 @@ version (DragonFlyBSD) unittest
 // lowlovel threading support
 ///////////////////////////////////////////////////////////////////////////////
 
-//~ private //FIXME
-version (all)
+private
 {
     version (Windows):
     // If the runtime is dynamically loaded as a DLL, there is a problem with
