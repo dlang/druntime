@@ -12,7 +12,6 @@
 
 module core.thread.threadbase;
 
-//~ public import core.thread.osthread; //FIXME:remove
 import core.thread.context;
 import core.thread.types;
 import core.time;
@@ -409,7 +408,6 @@ class ThreadBase
     ///////////////////////////////////////////////////////////////////////////
 
 
-//~ private: //FIXME
     //
     // Initializes a thread object which has no associated executable function.
     // This is used for the main thread initialized in thread_init().
@@ -433,7 +431,7 @@ class ThreadBase
         m_call();
     }
 
-//~ private: //FIXME
+package:
 
     //
     // Local storage
@@ -509,14 +507,8 @@ package(core.thread):
         c.within = null;
     }
 
-//~ private: //FIXME
-
-    final StackContext* topContext() nothrow @nogc
-    in
-    {
-        assert( m_curr );
-    }
-    do
+    private final StackContext* topContext() nothrow @nogc
+    in( m_curr )
     {
         return m_curr;
     }
@@ -972,7 +964,7 @@ shared static ~this()
 }
 
 // Used for needLock below.
-package /*FIXME:private*/ __gshared bool multiThreadedFlag = false;
+package __gshared bool multiThreadedFlag = false;
 
 // Used for suspendAll/resumeAll below.
 package __gshared uint suspendDepth = 0;
