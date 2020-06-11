@@ -1305,7 +1305,7 @@ do
 extern (C) void* thread_stackBottom() nothrow @nogc
 in (ThreadBase.getThis())
 {
-    return (cast(ThreadBase) ThreadBase.getThis()).topContext().bstack; //FIXME: cast
+    return ThreadBase.getThis().topContext().bstack;
 }
 
 
