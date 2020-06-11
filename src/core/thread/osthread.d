@@ -1015,7 +1015,7 @@ class Thread : ThreadBase
     }
 }
 
-package /*FIXME:private*/ Thread toThread(ThreadBase t) @safe nothrow @nogc pure
+private Thread toThread(ThreadBase t) @safe nothrow @nogc pure
 {
     return cast(Thread) t;
 }
