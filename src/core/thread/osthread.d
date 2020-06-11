@@ -1260,7 +1260,7 @@ version (Windows)
 
 
 // Calls the given delegate, passing the current thread's stack pointer to it.
-package void callWithStackShell(scope void delegate(void* sp) nothrow fn) nothrow
+package extern(C) void callWithStackShell(scope callWithStackShellDg fn) nothrow
 in (fn)
 {
     // The purpose of the 'shell' is to ensure all the registers get

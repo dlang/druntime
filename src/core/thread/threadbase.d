@@ -12,7 +12,7 @@
 
 module core.thread.threadbase;
 
-public import core.thread.osthread; //FIXME:remove
+//~ public import core.thread.osthread; //FIXME:remove
 import core.thread.context;
 import core.thread.types;
 import core.time;
@@ -1079,6 +1079,8 @@ do
     callWithStackShell(sp => scanAllTypeImpl(scan, sp));
 }
 
+package alias callWithStackShellDg = void delegate(void* sp) nothrow;
+private extern(C) void callWithStackShell(scope callWithStackShellDg fn) nothrow;
 
 private void scanAllTypeImpl( scope ScanAllThreadsTypeFn scan, void* curStackTop ) nothrow
 {
