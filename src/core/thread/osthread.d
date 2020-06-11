@@ -1419,6 +1419,8 @@ private extern (C) void scanWindowsOnly(scope ScanAllThreadsTypeFn scan, ThreadB
  */
 version (Posix)
 {
+    import core.sys.posix.unistd;
+
     alias getpid = core.sys.posix.unistd.getpid;
 }
 else version (Windows)
