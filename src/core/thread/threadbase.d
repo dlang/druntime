@@ -956,8 +956,20 @@ extern (C) void thread_joinAll()
 /**
  * Performs intermediate shutdown of the thread module.
  */
-//~ shared static ~this() //FIXME: revert dtor
-
+shared static ~this()
+{
+    // NOTE: The functionality related to garbage collection must be minimally
+    //       operable after this dtor completes.  Therefore, only minimal
+    //       cleanup may occur.
+    auto t = ThreadBase.sm_tbeg;
+    while (t)
+    {
+        auto tn = t.next;
+        if (!t.isRunning)
+            ThreadBase.remove(t);
+        t = tn;
+    }
+}
 
 // Used for needLock below.
 package /*FIXME:private*/ __gshared bool multiThreadedFlag = false;

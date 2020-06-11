@@ -56,8 +56,6 @@ else version (D_InlineAsm_X86_64)
 
 version (Posix)
 {
-    import core.sys.posix.unistd;
-
     version (AsmX86_Windows)    {} else
     version (AsmX86_Posix)      {} else
     version (AsmX86_64_Windows) {} else
@@ -107,59 +105,13 @@ else version (Posix)
     }
 }
 
-package(core.thread)
-{
-    static immutable size_t PAGESIZE;
-    version (Posix) static immutable size_t PTHREAD_STACK_MIN;
-}
-
-shared static this()
-{
-    version (Windows)
-    {
-        SYSTEM_INFO info;
-        GetSystemInfo(&info);
-
-        PAGESIZE = info.dwPageSize;
-        assert(PAGESIZE < int.max);
-    }
-    else version (Posix)
-    {
-        PAGESIZE = cast(size_t)sysconf(_SC_PAGESIZE);
-        PTHREAD_STACK_MIN = cast(size_t)sysconf(_SC_THREAD_STACK_MIN);
-    }
-    else
-    {
-        static assert(0, "unimplemented");
-    }
-}
-
-package extern(C) immutable size_t threadSizeof = Thread.sizeof;;
+package extern(C) immutable size_t threadSizeof = Thread.sizeof;
 
 version (Solaris)
 {
     import core.sys.solaris.sys.priocntl;
     import core.sys.solaris.sys.types;
     import core.sys.posix.sys.wait : idtype_t;
-}
-
-//FIXME: temporary moved from threadbase.d
-/**
- * Performs intermediate shutdown of the thread module.
- */
-shared static ~this()
-{
-    // NOTE: The functionality related to garbage collection must be minimally
-    //       operable after this dtor completes.  Therefore, only minimal
-    //       cleanup may occur.
-    auto t = ThreadBase.sm_tbeg;
-    while (t)
-    {
-        auto tn = t.next;
-        if (!t.isRunning)
-            ThreadBase.remove(t);
-        t = tn;
-    }
 }
 
 /**

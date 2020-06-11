@@ -1,5 +1,5 @@
 /**
- * The osthread module provides types used in threads modules.
+ * This module provides types and constants used in thread package.
  *
  * Copyright: Copyright Sean Kelly 2005 - 2012.
  * License: Distributed under the
@@ -45,4 +45,33 @@ else
 {
     // this should be true for most architectures
     enum isStackGrowsDown = true;
+}
+
+package
+{
+    static immutable size_t PAGESIZE;
+    version (Posix) static immutable size_t PTHREAD_STACK_MIN;
+}
+
+shared static this()
+{
+    version (Windows)
+    {
+        SYSTEM_INFO info;
+        GetSystemInfo(&info);
+
+        PAGESIZE = info.dwPageSize;
+        assert(PAGESIZE < int.max);
+    }
+    else version (Posix)
+    {
+        import core.sys.posix.unistd;
+
+        PAGESIZE = cast(size_t)sysconf(_SC_PAGESIZE);
+        PTHREAD_STACK_MIN = cast(size_t)sysconf(_SC_THREAD_STACK_MIN);
+    }
+    else
+    {
+        static assert(0, "unimplemented");
+    }
 }
