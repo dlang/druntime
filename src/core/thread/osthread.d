@@ -1100,6 +1100,116 @@ unittest
 }
 
 
+unittest
+{
+    import core.memory : GC;
+
+    auto t1 = new Thread({
+        foreach (_; 0 .. 20)
+            ThreadBase.getAll;
+    }).start;
+    auto t2 = new Thread({
+        foreach (_; 0 .. 20)
+            GC.collect;
+    }).start;
+    t1.join();
+    t2.join();
+}
+
+unittest
+{
+    import core.sync.semaphore;
+    auto sem = new Semaphore();
+
+    auto t = new Thread(
+    {
+        sem.notify();
+        Thread.sleep(100.msecs);
+    }).start();
+
+    sem.wait(); // thread cannot be detached while being started
+    thread_detachInstance(t);
+    foreach (t2; Thread)
+        assert(t !is t2);
+    t.join();
+}
+
+unittest
+{
+    // NOTE: This entire test is based on the assumption that no
+    //       memory is allocated after the child thread is
+    //       started. If an allocation happens, a collection could
+    //       trigger, which would cause the synchronization below
+    //       to cause a deadlock.
+    // NOTE: DO NOT USE LOCKS IN CRITICAL REGIONS IN NORMAL CODE.
+
+    import core.sync.semaphore;
+
+    auto sema = new Semaphore(),
+         semb = new Semaphore();
+
+    auto thr = new Thread(
+    {
+        thread_enterCriticalRegion();
+        assert(thread_inCriticalRegion());
+        sema.notify();
+
+        semb.wait();
+        assert(thread_inCriticalRegion());
+
+        thread_exitCriticalRegion();
+        assert(!thread_inCriticalRegion());
+        sema.notify();
+
+        semb.wait();
+        assert(!thread_inCriticalRegion());
+    });
+
+    thr.start();
+
+    sema.wait();
+    synchronized (ThreadBase.criticalRegionLock)
+        assert(thr.m_isInCriticalRegion);
+    semb.notify();
+
+    sema.wait();
+    synchronized (ThreadBase.criticalRegionLock)
+        assert(!thr.m_isInCriticalRegion);
+    semb.notify();
+
+    thr.join();
+}
+
+unittest
+{
+    import core.sync.semaphore;
+
+    shared bool inCriticalRegion;
+    auto sema = new Semaphore(),
+         semb = new Semaphore();
+
+    auto thr = new Thread(
+    {
+        thread_enterCriticalRegion();
+        inCriticalRegion = true;
+        sema.notify();
+        semb.wait();
+
+        Thread.sleep(dur!"msecs"(1));
+        inCriticalRegion = false;
+        thread_exitCriticalRegion();
+    });
+    thr.start();
+
+    sema.wait();
+    assert(inCriticalRegion);
+    semb.notify();
+
+    thread_suspendAll();
+    assert(!inCriticalRegion);
+    thread_resumeAll();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // GC Support Routines
 ///////////////////////////////////////////////////////////////////////////////

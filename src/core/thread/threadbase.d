@@ -369,22 +369,6 @@ class ThreadBase
         return 0;
     }
 
-    unittest
-    {
-        import core.memory : GC;
-
-        auto t1 = new Thread({
-            foreach (_; 0 .. 20)
-                ThreadBase.getAll;
-        }).start;
-        auto t2 = new Thread({
-            foreach (_; 0 .. 20)
-                GC.collect;
-        }).start;
-        t1.join();
-        t2.join();
-    }
-
     private static ThreadBase[] getAllImpl(alias resize)()
     {
         import core.atomic;
@@ -889,25 +873,6 @@ extern (C) void thread_detachInstance( ThreadBase t ) nothrow @nogc
 }
 
 
-unittest
-{
-    import core.sync.semaphore;
-    auto sem = new Semaphore();
-
-    auto t = new Thread(
-    {
-        sem.notify();
-        ThreadBase.sleep(100.msecs);
-    }).start();
-
-    sem.wait(); // thread cannot be detached while being started
-    thread_detachInstance(t);
-    foreach (t2; Thread)
-        assert(t !is t2);
-    t.join();
-}
-
-
 /**
  * Search the list of all threads for a thread with the given thread identifier.
  *
@@ -1270,81 +1235,6 @@ unittest
     assert(!thread_inCriticalRegion());
 }
 
-unittest
-{
-    // NOTE: This entire test is based on the assumption that no
-    //       memory is allocated after the child thread is
-    //       started. If an allocation happens, a collection could
-    //       trigger, which would cause the synchronization below
-    //       to cause a deadlock.
-    // NOTE: DO NOT USE LOCKS IN CRITICAL REGIONS IN NORMAL CODE.
-
-    import core.sync.semaphore;
-
-    auto sema = new Semaphore(),
-         semb = new Semaphore();
-
-    auto thr = new Thread(
-    {
-        thread_enterCriticalRegion();
-        assert(thread_inCriticalRegion());
-        sema.notify();
-
-        semb.wait();
-        assert(thread_inCriticalRegion());
-
-        thread_exitCriticalRegion();
-        assert(!thread_inCriticalRegion());
-        sema.notify();
-
-        semb.wait();
-        assert(!thread_inCriticalRegion());
-    });
-
-    thr.start();
-
-    sema.wait();
-    synchronized (ThreadBase.criticalRegionLock)
-        assert(thr.m_isInCriticalRegion);
-    semb.notify();
-
-    sema.wait();
-    synchronized (ThreadBase.criticalRegionLock)
-        assert(!thr.m_isInCriticalRegion);
-    semb.notify();
-
-    thr.join();
-}
-
-unittest
-{
-    import core.sync.semaphore;
-
-    shared bool inCriticalRegion;
-    auto sema = new Semaphore(),
-         semb = new Semaphore();
-
-    auto thr = new Thread(
-    {
-        thread_enterCriticalRegion();
-        inCriticalRegion = true;
-        sema.notify();
-        semb.wait();
-
-        ThreadBase.sleep(dur!"msecs"(1));
-        inCriticalRegion = false;
-        thread_exitCriticalRegion();
-    });
-    thr.start();
-
-    sema.wait();
-    assert(inCriticalRegion);
-    semb.notify();
-
-    thread_suspendAll();
-    assert(!inCriticalRegion);
-    thread_resumeAll();
-}
 
 /**
  * Indicates whether an address has been marked by the GC.
