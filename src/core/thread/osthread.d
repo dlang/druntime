@@ -2035,15 +2035,17 @@ extern (C) void thread_init() @nogc
     Thread.sm_main = attachThread((cast(Thread)_mainThreadStore.ptr).__ctor());
 }
 
+private alias MainThreadStore = void[__traits(classInstanceSize, Thread)];
+package __gshared align(Thread.alignof) MainThreadStore _mainThreadStore;
+
 /**
  * Terminates the thread module. No other thread routine may be called
  * afterwards.
  */
 extern (C) void thread_term() @nogc
 {
-    thread_term_tpl!(Thread)();
+    thread_term_tpl!(Thread)(_mainThreadStore);
 }
-
 
 
 ///////////////////////////////////////////////////////////////////////////////

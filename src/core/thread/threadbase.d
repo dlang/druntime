@@ -772,7 +772,7 @@ extern (C) void _d_monitordelete_nogc(Object h) @nogc;
  * Terminates the thread module. No other thread routine may be called
  * afterwards.
  */
-package void thread_term_tpl(ThreadT)() @nogc
+package void thread_term_tpl(ThreadT, MainThreadStore)(ref MainThreadStore _mainThreadStore) @nogc
 {
     assert(_mainThreadStore.ptr is cast(void*) ThreadBase.sm_main);
 
