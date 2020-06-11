@@ -57,6 +57,8 @@ shared static this()
 {
     version (Windows)
     {
+        import core.sys.windows.winbase;
+
         SYSTEM_INFO info;
         GetSystemInfo(&info);
 
