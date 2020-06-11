@@ -927,7 +927,7 @@ static ThreadBase thread_findByAddr( ThreadID addr )
         if (t.m_addr == addr)
             return t;
 
-    foreach (t; Thread)
+    foreach (t; ThreadBase)
         if (t.m_addr == addr)
             return t;
 
