@@ -396,11 +396,6 @@ class ThreadBase
     // Actions on Calling Thread
     ///////////////////////////////////////////////////////////////////////////
 
-    private static void sleep( Duration val ) @nogc nothrow
-    {
-        thread_sleep(val);
-    }
-
     /**
      * Forces a context switch to occur away from the calling thread.
      */
@@ -1127,8 +1122,6 @@ extern (C) void thread_scanAll( scope ScanAllThreadsFn scan ) nothrow
 }
 
 private extern (C) static void thread_yield() @nogc nothrow;
-
-private extern (C) static void thread_sleep(Duration val) @nogc nothrow;
 
 /**
  * Signals that the code following this call is a critical region. Any code in

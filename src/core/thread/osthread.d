@@ -1025,11 +1025,6 @@ private extern(C) static void thread_yield() @nogc nothrow
     Thread.yield();
 }
 
-private extern(C) static void thread_sleep(Duration val) @nogc nothrow
-{
-    Thread.sleep(val);
-}
-
 ///
 unittest
 {
