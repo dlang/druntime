@@ -337,13 +337,11 @@ class TypeInfo
     override bool opEquals(Object o)
     {
         /* TypeInfo instances are singletons, but duplicates can exist
-         * across DLL's. Therefore, comparing for a name match is
-         * sufficient.
+         * across DLL's. Comparing for a name match is not sufficient.
+         * as the name is not necessarily unique. Better to fail early
+         * than compare equal when they are not.
          */
-        if (this is o)
-            return true;
-        auto ti = cast(const TypeInfo)o;
-        return ti && this.toString() == ti.toString();
+        return this is o;
     }
 
     /**
@@ -422,18 +420,19 @@ class TypeInfo
     @property immutable(void)* rtInfo() nothrow pure const @safe @nogc { return rtinfoHasPointers; } // better safe than sorry
 }
 
+// Bugzilla 20579
+@system unittest
+{
+    struct A(T) {}
+    template B(T) {
+        struct C {}
+    }
+    assert(typeid(A!(B!int.C)) != typeid(A!(B!string.C)));
+}
+
 class TypeInfo_Enum : TypeInfo
 {
     override string toString() const { return name; }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Enum)o;
-        return c && this.name == c.name &&
-                    this.base == c.base;
-    }
 
     override size_t getHash(scope const void* p) const { return base.getHash(p); }
     override bool equals(scope const void* p1, scope const void* p2) const { return base.equals(p1, p2); }
@@ -474,14 +473,6 @@ class TypeInfo_Enum : TypeInfo
 class TypeInfo_Pointer : TypeInfo
 {
     override string toString() const { return m_next.toString() ~ "*"; }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Pointer)o;
-        return c && this.m_next == c.m_next;
-    }
 
     override size_t getHash(scope const void* p) @trusted const
     {
@@ -530,14 +521,6 @@ class TypeInfo_Pointer : TypeInfo
 class TypeInfo_Array : TypeInfo
 {
     override string toString() const { return value.toString() ~ "[]"; }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Array)o;
-        return c && this.value == c.value;
-    }
 
     override size_t getHash(scope const void* p) @trusted const
     {
@@ -627,15 +610,6 @@ class TypeInfo_StaticArray : TypeInfo
 
         char[20] tmpBuff = void;
         return value.toString() ~ "[" ~ unsignedToTempString(len, tmpBuff, 10) ~ "]";
-    }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_StaticArray)o;
-        return c && this.len == c.len &&
-                    this.value == c.value;
     }
 
     override size_t getHash(scope const void* p) @trusted const
@@ -753,15 +727,6 @@ class TypeInfo_AssociativeArray : TypeInfo
         return value.toString() ~ "[" ~ key.toString() ~ "]";
     }
 
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_AssociativeArray)o;
-        return c && this.key == c.key &&
-                    this.value == c.value;
-    }
-
     override bool equals(in void* p1, in void* p2) @trusted const
     {
         return !!_aaEqual(this, *cast(const AA*) p1, *cast(const AA*) p2);
@@ -806,14 +771,6 @@ class TypeInfo_Vector : TypeInfo
 {
     override string toString() const { return "__vector(" ~ base.toString() ~ ")"; }
 
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Vector)o;
-        return c && this.base == c.base;
-    }
-
     override size_t getHash(scope const void* p) const { return base.getHash(p); }
     override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
     override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
@@ -848,14 +805,6 @@ class TypeInfo_Function : TypeInfo
         SafeDemangleFunctionType demangle = ( () @trusted => cast(SafeDemangleFunctionType)(&demangleType) ) ();
 
         return (() @trusted => cast(string)(demangle(deco))) ();
-    }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Function)o;
-        return c && this.deco == c.deco;
     }
 
     // BUG: need to add the rest of the functions
@@ -913,14 +862,6 @@ class TypeInfo_Delegate : TypeInfo
         assert(typeid(typeof(&sqr)).toString() == "double delegate(double) pure nothrow @nogc @safe");
         int g;
         assert(typeid(typeof((int a, int b) => a + b + g)).toString() == "int delegate(int, int) pure nothrow @nogc @safe");
-    }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Delegate)o;
-        return c && this.deco == c.deco;
     }
 
     override size_t getHash(scope const void* p) @trusted const
@@ -992,14 +933,6 @@ private extern (C) int _d_isbaseof(scope TypeInfo_Class child,
 class TypeInfo_Class : TypeInfo
 {
     override string toString() const { return info.name; }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Class)o;
-        return c && this.info.name == c.info.name;
-    }
 
     override size_t getHash(scope const void* p) @trusted const
     {
@@ -1178,14 +1111,6 @@ class TypeInfo_Interface : TypeInfo
 {
     override string toString() const { return info.name; }
 
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto c = cast(const TypeInfo_Interface)o;
-        return c && this.info.name == typeid(c).name;
-    }
-
     override size_t getHash(scope const void* p) @trusted const
     {
         if (!*cast(void**)p)
@@ -1282,15 +1207,6 @@ class TypeInfo_Interface : TypeInfo
 class TypeInfo_Struct : TypeInfo
 {
     override string toString() const { return name; }
-
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-        auto s = cast(const TypeInfo_Struct)o;
-        return s && this.name == s.name &&
-                    this.initializer().length == s.initializer().length;
-    }
 
     override size_t getHash(scope const void* p) @trusted pure nothrow const
     {
@@ -1446,24 +1362,6 @@ class TypeInfo_Tuple : TypeInfo
         return s;
     }
 
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-
-        auto t = cast(const TypeInfo_Tuple)o;
-        if (t && elements.length == t.elements.length)
-        {
-            for (size_t i = 0; i < elements.length; i++)
-            {
-                if (elements[i] != t.elements[i])
-                    return false;
-            }
-            return true;
-        }
-        return false;
-    }
-
     override size_t getHash(scope const void* p) const
     {
         assert(0);
@@ -1523,17 +1421,6 @@ class TypeInfo_Const : TypeInfo
     }
 
     //override bool opEquals(Object o) { return base.opEquals(o); }
-    override bool opEquals(Object o)
-    {
-        if (this is o)
-            return true;
-
-        if (typeid(this) != typeid(o))
-            return false;
-
-        auto t = cast(TypeInfo_Const)o;
-        return base.opEquals(t.base);
-    }
 
     override size_t getHash(scope const void *p) const { return base.getHash(p); }
     override bool equals(in void *p1, in void *p2) const { return base.equals(p1, p2); }
