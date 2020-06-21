@@ -267,7 +267,7 @@ unittest
  * (No longer an intrisic - the compiler recognizes the patterns
  * in the body.)
  */
-int bt(const scope size_t* p, size_t bitnum) pure @system
+int bt(const scope size_t* p, ptrdiff_t bitnum) pure @system
 {
     static if (size_t.sizeof == 8)
         return ((p[bitnum >> 6] & (1L << (bitnum & 63)))) != 0;
