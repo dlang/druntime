@@ -88,11 +88,11 @@ version (DigitalMars)
         alias vec = __vector(T[N]);
 
         static if (is(T == float))
-            cast(void) __simd_sto(XMM.STOUPS, *cast(vec*) p, val);
+            cast(void) simd_sto!(XMM.STOUPS)(*cast(vec*) p, val);
         else static if (is(T == double))
-            cast(void) __simd_sto(XMM.STOUPD, *cast(vec*) p, val);
+            cast(void) simd_sto!(XMM.STOUPD)(*cast(vec*) p, val);
         else
-            cast(void) __simd_sto(XMM.STODQU, *cast(vec*) p, val);
+            cast(void) simd_sto!(XMM.STODQU)(*cast(vec*) p, val);
     }
 
     const(__vector(T[N])) load(T, size_t N)(const scope T* p)
@@ -103,11 +103,11 @@ version (DigitalMars)
         alias vec = __vector(T[N]);
 
         static if (is(T == float))
-            return __simd(XMM.LODUPS, *cast(const vec*) p);
+            return simd!(XMM.LODUPS)(*cast(const vec*) p);
         else static if (is(T == double))
-            return __simd(XMM.LODUPD, *cast(const vec*) p);
+            return simd!(XMM.LODUPD)(*cast(const vec*) p);
         else
-            return __simd(XMM.LODDQU, *cast(const vec*) p);
+            return simd!(XMM.LODDQU)(*cast(const vec*) p);
     }
 
     __vector(T[N]) binop(string op, T, size_t N)(const scope __vector(T[N]) a, const scope __vector(T[N]) b)
