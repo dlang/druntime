@@ -408,7 +408,7 @@ version (D_SIMD)
     * Returns:
     *      result of opcode
     */
-    pure @safe V1 simd(XMM opcode, V1, V2)(V1 op1, V2 op2)
+    pure @safe V1 simd(XMM opcode, V1, V2)(ref V1 op1, ref V2 op2)
         if (is(V1 == __vector) && is(V2 == __vector))
     {
         pragma(inline, true);
@@ -427,7 +427,7 @@ version (D_SIMD)
     /**
     * Unary SIMD instructions.
     */
-    pure @safe V1 simd(XMM opcode, V1)(V1 op1)
+    pure @safe V1 simd(XMM opcode, V1)(ref V1 op1)
         if (is(V1 == __vector))
     {
         pragma(inline, true);
@@ -435,7 +435,7 @@ version (D_SIMD)
     }
 
     ///
-    pure @safe V1 simd(XMM opcode, V1)(double d)
+    pure @safe V1 simd(XMM opcode, V1)(ref double d)
         if (is(V1 == __vector))
     {
         pragma(inline, true);
@@ -443,7 +443,7 @@ version (D_SIMD)
     }
 
     ///
-    pure @safe V1 simd(XMM opcode, V1)(float f)
+    pure @safe V1 simd(XMM opcode, V1)(ref float f)
         if (is(V1 == __vector))
     {
         pragma(inline, true);
@@ -476,7 +476,7 @@ version (D_SIMD)
     * Returns:
     *      result of opcode
     */
-    pure @safe V1 simd(XMM opcode, ubyte imm8, V1, V2)(V1 op1, V2 op2)
+    pure @safe V1 simd(XMM opcode, ubyte imm8, V1, V2)(ref V1 op1, ref V2 op2)
         if (is(V1 == __vector) && is(V2 == __vector))
     {
         pragma(inline, true);
@@ -503,7 +503,7 @@ version (D_SIMD)
     * Returns:
     *      result of opcode
     */
-    pure @safe V1 simd(XMM opcode, ubyte imm8, V1)(V1 op1)
+    pure @safe V1 simd(XMM opcode, ubyte imm8, V1)(ref V1 op1)
         if (is(V1 == __vector))
     {
         pragma(inline, true);
@@ -526,7 +526,7 @@ version (D_SIMD)
     *    op2
     * These cannot be marked as pure, as semantic() doesn't check them.
     */
-    @safe V1 simd_sto(XMM opcode, V1, V2)(V1 op1, V2 op2)
+    @safe V1 simd_sto(XMM opcode, V1, V2)(ref V1 op1, V2 op2)
         if (is(V1 == __vector) && is(V2 == __vector))
     {
         pragma(inline, true);
@@ -534,7 +534,7 @@ version (D_SIMD)
     }
 
     ///
-    @safe V1 simd_stod(XMM opcode, V1, V2)(double op1, V1 op2)
+    @safe V1 simd_stod(XMM opcode, V1)(ref double op1, V1 op2)
         if (is(V1 == __vector))
     {
         pragma(inline, true);
@@ -542,7 +542,7 @@ version (D_SIMD)
     }
 
     ///
-    @safe V1 simd_stof(XMM opcode, V1)(float op1, V1 op2)
+    @safe V1 simd_stof(XMM opcode, V1)(ref float op1, V1 op2)
         if (is(V1 == __vector))
     {
         pragma(inline, true);
@@ -561,8 +561,8 @@ version (D_SIMD)
         double d = 1;
 
         cast(void)simd_sto!(XMM.STOUPS)(a, a);
-        //simd_sto!(XMM.STOUPS)(f, a);
-        //simd_sto!(XMM.STOUPS)(d, a);
+        cast(void)simd_stof!(XMM.STOUPS)(f, a);
+        cast(void)simd_stod!(XMM.STOUPS)(d, a);
     }
 
     /* The following use overloading to ensure correct typing.
