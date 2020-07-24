@@ -328,14 +328,11 @@ class TypeInfo
 
     override int opCmp(Object o)
     {
-        import core.internal.string : dstrcmp;
-
-        if (this is o)
-            return 0;
+        assert(this !is o); // __cmp takes care of that
         TypeInfo ti = cast(TypeInfo)o;
         if (ti is null)
             return 1;
-        return dstrcmp(this.toString(), ti.toString());
+        return __cmp(this.toString(), ti.toString());
     }
 
     override bool opEquals(Object o)
@@ -3010,7 +3007,6 @@ private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr,
             || cast(const TypeInfo_Interface) element;
     }
 
-    import core.internal.traits : externDFunc;
     if (!hasCustomToHash(element))
         return hashOf(ptr[0 .. elementSize * count]);
 
