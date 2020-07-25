@@ -326,10 +326,9 @@ class TypeInfo
         return hashOf(this.toString());
     }
 
-    override int opCmp(Object o)
+    override int opCmp(Object rhs)
     {
-        assert(this !is o); // __cmp takes care of that
-        TypeInfo ti = cast(TypeInfo)o;
+        auto ti = cast(TypeInfo) rhs;
         if (ti is null)
             return 1;
         return __cmp(this.toString(), ti.toString());
