@@ -328,6 +328,8 @@ class TypeInfo
 
     override int opCmp(Object rhs)
     {
+        if (this is rhs)
+            return 0;
         auto ti = cast(TypeInfo) rhs;
         if (ti is null)
             return 1;
