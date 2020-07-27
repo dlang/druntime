@@ -1431,6 +1431,132 @@ class TypeInfo_Struct : TypeInfo
     assert(!typeid(S).equals(&s, &s));
 }
 
+class RTTypeid(T) : TypeInfo
+if (is(T == struct))
+{
+    override string toString() const { return T.stringof; }
+
+    override bool opEquals(Object rhs)
+    {
+        if (this is rhs)
+            return true;
+        auto s = cast(const RTTypeid!T) rhs;
+        return s !is null;
+    }
+
+    override size_t getHash(scope const void* p) @trusted pure nothrow const
+    {
+        assert(p);
+        // Canonical prototype
+        alias HashFun = extern(D) size_t delegate() const nothrow @safe;
+        enum bool hasHash = is(typeof(&(cast(S*) null).toHash) == HashFun);
+        static if (hasHash)
+            return (cast(T*) p).toHash();
+        else
+            return hashOf(p[0 .. T.sizeof]);
+    }
+
+    override bool equals(in void* p1, in void* p2) @trusted pure nothrow const
+    {
+        immutable result = int(p1 is null) + int(p2 is null) - 1;
+        if (result >= 0)
+            return cast(bool) result;
+        return *(cast(T*) p1) == *(cast(T*) p2);
+    }
+
+    override int compare(in void* p1, in void* p2) @trusted pure nothrow const
+    {
+        if (p1 == p2)
+            return 0;
+        // Regard null references as always being "less than"
+        immutable result = int(p2 is null) - int(p1 is null);
+        if (result)
+            return result;
+        auto lhs = cast(T*) p1, rhs = cast(T*) p2;
+        static if (is(typeof(lhs.opCmp(*rhs)) == int))
+        {
+            return lhs.opCmp(*rhs);
+        }
+        else
+        {
+            // TODO: compare member by member. For now mimic TypeInfo_Struct.
+            import core.stdc.string : memcmp;
+            return memcmp(p1, p2, T.sizeof);
+        }
+    }
+
+    override @property size_t tsize() nothrow pure const
+    {
+        return T.sizeof;
+    }
+
+    override const(void)[] initializer() nothrow pure const @trusted
+    {
+        static immutable T data;
+        return (cast(void*) &data)[0 .. T.sizeof];
+    }
+
+    override @property uint flags() nothrow pure const { return m_flags; }
+
+    override @property size_t talign() nothrow pure const { return T.alignof; }
+
+    final override void destroy(void* p) const
+    {
+        .destroy(*(cast(T*) p));
+    }
+
+    override void postblit(void* p) const
+    {
+        static if (is(typeof((cast(T*) p).__postblit())))
+            (cast(T*) p).__postblit();
+    }
+
+    @safe pure nothrow
+    {
+        enum StructFlags : uint
+        {
+            hasPointers = 0x1,
+            isDynamicType = 0x2, // built at runtime, needs type info in xdtor
+        }
+        StructFlags m_flags;
+    }
+    union
+    {
+        void function(void*)                xdtor;
+        void function(void*, const TypeInfo_Struct ti) xdtorti;
+    }
+
+    override @property immutable(void)* rtInfo() nothrow pure const @safe { return m_RTInfo; }
+
+    version (WithArgTypes)
+    {
+        override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+        {
+            arg1 = m_arg1;
+            arg2 = m_arg2;
+            return 0;
+        }
+        TypeInfo m_arg1;
+        TypeInfo m_arg2;
+    }
+    immutable(void)* m_RTInfo;                // data for precise GC
+}
+
+unittest
+{
+    static struct S { int a; double b; }
+    S s1, s2;
+    s2.a = 42;
+    auto p = new RTTypeid!S;
+    assert(p.toString == "S");
+    assert(p.opEquals(p));
+    assert(p.getHash(&s1) != p.getHash(&s2));
+    assert(!p.equals(&s1, &s2));
+    assert(p.compare(&s1, &s2) < 0);
+    assert(p.tsize() == S.sizeof);
+    assert(p.talign() == S.alignof);
+}
+
 class TypeInfo_Tuple : TypeInfo
 {
     TypeInfo[] elements;
