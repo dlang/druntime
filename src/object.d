@@ -464,8 +464,11 @@ if (is(T == int))
         final static size_t getHash(scope const T* p) @nogc @trusted
         {
             pragma(inline, true);
-            // Knuth's multiplicative hash with the golden ratio of 2^64
-            return *p * 11400714819323198485UL;
+            // Knuth's multiplicative hash with the golden ratio of 2^32 or 2^64
+            static if (size_t.sizeof == 4)
+                return *p * 2654435761U;
+            else
+                return *p * 11400714819323198485UL;
         }
 
         override size_t getHash(scope const void* p) @nogc @trusted
@@ -552,8 +555,12 @@ unittest
     static assert(id.toString == "int");
     static assert(id2.toString == "int");
     int a = 42, b = 42, c = 43;
-    assert(id.getHash(&a) == 17661420568835545970UL);
-    assert(id2.getHash(&a) == 17661420568835545970UL);
+    static if (size_t.sizeof == 4)
+        enum size_t h = 4112119562;
+    else
+        enum size_t h = 17661420568835545970UL;
+    assert(id.getHash(&a) == h);
+    assert(id2.getHash(&a) == h);
     assert(id.equals(&a, &b));
     assert(id2.equals(&a, &b));
     assert(!id.equals(&a, &c));
