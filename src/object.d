@@ -540,7 +540,10 @@ unittest
     alias id = __typeid!int;
     immutable TypeInfo id2 = id; // Implicitly convert to base, losing static type information
     static assert(id == id && id <= id && id >= id);
+    static assert(id2 == id && id2 <= id && id2 >= id);
+    static assert(id == id2 && id <= id2 && id >= id2);
     static assert(id.toString == "int");
+    static assert(id2.toString == "int");
     int a = 42, b = 42, c = 43;
     assert(id.getHash(&a) == 42);
     assert(id2.getHash(&a) == 42);
