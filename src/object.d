@@ -427,7 +427,7 @@ class TypeInfo
 /*
 Run-time type information for scalar types (int for now).
 */
-template RTTypeid(T)
+template __typeid(T)
 if (is(T == int))
 {
     class Impl : TypeInfo
@@ -450,11 +450,11 @@ if (is(T == int))
             return 1;
         }
 
-        override string toString() const pure nothrow @safe { return T.stringof; }
+        override string toString() { return T.stringof; }
 
         override size_t getHash(scope const void* p) @nogc @trusted
         {
-            return *cast(const T *)p;
+            return *cast(const T *) p;
         }
 
         override bool equals(in void* p1, in void* p2) @nogc @trusted
@@ -490,12 +490,12 @@ if (is(T == int))
     }
 
     // On-demand singleton object in static storage
-    immutable RTTypeid = new Impl;
+    immutable __typeid = new Impl;
 }
 
 unittest
 {
-    alias id = RTTypeid!int;
+    alias id = __typeid!int;
     static assert(id == id && id <= id && id >= id);
     static assert(id.toString == "int");
     int a = 42, b = 42, c = 43;
