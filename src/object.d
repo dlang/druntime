@@ -437,6 +437,9 @@ if (is(T == int))
     {
         const: nothrow: pure: @safe:
 
+        // Accessible in statically-typed contexts.
+        alias Type = T;
+
         // On the off chance someone calls typeid(T) == typeid(U) with T == U
         final bool opEquals(const Impl rhs) @nogc { pragma(inline, true); return true; }
 
@@ -548,6 +551,7 @@ if (is(T == int))
 unittest
 {
     alias id = __typeid!int;
+    static assert(is(id.Type == int));
     immutable TypeInfo id2 = id; // Implicitly convert to base, losing static type information
     static assert(id == id && id <= id && id >= id);
     static assert(id2 == id && id2 <= id && id2 >= id);
