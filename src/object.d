@@ -507,7 +507,7 @@ if (is(T == int))
             return (&data)[0 .. 1];
         }
 
-        override const(void)[] initializer() @trusted @nogc
+        override immutable(void)[] initializer() @trusted @nogc
         {
             return (&data)[0 .. 1];
         }
