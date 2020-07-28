@@ -430,7 +430,10 @@ Run-time type information for scalar types (int for now).
 template __typeid(T)
 if (is(T == int))
 {
-    class Impl : TypeInfo
+    // On-demand singleton object in static storage
+    immutable __typeid = new Impl;
+
+    private class Impl : TypeInfo
     {
         const: nothrow: pure: @safe:
 
@@ -452,20 +455,43 @@ if (is(T == int))
 
         override string toString() { return T.stringof; }
 
+        final static size_t getHash(scope const T* p) @nogc @trusted
+        {
+            pragma(inline, true);
+            return *p;
+        }
+
         override size_t getHash(scope const void* p) @nogc @trusted
         {
-            return *cast(const T *) p;
+            return getHash(cast(const T *) p);
+        }
+
+        final static bool equals(in T* p1, in T* p2) @nogc @trusted
+        {
+            pragma(inline, true);
+            return *p1 == *p2;
         }
 
         override bool equals(in void* p1, in void* p2) @nogc @trusted
         {
-            return *cast(const T *)p1 == *cast(const T *)p2;
+            return equals(cast(const T *)p1, cast(const T *)p2);
+        }
+
+        final static int compare(in T* lhs, in T* rhs) @nogc @trusted
+        {
+            pragma(inline, true);
+            return int(*lhs > *rhs) - int(*lhs < *rhs);
         }
 
         override int compare(in void* p1, in void* p2) @nogc @trusted
         {
-            auto lhs = *cast(const T*) p1, rhs = *cast(const T*) p2;
-            return int(lhs > rhs) - int(lhs < rhs);
+            return compare(cast(const T*) p1, cast(const T*) p2);
+        }
+
+        final static @property size_t tsize() @nogc
+        {
+            pragma(inline, true);
+            return T.sizeof;
         }
 
         override @property size_t tsize() @nogc
@@ -473,42 +499,69 @@ if (is(T == int))
             return T.sizeof;
         }
 
+        private static immutable T data;
+
+        final static immutable(T)[] initializer() @trusted @nogc
+        {
+            pragma(inline, true);
+            return (&data)[0 .. 1];
+        }
+
         override const(void)[] initializer() @trusted @nogc
         {
-            static immutable T data;
-            return (cast(const void *)&data)[0 .. T.sizeof];
+            return (&data)[0 .. 1];
+        }
+
+        final static void swap(T *p1, T *p2) @nogc @trusted
+        {
+            pragma(inline, true);
+            T t = *p1;
+            *p1 = *p2;
+            *p2 = t;
         }
 
         override void swap(void *p1, void *p2) @nogc @trusted
         {
-            T t = *cast(T *)p1;
-            *cast(T *)p1 = *cast(T *)p2;
-            *cast(T *)p2 = t;
+            return swap(cast(T *) p1, cast(T *) p2);
         }
 
-        override @property immutable(void)* rtInfo() { return rtinfoNoPointers; }
-    }
+        final static @property immutable(void)* rtInfo() @nogc
+        {
+            pragma(inline, true);
+            return rtinfoNoPointers;
+        }
 
-    // On-demand singleton object in static storage
-    immutable __typeid = new Impl;
+        override @property immutable(void)* rtInfo() @nogc { return rtinfoNoPointers; }
+    }
 }
 
 unittest
 {
     alias id = __typeid!int;
+    immutable TypeInfo id2 = id; // Implicitly convert to base, losing static type information
     static assert(id == id && id <= id && id >= id);
     static assert(id.toString == "int");
     int a = 42, b = 42, c = 43;
     assert(id.getHash(&a) == 42);
+    assert(id2.getHash(&a) == 42);
     assert(id.equals(&a, &b));
+    assert(id2.equals(&a, &b));
     assert(!id.equals(&a, &c));
+    assert(!id2.equals(&a, &c));
     assert(id.compare(&a, &b) == 0);
+    assert(id2.compare(&a, &b) == 0);
     assert(id.compare(&a, &c) == -1);
+    assert(id2.compare(&a, &c) == -1);
     assert(id.compare(&c, &a) == 1);
+    assert(id2.compare(&c, &a) == 1);
     static assert(id.tsize == 4);
+    assert(id2.tsize == 4);
     assert(cast(ubyte[]) id.initializer() == [ 0, 0, 0, 0 ]);
+    assert(cast(ubyte[]) id2.initializer() == [ 0, 0, 0, 0 ]);
     id.swap(&a, &c);
     assert(a == 43 && c == 42);
+    id2.swap(&a, &c);
+    assert(a == 42 && c == 43);
 }
 
 class TypeInfo_Enum : TypeInfo
