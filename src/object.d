@@ -437,12 +437,18 @@ if (is(T == int))
     {
         const: nothrow: pure: @safe:
 
+        // On the off chance someone calls typeid(T) == typeid(U) with T == U
+        final bool opEquals(const Impl rhs) @nogc { pragma(inline, true); return true; }
+
         override bool opEquals(const Object rhs) @nogc
         {
             return this is rhs
                 // Instance may be duplicated across DLLs, but has the same type.
                 || cast(const Impl) rhs !is null;
         }
+
+        // On the off chance someone calls typeid(T) < typeid(U) etc. with T == U
+        final int opCmp(const Impl rhs) @nogc { pragma(inline, true); return 0; }
 
         override int opCmp(const Object rhs)
         {
@@ -453,7 +459,7 @@ if (is(T == int))
             return 1;
         }
 
-        override string toString() { return T.stringof; }
+        override string toString() @nogc { return T.stringof; }
 
         final static size_t getHash(scope const T* p) @nogc @trusted
         {
