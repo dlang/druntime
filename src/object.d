@@ -424,6 +424,93 @@ class TypeInfo
     @property immutable(void)* rtInfo() nothrow pure const @safe @nogc { return rtinfoHasPointers; } // better safe than sorry
 }
 
+/*
+Run-time type information for scalar types (int for now).
+*/
+template RTTypeid(T)
+if (is(T == int))
+{
+    class Impl : TypeInfo
+    {
+        const: nothrow: pure: @safe:
+
+        override bool opEquals(const Object rhs) @nogc
+        {
+            return this is rhs
+                // Instance may be duplicated across DLLs, but has the same type.
+                || cast(const Impl) rhs !is null;
+        }
+
+        override int opCmp(const Object rhs)
+        {
+            if (this is rhs)
+                return 0;
+            if (auto ti = cast(const TypeInfo) rhs)
+                return __cmp(this.toString, ti.toString);
+            return 1;
+        }
+
+        override string toString() const pure nothrow @safe { return T.stringof; }
+
+        override size_t getHash(scope const void* p) @nogc @trusted
+        {
+            return *cast(const T *)p;
+        }
+
+        override bool equals(in void* p1, in void* p2) @nogc @trusted
+        {
+            return *cast(const T *)p1 == *cast(const T *)p2;
+        }
+
+        override int compare(in void* p1, in void* p2) @nogc @trusted
+        {
+            auto lhs = *cast(const T*) p1, rhs = *cast(const T*) p2;
+            return int(lhs > rhs) - int(lhs < rhs);
+        }
+
+        override @property size_t tsize() @nogc
+        {
+            return T.sizeof;
+        }
+
+        override const(void)[] initializer() @trusted @nogc
+        {
+            static immutable T data;
+            return (cast(const void *)&data)[0 .. T.sizeof];
+        }
+
+        override void swap(void *p1, void *p2) @nogc @trusted
+        {
+            T t = *cast(T *)p1;
+            *cast(T *)p1 = *cast(T *)p2;
+            *cast(T *)p2 = t;
+        }
+
+        override @property immutable(void)* rtInfo() { return rtinfoNoPointers; }
+    }
+
+    // On-demand singleton object in static storage
+    immutable RTTypeid = new Impl;
+}
+
+unittest
+{
+    alias id = RTTypeid!int;
+    static assert(id == id && id <= id && id >= id);
+    static assert(id.toString == "int");
+    int a = 42, b = 42, c = 43;
+    assert(id.getHash(&a) == 42);
+    assert(id.equals(&a, &b));
+    assert(!id.equals(&a, &c));
+    assert(id.compare(&a, &b) == 0);
+    assert(id.compare(&a, &c) == -1);
+    assert(id.compare(&c, &a) == 1);
+    static assert(id.tsize == 4);
+    assert(cast(ubyte[]) id.initializer() == [ 0, 0, 0, 0 ]);
+    id.swap(&a, &c);
+    assert(a == 43 && c == 42);
+}
+
 class TypeInfo_Enum : TypeInfo
 {
     override string toString() const { return name; }
