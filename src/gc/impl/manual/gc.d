@@ -49,7 +49,7 @@ private GC initialize()
     if (!p)
         onOutOfMemoryError();
 
-    auto init = typeid(ManualGC).initializer();
+    auto init = initializer!ManualGC();
     assert(init.length == __traits(classInstanceSize, ManualGC));
     auto instance = cast(ManualGC) memcpy(p, init.ptr, init.length);
     instance.__ctor();

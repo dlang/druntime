@@ -410,7 +410,7 @@ extern(C) void _d_dso_registry(CompilerDSOData* data)
         if (firstDSO) initLocks();
 
         DSO* pdso = cast(DSO*).calloc(1, DSO.sizeof);
-        assert(typeid(DSO).initializer().ptr is null);
+        assert(initializer!DSO().ptr is null);
         *data._slot = pdso; // store backlink in library record
 
         pdso._moduleGroup = ModuleGroup(toRange(data._minfo_beg, data._minfo_end));
