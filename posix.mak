@@ -276,11 +276,10 @@ endif
 .PHONY : unittest
 ifeq (1,$(BUILD_WAS_SPECIFIED))
 unittest : $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
-	@echo done
 else
 unittest : unittest-debug unittest-release
 unittest-%: target
-	$(MAKE) -f $(MAKEFILE) unittest OS=$(OS) MODEL=$(MODEL) DMD=$(DMD) BUILD=$*
+	$(MAKE) -s -f $(MAKEFILE) unittest OS=$(OS) MODEL=$(MODEL) DMD=$(DMD) BUILD=$*
 endif
 
 ifeq ($(OS),linux)
