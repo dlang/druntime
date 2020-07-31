@@ -264,9 +264,19 @@ in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
 }
 
 /**
- * Stores 'writeThis' to the memory referenced by 'here' if the value
- * referenced by 'here' is equal to 'ifThis'.  This operation is both
- * lock-free and atomic.
+ * Performs the atomic operation known as "compare-and-swap" (CAS).
+ *
+ * Compare-and-swap is essentially the following operation:
+ * ---
+ * if (*here == ifThis)
+ * {
+ *   *here = writeThis;
+ *   return true;
+ * }
+ * else
+ *   return false;
+ * ---
+ * This operation is both lock-free and atomic.
  *
  * Params:
  *  here      = The address of the destination variable.
@@ -274,10 +284,15 @@ in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
  *  ifThis    = The comparison value.
  *
  * Returns:
- *  true if the store occurred, false if not.
+ *  Whether the swap occured or not.
+ *
+ * See_Also:
+ *  https://en.wikipedia.org/wiki/Compare-and-swap
  */
-bool cas(MemoryOrder succ = MemoryOrder.seq,MemoryOrder fail = MemoryOrder.seq,T,V1,V2)(T* here, V1 ifThis, V2 writeThis) pure nothrow @nogc @trusted
-    if (!is(T == shared) && is(T : V1))
+bool cas
+    (MemoryOrder succ = MemoryOrder.seq, MemoryOrder fail = MemoryOrder.seq, T, V1, V2)
+    (T* here, V1 ifThis, V2 writeThis) pure nothrow @nogc @trusted
+    if (!is(T == shared) && is(V1 : T))
 in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
 {
     // resolve implicit conversions
@@ -294,8 +309,10 @@ in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
 }
 
 /// Ditto
-bool cas(MemoryOrder succ = MemoryOrder.seq,MemoryOrder fail = MemoryOrder.seq,T,V1,V2)(shared(T)* here, V1 ifThis, V2 writeThis) pure nothrow @nogc @trusted
-    if (!is(T == class) && (is(T : V1) || is(shared T : V1)))
+bool cas
+    (MemoryOrder succ = MemoryOrder.seq, MemoryOrder fail = MemoryOrder.seq, T, V1, V2)
+    (shared(T)* here, V1 ifThis, V2 writeThis) pure nothrow @nogc @trusted
+    if (!is(T == class) && (is(V1 : T) || is(V1 : shared T)))
 in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
 {
     static if (is (V1 == shared U1, U1))
@@ -1209,5 +1226,43 @@ version (CoreUnittest)
         static struct NoIndirections { int i; }
         shared NoIndirections n;
         static assert(is(typeof(atomicLoad(n)) == NoIndirections));
+    }
+
+    /*
+     * Used to trigger:
+     * ---
+     * Error: template core.atomic.cas cannot deduce function from argument types
+     * !()(shared(immutable(Image)*)*, typeof(null), immutable(Image*)), candidates are:
+     *
+     * cas(MemoryOrder succ = MemoryOrder.seq, MemoryOrder fail = MemoryOrder.seq, T, V1, V2)
+     * (T* here, V1 ifThis, V2 writeThis)
+     *
+     */
+    pure nothrow @safe unittest
+    {
+        // A structure that is not atomically initialization (e.g. open files)
+        static struct Image { void* ptr; }
+
+        // In practice, a global value
+        shared immutable(Image)* cache;
+        // Manifest constant for code clarity
+        immutable Sentinel = () @trusted { return cast(immutable Image*) size_t.max; }();
+
+        immutable(Image)* local = atomicLoad(cache);
+        // Two steps initialization
+        if (local is null && cas(&cache, null, Sentinel))
+        {
+            local = new immutable(Image)(null);
+            atomicStore(cache, local);
+        }
+        else
+        {
+            while (local is Sentinel)
+            {
+                pause();
+                local = atomicLoad(cache);
+            }
+        }
+        // Use local
     }
 }
