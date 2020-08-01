@@ -550,72 +550,11 @@ private class TypeInfoImpl(T) : TypeInfo
     {
         pragma(inline, true);
         static if (is(T U == enum))
-        {
-            return __typeid!U.getHash(cast(const U*) p);
-        }
-        else static if (is(T == U[], U))
-        {
-            size_t result = 0;
-            foreach (ref e; *p)
-                result = hashOf(e, result);
-            return result;
-        }
-        else static if (__traits(isIntegral, T))
-        {
-            static if (is(T : bool))
-            {
-                return *p;
-            }
-            else static if (is(T == __vector(U), U))
-            {
-                return __typeid!U.getHash(cast(const U*) p);
-            }
-            else
-            {
-                // Knuth's multiplicative hash with the golden ratio of 2^32 or 2^64
-                static if (size_t.sizeof == 4)
-                    return *p * 2_654_435_761U;
-                else
-                    return *p * 11_400_714_819_323_198_485UL;
-            }
-        }
-        else static if (__traits(isFloating, T))
-        {
-            import rt.util.typeinfo;
-            return Floating!UnqualifiedType.hashOf(*p);
-        }
-        else static if (is(T == U*, U))
-        {
-            return __typeid!size_t.getHash(cast(const size_t*) p);
-        }
-        else static if (is(T == U[n], U, size_t n))
-        {
-            const U[] t = (*p)[];
-            return __typeid!(U[]).getHash(&t);
-        }
-        else static if (is(T == class) || is(T == interface))
-        {
-            return *p ? p.toHash : 0;
-        }
-        else static if (is(T == V[K], V, K))
-        {
-            if (!*p) return 0;
-            alias F = hash_t function(scope const AA* aa, scope const TypeInfo tiRaw) nothrow pure @nogc;
-            auto f = cast(F) &_aaGetHash;
-            return f(cast(AA*)p, typeid(T));
-        }
-        else static if (is(T == function) || is(T == delegate))
-        {
-            return hashOf(p);
-        }
-        else static if (is(T == void))
-        {
-            return 0;
-        }
+            return hashOf(*cast(const U*) p);
+        else static if (is(T == void) || is(T == function))
+            return 0; // these aren't hashable
         else
-        {
-            static assert(0, T.stringof);
-        }
+            return hashOf(*p);
     }
 
     override size_t getHash(scope const void* p) @nogc
@@ -800,7 +739,7 @@ private class TypeInfoImpl(T) : TypeInfo
     else static if (is(T == U[n], U, size_t n))
     {
         private alias NextType = U;
-        private enum uint uint _flags = __typeid!U._flags;
+        private enum uint _flags = __typeid!U._flags;
     }
     else static if (is(T == V[K], K, V))
     {
@@ -876,12 +815,8 @@ unittest
             static if (is(T : int) && T.sizeof == 4)
             {
                 int a = 42, b = 42, c = 43;
-                static if (size_t.sizeof == 4)
-                    enum size_t h = 4112119562;
-                else
-                    enum size_t h = 17661420568835545970UL;
-                assert(id.getHash(&a) == h);
-                assert(id2.getHash(&a) == h);
+                assert(id.getHash(&a) == a);
+                assert(id2.getHash(&a) == a);
                 assert(id.equals(&a, &b));
                 assert(id2.equals(&a, &b));
                 assert(!id.equals(&a, &c));
