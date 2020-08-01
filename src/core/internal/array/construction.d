@@ -51,8 +51,17 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
         size_t i;
         try
         {
-            for (i = 0; i < to.length; i++)
-                copyEmplace(from[i], to[i]);
+            static if (__traits(hasCopyConstructor, T))
+            {
+                to[i].__ctor(from[i]);
+            }
+            else
+            {
+                auto elem = cast(Unqual!T*)&to[i];
+                // Copy construction is defined as bit copy followed by postblit.
+                memcpy(elem, &from[i], element_size);
+                postblitRecurse(*elem);
+            }
         }
         catch (Exception o)
         {
@@ -94,15 +103,18 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
     assert(arr1 == arr2);
 }
 
-// copy constructor
 @safe unittest
 {
+    // Test that copy constructor works
     int counter;
     struct S
     {
         int val;
-        this(int val) { this.val = val; }
-        this(const scope ref S rhs)
+        this(int v)
+        {
+            val = v;
+        }
+        this(ref typeof(this) rhs)
         {
             val = rhs.val;
             counter++;
@@ -172,6 +184,71 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
     assert(counter == 4);
 }
 
+@safe nothrow unittest
+{
+    // Test that throwing copy constructor works
+    int counter;
+    bool didThrow;
+
+    struct Throw
+    {
+        int val;
+        this(int v)
+        {
+            val = v;
+        }
+        this(ref typeof(this) rhs)
+        {
+            val = rhs.val;
+            counter++;
+            if (counter == 2)
+                throw new Exception("");
+        }
+    }
+    try
+    {
+        Throw[4] a;
+        Throw[4] b = [Throw(1), Throw(2), Throw(3), Throw(4)];
+        _d_arrayctor(a[], b[]);
+    }
+    catch (Exception)
+    {
+        didThrow = true;
+    }
+    assert(didThrow);
+    assert(counter == 2);
+
+
+    // Test that `nothrow` works
+    didThrow = false;
+    counter = 0;
+    struct NoThrow
+    {
+        int val;
+        this(int v)
+        {
+            val = v;
+        }
+        this(ref typeof(this) rhs)
+        {
+            val = rhs.val;
+            counter++;
+        }
+    }
+    try
+    {
+        NoThrow[4] a;
+        NoThrow[4] b = [NoThrow(1), NoThrow(2), NoThrow(3), NoThrow(4)];
+        _d_arrayctor(a[], b[]);
+    }
+    catch (Exception)
+    {
+        didThrow = false;
+    }
+    assert(!didThrow);
+    assert(counter == 4);
+}
+
 /**
  * Do construction of an array.
  *      ti[count] p = value;
@@ -192,8 +269,21 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
     size_t i;
     try
     {
-        for (i = 0; i < p.length; i++)
-            copyEmplace(value, p[i]);
+        foreach (i; 0 .. p.length)
+        {
+            static if (__traits(hasCopyConstructor, T))
+            {
+                p[walker].__ctor(value);
+            }
+            else
+            {
+                auto elem = cast(Unqual!T*)&p[walker];
+                // Copy construction is defined as bit copy followed by postblit.
+                memcpy(elem, &value, element_size);
+                postblitRecurse(*elem);
+            }
+            walker++;
+        }
     }
     catch (Exception o)
     {
@@ -228,15 +318,18 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
     assert(arr == [S(1234), S(1234), S(1234), S(1234)]);
 }
 
-// copy constructor
 @safe unittest
 {
+    // Test that copy constructor works
     int counter;
     struct S
     {
         int val;
-        this(int val) { this.val = val; }
-        this(const scope ref S rhs)
+        this(int v)
+        {
+            val = v;
+        }
+        this(ref typeof(this) rhs)
         {
             val = rhs.val;
             counter++;
@@ -287,6 +380,72 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
         int val;
         this(this)
         {
+            counter++;
+        }
+    }
+    try
+    {
+        NoThrow[4] a;
+        NoThrow b = NoThrow(1);
+        _d_arraysetctor(a[], b);
+        foreach (ref e; a)
+            assert(e == NoThrow(1));
+    }
+    catch (Exception)
+    {
+        didThrow = false;
+    }
+    assert(!didThrow);
+    assert(counter == 4);
+}
+
+@safe nothrow unittest
+{
+    // Test that throwing copy constructor works
+    int counter;
+    bool didThrow;
+    struct Throw
+    {
+        int val;
+        this(int v)
+        {
+            val = v;
+        }
+        this(ref typeof(this) rhs)
+        {
+            val = rhs.val;
+            counter++;
+            if (counter == 2)
+                throw new Exception("Oh no.");
+        }
+    }
+    try
+    {
+        Throw[4] a;
+        Throw[4] b = [Throw(1), Throw(2), Throw(3), Throw(4)];
+        _d_arrayctor(a[], b[]);
+    }
+    catch (Exception)
+    {
+        didThrow = true;
+    }
+    assert(didThrow);
+    assert(counter == 2);
+
+
+    // Test that `nothrow` works
+    didThrow = false;
+    counter = 0;
+    struct NoThrow
+    {
+        int val;
+        this(int v)
+        {
+            val = v;
+        }
+        this(ref typeof(this) rhs)
+        {
+            val = rhs.val;
             counter++;
         }
     }
