@@ -456,6 +456,20 @@ private class TypeInfoImpl(T) : TypeInfo
             {
                 return (cast() __typeid!U2).argTypes(arg1, arg2);
             }
+        else static if (is(T == U3[], U3))
+            override int argTypes(out TypeInfo arg1, out TypeInfo arg2) @nogc @trusted
+            {
+                arg1 = cast() __typeid!size_t; // TODO: revisit
+                arg1 = cast() __typeid!U3; // TODO: revisit
+                return 0;
+            }
+        else static if (is(T == delegate))
+            override int argTypes(out TypeInfo arg1, out TypeInfo arg2) @nogc @trusted
+            {
+                arg1 = cast() __typeid!(void*); // TODO: revisit
+                arg1 = cast() __typeid!(void*); // TODO: revisit
+                return 0;
+            }
     }
 
     // The postblit API (static and dynamic)
@@ -579,6 +593,10 @@ private class TypeInfoImpl(T) : TypeInfo
             const U[] t = (*p)[];
             return __typeid!(U[]).getHash(&t);
         }
+        else static if (is(T == class) || is(T == interface))
+        {
+            return *p ? p.toHash : 0;
+        }
         else static if (is(T == V[K], V, K))
         {
             if (!*p) return 0;
@@ -586,13 +604,9 @@ private class TypeInfoImpl(T) : TypeInfo
             auto f = cast(F) &_aaGetHash;
             return f(cast(AA*)p, typeid(T));
         }
-        else static if (is(T == function))
+        else static if (is(T == function) || is(T == delegate))
         {
-            return hashOf(*cast(void function()*) p);
-        }
-        else static if (is(T == delegate))
-        {
-            return hashOf(*cast(void delegate()*) p);
+            return hashOf(p);
         }
         else static if (is(T == void))
         {
@@ -622,9 +636,9 @@ private class TypeInfoImpl(T) : TypeInfo
     }
 
     static if (!is(T == function))
-    override bool equals(in void* p1, in void* p2) @nogc
+    override bool equals(in void* lhs, in void* rhs) @nogc
     {
-        return equals(cast(const T*)p1, cast(const T*)p2);
+        return equals(cast(const T*) lhs, cast(const T*) rhs);
     }
 
     static if (!__traits(isAssociativeArray, T) && !is(T == function))
@@ -776,37 +790,42 @@ private class TypeInfoImpl(T) : TypeInfo
     static if (is(T == U*, U))
     {
         private alias NextType = U;
-        private enum _flags = 1;
+        private enum uint _flags = 1;
     }
     else static if (is(T == U[], U))
     {
         private alias NextType = U;
-        private enum _flags = 1;
+        private enum uint _flags = 1;
     }
     else static if (is(T == U[n], U, size_t n))
     {
         private alias NextType = U;
-        private enum _flags = __typeid!U._flags;
+        private enum uint uint _flags = __typeid!U._flags;
     }
     else static if (is(T == V[K], K, V))
     {
         private alias NextType = V;
-        private enum _flags = 1;
+        private enum uint _flags = 1;
     }
     else static if (is(T U == enum))
     {
         private alias NextType = U;
-        private enum _flags = __typeid!U._flags;
+        private enum uint _flags = __typeid!U._flags;
     }
     else static if (is(T == __vector(U), U))
     {
         private alias NextType = U;
-        private enum _flags = 2;
+        private enum uint _flags = 2;
+    }
+    else static if (is(T == delegate))
+    {
+        private alias NextType = T;
+        private enum uint _flags = 1;
     }
     else
     {
         private alias NextType = T;
-        private enum _flags = 0;
+        private enum uint _flags = 0;
     }
 
     static if (!is(T == NextType))
@@ -815,10 +834,9 @@ private class TypeInfoImpl(T) : TypeInfo
             return __typeid!NextType;
         }
 
-    override @property uint flags() @nogc @safe
-    {
-        return _flags;
-    }
+    static @property uint flags() @nogc @safe { return _flags; }
+
+    override @property uint flags() @nogc @safe { return _flags; }
 
     //const(OffsetTypeInfo)[] offTi() const { return null; }
     //void postblit(void* p) const {}
@@ -833,7 +851,7 @@ template __typeid(T)
     immutable __typeid = new TypeInfoImpl!T;
 }
 
-version(none) unittest
+unittest
 {
     static void test(Ts...)()
     {
@@ -954,7 +972,8 @@ version(none) unittest
         inout(const int), shared(const int), inout(shared int), const(inout(shared int)),
         cdouble, ifloat,
         int*, int[], E1, E2, E3, E4,
-        int[42], int[int], __vector(int[4])
+        int[42], int[int], __vector(int[4]),
+        int function(double), string delegate(int[]),
         );
 
     // Test a static array with types with destructor
