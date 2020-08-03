@@ -425,7 +425,7 @@ class TypeInfo
 }
 
 /*
-Generic implementation of TypeInfo. T must be unqualified.
+Generic implementation of TypeInfo. Each distinct type gets its own instantiation.
 */
 private class TypeInfoImpl(T) : TypeInfo
 {
@@ -553,18 +553,23 @@ private class TypeInfoImpl(T) : TypeInfo
             return 0;
         if (auto ti = cast(const TypeInfo) rhs)
             return __cmp(this.toString, ti.toString);
-        // TypeInfo objects are all "smaller" than all other types.
+        // TypeInfo objects are all "greater" than all other types.
         // TODO: devise a principled way to define/justify this.
-        return -1;
+        return 1;
     }
+
+    static string toString() @nogc nothrow pure @safe { return T.stringof; }
 
     override string toString() @nogc @safe { return T.stringof; }
 
-    final static size_t getHash(scope const UnqualifiedType* p) @nogc pure nothrow
+    final static size_t getHash(scope const UnqualifiedType* p) nothrow
     {
         pragma(inline, true);
         assert(p);
-        static if (is(T U == enum))
+        static if (is(UnqualifiedType : Object))
+            // Cheat constness away
+            return *p ? (cast(UnqualifiedType) *p).toHash() : 0;
+        else static if (is(T U == enum))
             return hashOf(*cast(const U*) p);
         else static if (is(immutable T == immutable void) || is(T == function))
             return 0; // these aren't hashable
@@ -572,7 +577,7 @@ private class TypeInfoImpl(T) : TypeInfo
             return hashOf(*p);
     }
 
-    override size_t getHash(scope const void* p) @nogc pure nothrow
+    override size_t getHash(scope const void* p) nothrow
     {
         return getHash(cast(const UnqualifiedType *) p);
     }
@@ -582,12 +587,13 @@ private class TypeInfoImpl(T) : TypeInfo
         static bool equals(in T* lhs, in T* rhs)
         {
             pragma(inline, true);
+            assert(lhs && rhs);
             static if (is(immutable T == immutable void))
                 return lhs is rhs;
             else static if (is(T == __vector(U), U))
                 return __typeid!U.equals(cast(const U*) lhs, cast(const U*) rhs);
             else
-                return *lhs == *rhs;
+                return *lhs == *rhs; // works for classes, too
         }
 
         override bool equals(in void* lhs, in void* rhs)
@@ -598,17 +604,24 @@ private class TypeInfoImpl(T) : TypeInfo
 
     static if (!__traits(isAssociativeArray, T) && !is(T == function))
     {
-        final static int compare(in T* lhs, in T* rhs) @nogc
+        final static int compare(in T* lhs, in T* rhs)
         {
             pragma(inline, true);
+            assert(lhs && rhs);
             static if (is(T == struct))
             {
-                // Avoid comparing twice for structs
+                // Avoid comparing twice for structs. Keep this case separate from the one
+                // below because error messages are clearer.
                 return .__cmp(*lhs, *rhs);
+            }
+            else static if (is(UnqualifiedType : Object))
+            {
+                // Cheat constness away.
+                return .__cmp(cast(UnqualifiedType) *lhs, cast(UnqualifiedType) *rhs);
             }
             else static if (is(typeof(.__cmp(*lhs, *rhs)) == int))
             {
-                // Avoid comparing twice for arrays
+                // This will catch arrays
                 return .__cmp(*lhs, *rhs);
             }
             else static if (is(T U == enum))
@@ -630,7 +643,7 @@ private class TypeInfoImpl(T) : TypeInfo
                 return int(*lhs > *rhs) - int(*lhs < *rhs);
         }
 
-        override int compare(in void* p1, in void* p2) @nogc
+        override int compare(in void* p1, in void* p2)
         {
             return compare(cast(const T*) p1, cast(const T*) p2);
         }
@@ -682,6 +695,13 @@ private class TypeInfoImpl(T) : TypeInfo
             // return (cast(immutable T*) null)[0 .. 1];
             immutable(T)[] result = null;
             return result.ptr[0 .. 1];
+        }
+        else static if (is(T == class))
+        {
+            // Credit: http://dpldocs.info/this-week-in-d/Blog.Posted_2020_07_27.html
+            pragma(mangle, "_D" ~ T.mangleof[1 .. $] ~ "6__initZ")
+            extern immutable ubyte[__traits(classInstanceSize, T)] initial;
+            return initial[];
         }
         else static if (is(T == function))
         {
@@ -797,6 +817,11 @@ private class TypeInfoImpl(T) : TypeInfo
             return result;
         }();
     }
+    else static if (is(T == class))
+    {
+        private alias NextType = T;
+        private enum uint _flags = 1;
+    }
     else
     {
         private alias NextType = T;
@@ -813,8 +838,42 @@ private class TypeInfoImpl(T) : TypeInfo
 
     override @property uint flags() nothrow @nogc pure @safe { return _flags; }
 
-    //const(OffsetTypeInfo)[] offTi() const { return null; }
-    //void postblit(void* p) const {}
+    static if (is(T == class))
+        override const(OffsetTypeInfo)[] offTi() const
+        {
+            assert(0);
+        }
+
+    @property auto info() @safe nothrow pure const return { return this; }
+    @property auto typeinfo() @safe nothrow pure const return { return this; }
+
+    // void*[]     vtbl;           /// virtual function pointer table
+    // Interface[] interfaces;     /// interfaces this class implements
+    static if (is(T Bases == super))
+    {
+        static if (Bases.length)
+        {
+            @property auto base() { return __typeid!(Bases[0]); }
+        }
+    }
+    // void*       destructor;
+    // void function(Object) classInvariant;
+    // enum ClassFlags : uint
+    // {
+    //     isCOMclass = 0x1,
+    //     noPointers = 0x2,
+    //     hasOffTi = 0x4,
+    //     hasCtor = 0x8,
+    //     hasGetMembers = 0x10,
+    //     hasTypeInfo = 0x20,
+    //     isAbstract = 0x40,
+    //     isCPPclass = 0x80,
+    //     hasDtor = 0x100,
+    // }
+    // ClassFlags m_flags;
+    // void*       deallocator;
+    // OffsetTypeInfo[] m_offTi;
+    // void function(Object) defaultConstructor;   // default Constructor
 }
 
 /*
@@ -952,6 +1011,9 @@ unittest
     struct S2 { int a; S2* next; }
     struct S3 { int a; S2[] array; }
     struct S4 { int a; S2 b; }
+
+    class C1 {}
+
     test!(
         int, const(int), shared(int), inout(int), immutable(int),
         inout(const int), shared(const int), inout(shared int), const(inout(shared int)),
@@ -962,7 +1024,8 @@ unittest
         int[42], int[int], __vector(int[4]),
         int function(double), string delegate(int[]),
         S1, const S1, shared S1, const inout shared S1, immutable S1,
-        S2, const S2, shared S2, const inout shared S2, immutable S2
+        S2, const S2, shared S2, const inout shared S2, immutable S2,
+        C1,
         );
 
     static assert(__typeid!S1.flags == 0);
