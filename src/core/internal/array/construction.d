@@ -21,7 +21,8 @@ module core.internal.array.construction;
  *  purity, and throwabilty checks. To prevent breaking existing code, this function template
  *  is temporarily declared `@trusted` until the implementation can be brought up to modern D expectations.
  */
-Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
+Tarr _d_arrayctor(Tarr : T[], T, Uarr : U[], U)(return scope Tarr to, scope Uarr from) @trusted
+if (is (immutable T == immutable U))
 {
     pragma(inline, false);
     import core.internal.traits : hasElaborateCopyConstructor, Unqual;
@@ -106,8 +107,8 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
 @safe unittest
 {
     // Test that copy constructor works
-    int counter;
-    struct S
+    static int counter;
+    static struct S
     {
         int val;
         this(int v)
@@ -119,6 +120,10 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
             val = rhs.val;
             counter++;
         }
+        this(ref typeof(this) rhs) immutable
+        {
+            val = rhs.val + 1; // just to check that we call the correct cpctor
+        }
     }
 
     S[4] arr1;
@@ -127,6 +132,11 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
 
     assert(counter == 4);
     assert(arr1 == arr2);
+
+    immutable S[4] arr3;
+    _d_arrayctor(arr3[], arr2[]);
+
+    assert(arr3 == [S(1), S(2), S(3), S(4)]);
 }
 
 @safe nothrow unittest
@@ -187,10 +197,10 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
 @safe nothrow unittest
 {
     // Test that throwing copy constructor works
-    int counter;
+    static int counter;
     bool didThrow;
 
-    struct Throw
+    static struct Throw
     {
         int val;
         this(int v)
@@ -222,7 +232,7 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
     // Test that `nothrow` works
     didThrow = false;
     counter = 0;
-    struct NoThrow
+    static struct NoThrow
     {
         int val;
         this(int v)
@@ -260,7 +270,8 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from) @trusted
  *  purity, and throwabilty checks. To prevent breaking existing code, this function template
  *  is temporarily declared `@trusted` until the implementation can be brought up to modern D expectations.
  */
-void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
+void _d_arraysetctor(Tarr : T[], T, U)(scope Tarr p, scope ref U value) @trusted
+if (is (immutable T == immutable U))
 {
     pragma(inline, false);
     import core.internal.traits : Unqual;
@@ -321,8 +332,8 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
 @safe unittest
 {
     // Test that copy constructor works
-    int counter;
-    struct S
+    static int counter;
+    static struct S
     {
         int val;
         this(int v)
@@ -334,6 +345,10 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
             val = rhs.val;
             counter++;
         }
+        this(ref typeof(this) rhs) immutable
+        {
+            val = rhs.val + 1; // just to check that we call the correct cpctor
+        }
     }
 
     S[4] arr;
@@ -341,6 +356,9 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
     _d_arraysetctor(arr[], s);
     assert(counter == arr.length);
     assert(arr == [S(1234), S(1234), S(1234), S(1234)]);
+    immutable S[4] arr2;
+    _d_arraysetctor(arr2[], s);
+    assert(arr2 == [S(1235), S(1235), S(1235), S(1235)]);
 }
 
 @safe nothrow unittest
@@ -402,9 +420,9 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
 @safe nothrow unittest
 {
     // Test that throwing copy constructor works
-    int counter;
+    static int counter;
     bool didThrow;
-    struct Throw
+    static struct Throw
     {
         int val;
         this(int v)
@@ -436,7 +454,7 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
     // Test that `nothrow` works
     didThrow = false;
     counter = 0;
-    struct NoThrow
+    static struct NoThrow
     {
         int val;
         this(int v)
