@@ -34,29 +34,15 @@ template Unconst(T)
     else                                      alias Unconst = T;
 }
 
-/// taken from std.traits.Unqual
-template Unqual(T)
-{
-    version (none) // Error: recursive alias declaration @@@BUG1308@@@
-    {
-             static if (is(T U ==     const U)) alias Unqual = Unqual!U;
-        else static if (is(T U == immutable U)) alias Unqual = Unqual!U;
-        else static if (is(T U ==     inout U)) alias Unqual = Unqual!U;
-        else static if (is(T U ==    shared U)) alias Unqual = Unqual!U;
-        else                                    alias Unqual =        T;
-    }
-    else // workaround
-    {
-             static if (is(T U ==          immutable U)) alias Unqual = U;
-        else static if (is(T U == shared inout const U)) alias Unqual = U;
-        else static if (is(T U == shared inout       U)) alias Unqual = U;
-        else static if (is(T U == shared       const U)) alias Unqual = U;
-        else static if (is(T U == shared             U)) alias Unqual = U;
-        else static if (is(T U ==        inout const U)) alias Unqual = U;
-        else static if (is(T U ==        inout       U)) alias Unqual = U;
-        else static if (is(T U ==              const U)) alias Unqual = U;
-        else                                             alias Unqual = T;
-    }
+/// taken from std.traits.Unqual (which now imports this definition)
+alias Unqual(T : T*) = T*;
+alias Unqual(T : T[N], size_t N) = Unqual!T[N];
+alias Unqual(T : T[]) = T[];
+template Unqual(T) {
+    static if (is(immutable T : immutable(U), U))
+        alias Unqual = U;
+    else
+        static assert(0);
 }
 
 // [For internal use]
