@@ -35,14 +35,17 @@ template Unconst(T)
 }
 
 /// taken from std.traits.Unqual (which now imports this definition)
-alias Unqual(T : T*) = T*;
-alias Unqual(T : T[N], size_t N) = Unqual!T[N];
-alias Unqual(T : T[]) = T[];
-template Unqual(T) {
+alias Unqual(T : T*) = T*; // pointers
+alias Unqual(T : T[N], size_t N) = Unqual!T[N]; // static arrays
+template Unqual(T : U[], U) if (!is(T == enum)) { // dynamic arrays
+    alias Unqual = U[];
+}
+alias Unqual(T : V[K], V, K) = V[K]; // associative arrays
+template Unqual(T) { // everything else
     static if (is(immutable T : immutable(U), U))
         alias Unqual = U;
     else
-        static assert(0);
+        static assert(0, "Unqual!" ~ T.stringof ~ " can't be immutable?");
 }
 
 // [For internal use]
