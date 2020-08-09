@@ -424,10 +424,68 @@ class TypeInfo
     @property immutable(void)* rtInfo() nothrow pure const @safe @nogc { return rtinfoHasPointers; } // better safe than sorry
 }
 
+// For TypeInfoImpl
+struct Interface2
+{
+    TypeInfo    classinfo;  /// .classinfo for this interface (not for containing class)
+    void*[]     vtbl;
+    size_t      offset;     /// offset to Interface 'this' from Object 'this'
+}
+
+abstract class TypeInfo_Class2 : TypeInfo
+{
+    @property const(void*)[] vtbl() const @nogc nothrow pure @safe;
+    @property const(Interface2)[] interfaces() const @nogc nothrow pure @safe;
+    @property const(TypeInfo_Class2) base() const @nogc nothrow pure @safe;
+    @property const(void)* destructor() const @nogc nothrow pure @safe;
+    @property void function(Object) classInvariant() const @nogc nothrow pure @safe;
+
+    enum ClassFlags : uint
+    {
+        isCOMclass = 0x1,
+        noPointers = 0x2,
+        hasOffTi = 0x4,
+        hasCtor = 0x8,
+        hasGetMembers = 0x10,
+        hasTypeInfo = 0x20,
+        isAbstract = 0x40,
+        isCPPclass = 0x80,
+        hasDtor = 0x100,
+    }
+    @property ClassFlags classflags() const @nogc nothrow pure @safe;
+
+    @property const(void)* deallocator() const @nogc nothrow pure @safe;
+    @property void function(Object) defaultConstructor() const @nogc nothrow pure @safe;
+
+    static const(TypeInfo_Class) find(const scope char[] classname);
+    Object create() const;
+    // {
+    //     auto flags = classflags;
+    //     if ((flags & ClassFlags.hasCtor) && !defaultConstructor)
+    //         return null;
+    //     if (flags & ClassFlags.isAbstract)
+    //         return null;
+    //     Object result = _d_newclass(this);
+    //     if ((flags & ClassFlags.hasCtor) && defaultConstructor)
+    //     {
+    //         defaultConstructor(result);
+    //     }
+    //     return result;
+    // }
+
+    bool isBaseOf(scope const TypeInfo_Class2 child) const @nogc nothrow pure @trusted;
+}
+
+private template Select(bool condition, T1, T2)
+{
+    static if (condition) alias Select = T1;
+    else alias Select = T2;
+}
+
 /*
 Generic implementation of TypeInfo. Each distinct type gets its own instantiation.
 */
-private class TypeInfoImpl(T) : TypeInfo
+private class TypeInfoImpl(T) : Select!(is(T == class), TypeInfo_Class2, TypeInfo)
 {
     const: // because this type has no state in the first place
 
@@ -614,9 +672,13 @@ private class TypeInfoImpl(T) : TypeInfo
                 // below because error messages are clearer.
                 return .__cmp(*lhs, *rhs);
             }
-            else static if (is(UnqualifiedType : Object))
+            else static if (is(T == interface) || is(T == class))
             {
                 // Cheat constness away.
+                return .__cmp(cast(UnqualifiedType) *lhs, cast(UnqualifiedType) *rhs);
+            }
+            else static if (is(T == class))
+            {
                 return .__cmp(cast(UnqualifiedType) *lhs, cast(UnqualifiedType) *rhs);
             }
             else static if (is(typeof(.__cmp(*lhs, *rhs)) == int))
@@ -638,9 +700,13 @@ private class TypeInfoImpl(T) : TypeInfo
                 return 0;
             }
             else static if (is(T == __vector(U), U))
+            {
                 return __typeid!U.compare(cast(const U*) lhs, cast(const U*) rhs);
+            }
             else
+            {
                 return int(*lhs > *rhs) - int(*lhs < *rhs);
+            }
         }
 
         override int compare(in void* p1, in void* p2)
@@ -829,51 +895,145 @@ private class TypeInfoImpl(T) : TypeInfo
     }
 
     static if (!is(T == NextType))
-        override @property inout(TypeInfo) next() nothrow @nogc pure inout @safe
+        override @property inout(TypeInfo) next() nothrow @nogc pure inout @trusted
         {
-            return __typeid!NextType;
+            return cast(typeof(return)) __typeid!NextType;
         }
 
     static @property uint flags() nothrow @nogc pure @safe { return _flags; }
 
     override @property uint flags() nothrow @nogc pure @safe { return _flags; }
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Class-specific stuff
+    ////////////////////////////////////////////////////////////////////////////
+
     static if (is(T == class))
-        override const(OffsetTypeInfo)[] offTi() const
-        {
-            assert(0);
-        }
-
-    @property auto info() @safe nothrow pure const return { return this; }
-    @property auto typeinfo() @safe nothrow pure const return { return this; }
-
-    // void*[]     vtbl;           /// virtual function pointer table
-    // Interface[] interfaces;     /// interfaces this class implements
-    static if (is(T Bases == super))
     {
-        static if (Bases.length)
+        override Object create() const
         {
-            @property auto base() { return __typeid!(Bases[0]); }
+            assert(0, "Not implemented");
         }
+
+        const: @nogc: nothrow: pure: @safe:
+
+        override const(OffsetTypeInfo)[] offTi()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property const(void*)[] vtbl()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property immutable(Interface2)[] interfaces()
+        {
+            static if (is(T Bases == super))
+            {
+                static if (Bases.length > 1)
+                {
+                    static immutable Interface2[Bases.length - 1] result = {
+                        Interface2[Bases.length - 1] result;
+                        static foreach (i; 1 .. Bases.length)
+                        {
+                            result[i - 1].classinfo = __typeid!(Bases[i]);
+                            // result[i - 1].vtbl = ?
+                            // result[i - 1].offset = ?
+                        }
+                        return result;
+                    }();
+                    return result;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        override @property const(TypeInfo_Class2) base()
+        {
+            static if (is(T Bases == super))
+            {
+                static if (Bases.length)
+                    return __typeid!(Bases[0]);
+                else
+                    return null;
+            }
+        }
+
+        override @property const(void)* destructor()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property void function(Object) classInvariant()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property TypeInfo_Class2.ClassFlags classflags()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property const(void)* deallocator()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property void function(Object) defaultConstructor()
+        {
+            assert(0, "Not implemented");
+        }
+        override bool isBaseOf(scope const TypeInfo_Class2 child)
+        {
+            assert(0, "Not implemented");
+        }
+
+        // Class flags
+        static if (is(T == class) && is(typeof(T.tupleof.length)))
+            private enum bool noPointers = {
+                // If at least one field has pointers, the class has pointers.
+                // This loop goes all the way. Otherwise: "unreachable code" warnings.
+                uint result = true;
+                static foreach (const i; 0 .. T.tupleof.length)
+                {{
+                    alias U = typeof(T.tupleof[i]);
+                    static if (is(U == class) || is(U == interface))
+                        result = false;
+                    else static if (__typeid!U.flags)
+                        result = false;
+                }}
+                return result;
+            }();
+        else
+            private enum bool noPointers = _flags & 1;
+        //private enum bool hasOffTi = ?
+        private enum bool hasCtor = is(typeof(&T.__ctor));
+        //private enum bool hasGetMembers = ?;
+        //private enum bool hasTypeInfo = ?;
+        //private enum bool isAbstract = ?;
+        private enum bool isCPPclass = is(T == class) && !is(UnqualifiedType : Object);
+        private enum bool hasDtor = is(T == class) && is(typeof(&T.__dtor));
+
+        static enum ClassFlags m_flags = cast(ClassFlags) (
+            //(-isCOMclass & ClassFlags.isCOMclass) |
+            (-uint(noPointers) & ClassFlags.noPointers) |
+            //(-uint(hasOffTi) & ClassFlags.hasOffTi) |
+            (-uint(hasCtor) & ClassFlags.hasCtor) |
+            //(-hasGetMembers & ClassFlags.hasGetMembers) |
+            //(-hasTypeInfo & ClassFlags.hasTypeInfo) |
+            //(-isAbstract & ClassFlags.isAbstract) |
+            (-uint(isCPPclass) & ClassFlags.isCPPclass) |
+            (-uint(hasDtor) & ClassFlags.hasDtor)
+        );
     }
-    // void*       destructor;
-    // void function(Object) classInvariant;
-    // enum ClassFlags : uint
-    // {
-    //     isCOMclass = 0x1,
-    //     noPointers = 0x2,
-    //     hasOffTi = 0x4,
-    //     hasCtor = 0x8,
-    //     hasGetMembers = 0x10,
-    //     hasTypeInfo = 0x20,
-    //     isAbstract = 0x40,
-    //     isCPPclass = 0x80,
-    //     hasDtor = 0x100,
-    // }
-    // ClassFlags m_flags;
-    // void*       deallocator;
-    // OffsetTypeInfo[] m_offTi;
-    // void function(Object) defaultConstructor;   // default Constructor
 }
 
 /*
@@ -1001,6 +1161,14 @@ unittest
 
             assert(id.rtInfo == RTInfo!T);
             assert(id2.rtInfo == RTInfo!T);
+
+            static if (is(T == class))
+            {
+                auto cid = __typeid!T;
+                TypeInfo_Class2 cid2 = __typeid!T;
+                assert(cid.base == cid2.base);
+                assert(cid.interfaces == cid2.interfaces);
+            }
         }
     }
     enum E1 { a, b }
@@ -1013,6 +1181,19 @@ unittest
     struct S4 { int a; S2 b; }
 
     class C1 {}
+    extern(C++) class C2 {}
+
+    interface I1 {
+        void fun();
+    }
+    interface I2 {
+        void gun();
+    }
+    class C3 : I1, I2 {
+        void fun() {}
+        void gun() {}
+        double x;
+    }
 
     test!(
         int, const(int), shared(int), inout(int), immutable(int),
@@ -1025,7 +1206,7 @@ unittest
         int function(double), string delegate(int[]),
         S1, const S1, shared S1, const inout shared S1, immutable S1,
         S2, const S2, shared S2, const inout shared S2, immutable S2,
-        C1,
+        C1, C3, //C2,
         );
 
     static assert(__typeid!S1.flags == 0);
@@ -4643,7 +4824,7 @@ public import core.internal.switch_: __switch_error;
 
 public @trusted @nogc nothrow pure extern (C) void _d_delThrowable(scope Throwable);
 
-// Compare class and interface objects for ordering.
+// Compare class objects for ordering.
 private int __cmp(C1, C2)(C1 lhs, C2 rhs)
 if (is(C1 : Object) && is(C2 : Object))
 {
@@ -4692,6 +4873,21 @@ if (is(C1 : Object) && is(C2 : Object))
 
     assert(__cmp([c1, c1][], [c2, c2][]) < 0);
     assert(__cmp([c2, c2], [c1, c1]) > 0);
+}
+
+// Compare interfaces for ordering
+private int __cmp(C1, C2)(C1 lhs, C2 rhs)
+if (is(C1 == interface) || is(C2 == interface))
+{
+    static if (is(C1 == interface))
+        auto lhso = cast(Object) lhs;
+    else
+        alias lhso = lhs;
+    static if (is(C2 == interface))
+        auto rhso = cast(Object) rhs;
+    else
+        alias rhso = rhs;
+    return .__cmp(lhso, rhso);
 }
 
 // structs
