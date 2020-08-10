@@ -1008,6 +1008,7 @@ private class TypeInfoImpl(T) : Select!(is(T == class), TypeInfo_Class2, TypeInf
         }
 
         // Class flags
+        //private enum bool isCOMclass = ?
         static if (is(T == class) && is(typeof(T.tupleof.length)))
             private enum bool noPointers = {
                 // If at least one field has pointers, the class has pointers.
@@ -1029,18 +1030,18 @@ private class TypeInfoImpl(T) : Select!(is(T == class), TypeInfo_Class2, TypeInf
         private enum bool hasCtor = is(typeof(&T.__ctor));
         //private enum bool hasGetMembers = ?;
         //private enum bool hasTypeInfo = ?;
-        //private enum bool isAbstract = ?;
+        private enum bool isAbstract = __traits(isAbstractClass, T);
         private enum bool isCPPclass = is(T == class) && !is(UnqualifiedType : Object);
         private enum bool hasDtor = is(T == class) && is(typeof(&T.__dtor));
 
         static enum ClassFlags m_flags = cast(ClassFlags) (
-            //(-isCOMclass & ClassFlags.isCOMclass) |
+            //(-uint(isCOMclass) & ClassFlags.isCOMclass) |
             (-uint(noPointers) & ClassFlags.noPointers) |
             //(-uint(hasOffTi) & ClassFlags.hasOffTi) |
             (-uint(hasCtor) & ClassFlags.hasCtor) |
-            //(-hasGetMembers & ClassFlags.hasGetMembers) |
-            //(-hasTypeInfo & ClassFlags.hasTypeInfo) |
-            //(-isAbstract & ClassFlags.isAbstract) |
+            //(-uint(hasGetMembers) & ClassFlags.hasGetMembers) |
+            //(-uint(hasTypeInfo) & ClassFlags.hasTypeInfo) |
+            (-uint(isAbstract) & ClassFlags.isAbstract) |
             (-uint(isCPPclass) & ClassFlags.isCPPclass) |
             (-uint(hasDtor) & ClassFlags.hasDtor)
         );
