@@ -990,7 +990,7 @@ private class TypeInfoImpl(T) : Select!(is(T == class), TypeInfo_Class2, TypeInf
 
         override @property TypeInfo_Class2.ClassFlags classflags()
         {
-            assert(0, "Not implemented");
+            return m_flags;
         }
 
         override @property const(void)* deallocator()
