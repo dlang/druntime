@@ -830,7 +830,7 @@ class TypeInfo_Vector : TypeInfo
         return base.initializer();
     }
 
-    override @property size_t talign() nothrow pure const { return 16; }
+    override @property size_t talign() nothrow pure const { return base.tsize; }
 
     version (WithArgTypes) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
     {

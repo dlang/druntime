@@ -1630,7 +1630,12 @@ struct Gcx
 
     void* smallAlloc(size_t size, ref size_t alloc_size, uint bits, const TypeInfo ti) nothrow
     {
-        immutable bin = binTable[size];
+        immutable trybin = binTable[size];
+        // ensure alignment of intended typeinfo can be satisfied by the bin size.
+        immutable bin = ti is null
+            ? trybin
+            : cast(immutable(byte))(binsize[trybin] % ti.talign == 0 ? trybin : trybin + 1);
+        assert(bin < B_NUMSMALL);
         alloc_size = binsize[bin];
 
         void* p = bucket[bin];

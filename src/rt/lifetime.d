@@ -349,7 +349,7 @@ bool __setArrayAllocLength(ref BlkInfo info, size_t newlength, bool isshared, co
     }
     else
     {
-        if (newlength + LARGEPAD > info.size)
+        if (newlength + LARGEPAD + __alignPad(tinext) > info.size)
             // new size does not fit inside block
             return false;
         auto length = cast(size_t *)(info.base);
@@ -395,12 +395,45 @@ size_t __arrayAllocLength(ref BlkInfo info, const TypeInfo tinext) pure nothrow
     return *cast(size_t *)(info.base);
 }
 
+pragma(inline, true)
+size_t __alignPad(const TypeInfo tinext) pure nothrow @nogc @safe
+{
+    immutable a = tinext.talign;
+    return a > LARGEPREFIX ? a - LARGEPREFIX : 0;
+}
+
+@safe unittest {
+    static struct S {
+        long x;
+        double y;
+        ubyte[11] bytes;
+    }
+
+    static struct S2 {
+        ubyte[32] bytes;
+    }
+
+    static struct S3 {
+        align(64) int x;
+    }
+
+    assert(__alignPad(typeid(S)) == 0);
+    assert(__alignPad(typeid(S2)) == 0);
+    assert(__alignPad(typeid(S3)) == 48);
+    static if (is(__vector(ubyte[32]))) // only on some platforms
+    {
+        alias V = __vector(ubyte[32]);
+        assert(__alignPad(typeid(V)) == 16);
+    }
+}
+
+
 /**
   get the start of the array for the given block
   */
-void *__arrayStart(return BlkInfo info) nothrow pure
+void *__arrayStart(return BlkInfo info, const TypeInfo tinext) nothrow pure
 {
-    return info.base + ((info.size & BIGLENGTHMASK) ? LARGEPREFIX : 0);
+    return info.base + ((info.size & BIGLENGTHMASK) ? LARGEPREFIX + __alignPad(tinext) : 0);
 }
 
 /**
@@ -410,7 +443,9 @@ void *__arrayStart(return BlkInfo info) nothrow pure
   */
 size_t __arrayPad(size_t size, const TypeInfo tinext) nothrow pure @trusted
 {
-    return size > MAXMEDSIZE ? LARGEPAD : ((size > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + structTypeInfoSize(tinext));
+    return size > MAXMEDSIZE
+        ? LARGEPAD + __alignPad(tinext)
+        : ((size > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + structTypeInfoSize(tinext));
 }
 
 /**
@@ -438,7 +473,7 @@ BlkInfo __arrayAlloc(size_t arrsize, const TypeInfo ti, const TypeInfo tinext) n
     import core.checkedint;
 
     size_t typeInfoSize = structTypeInfoSize(tinext);
-    size_t padsize = arrsize > MAXMEDSIZE ? LARGEPAD : ((arrsize > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + typeInfoSize);
+    size_t padsize = arrsize > MAXMEDSIZE ? LARGEPAD + __alignPad(tinext) : ((arrsize > MAXSMALLSIZE ? MEDPAD : SMALLPAD) + typeInfoSize);
 
     bool overflow;
     auto padded_size = addu(arrsize, padsize, overflow);
@@ -693,7 +728,7 @@ extern(C) void _d_arrayshrinkfit(const TypeInfo ti, void[] arr) /+nothrow+/
     auto info = bic ? *bic : GC.query(arr.ptr);
     if (info.base && (info.attr & BlkAttr.APPENDABLE))
     {
-        auto newsize = (arr.ptr - __arrayStart(info)) + cursize;
+        auto newsize = (arr.ptr - __arrayStart(info, tinext)) + cursize;
 
         debug(PRINTF) printf("setting allocated size to %d\n", (arr.ptr - info.base) + cursize);
 
@@ -842,11 +877,11 @@ Lcontinue:
         else
         {
             curallocsize = *(cast(size_t *)(info.base));
-            arraypad = LARGEPAD;
+            arraypad = LARGEPAD + __alignPad(tinext);
         }
 
 
-        offset = (*p).ptr - __arrayStart(info);
+        offset = (*p).ptr - __arrayStart(info, tinext);
         if (offset + (*p).length * size != curallocsize)
         {
             curcapacity = 0;
@@ -873,14 +908,14 @@ Lcontinue:
     // step 3, try to extend the array in place.
     if (info.size >= PAGESIZE && curcapacity != 0)
     {
-        auto extendsize = reqsize + offset + LARGEPAD - info.size;
+        auto extendsize = reqsize + offset + arraypad - info.size;
         auto u = GC.extend(info.base, extendsize, extendsize);
         if (u)
         {
             // extend worked, save the new current allocated size
             if (bic)
                 bic.size = u; // update cache
-            curcapacity = u - offset - LARGEPAD;
+            curcapacity = u - offset - arraypad;
             return curcapacity / size;
         }
     }
@@ -894,7 +929,7 @@ Lcontinue:
         goto Loverflow;
     // copy the data over.
     // note that malloc will have initialized the data we did not request to 0.
-    auto tgt = __arrayStart(info);
+    auto tgt = __arrayStart(info, tinext);
     memcpy(tgt, (*p).ptr, datasize);
 
     // handle postblit
@@ -927,7 +962,7 @@ Lcontinue:
     else if (info.size < PAGESIZE)
         arraypad = MEDPAD + structTypeInfoSize(tinext);
     else
-        arraypad = LARGEPAD;
+        arraypad = LARGEPAD + __alignPad(tinext);
 
     curcapacity = info.size - arraypad;
     return curcapacity / size;
@@ -987,7 +1022,7 @@ Lcontinue:
         goto Loverflow;
     debug(PRINTF) printf(" p = %p\n", info.base);
     // update the length of the array
-    auto arrstart = __arrayStart(info);
+    auto arrstart = __arrayStart(info, tinext);
     auto isshared = typeid(ti) is typeid(TypeInfo_Shared);
     __setArrayAllocLength(info, size, isshared, tinext);
     return arrstart[0..length];
@@ -1069,7 +1104,7 @@ void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t[] dims)
         auto info = __arrayAlloc(allocsize, ti, tinext);
         auto isshared = typeid(ti) is typeid(TypeInfo_Shared);
         __setArrayAllocLength(info, allocsize, isshared, tinext);
-        auto p = __arrayStart(info)[0 .. dim];
+        auto p = __arrayStart(info, tinext)[0 .. dim];
 
         foreach (i; 0..dim)
         {
@@ -1198,7 +1233,7 @@ extern (C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti)
         {
             if (ti) // ti non-null only if ti is a struct with dtor
             {
-                void* start = __arrayStart(info);
+                void* start = __arrayStart(info, ti);
                 size_t length = __arrayAllocLength(info, ti);
                 finalize_array(start, length, ti);
             }
@@ -1364,7 +1399,7 @@ void finalize_array2(void* p, size_t size) nothrow
     {
         si = *cast(TypeInfo_Struct*)(p + size_t.sizeof);
         size = *cast(size_t*)p;
-        p += LARGEPREFIX;
+        p += LARGEPREFIX + __alignPad(si);
     }
 
     try
@@ -1554,7 +1589,7 @@ do
         __setArrayAllocLength(info, newsize, isshared, tinext);
         if (!isshared)
             __insertBlkInfoCache(info, null);
-        void* newdata = cast(byte *)__arrayStart(info);
+        void* newdata = cast(byte *)__arrayStart(info, tinext);
         memset(newdata, 0, newsize);
         *p = newdata[0 .. newlength];
         return *p;
@@ -1572,7 +1607,7 @@ do
     if (info.base && (info.attr & BlkAttr.APPENDABLE))
     {
         // calculate the extent of the array given the base.
-        const size_t offset = (*p).ptr - __arrayStart(info);
+        const size_t offset = (*p).ptr - __arrayStart(info, tinext);
         if (info.size >= PAGESIZE)
         {
             // size of array is at the front of the block
@@ -1583,7 +1618,7 @@ do
                 if (*(cast(size_t*)info.base) == size + offset)
                 {
                     // not enough space, try extending
-                    auto extendsize = newsize + offset + LARGEPAD - info.size;
+                    auto extendsize = newsize + offset + LARGEPAD + __alignPad(tinext) - info.size;
                     auto u = GC.extend(info.base, extendsize, extendsize);
                     if (u)
                     {
@@ -1649,7 +1684,7 @@ do
         __setArrayAllocLength(info, newsize, isshared, tinext);
         if (!isshared)
             __insertBlkInfoCache(info, bic);
-        newdata = cast(byte *)__arrayStart(info);
+        newdata = cast(byte *)__arrayStart(info, tinext);
         newdata[0 .. size] = (*p).ptr[0 .. size];
 
         /* Do postblit processing, as we are making a copy and the
@@ -1772,7 +1807,7 @@ do
         __setArrayAllocLength(info, newsize, isshared, tinext);
         if (!isshared)
             __insertBlkInfoCache(info, null);
-        void* newdata = cast(byte *)__arrayStart(info);
+        void* newdata = cast(byte *)__arrayStart(info, tinext);
         doInitialize(newdata, newdata + newsize, tinext.initializer);
         *p = newdata[0 .. newlength];
         return *p;
@@ -1791,7 +1826,7 @@ do
     if (info.base && (info.attr & BlkAttr.APPENDABLE))
     {
         // calculate the extent of the array given the base.
-        const size_t offset = (*p).ptr - __arrayStart(info);
+        const size_t offset = (*p).ptr - __arrayStart(info, tinext);
         if (info.size >= PAGESIZE)
         {
             // size of array is at the front of the block
@@ -1802,7 +1837,7 @@ do
                 if (*(cast(size_t*)info.base) == size + offset)
                 {
                     // not enough space, try extending
-                    auto extendsize = newsize + offset + LARGEPAD - info.size;
+                    auto extendsize = newsize + offset + LARGEPAD + __alignPad(tinext) - info.size;
                     auto u = GC.extend(info.base, extendsize, extendsize);
                     if (u)
                     {
@@ -1868,7 +1903,7 @@ do
         __setArrayAllocLength(info, newsize, isshared, tinext);
         if (!isshared)
             __insertBlkInfoCache(info, bic);
-        newdata = cast(byte *)__arrayStart(info);
+        newdata = cast(byte *)__arrayStart(info, tinext);
         newdata[0 .. size] = (*p).ptr[0 .. size];
 
         /* Do postblit processing, as we are making a copy and the
@@ -2007,7 +2042,7 @@ byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
     size_t newcap = void; // for scratch space
 
     // calculate the extent of the array given the base.
-    size_t offset = cast(void*)px.ptr - __arrayStart(info);
+    size_t offset = cast(void*)px.ptr - __arrayStart(info, tinext);
     if (info.base && (info.attr & BlkAttr.APPENDABLE))
     {
         if (info.size >= PAGESIZE)
@@ -2021,7 +2056,7 @@ byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
                 if (*(cast(size_t*)info.base) == size + offset)
                 {
                     // not enough space, try extending
-                    auto extendoffset = offset + LARGEPAD - info.size;
+                    auto extendoffset = offset + LARGEPAD + __alignPad(tinext) - info.size;
                     auto u = GC.extend(info.base, newsize + extendoffset, newcap + extendoffset);
                     if (u)
                     {
@@ -2077,7 +2112,7 @@ byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
         __setArrayAllocLength(info, newsize, isshared, tinext);
         if (!isshared)
             __insertBlkInfoCache(info, bic);
-        auto newdata = cast(byte *)__arrayStart(info);
+        auto newdata = cast(byte *)__arrayStart(info, tinext);
         memcpy(newdata, px.ptr, length * sizeelem);
         // do postblit processing
         __doPostblit(newdata, length * sizeelem, tinext);
@@ -2258,7 +2293,7 @@ do
         return null;
 
     auto info = __arrayAlloc(len, ti, tinext);
-    byte* p = cast(byte*)__arrayStart(info);
+    byte* p = cast(byte*)__arrayStart(info, tinext);
     p[len] = 0; // guessing this is to optimize for null-terminated arrays?
     memcpy(p, x.ptr, xlen);
     memcpy(p + xlen, y.ptr, ylen);
@@ -2292,7 +2327,7 @@ extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs)
     auto info = __arrayAlloc(allocsize, ti, tinext);
     auto isshared = typeid(ti) is typeid(TypeInfo_Shared);
     __setArrayAllocLength(info, allocsize, isshared, tinext);
-    void *a = __arrayStart (info);
+    void *a = __arrayStart (info, tinext);
 
     size_t j = 0;
     foreach (b; arrs)
@@ -2330,7 +2365,7 @@ void* _d_arrayliteralTX(const TypeInfo ti, size_t length)
         auto info = __arrayAlloc(allocsize, ti, tinext);
         auto isshared = typeid(ti) is typeid(TypeInfo_Shared);
         __setArrayAllocLength(info, allocsize, isshared, tinext);
-        result = __arrayStart(info);
+        result = __arrayStart(info, tinext);
     }
     return result;
 }
@@ -2772,7 +2807,7 @@ unittest
     GC.free(larr1);
 
     auto larr2 = new S[255];
-    if (cast(void*)larr1 is cast(void*)larr2.ptr - LARGEPREFIX) // reusage not guaranteed
+    if (cast(void*)larr1 is cast(void*)larr2.ptr - LARGEPREFIX - __alignPad(typeid(S))) // reusage not guaranteed
     {
         auto ptr = cast(S**)larr1;
         assert(ptr[0] != p1); // 16 bytes array header
@@ -2872,4 +2907,19 @@ unittest
     {
         s.thisptr = &s;
     }
+}
+
+// alignment test
+debug(SENTINEL) {} // block sizes and alignment in SENTINEL mode are not normal.
+else unittest
+{
+    import core.memory;
+    static struct S {
+        align(64) int x;
+    }
+
+    auto arr = new S[1];
+    auto info = GC.query(arr.ptr);
+    assert(cast(size_t)arr.ptr % 64 == 0);
+    assert(info.size % 64 == 0);
 }
