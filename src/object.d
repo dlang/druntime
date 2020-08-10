@@ -383,8 +383,17 @@ class TypeInfo
         }
     }
 
-    /** Get TypeInfo for 'next' type, as defined by what kind of type this is,
-    null if none. */
+    /**
+    Get TypeInfo for 'next' type, as defined by what kind of type this is,
+    null if none.
+
+    For `enum` types, `next()` returns the `typeid` of the base type of the `enum`.
+    For pointer types, `next()` returns the `typeid` of the pointee type.
+    For array types (static and dynamic), `next()` returns the `typeid` of the element type.
+    For associative arrays types, `next()` returns the `typeid` of the value type.
+    For vector types, `next()` returns the `typeid` of the underlying type.
+    For qualified types, `next()` returns the `typeid` of the unqualified type.
+    */
     @property inout(TypeInfo) next() nothrow pure inout @nogc { return null; }
 
     /**
@@ -627,6 +636,8 @@ private class TypeInfoImpl(T) : Select!(is(T == class), TypeInfo_Class2, TypeInf
         static if (is(UnqualifiedType : Object))
             // Cheat constness away
             return *p ? (cast(UnqualifiedType) *p).toHash() : 0;
+        else static if (is(T == interface))
+            return *p ? (cast(Object) *p).toHash() : 0;
         else static if (is(T U == enum))
             return hashOf(*cast(const U*) p);
         else static if (is(immutable T == immutable void) || is(T == function))
@@ -651,7 +662,7 @@ private class TypeInfoImpl(T) : Select!(is(T == class), TypeInfo_Class2, TypeInf
             else static if (is(T == __vector(U), U))
                 return __typeid!U.equals(cast(const U*) lhs, cast(const U*) rhs);
             else
-                return *lhs == *rhs; // works for classes, too
+                return *lhs == *rhs; // works for classes and interfaces, too
         }
 
         override bool equals(in void* lhs, in void* rhs)
@@ -883,7 +894,7 @@ private class TypeInfoImpl(T) : Select!(is(T == class), TypeInfo_Class2, TypeInf
             return result;
         }();
     }
-    else static if (is(T == class))
+    else static if (is(T == class) || is(T == interface))
     {
         private alias NextType = T;
         private enum uint _flags = 1;
@@ -1042,7 +1053,7 @@ Run-time type information for scalar types (int for now).
 template __typeid(T)
 {
     // On-demand singleton object in static storage
-    private immutable singleton = new TypeInfoImpl!T;
+    private immutable singleton = new immutable TypeInfoImpl!T;
     // Get rid of the immutable qualifier for convenience; the type has no state anyway
     @property @trusted pure @nogc nothrow TypeInfoImpl!T __typeid()
     {
@@ -1206,7 +1217,7 @@ unittest
         int function(double), string delegate(int[]),
         S1, const S1, shared S1, const inout shared S1, immutable S1,
         S2, const S2, shared S2, const inout shared S2, immutable S2,
-        C1, C3, //C2,
+        C1, C3, I1, I2,
         );
 
     static assert(__typeid!S1.flags == 0);
