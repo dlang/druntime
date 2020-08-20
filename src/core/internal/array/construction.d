@@ -9,6 +9,35 @@
 */
 module core.internal.array.construction;
 
+package void cpCtorRecurse(S1, S2)(ref S1 to, ref S2 from)
+    if (is(S1 == struct) && is (immutable S1 == immutable S2))
+{
+    static if (__traits(hasCopyConstructor, S1))
+    {
+        to.__ctor(from);
+    }
+}
+
+package void cpCtorRecurse(T, size_t n, U)(ref T[n] to, ref U[n] from)
+{
+    import core.internal.destruction: destructRecurse;
+
+    static if (__traits(hasCopyConstructor, T))
+    {
+        size_t i;
+        scope(failure)
+        {
+            for (; i != 0; --i)
+            {
+                destructRecurse(to[i - 1]); // Don't care if it throws, as throwing in dtor can lead to UB
+            }
+        }
+
+        for (i = 0; i < to.length; ++i)
+            cpCtorRecurse(to[i], from[i]);
+    }
+}
+
 /**
  * Does array initialization (not assignment) from another array of the same element type.
  * Params:
@@ -54,7 +83,7 @@ if (is (immutable T == immutable U))
         {
             static if (__traits(hasCopyConstructor, T))
             {
-                to[i].__ctor(from[i]);
+                cpCtorRecurse(to[i], from[i]);
             }
             else
             {
@@ -137,6 +166,17 @@ if (is (immutable T == immutable U))
     _d_arrayctor(arr3[], arr2[]);
 
     assert(arr3 == [S(1), S(2), S(3), S(4)]);
+
+    S[2][2] arr4;
+    S[2][2] arr5 = [[S(0), S(1)], [S(2), S(3)]];
+    _d_arrayctor(arr4[], arr5[]);
+    assert(counter == 8);
+    assert(arr4 == arr5);
+
+    immutable S[2][2] arr6;
+    _d_arrayctor(arr6[], arr5[]);
+
+    assert(arr6 == [[S(1), S(2)], [S(3), S(4)]]);
 }
 
 @safe nothrow unittest
@@ -228,6 +268,20 @@ if (is (immutable T == immutable U))
     assert(didThrow);
     assert(counter == 2);
 
+    didThrow = false;
+    counter = 0;
+    try
+    {
+        Throw[2][2] a;
+        Throw[2][2] b = [[Throw(1), Throw(2)], [Throw(3), Throw(4)]];
+        _d_arrayctor(a[], b[]);
+    }
+    catch (Exception)
+    {
+        didThrow = true;
+    }
+    assert(didThrow);
+    assert(counter == 2);
 
     // Test that `nothrow` works
     didThrow = false;
@@ -284,7 +338,7 @@ if (is (immutable T == immutable U))
         {
             static if (__traits(hasCopyConstructor, T))
             {
-                p[walker].__ctor(value);
+                cpCtorRecurse(p[walker], value);
             }
             else
             {
@@ -359,6 +413,18 @@ if (is (immutable T == immutable U))
     immutable S[4] arr2;
     _d_arraysetctor(arr2[], s);
     assert(arr2 == [S(1235), S(1235), S(1235), S(1235)]);
+
+    counter = 0;
+    S[2] s2 = [S(1234), S(1234)];
+    S[2][2] arr3;
+
+    _d_arraysetctor(arr3[], s2);
+    assert(counter == arr.length);
+    assert(arr3 == [[S(1234), S(1234)], [S(1234), S(1234)]]);
+
+    immutable S[2][2] arr4;
+    _d_arraysetctor(arr4[], s2);
+    assert(arr4 == [[S(1235), S(1235)], [S(1235), S(1235)]]);
 }
 
 @safe nothrow unittest
@@ -379,8 +445,8 @@ if (is (immutable T == immutable U))
     try
     {
         Throw[4] a;
-        Throw[4] b = [Throw(1), Throw(2), Throw(3), Throw(4)];
-        _d_arrayctor(a[], b[]);
+        Throw b = Throw(1);
+        _d_arraysetctor(a[], b);
     }
     catch (Exception)
     {
@@ -440,8 +506,8 @@ if (is (immutable T == immutable U))
     try
     {
         Throw[4] a;
-        Throw[4] b = [Throw(1), Throw(2), Throw(3), Throw(4)];
-        _d_arrayctor(a[], b[]);
+        Throw b = Throw(1);
+        _d_arraysetctor(a[], b);
     }
     catch (Exception)
     {
