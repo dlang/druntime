@@ -28,7 +28,8 @@ memstomp:
 	$(RM) $@.exe $@.obj $@.ilk $@.pdb
 
 invariant:
-	$(DMD) -debug -debug=INVARIANT -debug=PTRCHECK -debug=PTRCHECK2 $(UDFLAGS) -main -of$@.exe $(SRC)
+	$(DMD) -debug -debug=INVARIANT -debug=PTRCHECK -debug=PTRCHECK2 $(UDFLAGS) -c -of$@.obj $(SRC)
+	$(DMD) -debug -debug=INVARIANT -debug=PTRCHECK -debug=PTRCHECK2 $(UDFLAGS) -main $@.obj -of$@.exe $(SRC)
 	.\$@.exe
 	$(RM) $@.exe $@.obj $@.ilk $@.pdb
 
