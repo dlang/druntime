@@ -377,7 +377,7 @@ private class TypeInfoArrayGeneric(T) : TypeInfo_Array
             return Array!Real.hashOf(*cast(Real[]*)p);
         else
         {
-            return hashOf(*cast(const void[]*) p);
+            return hashOf(*cast(const T[]*) p);
         }
     }
 
