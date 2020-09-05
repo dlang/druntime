@@ -515,7 +515,11 @@ class TypeInfo_Ag : TypeInfoArrayGeneric!byte {}
 class TypeInfo_Ah : TypeInfoArrayGeneric!ubyte {}
 class TypeInfo_Aa : TypeInfoArrayGeneric!char {}
 class TypeInfo_Axa : TypeInfoArrayGeneric!(const char) {}
-class TypeInfo_Aya : TypeInfoArrayGeneric!(immutable char) {}
+class TypeInfo_Aya : TypeInfoArrayGeneric!(immutable char)
+{
+    // Must override this, otherwise "string" is returned.
+    override string toString() const { return "immutable(char)[]"; }
+}
 class TypeInfo_As : TypeInfoArrayGeneric!short {}
 class TypeInfo_At : TypeInfoArrayGeneric!ushort {}
 class TypeInfo_Au : TypeInfoArrayGeneric!wchar {}
@@ -529,6 +533,7 @@ extern (C) void[] _adSort(void[] a, TypeInfo ti);
 
 unittest
 {
+    assert(typeid(string).toString() == "immutable(char)[]");
     int[][] a = [[5,3,8,7], [2,5,3,8,7]];
     _adSort(*cast(void[]*)&a, typeid(a[0]));
     assert(a == [[2,5,3,8,7], [5,3,8,7]]);
