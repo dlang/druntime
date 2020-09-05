@@ -266,3 +266,445 @@ unittest
         }
     }();
 }
+
+private class TypeInfoGeneric(T) : TypeInfo
+{
+    static if (is(T == ifloat)) private alias Real = float;
+    else static if (is(T == idouble)) private alias Real = double;
+    else static if (is(T == ireal)) private alias Real = real;
+    else private alias Real = T;
+
+    @trusted:
+    const:
+    pure:
+    nothrow:
+
+    override string toString() const pure nothrow @safe { return T.stringof; }
+
+    override size_t getHash(scope const void* p)
+    {
+        static if (__traits(isFloating, T))
+            return Floating!Real.hashOf(*cast(Real*)p);
+        else
+            return hashOf(*cast(const T *)p);
+    }
+
+    override bool equals(in void* p1, in void* p2)
+    {
+        static if (__traits(isFloating, T))
+            return Floating!Real.equals(*cast(Real*)p1, *cast(Real*)p2);
+        else
+            return *cast(T *)p1 == *cast(T *)p2;
+    }
+
+    override int compare(in void* p1, in void* p2)
+    {
+        static if (__traits(isFloating, T))
+        {
+            return Floating!Real.compare(*cast(Real*)p1, *cast(Real*)p2);
+        }
+        else static if (T.sizeof < int.sizeof)
+        {
+            return *cast(T *)p1 - *cast(T *)p2;
+        }
+        else
+        {
+            if (*cast(T *)p1 < *cast(T *)p2)
+                return -1;
+            if (*cast(T *)p1 > *cast(T *)p2)
+                return 1;
+            return 0;
+        }
+    }
+
+    override @property size_t tsize() nothrow pure
+    {
+        return T.sizeof;
+    }
+
+    override @property size_t talign() nothrow pure
+    {
+        return T.alignof;
+    }
+
+    override const(void)[] initializer() @trusted
+    {
+        static if (__traits(isZeroInit, T))
+        {
+            return (cast(void *)null)[0 .. T.sizeof];
+        }
+        else
+        {
+            static immutable T[1] c;
+            return c;
+        }
+    }
+
+    override void swap(void *p1, void *p2)
+    {
+        T t;
+
+        t = *cast(T *)p1;
+        *cast(T *)p1 = *cast(T *)p2;
+        *cast(T *)p2 = t;
+    }
+
+    override @property immutable(void)* rtInfo() nothrow pure const @safe
+    {
+        return RTInfo!T;
+    }
+
+    static if (__traits(isFloating, T))
+        static if (is(immutable Real == immutable real) && T.mant_dig != 64) // exclude 80-bit X87
+            // passed in SIMD register
+            override @property uint flags() const { return 2; }
+}
+
+private class TypeInfoArrayGeneric(T) : TypeInfo_Array
+{
+    static if (is(T == ifloat)) private alias Real = float;
+    else static if (is(T == idouble)) private alias Real = double;
+    else static if (is(T == ireal)) private alias Real = real;
+    else private alias Real = T;
+
+    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
+
+    override string toString() const { return (T[]).stringof; }
+
+    override size_t getHash(scope const void* p) @trusted const
+    {
+        static if (__traits(isFloating, T))
+            return Array!Real.hashOf(*cast(Real[]*)p);
+        else
+        {
+            return hashOf(*cast(const void[]*) p);
+        }
+    }
+
+    override bool equals(in void* p1, in void* p2) const
+    {
+        static if (__traits(isFloating, T))
+        {
+            return Array!Real.equals(*cast(Real[]*)p1, *cast(Real[]*)p2);
+        }
+        else
+        {
+            import core.stdc.string;
+            auto s1 = *cast(T[]*)p1;
+            auto s2 = *cast(T[]*)p2;
+            return s1.length == s2.length &&
+                memcmp(s1.ptr, s2.ptr, s1.length) == 0;
+        }
+    }
+
+    override int compare(in void* p1, in void* p2) const
+    {
+        static if (__traits(isFloating, T))
+        {
+            return Array!Real.compare(*cast(Real[]*)p1, *cast(Real[]*)p2);
+        }
+        else
+        {
+            auto s1 = *cast(T[]*)p1;
+            auto s2 = *cast(T[]*)p2;
+            auto len = s1.length;
+
+            if (s2.length < len)
+                len = s2.length;
+            for (size_t u = 0; u < len; u++)
+            {
+                if (int result = (s1[u] > s2[u]) - (s1[u] < s2[u]))
+                    return result;
+            }
+            return (s1.length > s2.length) - (s1.length < s2.length);
+        }
+    }
+
+    override @property inout(TypeInfo) next() inout
+    {
+        return cast(inout) typeid(T);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Predefined TypeInfos
+////////////////////////////////////////////////////////////////////////////////
+
+// All integrals.
+class TypeInfo_b : TypeInfoGeneric!bool {}
+class TypeInfo_g : TypeInfoGeneric!byte {}
+class TypeInfo_h : TypeInfoGeneric!ubyte {}
+class TypeInfo_a : TypeInfoGeneric!char {}
+class TypeInfo_u : TypeInfoGeneric!wchar {}
+class TypeInfo_w : TypeInfoGeneric!dchar {}
+class TypeInfo_s : TypeInfoGeneric!short {}
+class TypeInfo_t : TypeInfoGeneric!ushort {}
+class TypeInfo_i : TypeInfoGeneric!int {}
+class TypeInfo_k : TypeInfoGeneric!uint {}
+class TypeInfo_l : TypeInfoGeneric!long {}
+class TypeInfo_m : TypeInfoGeneric!ulong {}
+static if (is(cent)) class TypeInfo_zi : TypeInfoGeneric!cent {}
+static if (is(ucent)) class TypeInfo_zk : TypeInfoGeneric!ucent {}
+
+// All simple floating-point types.
+class TypeInfo_f : TypeInfoGeneric!float {}
+class TypeInfo_o : TypeInfoGeneric!ifloat {}
+class TypeInfo_d : TypeInfoGeneric!double {}
+class TypeInfo_p : TypeInfoGeneric!idouble {}
+class TypeInfo_e : TypeInfoGeneric!real {}
+class TypeInfo_j : TypeInfoGeneric!ireal {}
+
+// All complex floating-point types.
+
+// cfloat
+class TypeInfo_q : TypeInfoGeneric!cfloat
+{
+    const: nothrow: pure: @trusted:
+    static if (__traits(hasMember, TypeInfo, "argTypes"))
+        override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+        {
+            arg1 = typeid(double);
+            return 0;
+        }
+}
+
+// cdouble
+class TypeInfo_r : TypeInfoGeneric!cdouble
+{
+    const: nothrow: pure: @trusted:
+    static if (__traits(hasMember, TypeInfo, "argTypes"))
+        override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+        {
+            arg1 = typeid(double);
+            arg2 = typeid(double);
+            return 0;
+        }
+}
+
+// creal
+class TypeInfo_c : TypeInfoGeneric!creal
+{
+    const: nothrow: pure: @trusted:
+    static if (__traits(hasMember, TypeInfo, "argTypes"))
+        override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+        {
+            arg1 = typeid(real);
+            arg2 = typeid(real);
+            return 0;
+        }
+}
+
+// All pointer types are represented by `TypeInfo_P`.
+// Please keep in sync with `TypeInfo_Pointer`.
+class TypeInfo_P : TypeInfoGeneric!(void*)
+{
+    const: nothrow: pure: @trusted:
+
+    override size_t getHash(scope const void* p)
+    {
+        size_t addr = cast(size_t) *cast(const void**)p;
+        return addr ^ (addr >> 4);
+    }
+
+    override @property uint flags() nothrow pure const { return 1; }
+}
+
+// Arrays of all integrals.
+class TypeInfo_Ab : TypeInfoArrayGeneric!bool {}
+class TypeInfo_Ag : TypeInfoArrayGeneric!byte {}
+class TypeInfo_Ah : TypeInfoArrayGeneric!ubyte {}
+class TypeInfo_Aa : TypeInfoArrayGeneric!char {}
+class TypeInfo_Axa : TypeInfoArrayGeneric!(const char) {}
+class TypeInfo_Aya : TypeInfoArrayGeneric!(immutable char) {}
+class TypeInfo_As : TypeInfoArrayGeneric!short {}
+class TypeInfo_At : TypeInfoArrayGeneric!ushort {}
+class TypeInfo_Au : TypeInfoArrayGeneric!wchar {}
+class TypeInfo_Ai : TypeInfoArrayGeneric!int {}
+class TypeInfo_Ak : TypeInfoArrayGeneric!uint {}
+class TypeInfo_Aw : TypeInfoArrayGeneric!dchar {}
+class TypeInfo_Al : TypeInfoArrayGeneric!long {}
+class TypeInfo_Am : TypeInfoArrayGeneric!ulong {}
+
+extern (C) void[] _adSort(void[] a, TypeInfo ti);
+
+unittest
+{
+    int[][] a = [[5,3,8,7], [2,5,3,8,7]];
+    _adSort(*cast(void[]*)&a, typeid(a[0]));
+    assert(a == [[2,5,3,8,7], [5,3,8,7]]);
+
+    a = [[5,3,8,7], [5,3,8]];
+    _adSort(*cast(void[]*)&a, typeid(a[0]));
+    assert(a == [[5,3,8], [5,3,8,7]]);
+}
+
+unittest
+{
+    // Issue 13073: original code uses int subtraction which is susceptible to
+    // integer overflow, causing the following case to fail.
+    int[] a = [int.max, int.max];
+    int[] b = [int.min, int.min];
+    assert(a > b);
+    assert(b < a);
+}
+
+unittest
+{
+    // Original test case from issue 13073
+    uint x = 0x22_DF_FF_FF;
+    uint y = 0xA2_DF_FF_FF;
+    assert(!(x < y && y < x));
+    uint[] a = [x];
+    uint[] b = [y];
+    assert(!(a < b && b < a)); // Original failing case
+    uint[1] a1 = [x];
+    uint[1] b1 = [y];
+    assert(!(a1 < b1 && b1 < a1)); // Original failing case
+}
+
+// Arrays of all floating point types.
+class TypeInfo_Af : TypeInfoArrayGeneric!float {}
+class TypeInfo_Ao : TypeInfoArrayGeneric!ifloat {}
+class TypeInfo_Ad : TypeInfoArrayGeneric!double {}
+class TypeInfo_Ap : TypeInfoArrayGeneric!idouble {}
+class TypeInfo_Ae : TypeInfoArrayGeneric!real {}
+class TypeInfo_Aj : TypeInfoArrayGeneric!ireal {}
+class TypeInfo_Aq : TypeInfoArrayGeneric!cfloat {}
+class TypeInfo_Ar : TypeInfoArrayGeneric!cdouble {}
+class TypeInfo_Ac : TypeInfoArrayGeneric!creal {}
+
+// void[] is a bit different, behaves like ubyte[] for comparison purposes.
+class TypeInfo_Av : TypeInfo_Ah
+{
+    override string toString() const { return "void[]"; }
+    override @property inout(TypeInfo) next() inout
+    {
+        return cast(inout) typeid(void);
+    }
+}
+
+// void
+class TypeInfo_v : TypeInfoGeneric!ubyte
+{
+    const: nothrow: pure: @trusted:
+
+    override string toString() const pure nothrow @safe { return "void"; }
+
+    override size_t getHash(scope const void* p)
+    {
+        assert(0);
+    }
+
+    override @property uint flags() nothrow pure
+    {
+        return 1;
+    }
+}
+
+// all delegates
+class TypeInfo_D : TypeInfoGeneric!(void delegate(int))
+{
+    const: nothrow: pure: @trusted:
+    override @property uint flags() nothrow pure
+    {
+        return 1;
+    }
+}
+
+// typeof(null)
+class TypeInfo_n : TypeInfo
+{
+    override string toString() const @safe { return "typeof(null)"; }
+
+    override size_t getHash(scope const void* p) const
+    {
+        return 0;
+    }
+
+    override bool equals(in void* p1, in void* p2) const @trusted
+    {
+        return true;
+    }
+
+    override int compare(in void* p1, in void* p2) const @trusted
+    {
+        return 0;
+    }
+
+    override @property size_t tsize() const
+    {
+        return typeof(null).sizeof;
+    }
+
+    override const(void)[] initializer() const @trusted
+    {
+        __gshared immutable void[typeof(null).sizeof] init;
+        return init;
+    }
+
+    override void swap(void *p1, void *p2) const @trusted
+    {
+    }
+
+    override @property immutable(void)* rtInfo() nothrow pure const @safe { return rtinfoNoPointers; }
+}
+
+// Object
+class TypeInfo_C : TypeInfo
+{
+    @trusted:
+    const:
+    //pure:
+    //nothrow:
+
+    override size_t getHash(scope const void* p)
+    {
+        Object o = *cast(Object*)p;
+        return o ? o.toHash() : 0;
+    }
+
+    override bool equals(in void* p1, in void* p2)
+    {
+        Object o1 = *cast(Object*)p1;
+        Object o2 = *cast(Object*)p2;
+
+        return o1 == o2;
+    }
+
+    override int compare(in void* p1, in void* p2)
+    {
+        Object o1 = *cast(Object*)p1;
+        Object o2 = *cast(Object*)p2;
+        int c = 0;
+
+        // Regard null references as always being "less than"
+        if (o1 !is o2)
+        {
+            if (o1)
+            {
+                if (!o2)
+                    c = 1;
+                else
+                    c = o1.opCmp(o2);
+            }
+            else
+                c = -1;
+        }
+        return c;
+    }
+
+    override @property size_t tsize() nothrow pure
+    {
+        return Object.sizeof;
+    }
+
+    override const(void)[] initializer() const @trusted
+    {
+        return (cast(void *)null)[0 .. Object.sizeof];
+    }
+
+    override @property uint flags() nothrow pure
+    {
+        return 1;
+    }
+}
