@@ -357,7 +357,7 @@ class TypeInfo
      * Bugs:
      *    fix https://issues.dlang.org/show_bug.cgi?id=12516 e.g. by changing this to a truly safe interface.
      */
-    size_t getHash(scope const void* p) @trusted nothrow const
+    size_t getHash(scope const void* p) /*@trusted*/ nothrow const
     {
         return hashOf(p);
     }
@@ -383,8 +383,17 @@ class TypeInfo
         }
     }
 
-    /** Get TypeInfo for 'next' type, as defined by what kind of type this is,
-    null if none. */
+    /**
+    Get TypeInfo for 'next' type, as defined by what kind of type this is,
+    null if none.
+
+    For `enum` types, `next()` returns the `typeid` of the base type of the `enum`.
+    For pointer types, `next()` returns the `typeid` of the pointee type.
+    For array types (static and dynamic), `next()` returns the `typeid` of the element type.
+    For associative arrays types, `next()` returns the `typeid` of the value type.
+    For vector types, `next()` returns the `typeid` of the underlying type.
+    For qualified types, `next()` returns the `typeid` of the unqualified type.
+    */
     @property inout(TypeInfo) next() nothrow pure inout @nogc { return null; }
 
     /**
@@ -413,7 +422,7 @@ class TypeInfo
     /** Return internal info on arguments fitting into 8byte.
      * See X86-64 ABI 3.2.3
      */
-    version (WithArgTypes) int argTypes(out TypeInfo arg1, out TypeInfo arg2) @safe nothrow
+    version (WithArgTypes) int argTypes(out TypeInfo arg1, out TypeInfo arg2) pure @safe nothrow @nogc
     {
         arg1 = this;
         return 0;
@@ -422,6 +431,807 @@ class TypeInfo
     /** Return info used by the garbage collector to do precise collection.
      */
     @property immutable(void)* rtInfo() nothrow pure const @safe @nogc { return rtinfoHasPointers; } // better safe than sorry
+}
+
+// For TypeInfoImpl
+struct Interface2
+{
+    TypeInfo    classinfo;  /// .classinfo for this interface (not for containing class)
+    void*[]     vtbl;
+    size_t      offset;     /// offset to Interface 'this' from Object 'this'
+}
+
+abstract class TypeInfo_Class2 : TypeInfo
+{
+    @property const(void*)[] vtbl() const @nogc nothrow pure @safe;
+    @property const(Interface2)[] interfaces() const @nogc nothrow pure @safe;
+    @property const(TypeInfo_Class2) base() const @nogc nothrow pure @safe;
+    @property const(void)* destructor() const @nogc nothrow pure @safe;
+    @property void function(Object) classInvariant() const @nogc nothrow pure @safe;
+
+    enum ClassFlags : uint
+    {
+        isCOMclass = 0x1,
+        noPointers = 0x2,
+        hasOffTi = 0x4,
+        hasCtor = 0x8,
+        hasGetMembers = 0x10,
+        hasTypeInfo = 0x20,
+        isAbstract = 0x40,
+        isCPPclass = 0x80,
+        hasDtor = 0x100,
+    }
+    @property ClassFlags classflags() const @nogc nothrow pure @safe;
+
+    @property const(void)* deallocator() const @nogc nothrow pure @safe;
+    @property void function(Object) defaultConstructor() const @nogc nothrow pure @safe;
+
+    static const(TypeInfo_Class) find(const scope char[] classname);
+    Object create() const;
+    // {
+    //     auto flags = classflags;
+    //     if ((flags & ClassFlags.hasCtor) && !defaultConstructor)
+    //         return null;
+    //     if (flags & ClassFlags.isAbstract)
+    //         return null;
+    //     Object result = _d_newclass(this);
+    //     if ((flags & ClassFlags.hasCtor) && defaultConstructor)
+    //     {
+    //         defaultConstructor(result);
+    //     }
+    //     return result;
+    // }
+
+    bool isBaseOf(scope const TypeInfo_Class2 child) const @nogc nothrow pure @trusted;
+}
+
+private template Select(bool condition, T1, T2)
+{
+    static if (condition) alias Select = T1;
+    else alias Select = T2;
+}
+
+/*
+Generic implementation of TypeInfo. Each distinct type gets its own instantiation.
+*/
+private class TypeInfoImpl(T) : Select!(is(T == class), TypeInfo_Class2, TypeInfo)
+{
+    const: // because this type has no state in the first place
+
+    // Original type, accessible in statically-typed contexts.
+    alias Type = T;
+    import core.internal.traits : Unqual;
+    // Type stripped of qualifiers, accessible in statically-typed contexts.
+    alias UnqualifiedType = Unqual!T;
+
+    // argTypes implementation
+    version (WithArgTypes)
+    {
+        static if (is(T U1 == enum))
+            override int argTypes(out TypeInfo arg1, out TypeInfo arg2) @nogc @trusted
+            {
+                return __typeid!U1.argTypes(arg1, arg2);
+            }
+        else static if (__traits(isStaticArray, T) || __traits(isAssociativeArray, T))
+            override int argTypes(out TypeInfo arg1, out TypeInfo arg2) @nogc @trusted
+            {
+                arg1 = __typeid!(void*); // TODO: revisit
+                return 0;
+            }
+        else static if (is(T == __vector(U2), U2))
+            override int argTypes(out TypeInfo arg1, out TypeInfo arg2) @nogc @trusted
+            {
+                return __typeid!U2.argTypes(arg1, arg2);
+            }
+        else static if (is(T == U3[], U3))
+            override int argTypes(out TypeInfo arg1, out TypeInfo arg2) @nogc @trusted
+            {
+                arg1 = __typeid!size_t; // TODO: revisit
+                arg1 = __typeid!U3; // TODO: revisit
+                return 0;
+            }
+        else static if (is(T == delegate))
+            override int argTypes(out TypeInfo arg1, out TypeInfo arg2) @nogc @trusted
+            {
+                arg1 = __typeid!(void*); // TODO: revisit
+                arg1 = __typeid!(void*); // TODO: revisit
+                return 0;
+            }
+    }
+
+    // The postblit API (static and dynamic)
+    static if (is(typeof(&T.__postblit)))
+        static void postblit(UnqualifiedType* p)
+        {
+            pragma(inline, true);
+            assert(p);
+            p.__postblit();
+        }
+    else static if (__traits(isStaticArray, T) && is(typeof(&UnqualifiedType.init[0].__postblit)))
+        static void postblit(UnqualifiedType* p)
+        {
+            assert(p);
+            foreach (i, ref e; *p)
+                e.__postblit();
+        }
+    else
+        private alias NoPostblit = void;
+
+    static if (!is(NoPostblit))
+        override void postblit(void* p)
+        {
+            postblit(cast(UnqualifiedType*) p);
+        }
+
+    // The destroy API (static and dynamic)
+    static if (is(typeof(&UnqualifiedType.__dtor)))
+        static void destroy(UnqualifiedType* p)
+        {
+            pragma(inline, true);
+            assert(p);
+            p.__dtor();
+        }
+    else static if (__traits(isStaticArray, T) && is(typeof(&UnqualifiedType.init[0].__dtor)))
+        static void destroy(UnqualifiedType* p)
+        {
+            assert(p);
+            foreach_reverse (i, ref e; *p)
+                e.__dtor();
+        }
+    else
+        private alias NoDestroy = void;
+
+    static if (!is(NoDestroy))
+        override void destroy(void* p)
+        {
+            destroy(cast(UnqualifiedType*) p);
+        }
+
+    // Supports typeid(T) == typeid(U) during compilation
+    static bool opEquals(U)(const TypeInfoImpl!U rhs) @nogc nothrow pure @safe
+    {
+        pragma(inline, true);
+        return is(T == U);
+    }
+
+    // Is this equal to another TypeInfo?
+    // WARNING: relies on a 1:1 mapping Type : TypeInfoImpl!Type
+    override bool opEquals(const Object rhs) @nogc nothrow pure @safe
+    {
+        return this is rhs
+            // Instance may be duplicated across DLLs, but has the same type.
+            || cast(const TypeInfoImpl) rhs !is null;
+    }
+
+    // Support typeid(T) < typeid(U) etc. during compilation.
+    static int opCmp(U)(const TypeInfoImpl!U rhs) @nogc nothrow pure @safe
+    {
+        pragma(inline, true);
+        return is(T == U) ? 0 : __cmp(T.stringof, U.stringof);
+    }
+
+    // Is this less than/equal/greater than another TypeInfo?
+    // WARNING: relies on a 1:1 mapping Type : TypeInfoImpl!Type
+    override int opCmp(const Object rhs) @safe
+    {
+        if (this is rhs
+                // Instance may be duplicated across DLLs, but has the same type.
+                || cast(const TypeInfoImpl) rhs !is null)
+            return 0;
+        if (auto ti = cast(const TypeInfo) rhs)
+            return __cmp(this.toString, ti.toString);
+        // TypeInfo objects are all "greater" than all other types.
+        // TODO: devise a principled way to define/justify this.
+        return 1;
+    }
+
+    static string toString() @nogc nothrow pure @safe { return T.stringof; }
+
+    override string toString() @nogc @safe { return T.stringof; }
+
+    final static size_t getHash(scope const UnqualifiedType* p) nothrow
+    {
+        pragma(inline, true);
+        assert(p);
+        static if (is(UnqualifiedType : Object))
+            // Cheat constness away
+            return *p ? (cast(UnqualifiedType) *p).toHash() : 0;
+        else static if (is(T == interface))
+            return *p ? (cast(Object) *p).toHash() : 0;
+        else static if (is(T U == enum))
+            return hashOf(*cast(const U*) p);
+        else static if (is(immutable T == immutable void) || is(T == function))
+            return 0; // these aren't hashable
+        else
+            return hashOf(*p);
+    }
+
+    override size_t getHash(scope const void* p) nothrow
+    {
+        return getHash(cast(const UnqualifiedType *) p);
+    }
+
+    static if (!is(T == function))
+    {
+        static bool equals(in T* lhs, in T* rhs)
+        {
+            pragma(inline, true);
+            assert(lhs && rhs);
+            static if (is(immutable T == immutable void))
+                return lhs is rhs;
+            else static if (is(T == __vector(U), U))
+                return __typeid!U.equals(cast(const U*) lhs, cast(const U*) rhs);
+            else
+                return *lhs == *rhs; // works for classes and interfaces, too
+        }
+
+        override bool equals(in void* lhs, in void* rhs)
+        {
+            return equals(cast(const T*) lhs, cast(const T*) rhs);
+        }
+    }
+
+    static if (!__traits(isAssociativeArray, T) && !is(T == function))
+    {
+        final static int compare(in T* lhs, in T* rhs)
+        {
+            pragma(inline, true);
+            assert(lhs && rhs);
+            static if (is(T == struct))
+            {
+                // Avoid comparing twice for structs. Keep this case separate from the one
+                // below because error messages are clearer.
+                return .__cmp(*lhs, *rhs);
+            }
+            else static if (is(T == interface) || is(T == class))
+            {
+                // Cheat constness away.
+                return .__cmp(cast(UnqualifiedType) *lhs, cast(UnqualifiedType) *rhs);
+            }
+            else static if (is(T == class))
+            {
+                return .__cmp(cast(UnqualifiedType) *lhs, cast(UnqualifiedType) *rhs);
+            }
+            else static if (is(typeof(.__cmp(*lhs, *rhs)) == int))
+            {
+                // This will catch arrays
+                return .__cmp(*lhs, *rhs);
+            }
+            else static if (is(T U == enum))
+            {
+                return __typeid!U.compare(cast(const U*) lhs, cast(const U*) rhs);
+            }
+            else static if (__traits(isFloating, T))
+            {
+                import rt.util.typeinfo;
+                return Floating!UnqualifiedType.compare(*lhs, *rhs);
+            }
+            else static if (is(immutable T == immutable void))
+            {
+                return 0;
+            }
+            else static if (is(T == __vector(U), U))
+            {
+                return __typeid!U.compare(cast(const U*) lhs, cast(const U*) rhs);
+            }
+            else
+            {
+                return int(*lhs > *rhs) - int(*lhs < *rhs);
+            }
+        }
+
+        override int compare(in void* p1, in void* p2)
+        {
+            return compare(cast(const T*) p1, cast(const T*) p2);
+        }
+    }
+
+    final static @property size_t tsizeImpl() @nogc nothrow pure @safe
+    {
+        pragma(inline, true);
+        static if (is(T == function))
+            return 0;
+        else
+            return T.sizeof;
+    }
+
+    alias tsize = tsizeImpl;
+
+    override @property size_t tsize() @nogc nothrow pure @safe
+    {
+        return tsizeImpl;
+    }
+
+    final static @property size_t talignImpl() @nogc nothrow pure @safe
+    {
+        pragma(inline, true);
+        static if (is(T == function))
+            return 0;
+        else
+            return T.alignof;
+    }
+
+    alias talign = talignImpl;
+
+    override @property size_t talign() @nogc nothrow pure @safe
+    {
+        return talignImpl;
+    }
+
+    private final static @property auto initializerImpl() @nogc nothrow pure @trusted
+    {
+        pragma(inline, true);
+        static if (is(T == U[n], U, size_t n))
+        {
+            // Static arrays only return the element initializer
+            return __typeid!U.initializerImpl();
+        }
+        else static if (__traits(isZeroInit, T))
+        {
+            // BUG - this won't work:
+            // return (cast(immutable T*) null)[0 .. 1];
+            immutable(T)[] result = null;
+            return result.ptr[0 .. 1];
+        }
+        else static if (is(T == class))
+        {
+            // Credit: http://dpldocs.info/this-week-in-d/Blog.Posted_2020_07_27.html
+            pragma(mangle, "_D" ~ T.mangleof[1 .. $] ~ "6__initZ")
+            extern immutable ubyte[__traits(classInstanceSize, T)] initial;
+            return initial[];
+        }
+        else static if (is(T == function))
+        {
+            return null;
+        }
+        else
+        {
+            static immutable T data;
+            immutable(T)[] result = (&data)[0 .. 1];
+            return result;
+        }
+    }
+
+    alias initializer = initializerImpl;
+
+    override @property immutable(void)[] initializer() @nogc nothrow pure @safe
+    {
+        return initializerImpl;
+    }
+
+    static if (!is(T == function))
+    {
+        final static void swap(UnqualifiedType *p1, UnqualifiedType *p2) @nogc nothrow pure @trusted
+        {
+            pragma(inline, true);
+            static if (is(UnqualifiedType == U[n], U, size_t n))
+            {
+                // Avoid creating a large temporary on the stack.
+                foreach (i, ref e; *p1)
+                {
+                    __typeid!U.swap(&e, &(*p2)[i]);
+                }
+            }
+            else
+            {
+                ubyte[T.sizeof] buf;
+                import core.stdc.string : memcpy;
+                memcpy(&buf, p1, T.sizeof);
+                memcpy(p1, p2, T.sizeof);
+                memcpy(p2, &buf, T.sizeof);
+            }
+        }
+
+        override void swap(void *p1, void *p2) @nogc nothrow pure
+        {
+            return swap(cast(UnqualifiedType *) p1, cast(UnqualifiedType *) p2);
+        }
+    }
+
+    final static @property auto rtInfoImpl() @nogc nothrow pure @safe
+    {
+        pragma(inline, true);
+        static if (is(T == function))
+            return null;
+        else
+            return RTInfo!T;
+    }
+
+    alias rtInfo = rtInfoImpl;
+
+    override @property immutable(void)* rtInfo() @nogc @safe
+    {
+        return rtInfoImpl;
+    }
+
+    static if (is(T == U*, U))
+    {
+        private alias NextType = U;
+        private enum uint _flags = 1;
+    }
+    else static if (is(T == U[], U))
+    {
+        private alias NextType = U;
+        private enum uint _flags = 1;
+    }
+    else static if (is(T == U[n], U, size_t n))
+    {
+        private alias NextType = U;
+        private enum uint _flags = __typeid!U._flags;
+    }
+    else static if (is(T == V[K], K, V))
+    {
+        private alias NextType = V;
+        private enum uint _flags = 1;
+    }
+    else static if (is(T U == enum))
+    {
+        private alias NextType = U;
+        private enum uint _flags = __typeid!U._flags;
+    }
+    else static if (is(T == __vector(U), U))
+    {
+        private alias NextType = U;
+        private enum uint _flags = 2;
+    }
+    else static if (is(T == delegate))
+    {
+        private alias NextType = T;
+        private enum uint _flags = 1;
+    }
+    else static if (is(T == struct))
+    {
+        private alias NextType = T;
+        private enum uint _flags = () {
+            // If at least one field has pointers, the struct has pointers.
+            // This loop goes all the way. Otherwise: "unreachable code" warnings.
+            uint result = 0;
+            static foreach (const i; 0 .. T.tupleof.length)
+            {
+                static if (__typeid!(typeof(T.tupleof[i])).flags)
+                    result = 1;
+            }
+            return result;
+        }();
+    }
+    else static if (is(T == class) || is(T == interface))
+    {
+        private alias NextType = T;
+        private enum uint _flags = 1;
+    }
+    else
+    {
+        private alias NextType = T;
+        private enum uint _flags = 0;
+    }
+
+    static if (!is(T == NextType))
+        override @property inout(TypeInfo) next() nothrow @nogc pure inout @trusted
+        {
+            return cast(typeof(return)) __typeid!NextType;
+        }
+
+    static @property uint flags() nothrow @nogc pure @safe { return _flags; }
+
+    override @property uint flags() nothrow @nogc pure @safe { return _flags; }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Class-specific stuff
+    ////////////////////////////////////////////////////////////////////////////
+
+    static if (is(T == class))
+    {
+        override Object create() const
+        {
+            assert(0, "Not implemented");
+        }
+
+        const: @nogc: nothrow: pure: @safe:
+
+        override const(OffsetTypeInfo)[] offTi()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property const(void*)[] vtbl()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property immutable(Interface2)[] interfaces()
+        {
+            static if (is(T Bases == super))
+            {
+                static if (Bases.length > 1)
+                {
+                    static immutable Interface2[Bases.length - 1] result = {
+                        Interface2[Bases.length - 1] result;
+                        static foreach (i; 1 .. Bases.length)
+                        {
+                            result[i - 1].classinfo = __typeid!(Bases[i]);
+                            // result[i - 1].vtbl = ?
+                            // result[i - 1].offset = ?
+                        }
+                        return result;
+                    }();
+                    return result;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        override @property const(TypeInfo_Class2) base()
+        {
+            static if (is(T Bases == super))
+            {
+                static if (Bases.length)
+                    return __typeid!(Bases[0]);
+                else
+                    return null;
+            }
+        }
+
+        override @property const(void)* destructor()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property void function(Object) classInvariant()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property TypeInfo_Class2.ClassFlags classflags()
+        {
+            return m_flags;
+        }
+
+        override @property const(void)* deallocator()
+        {
+            assert(0, "Not implemented");
+        }
+
+        override @property void function(Object) defaultConstructor()
+        {
+            assert(0, "Not implemented");
+        }
+        override bool isBaseOf(scope const TypeInfo_Class2 child)
+        {
+            assert(0, "Not implemented");
+        }
+
+        // Class flags
+        //private enum bool isCOMclass = ?
+        static if (is(T == class) && is(typeof(T.tupleof.length)))
+            private enum bool noPointers = {
+                // If at least one field has pointers, the class has pointers.
+                // This loop goes all the way. Otherwise: "unreachable code" warnings.
+                uint result = true;
+                static foreach (const i; 0 .. T.tupleof.length)
+                {{
+                    alias U = typeof(T.tupleof[i]);
+                    static if (is(U == class) || is(U == interface))
+                        result = false;
+                    else static if (__typeid!U.flags)
+                        result = false;
+                }}
+                return result;
+            }();
+        else
+            private enum bool noPointers = _flags & 1;
+        //private enum bool hasOffTi = ?
+        private enum bool hasCtor = is(typeof(&T.__ctor));
+        //private enum bool hasGetMembers = ?;
+        //private enum bool hasTypeInfo = ?;
+        private enum bool isAbstract = __traits(isAbstractClass, T);
+        private enum bool isCPPclass = is(T == class) && !is(UnqualifiedType : Object);
+        private enum bool hasDtor = is(T == class) && is(typeof(&T.__dtor));
+
+        static enum ClassFlags m_flags = cast(ClassFlags) (
+            //(-uint(isCOMclass) & ClassFlags.isCOMclass) |
+            (-uint(noPointers) & ClassFlags.noPointers) |
+            //(-uint(hasOffTi) & ClassFlags.hasOffTi) |
+            (-uint(hasCtor) & ClassFlags.hasCtor) |
+            //(-uint(hasGetMembers) & ClassFlags.hasGetMembers) |
+            //(-uint(hasTypeInfo) & ClassFlags.hasTypeInfo) |
+            (-uint(isAbstract) & ClassFlags.isAbstract) |
+            (-uint(isCPPclass) & ClassFlags.isCPPclass) |
+            (-uint(hasDtor) & ClassFlags.hasDtor)
+        );
+    }
+}
+
+/*
+Run-time type information for scalar types (int for now).
+*/
+template __typeid(T)
+{
+    // On-demand singleton object in static storage
+    private immutable singleton = new immutable TypeInfoImpl!T;
+    // Get rid of the immutable qualifier for convenience; the type has no state anyway
+    @property @trusted pure @nogc nothrow TypeInfoImpl!T __typeid()
+    {
+        return cast() singleton;
+    }
+}
+
+unittest
+{
+    static void test(Ts...)()
+    {
+        static if (Ts.length > 1)
+        {
+            test!(Ts[0]);
+            test!(Ts[1 .. $]);
+        }
+        else
+        {
+            alias T = Ts[0];
+            import core.internal.traits : Unqual;
+            alias UnqualifiedT = Unqual!T;
+            alias id = __typeid!T;
+            static assert(is(id.Type == T));
+            const TypeInfo id2 = id; // Implicitly convert to base, losing static type information
+
+            static assert(id == id && id <= id && id >= id);
+            static assert(id2 == id && id2 <= id && id2 >= id);
+            static assert(id == id2 && id <= id2 && id >= id2);
+            static assert(id.toString == T.stringof);
+            static assert(id2.toString == T.stringof);
+
+            static if (is(T : int) && T.sizeof == 4)
+            {
+                int a = 42, b = 42, c = 43;
+                assert(id.getHash(&a) == a);
+                assert(id2.getHash(&a) == a);
+                assert(id.equals(&a, &b));
+                assert(id2.equals(&a, &b));
+                assert(!id.equals(&a, &c));
+                assert(!id2.equals(&a, &c));
+                static if (!__traits(isAssociativeArray, T))
+                {
+                    assert(id.compare(&a, &b) == 0);
+                    assert(id2.compare(&a, &b) == 0);
+                    assert(id.compare(&a, &c) == -1);
+                    assert(id2.compare(&a, &c) == -1);
+                    assert(id.compare(&c, &a) == 1);
+                    assert(id2.compare(&c, &a) == 1);
+                }
+                assert(id.initializer.ptr is null);
+                assert(id2.initializer.ptr is null);
+                id.swap(&a, &c);
+                assert(a == 43 && c == 42);
+                id2.swap(&a, &c);
+                assert(a == 42 && c == 43);
+                static assert(id.flags == 0);
+                static assert(id2.flags == 0);
+            }
+            else
+            {
+                static if (is(typeof({ UnqualifiedT x; })))
+                {
+                    UnqualifiedT x;
+                    assert(id2.getHash(&x) == id.getHash(&x));
+                    assert(id.equals(&x, &x) || __traits(isFloating, T));
+                    assert(id2.equals(&x, &x) || __traits(isFloating, T));
+                    static if (!__traits(isAssociativeArray, T))
+                    {
+                        assert(id.compare(&x, &x) == 0);
+                        assert(id2.compare(&x, &x) == 0);
+                    }
+                }
+            }
+
+            static assert(id.tsize == T.sizeof);
+            assert(id2.tsize == T.sizeof);
+
+            static if (is(T == U*, U))
+            {
+                static assert(id.next == __typeid!U);
+                static assert(id.flags == 1);
+                static assert(id2.flags == 1);
+            }
+            else static if (is(T == int[n], size_t n))
+            {
+                static assert(id.next == __typeid!int);
+                static assert(is(typeof(id.initializer()) == immutable(int)[]));
+                assert(id.initializer().ptr is null);
+                assert(id.initializer().length == 1);
+            }
+            else static if (is(T == U[], U))
+            {
+                static assert(id.next == __typeid!U);
+                static if (is(U == int))
+                {
+                    auto a = [ 1, 2, 3 ], b = [ 0, 1, 2, 3, 4 ];
+                    assert(!id.equals(&a, &b));
+                    assert(!id2.equals(&a, &b));
+                    b = b[1 .. 4];
+                    assert(id.equals(&a, &b));
+                    assert(id2.equals(&a, &b));
+                }
+                static assert(id.flags == 1);
+                static assert(id2.flags == 1);
+            }
+            else static if (is(T U == enum))
+            {
+                static assert(id.next == __typeid!U);
+                if (id.initializer.ptr)
+                {
+                    T x1;
+                    T x2 = *cast(T*) id.initializer.ptr;
+                    assert(x1 == x2);// || __traits(isFloating, T));
+                }
+            }
+
+            assert(id.rtInfo == RTInfo!T);
+            assert(id2.rtInfo == RTInfo!T);
+
+            static if (is(T == class))
+            {
+                auto cid = __typeid!T;
+                TypeInfo_Class2 cid2 = __typeid!T;
+                assert(cid.base == cid2.base);
+                assert(cid.interfaces == cid2.interfaces);
+            }
+        }
+    }
+    enum E1 { a, b }
+    enum E2 : float { a, b }
+    enum E3 : cdouble { a = 0 + 42i, b }
+    enum E4 { a = 42, b }
+    struct S1 { double a = 0; }
+    struct S2 { int a; S2* next; }
+    struct S3 { int a; S2[] array; }
+    struct S4 { int a; S2 b; }
+
+    class C1 {}
+    extern(C++) class C2 {}
+
+    interface I1 {
+        void fun();
+    }
+    interface I2 {
+        void gun();
+    }
+    class C3 : I1, I2 {
+        void fun() {}
+        void gun() {}
+        double x;
+    }
+
+    test!(
+        int, const(int), shared(int), inout(int), immutable(int),
+        inout(const int), shared(const int), inout(shared int), const(inout(shared int)),
+        int*, const(int*), shared(int*), inout(int*), immutable(int*),
+        inout(const int*), shared(const int*), inout(shared int*), const(inout(shared int*)),
+        cdouble, ifloat,
+        int*, int[], E1, E2, E3, E4,
+        int[42], int[int], __vector(int[4]),
+        int function(double), string delegate(int[]),
+        S1, const S1, shared S1, const inout shared S1, immutable S1,
+        S2, const S2, shared S2, const inout shared S2, immutable S2,
+        C1, C3, I1, I2,
+        );
+
+    static assert(__typeid!S1.flags == 0);
+    static assert(__typeid!S2.flags == 1);
+    static assert(__typeid!S3.flags == 1);
+    static assert(__typeid!S4.flags == 1);
+
+    // Test a static array with types with destructor.
+    static uint x = 0;
+    static struct A { ~this() { ++x; } }
+    A[42] a;
+    __typeid!(A[42]).destroy(&a);
+    assert(x == 42);
 }
 
 class TypeInfo_Enum : TypeInfo
@@ -453,7 +1263,7 @@ class TypeInfo_Enum : TypeInfo
 
     override @property size_t talign() nothrow pure const { return base.talign; }
 
-    version (WithArgTypes) override int argTypes(out TypeInfo arg1, out TypeInfo arg2)
+    version (WithArgTypes) override int argTypes(out TypeInfo arg1, out TypeInfo arg2) nothrow
     {
         return base.argTypes(arg1, arg2);
     }
@@ -895,6 +1705,10 @@ class TypeInfo_Function : TypeInfo
     assert(typeid(functionTypes[0]).toString() == "void function()");
     assert(typeid(functionTypes[1]).toString() == "void function(int)");
     assert(typeid(functionTypes[2]).toString() == "int function(int, int)");
+
+    static assert(__typeid!(functionTypes[0]).toString() == "void()");
+    static assert(__typeid!(functionTypes[1]).toString() == "void(int)");
+    static assert(__typeid!(functionTypes[2]).toString() == "int(int, int)");
 }
 
 class TypeInfo_Delegate : TypeInfo
@@ -913,8 +1727,10 @@ class TypeInfo_Delegate : TypeInfo
     {
         double sqr(double x) { return x * x; }
         assert(typeid(typeof(&sqr)).toString() == "double delegate(double) pure nothrow @nogc @safe");
+        assert(__typeid!(typeof(&sqr)).toString() == "double delegate(double) pure nothrow @nogc @safe");
         int g;
         assert(typeid(typeof((int a, int b) => a + b + g)).toString() == "int delegate(int, int) pure nothrow @nogc @safe");
+        assert(__typeid!(typeof((int a, int b) => a + b + g)).toString() == "int delegate(int, int) pure nothrow @nogc @safe");
     }
 
     override bool opEquals(Object o)
@@ -1429,6 +2245,7 @@ class TypeInfo_Struct : TypeInfo
     }
     S s;
     assert(!typeid(S).equals(&s, &s));
+    assert(!__typeid!S.equals(&s, &s));
 }
 
 class TypeInfo_Tuple : TypeInfo
@@ -4019,18 +4836,29 @@ public import core.internal.switch_: __switch_error;
 
 public @trusted @nogc nothrow pure extern (C) void _d_delThrowable(scope Throwable);
 
-// Compare class and interface objects for ordering.
-private int __cmp(Obj)(Obj lhs, Obj rhs)
-if (is(Obj : Object))
+// Compare class objects for ordering.
+private int __cmp(C1, C2)(C1 lhs, C2 rhs)
+if (is(C1 : Object) && is(C2 : Object))
 {
-    if (lhs is rhs)
-        return 0;
-    // Regard null references as always being "less than"
-    if (!lhs)
-        return -1;
-    if (!rhs)
-        return 1;
-    return lhs.opCmp(rhs);
+    static if (is(C1 == typeof(null)))
+        static if (is(C2 == typeof(null)))
+            return 0;
+        else
+            return -int(rhs !is null);
+    else
+        static if (is(C2 == typeof(null)))
+            return lhs !is null;
+        else
+        {
+            if (lhs is rhs)
+                return 0;
+            // Regard null references as always being "less than"
+            if (!lhs)
+                return -1;
+            if (!rhs)
+                return 1;
+            return lhs.opCmp(rhs);
+        }
 }
 
 // objects
@@ -4057,6 +4885,21 @@ if (is(Obj : Object))
 
     assert(__cmp([c1, c1][], [c2, c2][]) < 0);
     assert(__cmp([c2, c2], [c1, c1]) > 0);
+}
+
+// Compare interfaces for ordering
+private int __cmp(C1, C2)(C1 lhs, C2 rhs)
+if (is(C1 == interface) || is(C2 == interface))
+{
+    static if (is(C1 == interface))
+        auto lhso = cast(Object) lhs;
+    else
+        alias lhso = lhs;
+    static if (is(C2 == interface))
+        auto rhso = cast(Object) rhs;
+    else
+        alias rhso = rhs;
+    return .__cmp(lhso, rhso);
 }
 
 // structs
@@ -4090,6 +4933,25 @@ if (is(Obj : Object))
     assert(a <= "hello");
     assert(a >= "hello");
     assert(a <  "я");
+}
+
+// Compare struct objects for ordering.
+private auto __cmp(T)(auto ref T lhs, auto ref T rhs)
+if (is(T == struct))
+{
+    static if (is(typeof(lhs.opCmp(rhs))))
+        return lhs.opCmp(rhs);
+    else
+    {
+        // Lexicographical compare on members
+        static foreach (const i; 0 .. lhs.tupleof.length)
+        {{
+            alias F = typeof(lhs.tupleof[i]);
+            if (int r = __typeid!F.compare(&lhs.tupleof[i], &rhs.tupleof[i]))
+                return r;
+        }}
+        return 0;
+    }
 }
 
 // Used in Exception Handling LSDA tables to 'wrap' C++ type info

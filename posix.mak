@@ -276,11 +276,10 @@ endif
 .PHONY : unittest
 ifeq (1,$(BUILD_WAS_SPECIFIED))
 unittest : $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
-	@echo done
 else
 unittest : unittest-debug unittest-release
 unittest-%: target
-	$(MAKE) -f $(MAKEFILE) unittest OS=$(OS) MODEL=$(MODEL) DMD=$(DMD) BUILD=$*
+	$(MAKE) -s -f $(MAKEFILE) unittest OS=$(OS) MODEL=$(MODEL) DMD=$(DMD) BUILD=$*
 endif
 
 ifeq ($(OS),linux)
@@ -328,7 +327,9 @@ $(ROOT)/unittest/% : $(ROOT)/unittest/test_runner
 # make the file very old so it builds and runs again if it fails
 	@touch -t 197001230123 $@
 # run unittest in its own directory
-	$(QUIET)$(TIMELIMIT)$< $(call moduleName,$*)
+# output PASS info on the same line if running in the console to cut noise
+	$(QUIET)$(TIMELIMIT)$< $(call moduleName,$*) \
+		| ([ -t 1 ] && while read line; do printf '%-80s\r' "$$line"; done || cat)
 # succeeded, render the file new again
 	@touch $@
 

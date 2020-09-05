@@ -84,7 +84,12 @@ private string miniFormat(V)(const scope ref V v)
     import core.stdc.stdio : sprintf;
     import core.stdc.string : strlen;
 
-    static if (is(V == shared T, T))
+    static if (is(V E == enum))
+    {
+        const E base = v;
+        return miniFormat(base);
+    }
+    else static if (is(V == shared T, T))
     {
         // Use atomics to avoid race conditions whenever possible
         static if (__traits(compiles, atomicLoad(v)))
