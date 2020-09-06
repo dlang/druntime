@@ -267,27 +267,19 @@ unittest
     }();
 }
 
+/**
+TypeInfo information for built-in types.
+*/
 private class TypeInfoGeneric(T) : TypeInfo
 {
-    static if (__traits(isFloating, T))
-    {
-        static if (is(T == ifloat)) private alias Real = float;
-        else static if (is(T == idouble)) private alias Real = double;
-        else static if (is(T == ireal)) private alias Real = real;
-        else private alias Real = T;
-    }
-
-    @trusted:
-    const:
-    pure:
-    nothrow:
+    const: nothrow: pure: @trusted:
 
     override string toString() const pure nothrow @safe { return T.stringof; }
 
     override size_t getHash(scope const void* p)
     {
         static if (__traits(isFloating, T))
-            return Floating!Real.hashOf(*cast(Real*)p);
+            return Floating!T.hashOf(*cast(T*)p);
         else
             return hashOf(*cast(const T *)p);
     }
@@ -295,7 +287,7 @@ private class TypeInfoGeneric(T) : TypeInfo
     override bool equals(in void* p1, in void* p2)
     {
         static if (__traits(isFloating, T))
-            return Floating!Real.equals(*cast(Real*)p1, *cast(Real*)p2);
+            return Floating!T.equals(*cast(T*)p1, *cast(T*)p2);
         else
             return *cast(T *)p1 == *cast(T *)p2;
     }
@@ -304,7 +296,7 @@ private class TypeInfoGeneric(T) : TypeInfo
     {
         static if (__traits(isFloating, T))
         {
-            return Floating!Real.compare(*cast(Real*)p1, *cast(Real*)p2);
+            return Floating!T.compare(*cast(T*)p1, *cast(T*)p2);
         }
         else static if (T.sizeof < int.sizeof)
         {
@@ -356,9 +348,49 @@ private class TypeInfoGeneric(T) : TypeInfo
     }
 
     static if (__traits(isFloating, T))
-        static if (is(immutable Real == immutable real) && T.mant_dig != 64) // exclude 80-bit X87
+        static if (is(immutable T == immutable real) && T.mant_dig != 64) // exclude 80-bit X87
             // passed in SIMD register
             override @property uint flags() const { return 2; }
+}
+
+/**
+Type `T` has the same layout and alignment as type `Base`, but slightly different behavior.
+Example: `float` and `ifloat` or `char` and `ubyte`.
+We assume the two types hash the same, swap the same, have the same ABI flags, and compare the same for
+equality. For ordering comparisons, we detect during compilation whether they have different min and max
+values (e.g. signed vs. unsigned) and override appropriately. For initializer, we detect if we need to
+override. The overriding initializer should be nonzero.
+*/
+private class TypeInfoGeneric(T, Base) : TypeInfoGeneric!Base
+if (T.sizeof == Base.sizeof && T.alignof == Base.alignof)
+{
+    const: nothrow: pure: @trusted:
+    override string toString() { return T.stringof; }
+    static if (T.max != Base.max)
+        // Must override comparison, signedness is different
+        override int compare(in void* p1, in void* p2)
+        {
+            static if (T.sizeof < int.sizeof)
+            {
+                return *cast(T *)p1 - *cast(T *)p2;
+            }
+            else
+            {
+                if (*cast(T *)p1 < *cast(T *)p2)
+                    return -1;
+                if (*cast(T *)p1 > *cast(T *)p2)
+                    return 1;
+                return 0;
+            }
+        }
+    static if (T.init != Base.init)
+        // Must override initializer.
+        override const(void)[] initializer() @trusted
+        {
+            static assert(!__traits(isZeroInit, T), "Please inherit the other way");
+            static immutable T[1] c;
+            return c;
+        }
 }
 
 unittest
@@ -409,9 +441,7 @@ private class TypeInfoArrayGeneric(T) : TypeInfo_Array
         static if (__traits(isFloating, T))
             return Array!Real.hashOf(*cast(Real[]*)p);
         else
-        {
             return hashOf(*cast(const T[]*) p);
-        }
     }
 
     override bool equals(in void* p1, in void* p2) const
@@ -505,28 +535,28 @@ class TypeInfo_v : TypeInfoGeneric!ubyte
 }
 
 // All integrals.
-class TypeInfo_b : TypeInfoGeneric!bool {}
+class TypeInfo_b : TypeInfoGeneric!(bool, ubyte) {}
 class TypeInfo_g : TypeInfoGeneric!byte {}
-class TypeInfo_h : TypeInfoGeneric!ubyte {}
-class TypeInfo_a : TypeInfoGeneric!char {}
-class TypeInfo_u : TypeInfoGeneric!wchar {}
-class TypeInfo_w : TypeInfoGeneric!dchar {}
+class TypeInfo_h : TypeInfoGeneric!(ubyte, byte) {}
+class TypeInfo_a : TypeInfoGeneric!(char, ubyte) {}
+class TypeInfo_u : TypeInfoGeneric!(wchar, ushort) {}
+class TypeInfo_w : TypeInfoGeneric!(dchar, uint) {}
 class TypeInfo_s : TypeInfoGeneric!short {}
-class TypeInfo_t : TypeInfoGeneric!ushort {}
+class TypeInfo_t : TypeInfoGeneric!(ushort, short) {}
 class TypeInfo_i : TypeInfoGeneric!int {}
-class TypeInfo_k : TypeInfoGeneric!uint {}
+class TypeInfo_k : TypeInfoGeneric!(uint, int) {}
 class TypeInfo_l : TypeInfoGeneric!long {}
-class TypeInfo_m : TypeInfoGeneric!ulong {}
+class TypeInfo_m : TypeInfoGeneric!(ulong, long) {}
 static if (is(cent)) class TypeInfo_zi : TypeInfoGeneric!cent {}
 static if (is(ucent)) class TypeInfo_zk : TypeInfoGeneric!ucent {}
 
 // All simple floating-point types.
 class TypeInfo_f : TypeInfoGeneric!float {}
-class TypeInfo_o : TypeInfoGeneric!ifloat {}
+class TypeInfo_o : TypeInfoGeneric!(ifloat, float) {}
 class TypeInfo_d : TypeInfoGeneric!double {}
-class TypeInfo_p : TypeInfoGeneric!idouble {}
+class TypeInfo_p : TypeInfoGeneric!(idouble, double) {}
 class TypeInfo_e : TypeInfoGeneric!real {}
-class TypeInfo_j : TypeInfoGeneric!ireal {}
+class TypeInfo_j : TypeInfoGeneric!(ireal, real) {}
 
 // All complex floating-point types.
 
