@@ -573,7 +573,7 @@ class TypeInfo_P : TypeInfoGeneric!(void*)
 
 unittest
 {
-    with (typeid(int*))
+    with (new TypeInfo_P)
     {
         int x;
         int* p = &x;
@@ -679,7 +679,7 @@ class TypeInfo_D : TypeInfoGeneric!(void delegate(int))
 
     unittest
     {
-        assert(typeid(int delegate(string)).flags == 1);
+        assert(typeid(void delegate(int)).flags == 1);
     }
 }
 
