@@ -735,86 +735,38 @@ class TypeInfo_n : TypeInfo
     }
 }
 
-// Object
-class TypeInfo_C : TypeInfo
+// Test typeinfo for classes.
+unittest
 {
-    @trusted:
-    const:
-    //pure:
-    //nothrow:
-
-    override size_t getHash(scope const void* p)
+    static class Bacon
     {
-        Object o = *cast(Object*)p;
-        return o ? o.toHash() : 0;
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        Object o1 = *cast(Object*)p1;
-        Object o2 = *cast(Object*)p2;
-
-        return o1 == o2;
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        Object o1 = *cast(Object*)p1;
-        Object o2 = *cast(Object*)p2;
-        if (o1 is o2)
-            return 0; // includes the case null vs null
-        if (int result = (o1 !is null) - (o2 !is null))
-            return result;
-        return o1.opCmp(o2);
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return Object.sizeof;
-    }
-
-    override const(void)[] initializer() const @trusted
-    {
-        assert(0);
-    }
-
-    override @property uint flags() nothrow pure
-    {
-        return 1;
-    }
-
-    unittest
-    {
-        static class Bacon
+        int sizzle = 1;
+        override int opCmp(Object rhs) const
         {
-            int sizzle = 1;
-            override int opCmp(Object rhs) const
-            {
-                if (auto rhsb = cast(Bacon) rhs)
-                    return (sizzle > rhsb.sizzle) - (sizzle < rhsb.sizzle);
-                return 0;
-            }
+            if (auto rhsb = cast(Bacon) rhs)
+                return (sizzle > rhsb.sizzle) - (sizzle < rhsb.sizzle);
+            return 0;
         }
-        Object obj = new Bacon;
-        Bacon obj2 = new Bacon;
-        obj2.sizzle = 2;
-        auto dummy = new Object;
-        with (typeid(obj))
-        {
-            assert(toString[$ - 6 .. $] == ".Bacon");
-            assert(getHash(&obj) != 0);
-            assert(equals(&obj, &obj));
-            assert(!equals(&obj, &obj2));
-            assert(compare(&obj, &dummy) == 0);
-            assert(compare(&obj, &obj) == 0);
-            assert(compare(&obj, &obj2) == -1);
-            assert(compare(&obj2, &obj) == 1);
-            assert(tsize == Object.sizeof);
-            assert(rtInfo == RTInfo!Bacon);
-            assert(tsize == Object.sizeof);
-            assert(initializer.ptr !is null);
-            assert(initializer.length == __traits(classInstanceSize, Bacon));
-            assert(flags == 1);
-        }
+    }
+    Object obj = new Bacon;
+    Bacon obj2 = new Bacon;
+    obj2.sizzle = 2;
+    auto dummy = new Object;
+    with (typeid(obj))
+    {
+        assert(toString[$ - 6 .. $] == ".Bacon");
+        assert(getHash(&obj) != 0);
+        assert(equals(&obj, &obj));
+        assert(!equals(&obj, &obj2));
+        assert(compare(&obj, &dummy) == 0);
+        assert(compare(&obj, &obj) == 0);
+        assert(compare(&obj, &obj2) == -1);
+        assert(compare(&obj2, &obj) == 1);
+        assert(tsize == Object.sizeof);
+        assert(rtInfo == RTInfo!Bacon);
+        assert(tsize == Object.sizeof);
+        assert(initializer.ptr !is null);
+        assert(initializer.length == __traits(classInstanceSize, Bacon));
+        assert(flags == 1);
     }
 }
