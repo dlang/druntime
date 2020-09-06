@@ -596,32 +596,6 @@ static if (__traits(hasMember, TypeInfo, "argTypes"))
             t2 == typeid(real));
     }
 
-// All pointer types are represented by `TypeInfo_P`.
-// Please keep in sync with `TypeInfo_Pointer`.
-class TypeInfo_P : TypeInfoGeneric!(void*)
-{
-    const: nothrow: pure: @trusted:
-
-    override size_t getHash(scope const void* p)
-    {
-        size_t addr = cast(size_t) *cast(const void**)p;
-        return addr ^ (addr >> 4);
-    }
-
-    override @property uint flags() nothrow pure const { return 1; }
-}
-
-unittest
-{
-    with (new TypeInfo_P)
-    {
-        int x;
-        int* p = &x;
-        assert(getHash(&p) != 0);
-        assert(flags == 1);
-    }
-}
-
 // Arrays of all integrals.
 class TypeInfo_Ab : TypeInfoArrayGeneric!bool {}
 class TypeInfo_Ag : TypeInfoArrayGeneric!byte {}
@@ -642,7 +616,7 @@ class TypeInfo_Aw : TypeInfoArrayGeneric!dchar {}
 class TypeInfo_Al : TypeInfoArrayGeneric!long {}
 class TypeInfo_Am : TypeInfoArrayGeneric!ulong {}
 
-extern (C) void[] _adSort(void[] a, TypeInfo ti);
+private extern (C) void[] _adSort(void[] a, TypeInfo ti);
 
 unittest
 {
@@ -658,7 +632,7 @@ unittest
 
 unittest
 {
-    // Issue 13073: original code uses int subtraction which is susceptible to
+    // https://issues.dlang.org/show_bug.cgi?id=13073: original code uses int subtraction which is susceptible to
     // integer overflow, causing the following case to fail.
     int[] a = [int.max, int.max];
     int[] b = [int.min, int.min];
