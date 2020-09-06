@@ -687,18 +687,9 @@ class TypeInfo_Av : TypeInfo_Ah
 }
 
 // all delegates
-class TypeInfo_D : TypeInfoGeneric!(void delegate(int))
+unittest
 {
-    const: nothrow: pure: @trusted:
-    override @property uint flags() nothrow pure
-    {
-        return 1;
-    }
-
-    unittest
-    {
-        assert(typeid(void delegate(int)).flags == 1);
-    }
+    assert(typeid(void delegate(int)).flags == 1);
 }
 
 // typeof(null)
