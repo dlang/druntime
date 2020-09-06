@@ -468,6 +468,30 @@ unittest
 // Predefined TypeInfos
 ////////////////////////////////////////////////////////////////////////////////
 
+// void
+class TypeInfo_v : TypeInfoGeneric!ubyte
+{
+    const: nothrow: pure: @trusted:
+
+    override string toString() const pure nothrow @safe { return "void"; }
+
+    override size_t getHash(scope const void* p)
+    {
+        assert(0);
+    }
+
+    override @property uint flags() nothrow pure
+    {
+        return 1;
+    }
+
+    unittest
+    {
+        assert(typeid(void).toString == "void");
+        assert(typeid(void).flags == 1);
+    }
+}
+
 // All integrals.
 class TypeInfo_b : TypeInfoGeneric!bool {}
 class TypeInfo_g : TypeInfoGeneric!byte {}
@@ -547,6 +571,17 @@ class TypeInfo_P : TypeInfoGeneric!(void*)
     override @property uint flags() nothrow pure const { return 1; }
 }
 
+unittest
+{
+    with (typeid(int*))
+    {
+        int x;
+        int* p = &x;
+        assert(getHash(&p) != 0);
+        assert(flags == 1);
+    }
+}
+
 // Arrays of all integrals.
 class TypeInfo_Ab : TypeInfoArrayGeneric!bool {}
 class TypeInfo_Ag : TypeInfoArrayGeneric!byte {}
@@ -620,27 +655,16 @@ class TypeInfo_Ac : TypeInfoArrayGeneric!creal {}
 class TypeInfo_Av : TypeInfo_Ah
 {
     override string toString() const { return "void[]"; }
+
     override @property inout(TypeInfo) next() inout
     {
         return cast(inout) typeid(void);
     }
-}
 
-// void
-class TypeInfo_v : TypeInfoGeneric!ubyte
-{
-    const: nothrow: pure: @trusted:
-
-    override string toString() const pure nothrow @safe { return "void"; }
-
-    override size_t getHash(scope const void* p)
+    unittest
     {
-        assert(0);
-    }
-
-    override @property uint flags() nothrow pure
-    {
-        return 1;
+        assert(typeid(void[]).toString == "void[]");
+        assert(typeid(void[]).next == typeid(void));
     }
 }
 
@@ -651,6 +675,11 @@ class TypeInfo_D : TypeInfoGeneric!(void delegate(int))
     override @property uint flags() nothrow pure
     {
         return 1;
+    }
+
+    unittest
+    {
+        assert(typeid(int delegate(string)).flags == 1);
     }
 }
 
@@ -690,6 +719,20 @@ class TypeInfo_n : TypeInfo
     }
 
     override @property immutable(void)* rtInfo() nothrow pure const @safe { return rtinfoNoPointers; }
+
+    unittest
+    {
+        with (typeid(typeof(null)))
+        {
+            assert(toString == "typeof(null)");
+            assert(getHash(null) == 0);
+            assert(equals(null, null));
+            assert(compare(null, null) == 0);
+            assert(tsize == typeof(null).sizeof);
+            assert(initializer == new ubyte[(void*).sizeof]);
+            assert(rtInfo == rtinfoNoPointers);
+        }
+    }
 }
 
 // Object
@@ -718,22 +761,11 @@ class TypeInfo_C : TypeInfo
     {
         Object o1 = *cast(Object*)p1;
         Object o2 = *cast(Object*)p2;
-        int c = 0;
-
-        // Regard null references as always being "less than"
-        if (o1 !is o2)
-        {
-            if (o1)
-            {
-                if (!o2)
-                    c = 1;
-                else
-                    c = o1.opCmp(o2);
-            }
-            else
-                c = -1;
-        }
-        return c;
+        if (o1 is o2)
+            return 0; // includes the case null vs null
+        if (int result = (o1 !is null) - (o2 !is null))
+            return result;
+        return o1.opCmp(o2);
     }
 
     override @property size_t tsize() nothrow pure
@@ -743,11 +775,46 @@ class TypeInfo_C : TypeInfo
 
     override const(void)[] initializer() const @trusted
     {
-        return (cast(void *)null)[0 .. Object.sizeof];
+        assert(0);
     }
 
     override @property uint flags() nothrow pure
     {
         return 1;
+    }
+
+    unittest
+    {
+        static class Bacon
+        {
+            int sizzle = 1;
+            override int opCmp(Object rhs) const
+            {
+                if (auto rhsb = cast(Bacon) rhs)
+                    return (sizzle > rhsb.sizzle) - (sizzle < rhsb.sizzle);
+                return 0;
+            }
+        }
+        Object obj = new Bacon;
+        Bacon obj2 = new Bacon;
+        obj2.sizzle = 2;
+        auto dummy = new Object;
+        with (typeid(obj))
+        {
+            assert(toString[$ - 6 .. $] == ".Bacon");
+            assert(getHash(&obj) != 0);
+            assert(equals(&obj, &obj));
+            assert(!equals(&obj, &obj2));
+            assert(compare(&obj, &dummy) == 0);
+            assert(compare(&obj, &obj) == 0);
+            assert(compare(&obj, &obj2) == -1);
+            assert(compare(&obj2, &obj) == 1);
+            assert(tsize == Object.sizeof);
+            assert(rtInfo == RTInfo!Bacon);
+            assert(tsize == Object.sizeof);
+            assert(initializer.ptr !is null);
+            assert(initializer.length == __traits(classInstanceSize, Bacon));
+            assert(flags == 1);
+        }
     }
 }
