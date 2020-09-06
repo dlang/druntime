@@ -267,93 +267,15 @@ unittest
     }();
 }
 
-/**
-TypeInfo information for built-in types.
-*/
-private class TypeInfoGeneric(T) : TypeInfo
+private template Select(bool cond, T, U)
 {
-    const: nothrow: pure: @trusted:
-
-    override string toString() const pure nothrow @safe { return T.stringof; }
-
-    override size_t getHash(scope const void* p)
-    {
-        static if (__traits(isFloating, T))
-            return Floating!T.hashOf(*cast(T*)p);
-        else
-            return hashOf(*cast(const T *)p);
-    }
-
-    override bool equals(in void* p1, in void* p2)
-    {
-        static if (__traits(isFloating, T))
-            return Floating!T.equals(*cast(T*)p1, *cast(T*)p2);
-        else
-            return *cast(T *)p1 == *cast(T *)p2;
-    }
-
-    override int compare(in void* p1, in void* p2)
-    {
-        static if (__traits(isFloating, T))
-        {
-            return Floating!T.compare(*cast(T*)p1, *cast(T*)p2);
-        }
-        else static if (T.sizeof < int.sizeof)
-        {
-            return *cast(T *)p1 - *cast(T *)p2;
-        }
-        else
-        {
-            if (*cast(T *)p1 < *cast(T *)p2)
-                return -1;
-            if (*cast(T *)p1 > *cast(T *)p2)
-                return 1;
-            return 0;
-        }
-    }
-
-    override @property size_t tsize() nothrow pure
-    {
-        return T.sizeof;
-    }
-
-    override @property size_t talign() nothrow pure
-    {
-        return T.alignof;
-    }
-
-    override const(void)[] initializer() @trusted
-    {
-        static if (__traits(isZeroInit, T))
-        {
-            return (cast(void *)null)[0 .. T.sizeof];
-        }
-        else
-        {
-            static immutable T[1] c;
-            return c;
-        }
-    }
-
-    override void swap(void *p1, void *p2)
-    {
-        auto t = *cast(T *) p1;
-        *cast(T *)p1 = *cast(T *)p2;
-        *cast(T *)p2 = t;
-    }
-
-    override @property immutable(void)* rtInfo() nothrow pure const @safe
-    {
-        return RTInfo!T;
-    }
-
-    static if (__traits(isFloating, T))
-        static if (is(immutable T == immutable real) && T.mant_dig != 64) // exclude 80-bit X87
-            // passed in SIMD register
-            override @property uint flags() const { return 2; }
+    static if (cond) alias Select = T;
+    else alias Select = U;
 }
 
 /**
+TypeInfo information for built-in types.
+
 Type `T` has the same layout and alignment as type `Base`, but slightly different behavior.
 Example: `float` and `ifloat` or `char` and `ubyte`.
 We assume the two types hash the same, swap the same, have the same ABI flags, and compare the same for
@@ -361,36 +283,100 @@ equality. For ordering comparisons, we detect during compilation whether they ha
 values (e.g. signed vs. unsigned) and override appropriately. For initializer, we detect if we need to
 override. The overriding initializer should be nonzero.
 */
-private class TypeInfoGeneric(T, Base) : TypeInfoGeneric!Base
+private class TypeInfoGeneric(T, Base = T) : Select!(is(T == Base), TypeInfo, TypeInfoGeneric!Base)
 if (T.sizeof == Base.sizeof && T.alignof == Base.alignof)
 {
     const: nothrow: pure: @trusted:
-    override string toString() { return T.stringof; }
-    static if (T.max != Base.max)
-        // Must override comparison, signedness is different
+
+    // Returns the type name.
+    override string toString() const pure nothrow @safe { return T.stringof; }
+
+    // `getHash` is the same for `Base` and `T`, introduce it just once.
+    static if (is(T == Base))
+        override size_t getHash(scope const void* p)
+        {
+            static if (__traits(isFloating, T))
+                return Floating!T.hashOf(*cast(T*)p);
+            else
+                return hashOf(*cast(const T *)p);
+        }
+
+    // `equals` is the same for `Base` and `T`, introduce it just once.
+    static if (is(T == Base))
+        override bool equals(in void* p1, in void* p2)
+        {
+            static if (__traits(isFloating, T))
+                return Floating!T.equals(*cast(T*)p1, *cast(T*)p2);
+            else
+                return *cast(T *)p1 == *cast(T *)p2;
+        }
+
+    // `T` and `Base` may have different signedness, so this function is introduced conditionally.
+    static if (is(T == Base) || (__traits(isIntegral, T) && T.max != Base.max))
         override int compare(in void* p1, in void* p2)
         {
-            static if (T.sizeof < int.sizeof)
+            static if (__traits(isFloating, T))
             {
-                return *cast(T *)p1 - *cast(T *)p2;
+                return Floating!T.compare(*cast(T*)p1, *cast(T*)p2);
+            }
+            else static if (T.sizeof < int.sizeof)
+            {
+                // Taking the difference will always fit in an int.
+                return int(*cast(T *) p1) - int(*cast(T *) p2);
             }
             else
             {
-                if (*cast(T *)p1 < *cast(T *)p2)
-                    return -1;
-                if (*cast(T *)p1 > *cast(T *)p2)
-                    return 1;
-                return 0;
+                auto lhs = *cast(T *) p1, rhs = *cast(T *) p2;
+                return (lhs > rhs) - (lhs < rhs);
             }
         }
-    static if (T.init != Base.init)
-        // Must override initializer.
+
+    static if (is(T == Base))
+        override @property size_t tsize() nothrow pure
+        {
+            return T.sizeof;
+        }
+
+    static if (is(T == Base))
+        override @property size_t talign() nothrow pure
+        {
+            return T.alignof;
+        }
+
+    // Override initializer only if necessary.
+    static if (is(T == Base) || T.init != Base.init)
         override const(void)[] initializer() @trusted
         {
-            static assert(!__traits(isZeroInit, T), "Please inherit the other way");
-            static immutable T[1] c;
-            return c;
+            static if (__traits(isZeroInit, T))
+            {
+                return (cast(void *)null)[0 .. T.sizeof];
+            }
+            else
+            {
+                static immutable T[1] c;
+                return c;
+            }
         }
+
+    // `swap` is the same for `Base` and `T`, so introduce only once.
+    static if (is(T == Base))
+        override void swap(void *p1, void *p2)
+        {
+            auto t = *cast(T *) p1;
+            *cast(T *)p1 = *cast(T *)p2;
+            *cast(T *)p2 = t;
+        }
+
+    static if (is(T == Base) || RTInfo!T != RTInfo!Base)
+        override @property immutable(void)* rtInfo() nothrow pure const @safe
+        {
+            return RTInfo!T;
+        }
+
+    static if (is(T == Base) && __traits(isFloating, T))
+        static if (is(immutable T == immutable real) && T.mant_dig != 64) // exclude 80-bit X87
+            // passed in SIMD register
+            override @property uint flags() const { return 2; }
 }
 
 unittest
