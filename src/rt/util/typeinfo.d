@@ -269,10 +269,13 @@ unittest
 
 private class TypeInfoGeneric(T) : TypeInfo
 {
-    static if (is(T == ifloat)) private alias Real = float;
-    else static if (is(T == idouble)) private alias Real = double;
-    else static if (is(T == ireal)) private alias Real = real;
-    else private alias Real = T;
+    static if (__traits(isFloating, T))
+    {
+        static if (is(T == ifloat)) private alias Real = float;
+        else static if (is(T == idouble)) private alias Real = double;
+        else static if (is(T == ireal)) private alias Real = real;
+        else private alias Real = T;
+    }
 
     @trusted:
     const:
@@ -389,10 +392,13 @@ unittest
 
 private class TypeInfoArrayGeneric(T) : TypeInfo_Array
 {
-    static if (is(T == ifloat)) private alias Real = float;
-    else static if (is(T == idouble)) private alias Real = double;
-    else static if (is(T == ireal)) private alias Real = real;
-    else private alias Real = T;
+    static if (__traits(isFloating, T))
+    {
+        static if (is(T == ifloat)) private alias Real = float;
+        else static if (is(T == idouble)) private alias Real = double;
+        else static if (is(T == ireal)) private alias Real = real;
+        else private alias Real = T;
+    }
 
     override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
