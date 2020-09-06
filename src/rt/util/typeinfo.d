@@ -409,7 +409,7 @@ unittest
     }
 }
 
-/*¡
+/*
 TypeInfo information for arrays of built-in types.
 
 A `Base` type may be specified, which must be a type with the same layout, alignment, hashing, and
@@ -623,7 +623,8 @@ class TypeInfo_Aw : TypeInfoArrayGeneric!(dchar, uint) {}
 class TypeInfo_Am : TypeInfoArrayGeneric!ulong {}
 class TypeInfo_Al : TypeInfoArrayGeneric!(long, ulong) {}
 
-private extern (C) void[] _adSort(void[] a, TypeInfo ti);
+version (CoreUnittest)
+    private extern (C) void[] _adSort(void[] a, TypeInfo ti);
 
 unittest
 {
