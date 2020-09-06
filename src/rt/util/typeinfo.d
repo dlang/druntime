@@ -267,21 +267,22 @@ unittest
     }();
 }
 
+// Reduces to `T` if `cond` is `true` or `U` otherwise.
 private template Select(bool cond, T, U)
 {
     static if (cond) alias Select = T;
     else alias Select = U;
 }
 
-/**
+/*
 TypeInfo information for built-in types.
 
-Type `T` has the same layout and alignment as type `Base`, but slightly different behavior.
-Example: `float` and `ifloat` or `char` and `ubyte`.
-We assume the two types hash the same, swap the same, have the same ABI flags, and compare the same for
-equality. For ordering comparisons, we detect during compilation whether they have different min and max
-values (e.g. signed vs. unsigned) and override appropriately. For initializer, we detect if we need to
-override. The overriding initializer should be nonzero.
+A `Base` type may be specified, which must be a type with the same layout, alignment, hashing, and
+equality comparison as type `T`. This saves on code size because parts of `Base` will be reused. Example:
+`float` and `ifloat` or `char` and `ubyte`. The implementation assumes `Base` and `T` hash the same, swap
+the same, have the same ABI flags, and compare the same for equality. For ordering comparisons, we detect
+during compilation whether they have different signedness and override appropriately. For initializer, we
+detect if we need to override. The overriding initializer should be nonzero.
 */
 private class TypeInfoGeneric(T, Base = T) : Select!(is(T == Base), TypeInfo, TypeInfoGeneric!Base)
 if (T.sizeof == Base.sizeof && T.alignof == Base.alignof)
@@ -373,7 +374,7 @@ if (T.sizeof == Base.sizeof && T.alignof == Base.alignof)
             return RTInfo!T;
         }
 
-    static if (is(T == Base) && __traits(isFloating, T))
+    static if (is(T == Base))
         static if (is(immutable T == immutable real) && T.mant_dig != 64) // exclude 80-bit X87
             // passed in SIMD register
             override @property uint flags() const { return 2; }
@@ -408,66 +409,72 @@ unittest
     }
 }
 
-private class TypeInfoArrayGeneric(T) : TypeInfo_Array
-{
-    static if (__traits(isFloating, T))
-    {
-        static if (is(T == ifloat)) private alias Real = float;
-        else static if (is(T == idouble)) private alias Real = double;
-        else static if (is(T == ireal)) private alias Real = real;
-        else private alias Real = T;
-    }
+/*¡
+TypeInfo information for arrays of built-in types.
 
-    override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
+A `Base` type may be specified, which must be a type with the same layout, alignment, hashing, and
+equality comparison as type `T`. This saves on code size because parts of `Base` will be reused. Example:
+`float` and `ifloat` or `char` and `ubyte`. The implementation assumes `Base` and `T` hash the same, swap
+the same, have the same ABI flags, and compare the same for equality. For ordering comparisons, we detect
+during compilation whether they have different signedness and override appropriately. For initializer, we
+detect if we need to override. The overriding initializer should be nonzero.
+*/
+private class TypeInfoArrayGeneric(T, Base = T) : Select!(is(T == Base), TypeInfo_Array, TypeInfoArrayGeneric!Base)
+{
+    static if (is(T == Base))
+        override bool opEquals(Object o) { return TypeInfo.opEquals(o); }
 
     override string toString() const { return (T[]).stringof; }
 
-    override size_t getHash(scope const void* p) @trusted const
-    {
-        static if (__traits(isFloating, T))
-            return Array!Real.hashOf(*cast(Real[]*)p);
-        else
-            return hashOf(*cast(const T[]*) p);
-    }
-
-    override bool equals(in void* p1, in void* p2) const
-    {
-        static if (__traits(isFloating, T))
+    static if (is(T == Base))
+        override size_t getHash(scope const void* p) @trusted const
         {
-            return Array!Real.equals(*cast(Real[]*)p1, *cast(Real[]*)p2);
+            static if (__traits(isFloating, T))
+                return Array!T.hashOf(*cast(T[]*)p);
+            else
+                return hashOf(*cast(const T[]*) p);
         }
-        else
-        {
-            import core.stdc.string;
-            auto s1 = *cast(T[]*)p1;
-            auto s2 = *cast(T[]*)p2;
-            return s1.length == s2.length &&
-                memcmp(s1.ptr, s2.ptr, s1.length) == 0;
-        }
-    }
 
-    override int compare(in void* p1, in void* p2) const
-    {
-        static if (__traits(isFloating, T))
+    static if (is(T == Base))
+        override bool equals(in void* p1, in void* p2) const
         {
-            return Array!Real.compare(*cast(Real[]*)p1, *cast(Real[]*)p2);
-        }
-        else
-        {
-            auto s1 = *cast(T[]*)p1;
-            auto s2 = *cast(T[]*)p2;
-            auto len = s1.length;
-
-            if (s2.length < len)
-                len = s2.length;
-            for (size_t u = 0; u < len; u++)
+            static if (__traits(isFloating, T))
             {
-                if (int result = (s1[u] > s2[u]) - (s1[u] < s2[u]))
-                    return result;
+                return Array!T.equals(*cast(T[]*)p1, *cast(T[]*)p2);
             }
-            return (s1.length > s2.length) - (s1.length < s2.length);
+            else
+            {
+                import core.stdc.string;
+                auto s1 = *cast(T[]*)p1;
+                auto s2 = *cast(T[]*)p2;
+                return s1.length == s2.length &&
+                    memcmp(s1.ptr, s2.ptr, s1.length) == 0;
+            }
         }
-    }
+
+    static if (is(T == Base) || (__traits(isIntegral, T) && T.max != Base.max))
+        override int compare(in void* p1, in void* p2) const
+        {
+            static if (__traits(isFloating, T))
+            {
+                return Array!T.compare(*cast(T[]*)p1, *cast(T[]*)p2);
+            }
+            else
+            {
+                auto s1 = *cast(T[]*)p1;
+                auto s2 = *cast(T[]*)p2;
+                auto len = s1.length;
+
+                if (s2.length < len)
+                    len = s2.length;
+                for (size_t u = 0; u < len; u++)
+                {
+                    if (int result = (s1[u] > s2[u]) - (s1[u] < s2[u]))
+                        return result;
+                }
+                return (s1.length > s2.length) - (s1.length < s2.length);
+            }
+        }
 
     override @property inout(TypeInfo) next() inout
     {
@@ -521,18 +528,18 @@ class TypeInfo_v : TypeInfoGeneric!ubyte
 }
 
 // All integrals.
+class TypeInfo_h : TypeInfoGeneric!ubyte {}
 class TypeInfo_b : TypeInfoGeneric!(bool, ubyte) {}
-class TypeInfo_g : TypeInfoGeneric!byte {}
-class TypeInfo_h : TypeInfoGeneric!(ubyte, byte) {}
+class TypeInfo_g : TypeInfoGeneric!(byte, ubyte) {}
 class TypeInfo_a : TypeInfoGeneric!(char, ubyte) {}
+class TypeInfo_t : TypeInfoGeneric!ushort {}
+class TypeInfo_s : TypeInfoGeneric!(short, ushort) {}
 class TypeInfo_u : TypeInfoGeneric!(wchar, ushort) {}
 class TypeInfo_w : TypeInfoGeneric!(dchar, uint) {}
-class TypeInfo_s : TypeInfoGeneric!short {}
-class TypeInfo_t : TypeInfoGeneric!(ushort, short) {}
-class TypeInfo_i : TypeInfoGeneric!int {}
-class TypeInfo_k : TypeInfoGeneric!(uint, int) {}
-class TypeInfo_l : TypeInfoGeneric!long {}
-class TypeInfo_m : TypeInfoGeneric!(ulong, long) {}
+class TypeInfo_k : TypeInfoGeneric!uint {}
+class TypeInfo_i : TypeInfoGeneric!(int, uint) {}
+class TypeInfo_m : TypeInfoGeneric!ulong {}
+class TypeInfo_l : TypeInfoGeneric!(long, ulong) {}
 static if (is(cent)) class TypeInfo_zi : TypeInfoGeneric!cent {}
 static if (is(ucent)) class TypeInfo_zk : TypeInfoGeneric!ucent {}
 
@@ -597,24 +604,24 @@ static if (__traits(hasMember, TypeInfo, "argTypes"))
     }
 
 // Arrays of all integrals.
-class TypeInfo_Ab : TypeInfoArrayGeneric!bool {}
-class TypeInfo_Ag : TypeInfoArrayGeneric!byte {}
 class TypeInfo_Ah : TypeInfoArrayGeneric!ubyte {}
-class TypeInfo_Aa : TypeInfoArrayGeneric!char {}
+class TypeInfo_Ab : TypeInfoArrayGeneric!(bool, ubyte) {}
+class TypeInfo_Ag : TypeInfoArrayGeneric!(byte, ubyte) {}
+class TypeInfo_Aa : TypeInfoArrayGeneric!(char, ubyte) {}
 class TypeInfo_Axa : TypeInfoArrayGeneric!(const char) {}
 class TypeInfo_Aya : TypeInfoArrayGeneric!(immutable char)
 {
     // Must override this, otherwise "string" is returned.
     override string toString() const { return "immutable(char)[]"; }
 }
-class TypeInfo_As : TypeInfoArrayGeneric!short {}
 class TypeInfo_At : TypeInfoArrayGeneric!ushort {}
-class TypeInfo_Au : TypeInfoArrayGeneric!wchar {}
-class TypeInfo_Ai : TypeInfoArrayGeneric!int {}
+class TypeInfo_As : TypeInfoArrayGeneric!(short, ushort) {}
+class TypeInfo_Au : TypeInfoArrayGeneric!(wchar, ushort) {}
 class TypeInfo_Ak : TypeInfoArrayGeneric!uint {}
-class TypeInfo_Aw : TypeInfoArrayGeneric!dchar {}
-class TypeInfo_Al : TypeInfoArrayGeneric!long {}
+class TypeInfo_Ai : TypeInfoArrayGeneric!(int, uint) {}
+class TypeInfo_Aw : TypeInfoArrayGeneric!(dchar, uint) {}
 class TypeInfo_Am : TypeInfoArrayGeneric!ulong {}
+class TypeInfo_Al : TypeInfoArrayGeneric!(long, ulong) {}
 
 private extern (C) void[] _adSort(void[] a, TypeInfo ti);
 
@@ -656,11 +663,11 @@ unittest
 
 // Arrays of all floating point types.
 class TypeInfo_Af : TypeInfoArrayGeneric!float {}
-class TypeInfo_Ao : TypeInfoArrayGeneric!ifloat {}
+class TypeInfo_Ao : TypeInfoArrayGeneric!(ifloat, float) {}
 class TypeInfo_Ad : TypeInfoArrayGeneric!double {}
-class TypeInfo_Ap : TypeInfoArrayGeneric!idouble {}
+class TypeInfo_Ap : TypeInfoArrayGeneric!(idouble, double) {}
 class TypeInfo_Ae : TypeInfoArrayGeneric!real {}
-class TypeInfo_Aj : TypeInfoArrayGeneric!ireal {}
+class TypeInfo_Aj : TypeInfoArrayGeneric!(ireal, real) {}
 class TypeInfo_Aq : TypeInfoArrayGeneric!cfloat {}
 class TypeInfo_Ar : TypeInfoArrayGeneric!cdouble {}
 class TypeInfo_Ac : TypeInfoArrayGeneric!creal {}
