@@ -342,9 +342,7 @@ private class TypeInfoGeneric(T) : TypeInfo
 
     override void swap(void *p1, void *p2)
     {
-        T t;
-
-        t = *cast(T *)p1;
+        auto t = *cast(T *) p1;
         *cast(T *)p1 = *cast(T *)p2;
         *cast(T *)p2 = t;
     }
@@ -358,6 +356,30 @@ private class TypeInfoGeneric(T) : TypeInfo
         static if (is(immutable Real == immutable real) && T.mant_dig != 64) // exclude 80-bit X87
             // passed in SIMD register
             override @property uint flags() const { return 2; }
+}
+
+unittest
+{
+    assert(typeid(int).toString == "int");
+    double a = 42, b = 43;
+    assert(typeid(double).equals(&a, &a));
+    assert(!typeid(double).equals(&a, &b));
+    assert(typeid(double).compare(&a, &a) == 0);
+    assert(typeid(double).compare(&a, &b) == -1);
+    assert(typeid(double).compare(&b, &a) == 1);
+
+    short c = 42, d = 43;
+    assert(typeid(short).equals(&c, &c));
+    assert(!typeid(short).equals(&c, &b));
+    assert(typeid(short).compare(&c, &c) == 0);
+    assert(typeid(short).compare(&c, &d) == -1);
+    assert(typeid(short).compare(&d, &c) == 1);
+
+    assert(typeid(int).initializer.ptr is null);
+    assert(typeid(int).initializer.length == int.sizeof);
+
+    typeid(short).swap(&d, &c);
+    assert(c == 43 && d == 42);
 }
 
 private class TypeInfoArrayGeneric(T) : TypeInfo_Array
@@ -424,6 +446,22 @@ private class TypeInfoArrayGeneric(T) : TypeInfo_Array
     {
         return cast(inout) typeid(T);
     }
+}
+
+unittest
+{
+    assert(typeid(int[]) == typeid(int[]));
+    assert(typeid(int[]) != typeid(uint[]));
+    assert(typeid(int[]).toString == "int[]");
+
+    double[] a = [ 1, 2, 3 ], b = [ 2, 3 ];
+
+    assert(typeid(double[]).equals(&a, &a));
+    assert(!typeid(double[]).equals(&a, &b));
+
+    assert(typeid(double[]).compare(&a, &a) == 0);
+    assert(typeid(double[]).compare(&a, &b) == -1);
+    assert(typeid(double[]).compare(&b, &a) == 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
