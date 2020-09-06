@@ -361,25 +361,30 @@ private class TypeInfoGeneric(T) : TypeInfo
 unittest
 {
     assert(typeid(int).toString == "int");
-    double a = 42, b = 43;
-    assert(typeid(double).equals(&a, &a));
-    assert(!typeid(double).equals(&a, &b));
-    assert(typeid(double).compare(&a, &a) == 0);
-    assert(typeid(double).compare(&a, &b) == -1);
-    assert(typeid(double).compare(&b, &a) == 1);
 
-    short c = 42, d = 43;
-    assert(typeid(short).equals(&c, &c));
-    assert(!typeid(short).equals(&c, &b));
-    assert(typeid(short).compare(&c, &c) == 0);
-    assert(typeid(short).compare(&c, &d) == -1);
-    assert(typeid(short).compare(&d, &c) == 1);
+    with (typeid(double))
+    {
+        double a = 42, b = 43;
+        assert(equals(&a, &a));
+        assert(!equals(&a, &b));
+        assert(compare(&a, &a) == 0);
+        assert(compare(&a, &b) == -1);
+        assert(compare(&b, &a) == 1);
+    }
 
-    assert(typeid(int).initializer.ptr is null);
-    assert(typeid(int).initializer.length == int.sizeof);
-
-    typeid(short).swap(&d, &c);
-    assert(c == 43 && d == 42);
+    with (typeid(short))
+    {
+        short c = 42, d = 43;
+        assert(equals(&c, &c));
+        assert(!equals(&c, &d));
+        assert(compare(&c, &c) == 0);
+        assert(compare(&c, &d) == -1);
+        assert(compare(&d, &c) == 1);
+        assert(initializer.ptr is null);
+        assert(initializer.length == short.sizeof);
+        swap(&d, &c);
+        assert(c == 43 && d == 42);
+    }
 }
 
 private class TypeInfoArrayGeneric(T) : TypeInfo_Array
@@ -454,14 +459,15 @@ unittest
     assert(typeid(int[]) != typeid(uint[]));
     assert(typeid(int[]).toString == "int[]");
 
-    double[] a = [ 1, 2, 3 ], b = [ 2, 3 ];
-
-    assert(typeid(double[]).equals(&a, &a));
-    assert(!typeid(double[]).equals(&a, &b));
-
-    assert(typeid(double[]).compare(&a, &a) == 0);
-    assert(typeid(double[]).compare(&a, &b) == -1);
-    assert(typeid(double[]).compare(&b, &a) == 1);
+    with (typeid(double[]))
+    {
+        double[] a = [ 1, 2, 3 ], b = [ 2, 3 ];
+        assert(equals(&a, &a));
+        assert(!equals(&a, &b));
+        assert(compare(&a, &a) == 0);
+        assert(compare(&a, &b) == -1);
+        assert(compare(&b, &a) == 1);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -555,6 +561,18 @@ class TypeInfo_c : TypeInfoGeneric!creal
             return 0;
         }
 }
+
+static if (__traits(hasMember, TypeInfo, "argTypes"))
+    unittest
+    {
+        TypeInfo t1, t2;
+        assert(typeid(cfloat).argTypes(t1, t2) == 0 && t1 == typeid(double) &&
+            t2 is null);
+        assert(typeid(cdouble).argTypes(t1, t2) == 0 && t1 == typeid(double) &&
+            t2 == typeid(double));
+        assert(typeid(creal).argTypes(t1, t2) == 0 && t1 == typeid(real) &&
+            t2 == typeid(real));
+    }
 
 // All pointer types are represented by `TypeInfo_P`.
 // Please keep in sync with `TypeInfo_Pointer`.
