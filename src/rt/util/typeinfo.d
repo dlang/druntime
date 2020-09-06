@@ -375,8 +375,8 @@ if (T.sizeof == Base.sizeof && T.alignof == Base.alignof)
         }
 
     static if (is(T == Base))
-        static if (is(immutable T == immutable real) && T.mant_dig != 64) // exclude 80-bit X87
-            // passed in SIMD register
+        static if (__traits(isFloating, T) && T.mant_dig != 64)
+            // FP types except 80-bit X87 are passed in SIMD register.
             override @property uint flags() const { return 2; }
 }
 
