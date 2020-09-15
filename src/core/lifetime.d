@@ -1786,7 +1786,6 @@ private T moveImpl(T)(ref T source)
  */
 void moveEmplace(T)(ref T source, ref T target) @system
 {
-    import core.stdc.string : memcpy, memset;
     import core.internal.traits;
 
     // TODO: this assert pulls in half of phobos. we need to work out an alternative assert strategy.
@@ -1801,7 +1800,7 @@ void moveEmplace(T)(ref T source, ref T target) @system
         assert(&source !is &target, "source and target must not be identical");
 
         static if (hasElaborateAssign!T || !isAssignable!T)
-            memcpy(&target, &source, T.sizeof);
+            *cast(void[T.sizeof]*) &target = *cast(void[T.sizeof]*) &source;
         else
             target = source;
 
@@ -1809,19 +1808,8 @@ void moveEmplace(T)(ref T source, ref T target) @system
         // object in order to avoid double freeing and undue aliasing
         static if (hasElaborateDestructor!T || hasElaborateCopyConstructor!T)
         {
-            // If T is nested struct, keep original context pointer
-            static if (__traits(isNested, T))
-                enum sz = T.sizeof - (void*).sizeof;
-            else
-                enum sz = T.sizeof;
-
-            static if (__traits(isZeroInit, T))
-                memset(&source, 0, sz);
-            else
-            {
-                auto init = typeid(T).initializer();
-                memcpy(&source, init.ptr, sz);
-            }
+            import core.internal.lifetime : emplaceInitializer;
+            emplaceInitializer!(T,__traits(isNested, T))(source);
         }
     }
     else static if (__traits(isStaticArray, T))
