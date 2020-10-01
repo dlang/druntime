@@ -162,7 +162,7 @@ void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V)(ref shared T val, share
  * Returns:
  *  The value held previously by `val`.
  */
-T atomicFetchAdd(MemoryOrder ms = MemoryOrder.seq, T)(ref T val, size_t mod) pure nothrow @nogc @trusted
+T atomicFetchAdd(MemoryOrder ms = MemoryOrder.seq, T)(ref T val, in size_t mod) pure nothrow @nogc @trusted
     if ((__traits(isIntegral, T) || is(T == U*, U)) && !is(T == shared))
 in (atomicValueIsProperlyAligned(val))
 {
@@ -173,7 +173,7 @@ in (atomicValueIsProperlyAligned(val))
 }
 
 /// Ditto
-T atomicFetchAdd(MemoryOrder ms = MemoryOrder.seq, T)(ref shared T val, size_t mod) pure nothrow @nogc @trusted
+T atomicFetchAdd(MemoryOrder ms = MemoryOrder.seq, T)(ref shared T val, in size_t mod) pure nothrow @nogc @trusted
     if (__traits(isIntegral, T) || is(T == U*, U))
 in (atomicValueIsProperlyAligned(val))
 {
@@ -191,7 +191,7 @@ in (atomicValueIsProperlyAligned(val))
  * Returns:
  *  The value held previously by `val`.
  */
-T atomicFetchSub(MemoryOrder ms = MemoryOrder.seq, T)(ref T val, size_t mod) pure nothrow @nogc @trusted
+T atomicFetchSub(MemoryOrder ms = MemoryOrder.seq, T)(ref T val, in size_t mod) pure nothrow @nogc @trusted
     if ((__traits(isIntegral, T) || is(T == U*, U)) && !is(T == shared))
 in (atomicValueIsProperlyAligned(val))
 {
@@ -202,7 +202,7 @@ in (atomicValueIsProperlyAligned(val))
 }
 
 /// Ditto
-T atomicFetchSub(MemoryOrder ms = MemoryOrder.seq, T)(ref shared T val, size_t mod) pure nothrow @nogc @trusted
+T atomicFetchSub(MemoryOrder ms = MemoryOrder.seq, T)(ref shared T val, in size_t mod) pure nothrow @nogc @trusted
     if (__traits(isIntegral, T) || is(T == U*, U))
 in (atomicValueIsProperlyAligned(val))
 {

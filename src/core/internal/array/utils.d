@@ -15,7 +15,7 @@ private auto gcStatsPure() nothrow pure
 {
     import core.memory : GC;
 
-    auto impureBypass = cast(GC.Stats function() pure nothrow)&GC.stats;
+    const impureBypass = cast(GC.Stats function() pure nothrow)&GC.stats;
     return impureBypass();
 }
 
@@ -54,7 +54,7 @@ auto _d_HookTraceImpl(T, alias Hook, string errorMessage)(string file, int line,
     version (D_TypeInfo)
     {
         pragma(inline, false);
-        string name = T.stringof;
+        const string name = T.stringof;
 
         // FIXME: use rt.tracegc.accumulator when it is accessable in the future.
         version (tracegc)

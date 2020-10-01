@@ -36,12 +36,12 @@ template _d_arraysetlengthTImpl(Tarr : T[], T)
      * Bugs:
      *   The safety level of this function is faked. It shows itself as `@trusted pure nothrow` to not break existing code.
      */
-    size_t _d_arraysetlengthT(return scope ref Tarr arr, size_t newlength) @trusted pure nothrow
+    size_t _d_arraysetlengthT(return scope ref Tarr arr, in size_t newlength) @trusted pure nothrow
     {
         pragma(inline, false);
         version (D_TypeInfo)
         {
-            auto ti = typeid(Tarr);
+            const ti = typeid(Tarr);
 
             static if (__traits(isZeroInit, T))
                 ._d_arraysetlengthT(ti, newlength, cast(void[]*)&arr);
