@@ -9,13 +9,6 @@ module rt.monitor_;
 
 import core.atomic, core.stdc.stdlib, core.stdc.string;
 
-// NOTE: The dtor callback feature is only supported for monitors that are not
-//       supplied by the user.  The assumption is that any object with a user-
-//       supplied monitor may have special storage or lifetime requirements and
-//       that as a result, storing references to local objects within Monitor
-//       may not be safe or desirable.  Thus, devt is only valid if impl is
-//       null.
-
 extern (C) void _d_setSameMutex(shared Object ownee, shared Object owner) nothrow
 in
 {
@@ -24,15 +17,7 @@ in
 do
 {
     auto m = ensureMonitor(cast(Object) owner);
-    auto i = m.impl;
-    if (i is null)
-    {
-        atomicOp!("+=")(m.refs, cast(size_t) 1);
-        ownee.__monitor = owner.__monitor;
-        return;
-    }
-    // If m.impl is set (ie. if this is a user-created monitor), assume
-    // the monitor is garbage collected and simply copy the reference.
+    atomicOp!("+=")(m.refs, cast(size_t) 1);
     ownee.__monitor = owner.__monitor;
 }
 
@@ -42,12 +27,7 @@ extern (C) void _d_monitordelete(Object h, bool det)
     if (m is null)
         return;
 
-    if (m.impl)
-    {
-        // let the GC collect the monitor
-        setMonitor(h, null);
-    }
-    else if (!atomicOp!("-=")(m.refs, cast(size_t) 1))
+    if (!atomicOp!("-=")(m.refs, cast(size_t) 1))
     {
         // refcount == 0 means unshared => no synchronization required
         disposeEvent(cast(Monitor*) m, h);
@@ -63,12 +43,7 @@ extern (C) void _d_monitordelete_nogc(Object h) @nogc
     if (m is null)
         return;
 
-    if (m.impl)
-    {
-        // let the GC collect the monitor
-        setMonitor(h, null);
-    }
-    else if (!atomicOp!("-=")(m.refs, cast(size_t) 1))
+    if (!atomicOp!("-=")(m.refs, cast(size_t) 1))
     {
         // refcount == 0 means unshared => no synchronization required
         deleteMonitor(cast(Monitor*) m);
@@ -84,21 +59,13 @@ in
 do
 {
     auto m = cast(Monitor*) ensureMonitor(h);
-    auto i = m.impl;
-    if (i is null)
-        lockMutex(&m.mtx);
-    else
-        i.lock();
+    lockMutex(&m.mtx);
 }
 
 extern (C) void _d_monitorexit(Object h)
 {
     auto m = cast(Monitor*) getMonitor(h);
-    auto i = m.impl;
-    if (i is null)
-        unlockMutex(&m.mtx);
-    else
-        i.unlock();
+    unlockMutex(&m.mtx);
 }
 
 extern (C) void rt_attachDisposeEvent(Object h, DEvent e)
@@ -106,7 +73,6 @@ extern (C) void rt_attachDisposeEvent(Object h, DEvent e)
     synchronized (h)
     {
         auto m = cast(Monitor*) getMonitor(h);
-        assert(m.impl is null);
 
         foreach (ref v; m.devt)
         {
@@ -135,7 +101,6 @@ extern (C) void rt_detachDisposeEvent(Object h, DEvent e)
     synchronized (h)
     {
         auto m = cast(Monitor*) getMonitor(h);
-        assert(m.impl is null);
 
         foreach (p, v; m.devt)
         {
@@ -171,7 +136,6 @@ extern (C) void _d_monitor_staticdtor()
 package:
 
 // This is what the monitor reference in Object points to
-alias IMonitor = Object.Monitor;
 alias DEvent = void delegate(Object);
 
 version (Windows)
@@ -225,7 +189,6 @@ else
 
 struct Monitor
 {
-    IMonitor impl; // for user-level monitors
     DEvent[] devt; // for internal monitors
     size_t refs; // reference count
     Mutex mtx;
