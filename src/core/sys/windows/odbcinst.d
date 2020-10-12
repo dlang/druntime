@@ -115,7 +115,15 @@ static if (ODBCVER >= 0x0250) {
     BOOL  ConfigDriverW(HWND,WORD,LPCWSTR,LPCWSTR,LPWSTR,WORD,WORD*);
     BOOL  SQLConfigDriver(HWND,WORD,LPCSTR,LPCSTR,LPSTR,WORD,WORD*);
     BOOL  SQLConfigDriverW(HWND,WORD,LPCWSTR,LPCWSTR,LPWSTR,WORD,WORD*);
-    deprecated ("Use SQLInstallTranslatorExW instead") {
+    static if (ODBCVER >= 0x0300)
+    {
+        deprecated ("Use SQLInstallTranslatorExW instead") {
+            BOOL  SQLInstallTranslator(LPCSTR,LPCSTR,LPCSTR,LPSTR,WORD,WORD*,WORD,LPDWORD);
+            BOOL  SQLInstallTranslatorW(LPCWSTR,LPCWSTR,LPCWSTR,LPWSTR,WORD,WORD*,WORD,LPDWORD);
+        }
+    }
+    else
+    {
         BOOL  SQLInstallTranslator(LPCSTR,LPCSTR,LPCSTR,LPSTR,WORD,WORD*,WORD,LPDWORD);
         BOOL  SQLInstallTranslatorW(LPCWSTR,LPCWSTR,LPCWSTR,LPWSTR,WORD,WORD*,WORD,LPDWORD);
     }
