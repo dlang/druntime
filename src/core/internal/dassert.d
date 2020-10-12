@@ -137,14 +137,17 @@ private string miniFormat(V)(const scope ref V v)
 
         char[60] val;
         int len;
-        static if (is(V == float) || is(V == double))
+        enum  realFmt  = real.sizeof == double.sizeof ? "%lg" : "%Lg";
+        enum  realFmti = real.sizeof == double.sizeof ? "%lgi" : "%Lgi";
+        enum  realFmtc = real.sizeof == double.sizeof ? "%lg + %lgi" : "%Lg + %Lgi";
+        static if (is(V == float) || is(V == double || is(V == real)))
             len = sprintf(&val[0], "%g", v);
         else static if (is(V == real))
-            len = sprintf(&val[0], "%Lg", cast(LD) v);
+            len = sprintf(&val[0], realFmt, cast(LD) v);
         else static if (is(V == cfloat) || is(V == cdouble))
             len = sprintf(&val[0], "%g + %gi", v.re, v.im);
         else static if (is(V == creal))
-            len = sprintf(&val[0], "%Lg + %Lgi", cast(LD) v.re, cast(LD) v.im);
+            len = sprintf(&val[0], realFmtc, cast(LD) v.re, cast(LD) v.im);
         else static if (is(V == ifloat) || is(V == idouble))
             len = sprintf(&val[0], "%gi", v);
         else // ireal
@@ -154,7 +157,7 @@ private string miniFormat(V)(const scope ref V v)
                 alias R = ireal;
             else
                 alias R = idouble;
-            len = sprintf(&val[0], "%Lgi", cast(R) v);
+            len = sprintf(&val[0], realFmti, cast(R) v);
         }
         return val.idup[0 .. len];
     }
