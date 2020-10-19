@@ -954,9 +954,10 @@ private:
             m_ctxt.tstack = pbase;
             m_size = sz;
         }
-        else
+        else version (Posix)
         {
-            version (Posix) import core.sys.posix.sys.mman; // mmap, MAP_ANON
+            import core.sys.posix.sys.mman; // mmap, MAP_ANON
+            import core.stdc.stdlib;
 
             static if ( __traits( compiles, mmap ) )
             {
@@ -981,9 +982,7 @@ private:
                 m_pmem = malloc( sz );
             }
             else
-            {
-                m_pmem = null;
-            }
+                static assert (false);
 
             if ( !m_pmem )
                 onOutOfMemoryError();
@@ -1042,23 +1041,23 @@ private:
         {
             VirtualFree( m_pmem, 0, MEM_RELEASE );
         }
-        else
+        else version (Posix)
         {
             import core.sys.posix.sys.mman; // munmap
+            import core.stdc.stdlib : free;
 
             static if ( __traits( compiles, mmap ) )
             {
                 munmap( m_pmem, m_size );
             }
-            else static if ( __traits( compiles, valloc ) )
-            {
-                free( m_pmem );
-            }
-            else static if ( __traits( compiles, malloc ) )
+            else
             {
                 free( m_pmem );
             }
         }
+        else
+            static assert(false);
+
         m_pmem = null;
         m_ctxt = null;
     }
