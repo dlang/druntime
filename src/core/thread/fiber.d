@@ -977,12 +977,10 @@ private:
             {
                 m_pmem = valloc( sz );
             }
-            else static if ( __traits( compiles, malloc ) )
+            else
             {
                 m_pmem = malloc( sz );
             }
-            else
-                static assert (false);
 
             if ( !m_pmem )
                 onOutOfMemoryError();
@@ -1016,6 +1014,8 @@ private:
                 // undefined if applied to memory not obtained by mmap
             }
         }
+        else
+            static assert (false);
 
         Thread.add( m_ctxt );
     }
