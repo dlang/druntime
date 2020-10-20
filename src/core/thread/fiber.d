@@ -957,6 +957,7 @@ private:
         else version (Posix)
         {
             import core.sys.posix.sys.mman; // mmap, MAP_ANON
+            import core.sys.posix.stdlib; // valloc
             import core.stdc.stdlib;
 
             static if ( __traits( compiles, mmap ) )
