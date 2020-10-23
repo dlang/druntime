@@ -631,7 +631,6 @@ package(core.thread):
     in
     {
         assert(c);
-        assert(c.next || c.prev);
     }
     do
     {
