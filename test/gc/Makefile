@@ -1,7 +1,7 @@
 include ../common.mak
 
 TESTS := sentinel printf memstomp invariant logging precise precisegc forkgc forkgc2 sigmaskgc startbackgc \
-         recoverfree nocollect
+         recoverfree nocollect fiber_ctor
 
 SRC_GC = ../../src/gc/impl/conservative/gc.d
 SRC = $(SRC_GC) ../../src/rt/lifetime.d
@@ -55,6 +55,9 @@ $(ROOT)/recoverfree: recoverfree.d
 
 $(ROOT)/nocollect: nocollect.d
 	$(DMD) $(DFLAGS) -of$@ nocollect.d
+
+$(ROOT)/fiber_ctor: fiber_ctor.d
+	$(DMD) $(DFLAGS) -of$@ fiber_ctor.d
 
 clean:
 	rm -rf $(ROOT)
