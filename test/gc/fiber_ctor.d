@@ -3,6 +3,7 @@
 extern(C) __gshared string[] rt_options = [ "gcopt=minPoolSize:1M incPoolSize:4K" ];
 
 import core.memory : GC;
+import core.thread.fiber;
 
 void main()
 {
