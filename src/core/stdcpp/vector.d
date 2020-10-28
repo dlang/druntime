@@ -32,6 +32,8 @@ extern(C++, "std"):
 
 extern(C++, class) struct vector(T, Alloc = allocator!T)
 {
+    import core.internal.traits : hasElaborateAssign,
+        hasElaborateCopyConstructor, hasElaborateDestructor, hasElaborateMove;
     import core.lifetime : forward, move, moveEmplace, core_emplace = emplace;
 
     static assert(!is(T == bool), "vector!bool not supported!");
@@ -135,7 +137,6 @@ extern(D):
         {
             _Alloc_proxy();
             _Buy(count);
-            scope(failure) _Tidy();
             _Get_data()._Mylast = _Udefault(_Get_data()._Myfirst, count);
         }
         ///
@@ -452,8 +453,9 @@ extern(D):
 
         static void _Destroy(pointer _First, pointer _Last)
         {
-            for (; _First != _Last; ++_First)
-                destroy!false(*_First);
+            static if (hasElaborateDestructor!T)
+                for (; _First !is _Last; ++_First)
+                    destroy!false(*_First);
         }
 
         void _Tidy()
@@ -633,6 +635,7 @@ extern(D):
                 _First = _Dest;
                 _Last = _Dest;
             }
+            static if (hasElaborateDestructor!T)
             ~this()
             {
                 _Destroy(_First, _Last);
@@ -651,48 +654,105 @@ extern(D):
             pointer _First;
             pointer _Last;
         }
-        pointer _Utransfer(bool _move, bool _ifNothrow = false)(pointer _First, pointer _Last, pointer _Dest)
+        static pointer _Utransfer(bool _move, bool _ifNothrow = false)(pointer _First, pointer _Last, pointer _Dest)
         {
-            // TODO: if copy/move are trivial, then we can memcpy/memmove
-            auto _Backout = _Uninitialized_backout(_Dest);
-            for (; _First != _Last; ++_First)
+            // if copy/move are trivial, then we can memcpy/memmove
+            static if (!hasElaborateCopyConstructor!T && (!_move || !hasElaborateMove!T))
             {
-                static if (_move && (!_ifNothrow || true)) // isNothrow!T (move in D is always nothrow! ...until opPostMove)
-                    _Backout._Emplace_back(move(*_First));
+                static if (_move)
+                    // The source and destination happen not to ever overlap when _move is false.
+                    import core.stdc.string : memmove;
                 else
-                    _Backout._Emplace_back(*_First);
+                    import core.stdc.string : memmove = memcpy;
+                memmove(_Dest, _First, cast(void*) _Last - cast(void*) _First);
+                return _Dest + (_Last - _First);
             }
-            return _Backout._Release();
+            else
+            {
+                auto _Backout = _Uninitialized_backout(_Dest);
+                for (; _First !is _Last; ++_First)
+                {
+                    static if (_move && (!_ifNothrow ||
+                                        is(typeof((() nothrow => _Backout._Emplace_back(move(*_First)))()))))
+                        _Backout._Emplace_back(move(*_First));
+                    else
+                        _Backout._Emplace_back(*_First);
+                }
+                return _Backout._Release();
+            }
         }
-        pointer _Ufill()(pointer _Dest, size_t _Count, auto ref T val)
+        static pointer _Ufill()(pointer _Dest, size_t _Count, auto ref T val)
         {
-            // TODO: if T.sizeof == 1 and no elaborate constructor, fast-path to memset
             // TODO: if copy ctor/postblit are nothrow, just range assign
-            auto _Backout = _Uninitialized_backout(_Dest);
-            for (; 0 < _Count; --_Count)
-                _Backout._Emplace_back(val);
-            return _Backout._Release();
+            // A problem for that is that we can't distinguish between an auto-
+            // generated opAssign that only calls postblit and an opAssign that
+            // may make use of the receiver's pre-assignment state.
+            static if (!hasElaborateAssign!T)
+            {
+                _Dest[0 .. _Count] = val;
+                return _Dest + _Count;
+            }
+            else
+            {
+                auto _Backout = _Uninitialized_backout(_Dest);
+                for (; 0 < _Count; --_Count)
+                    _Backout._Emplace_back(val);
+                return _Backout._Release();
+            }
         }
-        pointer _Udefault()(pointer _Dest, size_t _Count)
+        static pointer _Udefault()(pointer _Dest, size_t _Count) nothrow pure
         {
-            // TODO: if zero init, then fast-path to zeromem
-            auto _Backout = _Uninitialized_backout(_Dest);
-            for (; 0 < _Count; --_Count)
-                _Backout._Emplace_back();
-            return _Backout._Release();
+            static if (__traits(isZeroInit, T))
+            {
+                import core.stdc.string : memset;
+                memset(_Dest, 0, _Count * T.sizeof);
+                return _Dest + _Count;
+            }
+            else static if (!hasElaborateAssign!T) // Implies !hasElaborateDestructor.
+            {
+                _Dest[0 .. _Count] = T.init;
+                return _Dest + _Count;
+            }
+            else
+            {
+                for (pointer _End = _Dest + _Count; _Dest !is _End; ++_Dest)
+                    core_emplace(*_Dest);
+                return _Dest;
+            }
         }
-        pointer _Move_unchecked(pointer _First, pointer _Last, pointer _Dest)
+        static pointer _Move_unchecked(pointer _First, pointer _Last, pointer _Dest)
         {
-            // TODO: can `memmove` if conditions are right...
-            for (; _First != _Last; ++_Dest, ++_First)
-                move(*_First, *_Dest);
-            return _Dest;
+            // can `memmove` if conditions are right
+            static if (!hasElaborateCopyConstructor!T
+                && !hasElaborateDestructor!T && !hasElaborateMove!T)
+            {
+                import core.stdc.string : memmove;
+                memmove(_Dest, _First, cast(void*) _Last - cast(void*) _First);
+                return _Dest + (_Last - _First);
+            }
+            else
+            {
+                for (; _First !is _Last; ++_Dest, ++_First)
+                    move(*_First, *_Dest);
+                return _Dest;
+            }
         }
-        pointer _Move_backward_unchecked(pointer _First, pointer _Last, pointer _Dest)
+        static pointer _Move_backward_unchecked(pointer _First, pointer _Last, pointer _Dest)
         {
-            while (_First != _Last)
-                move(*--_Last, *--_Dest);
-            return _Dest;
+            static if (!hasElaborateCopyConstructor!T
+                && !hasElaborateDestructor!T && !hasElaborateMove!T)
+            {
+                import core.stdc.string : memmove;
+                _Dest -= (_Last - _First);
+                memmove(_Dest, _First, cast(void*) _Last - cast(void*) _First);
+                return _Dest;
+            }
+            else
+            {
+                while (_First !is _Last)
+                    move(*--_Last, *--_Dest);
+                return _Dest;
+            }
         }
 
         static if (_ITERATOR_DEBUG_LEVEL == 2)
