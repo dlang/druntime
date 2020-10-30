@@ -76,10 +76,28 @@ extern (C)
             }
             _instance = newInstance;
             // Transfer all ranges and roots to the real GC.
-            (cast(ProtoGC) protoInstance).term();
+            (cast(ProtoGC) protoInstance).transfer();
             isInstanceInit = true;
         }
         instanceLock.unlock();
+    }
+
+    // Call this function when initializing the real GC.
+    // This function should be called after the real GC is in place.
+    private void transfer(ProtoGC src)
+    {
+        // Transfer all ranges
+        foreach (ref r; src.ranges)
+        {
+            // Range(p, p + sz, cast() ti)
+            gc_addRange(r.pbot, r.ptop - r.pbot, r.ti);
+        }
+
+        // Transfer all roots
+        foreach (ref r; src.roots)
+        {
+            gc_addRoot(r.proot);
+        }
     }
 
     void gc_init_nothrow() nothrow

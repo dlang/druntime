@@ -33,25 +33,6 @@ class ProtoGC : GC
     Array!Root roots;
     Array!Range ranges;
 
-    // Call this function when initializing the real GC
-    // upon ProtoGC term. This function should be called
-    // after the real GC is in place.
-    void term()
-    {
-        // Transfer all ranges
-        foreach (ref r; ranges)
-        {
-            // Range(p, p + sz, cast() ti)
-            gc_addRange(r.pbot, r.ptop - r.pbot, r.ti);
-        }
-
-        // Transfer all roots
-        foreach (ref r; roots)
-        {
-            gc_addRoot(r.proot);
-        }
-    }
-
     this()
     {
     }
