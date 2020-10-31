@@ -1991,7 +1991,7 @@ pure @safe:
                 auto b = 2 * dst.length;
                 auto newsz = a < b ? b : a;
                 debug(info) printf( "growing dst to %lu bytes\n", newsz );
-                static if(checkDstSize)
+                static if (checkDstSize)
                 {
                     assert(newsz <= 100 * 1024, `I want to use more than 100Kb for this paltry string`);
                 }
