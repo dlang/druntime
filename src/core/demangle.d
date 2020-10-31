@@ -31,7 +31,7 @@ private struct NoHooks
     // static char[] parseType(ref Demangle, char[])
 }
 
-private struct Demangle(Hooks = NoHooks)
+private struct Demangle(Hooks = NoHooks, bool checkDstSize = false)
 {
     // NOTE: This implementation currently only works with mangled function
     //       names as they exist in an object file.  Type names mangled via
@@ -1991,8 +1991,10 @@ pure @safe:
                 auto b = 2 * dst.length;
                 auto newsz = a < b ? b : a;
                 debug(info) printf( "growing dst to %lu bytes\n", newsz );
-                version (CoreUnittest)
+                static if(checkDstSize)
+                {
                     assert(newsz <= 100 * 1024, `I want to use more than 100Kb for this paltry string`);
+                }
                 dst.length = newsz;
                 pos = len = brp = 0;
                 continue;
@@ -2037,9 +2039,9 @@ pure @safe:
  *  The demangled name or the original string if the name is not a mangled D
  *  name.
  */
-char[] demangle( const(char)[] buf, char[] dst = null ) nothrow pure @safe
+char[] demangle( bool checkDstSize = false )( const(char)[] buf, char[] dst = null ) nothrow pure @safe
 {
-    auto d = Demangle!()(buf, dst);
+    auto d = Demangle!(NoHooks, checkDstSize)(buf, dst);
     // fast path (avoiding throwing & catching exception) for obvious
     // non-D mangled names
     if (buf.length < 2 || !(buf[0] == 'D' || buf[0..2] == "_D"))
@@ -2570,7 +2572,7 @@ else
     }
     foreach ( i, name; table )
     {
-        auto r = demangle( name[0] );
+        auto r = demangle!true( name[0] );
         assert( r == name[1],
                 "demangled `" ~ name[0] ~ "` as `" ~ r ~ "` but expected `" ~ name[1] ~ "`");
     }
