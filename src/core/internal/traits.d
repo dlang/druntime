@@ -275,8 +275,7 @@ template hasElaborateDestructor(S)
     }
     else static if (is(S == struct))
     {
-        enum hasElaborateDestructor = __traits(hasMember, S, "__dtor")
-            || anySatisfy!(.hasElaborateDestructor, Fields!S);
+        enum hasElaborateDestructor = __traits(hasMember, S, "__xdtor");
     }
     else
     {
@@ -287,13 +286,9 @@ template hasElaborateDestructor(S)
 // std.traits.hasElaborateCopyDestructor
 template hasElaborateCopyConstructor(S)
 {
-    static if (__traits(isStaticArray, S) && S.length)
+    static if (__traits(hasCopyConstructor, S) || __traits(hasPostblit, S))
     {
-        enum bool hasElaborateCopyConstructor = hasElaborateCopyConstructor!(typeof(S.init[0]));
-    }
-    else static if (is(S == struct))
-    {
-        enum hasElaborateCopyConstructor = __traits(hasCopyConstructor, S) || __traits(hasPostblit, S);
+        enum bool hasElaborateCopyConstructor = S.sizeof != 0; // i.e. not a zero-length static array
     }
     else
     {
@@ -397,7 +392,7 @@ unittest
 enum bool isAggregateType(T) = is(T == struct) || is(T == union) ||
                                is(T == class) || is(T == interface);
 
-enum bool isPointer(T) = is(T == U*, U) && !isAggregateType!T;
+enum bool isPointer(T) = is(T == U*, U) && __traits(isScalar, T);
 
 enum bool isDynamicArray(T) = is(DynamicArrayTypeOf!T) && !isAggregateType!T;
 
