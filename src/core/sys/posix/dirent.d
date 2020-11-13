@@ -151,7 +151,7 @@ else version (FreeBSD)
         DT_WHT      = 14
     }
 
-    static if (__FreeBSD_version >= 1200000 && __FreeBSD_version < 1300000)
+    static if (__FreeBSD_version >= 1200000)
     {
         struct dirent
         {
@@ -165,7 +165,7 @@ else version (FreeBSD)
             char[256] d_name = 0;
         }
     }
-    else static if (__FreeBSD_version < 1200000)
+    else
     {
         align(4)
         struct dirent
@@ -177,8 +177,6 @@ else version (FreeBSD)
             char[256] d_name = 0;
         }
     }
-    else
-        static assert(0, "Unsupported version of FreeBSD");
 
     alias void* DIR;
 
