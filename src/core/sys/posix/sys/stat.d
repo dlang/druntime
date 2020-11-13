@@ -1060,9 +1060,10 @@ else version (Darwin)
 }
 else version (FreeBSD)
 {
-    // https://github.com/freebsd/freebsd/blob/master/sys/sys/stat.h
+    import core.sys.freebsd.config;
 
-    version (FreeBSD_12)
+    // https://github.com/freebsd/freebsd/blob/master/sys/sys/stat.h
+    static if (__FreeBSD_version >= INO64_FIRST)
     {
         struct stat_t
         {
@@ -1104,7 +1105,7 @@ else version (FreeBSD)
             }
         }
     }
-    else version (FreeBSD_11)
+    else
     {
         struct stat_t
         {
@@ -1136,8 +1137,6 @@ else version (FreeBSD)
             }
         }
     }
-    else
-        static assert(0, "Unsupported version of FreeBSD");
 
     enum S_IRUSR    = 0x100; // octal 0000400
     enum S_IWUSR    = 0x080; // octal 0000200
