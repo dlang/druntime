@@ -146,8 +146,10 @@ nothrow @nogc:
         version (Windows)
         {
             if (m_event)
+            {
                 CloseHandle(m_event);
-            m_event = null;
+                m_event = null;
+            }
         }
         else version (Posix)
         {
@@ -162,24 +164,42 @@ nothrow @nogc:
         }
     }
 
+    /// Set event to "signaled" if event is initialized
+    void setIfInitialized()
+    {
+        version (Windows)
+        {
+            if (m_event is null)
+                return;
+        }
+        else version (Posix)
+        {
+            if (!m_initalized)
+                return;
+        }
+        else
+            static assert(false);
+
+        set();
+    }
 
     /// Set the event to "signaled", so that waiting clients are resumed
     void set()
     {
         version (Windows)
         {
-            if (m_event)
-                SetEvent(m_event);
+            assert(m_event !is null);
+
+            SetEvent(m_event);
         }
         else version (Posix)
         {
-            if (m_initalized)
-            {
-                pthread_mutex_lock(&m_mutex);
-                m_state = true;
-                pthread_cond_broadcast(&m_cond);
-                pthread_mutex_unlock(&m_mutex);
-            }
+            assert(m_initalized);
+
+            pthread_mutex_lock(&m_mutex);
+            m_state = true;
+            pthread_cond_broadcast(&m_cond);
+            pthread_mutex_unlock(&m_mutex);
         }
     }
 
@@ -212,7 +232,9 @@ nothrow @nogc:
     {
         version (Windows)
         {
-            return m_event && WaitForSingleObject(m_event, INFINITE) == WAIT_OBJECT_0;
+            assert(m_event);
+
+            return WaitForSingleObject(m_event, INFINITE) == WAIT_OBJECT_0;
         }
         else version (Posix)
         {
@@ -233,8 +255,7 @@ nothrow @nogc:
     {
         version (Windows)
         {
-            if (!m_event)
-                return false;
+            assert(m_event);
 
             auto maxWaitMillis = dur!("msecs")(uint.max - 1);
 
@@ -250,8 +271,7 @@ nothrow @nogc:
         }
         else version (Posix)
         {
-            if (!m_initalized)
-                return false;
+            assert(m_initalized);
 
             pthread_mutex_lock(&m_mutex);
 
