@@ -146,8 +146,10 @@ nothrow @nogc:
         version (Windows)
         {
             if (m_event)
+            {
                 CloseHandle(m_event);
-            m_event = null;
+                m_event = null;
+            }
         }
         else version (Posix)
         {
@@ -162,24 +164,42 @@ nothrow @nogc:
         }
     }
 
+    /// Set event to "signaled" if event is initialized
+    void setIfInitialized()
+    {
+        version (Windows)
+        {
+            if(m_event is null)
+                return;
+        }
+        else version (Posix)
+        {
+            if(!m_initalized)
+                return;
+        }
+        else
+            static assert(false);
+
+        set();
+    }
 
     /// Set the event to "signaled", so that waiting clients are resumed
     void set()
     {
         version (Windows)
         {
-            if (m_event)
-                SetEvent(m_event);
+            assert(m_event !is null);
+
+            SetEvent(m_event);
         }
         else version (Posix)
         {
-            if (m_initalized)
-            {
-                pthread_mutex_lock(&m_mutex);
-                m_state = true;
-                pthread_cond_broadcast(&m_cond);
-                pthread_mutex_unlock(&m_mutex);
-            }
+            assert(m_initalized);
+
+            pthread_mutex_lock(&m_mutex);
+            m_state = true;
+            pthread_cond_broadcast(&m_cond);
+            pthread_mutex_unlock(&m_mutex);
         }
     }
 
@@ -205,18 +225,18 @@ nothrow @nogc:
     /**
      * Wait for the event to be signaled without timeout.
      *
-     * Returns:
-     *  `true` if the event is in signaled state, `false` if the event is uninitialized or another error occured
      */
-    bool wait()
+    void wait()
     {
         version (Windows)
         {
-            return m_event && WaitForSingleObject(m_event, INFINITE) == WAIT_OBJECT_0;
+            assert(m_event);
+
+            return WaitForSingleObject(m_event, INFINITE) == WAIT_OBJECT_0;
         }
         else version (Posix)
         {
-            return wait(Duration.max);
+            while(!wait(Duration.max) {}
         }
     }
 
@@ -233,8 +253,7 @@ nothrow @nogc:
     {
         version (Windows)
         {
-            if (!m_event)
-                return false;
+            assert(m_event);
 
             auto maxWaitMillis = dur!("msecs")(uint.max - 1);
 
@@ -250,8 +269,7 @@ nothrow @nogc:
         }
         else version (Posix)
         {
-            if (!m_initalized)
-                return false;
+            assert(m_initalized);
 
             pthread_mutex_lock(&m_mutex);
 
@@ -303,13 +321,13 @@ private:
     Event ev1 = Event(false, false);
     assert(!ev1.wait(1.dur!"msecs"));
     ev1.set();
-    assert(ev1.wait());
+    assert(ev1.wait(1.dur!"msecs"));
     assert(!ev1.wait(1.dur!"msecs"));
 
     // manual-reset, initial state true
     Event ev2 = Event(true, true);
-    assert(ev2.wait());
-    assert(ev2.wait());
+    assert(ev2.wait(1.dur!"msecs"));
+    assert(ev2.wait(1.dur!"msecs"));
     ev2.reset();
     assert(!ev2.wait(1.dur!"msecs"));
 }
