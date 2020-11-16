@@ -747,3 +747,13 @@ else version (CRuntime_UClibc)
     }
     int getrusage(int, rusage*);
 }
+else version (CRuntime_Musl)
+{
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __getrusage_time64(int, rusage*);
+        alias getrusage = __getrusage_time64;
+    }
+    else
+        int getrusage(int, rusage*);
+}

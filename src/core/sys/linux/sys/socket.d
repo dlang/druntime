@@ -13,6 +13,22 @@ extern(C):
 @nogc:
 nothrow:
 
+static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+{
+    // SO_TIMESTAMP_OLD & friends
+    // https://www.kernel.org/doc/Documentation/networking/timestamping.txt
+    enum SO_TIMESTAMP = 29;
+    enum SO_TIMESTAMPNS = 35;
+    enum SO_TIMESTAMPING = 37;
+
+}
+else
+{
+    enum SO_TIMESTAMP = 63;
+    enum SO_TIMESTAMPNS = 64;
+    enum SO_TIMESTAMPING = 65;
+}
+
 enum
 {
     // Protocol families.
@@ -123,14 +139,14 @@ enum
     SO_GET_FILTER              = SO_ATTACH_FILTER,
 
     SO_PEERNAME                = 28,
-    SO_TIMESTAMP               = 29,
+    // SO_TIMESTAMP            See above
     SCM_TIMESTAMP              = SO_TIMESTAMP,
 
     SO_PASSSEC                 = 34,
-    SO_TIMESTAMPNS             = 35,
+    // SO_TIMESTAMPNS          See above
     SCM_TIMESTAMPNS            = SO_TIMESTAMPNS,
     SO_MARK                    = 36,
-    SO_TIMESTAMPING            = 37,
+    // SO_TIMESTAMPING         See above
     SCM_TIMESTAMPING           = SO_TIMESTAMPING,
     SO_RXQ_OVFL                = 40,
     SO_WIFI_STATUS             = 41,
