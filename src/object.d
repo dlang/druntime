@@ -3086,6 +3086,9 @@ private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr,
     static assert(is(T : immutable(T)), "Cannot implicitly convert type "~T.stringof~
                   " to immutable in idup.");
 
+    static if (is(T == immutable))
+        return a;
+    else
     // wrap unsafe _dup in @trusted to preserve @safe postblit
     static if (__traits(compiles, (T b) @safe { T a = b; }))
         return _trustedDup!(T, immutable(T))(a);
@@ -3106,6 +3109,13 @@ private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr,
     string s = arr.idup;
     arr[0] = '.';
     assert(s == "abc");
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=21410
+@safe unittest
+{
+    string s = "foo";
+    assert(s.idup.ptr == s.ptr);
 }
 
 private U[] _trustedDup(T, U)(T[] a) @trusted
@@ -3394,7 +3404,7 @@ private void _doPostblit(T)(T[] arr)
             S3[] m;
             immutable(S3)[] i;
             static assert(!is(typeof(m.dup)));
-            static assert(!is(typeof(i.idup)));
+            static assert( is(typeof(i.idup)));
         }
         {
             shared(S1)[] m;
