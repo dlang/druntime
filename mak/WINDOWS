@@ -245,6 +245,9 @@ $(IMPDIR)\core\sys\darwin\sys\event.d : src\core\sys\darwin\sys\event.d
 $(IMPDIR)\core\sys\darwin\sys\mman.d : src\core\sys\darwin\sys\mman.d
 	copy $** $@
 
+$(IMPDIR)\core\sys\freebsd\config.d : src\core\sys\freebsd\config.d
+	copy $** $@
+
 $(IMPDIR)\core\sys\freebsd\dlfcn.d : src\core\sys\freebsd\dlfcn.d
 	copy $** $@
 
