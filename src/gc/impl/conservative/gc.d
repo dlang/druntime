@@ -128,7 +128,7 @@ private GC initialize()
     if (!p)
         onOutOfMemoryErrorNoGC();
 
-    auto init = typeid(ConservativeGC).initializer();
+    auto init = initializer!ConservativeGC();
     assert(init.length == __traits(classInstanceSize, ConservativeGC));
     auto instance = cast(ConservativeGC) memcpy(p, init.ptr, init.length);
     instance.__ctor();

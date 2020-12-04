@@ -50,7 +50,7 @@ void initialize(T)(ref T t) if (is(T == struct))
     else static if (__traits(isZeroInit, T))
         memset(&t, 0, T.sizeof);
     else
-        memcpy(&t, typeid(T).initializer().ptr, T.sizeof);
+        memcpy(&t, initializer!T().ptr, T.sizeof);
 }
 
 void initialize(T)(ref T t) if (!is(T == struct))

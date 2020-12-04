@@ -288,6 +288,24 @@ void setSameMutex(shared Object ownee, shared Object owner)
 }
 
 /**
+ * Gets default initializer for type T as an untyped array of data.
+ * Params:
+ *      T = type to get initializer for
+ * Returns:
+ *      If the type should be initialized to all
+ *      zeros, an array with a null ptr and a length equal to the type size will
+ *      be returned.
+ *      For static arrays, this returns the default initializer for
+ *      a single element of the array.
+ *      For class objects, the data returned is for an instance
+ *      of the class object.
+ */
+const(void)[] initializer(T)() nothrow pure @safe @nogc
+{
+    return typeid(T).initializer();
+}
+
+/**
  * Information about an interface.
  * When an object is accessed via an interface, an Interface* appears as the
  * first entry in its vtbl.
