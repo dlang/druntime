@@ -393,11 +393,13 @@ endif
 
 .PHONY : unittest
 ifeq (1,$(BUILD_WAS_SPECIFIED))
-unittest : $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
+unittest : target $(UT_MODULES) $(addsuffix /.run,$(ADDITIONAL_TESTS))
 else
 unittest : unittest-debug unittest-release
-unittest-%: target
-	$(MAKE) -f $(MAKEFILE) unittest OS=$(OS) MODEL=$(MODEL) DMD=$(DMD) BUILD=$*
+unittest-debug: BUILD=debug
+unittest-release: BUILD=release
+unittest-%:
+	$(MAKE) -f $(MAKEFILE) unittest OS=$(OS) MODEL=$(MODEL) DMD=$(DMD) BUILD=$(BUILD)
 endif
 
 ifeq ($(OS),linux)
