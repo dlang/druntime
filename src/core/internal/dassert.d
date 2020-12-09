@@ -5,15 +5,15 @@ on assertion failures
 module core.internal.dassert;
 
 /// Allows customized assert error messages for unary expressions
-string _d_assert_fail(string op, A)(auto ref const scope A a)
+string _d_assert_fail(string op, A, string msg = "")(auto ref const scope A a)
 {
     string val = miniFormatFakeAttributes(a);
     enum token = op == "!" ? "==" : "!=";
-    return combine(val, token, "true");
+    return combine(val, token, "true", msg);
 }
 
 /// Allows customized assert error messages for binary expressions
-string _d_assert_fail(string comp, A, B)(auto ref const scope A a, auto ref const scope B b)
+string _d_assert_fail(string comp, A, B, string msg = "")(auto ref const scope A a, auto ref const scope B b)
 {
     /*
     The program will be terminated after the assertion error message has
@@ -25,18 +25,22 @@ string _d_assert_fail(string comp, A, B)(auto ref const scope A a, auto ref cons
     string valA = miniFormatFakeAttributes(a);
     string valB = miniFormatFakeAttributes(b);
     enum token = invertCompToken(comp);
-    return combine(valA, token, valB);
+    return combine(valA, token, valB, msg);
 }
 
 /// Combines the supplied arguments into one string "valA token valB"
 private string combine(const scope string valA, const scope string token,
-const scope string valB) pure nothrow @nogc @safe
+const scope string valB, const scope string msg = "") pure nothrow @nogc @safe
 {
-    const totalLen = valA.length + token.length + valB.length + 2;
+    const totalLen = valA.length + token.length + valB.length +
+                    (msg.length == 0 ? 2 : msg.length + 3);
     char[] buffer = cast(char[]) pureAlloc(totalLen)[0 .. totalLen];
-    // @nogc-concat of "<valA> <comp> <valB>"
-    auto n = valA.length;
-    buffer[0 .. n] = valA;
+    // @nogc-concat of "<msg> <valA> <comp> <valB>"
+    auto n = msg.length;
+    buffer[0 .. n] = msg;
+    buffer[n++] = ' ';
+    buffer[n .. n + valA.length] = valA;
+    n += valA.length;
     buffer[n++] = ' ';
     buffer[n .. n + token.length] = token;
     n += token.length;
