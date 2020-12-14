@@ -3427,7 +3427,28 @@ struct timespec
 }
 */
 
-version (linux)
+version (CRuntime_Musl)
+{
+    // Musl on 32 bits use 64 bits time_t (time64)
+    // See https://git.musl-libc.org/cgit/musl/commit/?id=9b2921bea1d5017832e1b45d1fd64220047a9802
+    struct timespec
+    {
+        time_t tv_sec;
+        // 32 bits of padding on 32 bits, or in C:
+        // int :8*(sizeof(time_t)-sizeof(long))*(__BYTE_ORDER==4321);
+        version (BigEndian)
+            static if (time_t.sizeof > c_long.sizeof)
+                int __padding;
+        c_long tv_nsec;
+        // Another 32 bits of padding on 32 bits:
+        // int :8*(sizeof(time_t)-sizeof(long))*(__BYTE_ORDER!=4321);
+        version (LittleEndian)
+            static if (time_t.sizeof > c_long.sizeof)
+                int __padding;
+    };
+
+}
+else version (linux)
 {
     struct timespec
     {
@@ -3681,6 +3702,15 @@ else version (CRuntime_Musl)
         pthread_attr_t *sigev_notify_attributes;
         char[56 - 3 * c_long.sizeof] __pad = void;
     }
+
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __sigtimedwait_time64(const scope sigset_t*, siginfo_t*, const scope timespec*);
+        alias sigtimedwait = __sigtimedwait_time64;
+    }
+    else
+        int sigtimedwait(const scope sigset_t*, siginfo_t*, const scope timespec*);
+
 }
 else version (CRuntime_UClibc)
 {

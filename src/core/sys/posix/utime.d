@@ -62,8 +62,13 @@ else version (CRuntime_Musl)
         time_t  actime;
         time_t  modtime;
     }
-
-    int utime(const scope char*, const scope utimbuf*);
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __utime64(const scope char*, const scope utimbuf*);
+        alias utime = __utime64;
+    }
+    else
+        int utime(const scope char*, const scope utimbuf*);
 }
 else version (Darwin)
 {
