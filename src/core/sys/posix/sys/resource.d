@@ -747,3 +747,9 @@ else version (CRuntime_UClibc)
     }
     int getrusage(int, rusage*);
 }
+else version (CRuntime_Musl)
+{
+    // When adding a getrusage signature, care for time64 redirection
+    // https://git.musl-libc.org/cgit/musl/tree/include/sys/resource.h#n109
+    // See CRuntime_Musl_Time64_Compat_Layer
+}

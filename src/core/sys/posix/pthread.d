@@ -718,7 +718,13 @@ int pthread_cond_broadcast(pthread_cond_t*);
 int pthread_cond_destroy(pthread_cond_t*);
 int pthread_cond_init(const scope pthread_cond_t*, pthread_condattr_t*) @trusted;
 int pthread_cond_signal(pthread_cond_t*);
-int pthread_cond_timedwait(pthread_cond_t*, pthread_mutex_t*, const scope timespec*);
+static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+{
+    int __pthread_cond_timedwait_time64(pthread_cond_t*, pthread_mutex_t*, in timespec*);
+    alias pthread_cond_timedwait = __pthread_cond_timedwait_time64;
+}
+else
+    int pthread_cond_timedwait(pthread_cond_t*, pthread_mutex_t*, const scope timespec*);
 int pthread_cond_wait(pthread_cond_t*, pthread_mutex_t*);
 int pthread_condattr_destroy(pthread_condattr_t*);
 int pthread_condattr_init(pthread_condattr_t*);
@@ -1314,6 +1320,16 @@ else version (CRuntime_Bionic)
 {
     int pthread_rwlock_timedrdlock(pthread_rwlock_t*, const scope timespec*);
     int pthread_rwlock_timedwrlock(pthread_rwlock_t*, const scope timespec*);
+}
+else static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+{
+    int __pthread_mutex_timedlock_time64(pthread_mutex_t*, const scope timespec*);
+    int __pthread_rwlock_timedrdlock_time64(pthread_rwlock_t*, const scope timespec*);
+    int __pthread_rwlock_timedwrlock_time64(pthread_rwlock_t*, const scope timespec*);
+
+    alias pthread_mutex_timedlock = __pthread_mutex_timedlock_time64;
+    alias pthread_rwlock_timedrdlock = __pthread_rwlock_timedrdlock_time64;
+    alias pthread_rwlock_timedwrlock = __pthread_rwlock_timedwrlock_time64;
 }
 else version (CRuntime_Musl)
 {

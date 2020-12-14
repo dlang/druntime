@@ -84,7 +84,13 @@ else version (CRuntime_Bionic)
 }
 else version (CRuntime_Musl)
 {
-    time_t timegm(tm*);
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        time_t __timegm_time64(tm*);
+        alias timegm = __timegm_time64;
+    }
+    else
+        time_t timegm(tm*);
 }
 else version (CRuntime_UClibc)
 {
@@ -427,18 +433,42 @@ else version (CRuntime_Musl)
     enum CLOCK_SGI_CYCLE = 10;
     enum CLOCK_TAI = 11;
 
-    int nanosleep(const scope timespec*, timespec*);
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __nanosleep_time64(const scope timespec*, timespec*);
 
-    int clock_getres(clockid_t, timespec*);
-    int clock_gettime(clockid_t, timespec*);
-    int clock_settime(clockid_t, const scope timespec*);
-    int clock_nanosleep(clockid_t, int, const scope timespec*, timespec*);
+        int __clock_getres_time64(clockid_t, timespec*);
+        int __clock_gettime64(clockid_t, timespec*);
+        int __clock_settime64(clockid_t, const scope timespec*);
+        int __clock_nanosleep_time64(clockid_t, int, const scope timespec*, timespec*);
+
+        int __timer_settime64(timer_t, itimerspec*);
+        int __timer_gettime64(timer_t, int, const scope itimerspec*, itimerspec*);
+
+        alias nanosleep = __nanosleep_time64;
+        alias clock_getres = __clock_getres_time64;
+        alias clock_gettime = __clock_gettime64;
+        alias clock_settime = __clock_settime64;
+        alias clock_nanosleep = __clock_nanosleep_time64;
+        alias timer_settime = __timer_settime64;
+        alias timer_gettime = __timer_gettime64;
+    }
+    else
+    {
+        int nanosleep(const scope timespec*, timespec*);
+
+        int clock_getres(clockid_t, timespec*);
+        int clock_gettime(clockid_t, timespec*);
+        int clock_settime(clockid_t, const scope timespec*);
+        int clock_nanosleep(clockid_t, int, const scope timespec*, timespec*);
+        int timer_gettime(timer_t, itimerspec*);
+        int timer_settime(timer_t, int, const scope itimerspec*, itimerspec*);
+    }
+
     int clock_getcpuclockid(pid_t, clockid_t *);
 
     int timer_create(clockid_t, sigevent*, timer_t*);
     int timer_delete(timer_t);
-    int timer_gettime(timer_t, itimerspec*);
-    int timer_settime(timer_t, int, const scope itimerspec*, itimerspec*);
     int timer_getoverrun(timer_t);
 }
 else version (CRuntime_UClibc)
@@ -542,9 +572,23 @@ else version (CRuntime_Bionic)
 else version (CRuntime_Musl)
 {
     char* asctime_r(const scope tm*, char*);
-    char* ctime_r(const scope time_t*, char*);
-    tm*   gmtime_r(const scope time_t*, tm*);
-    tm*   localtime_r(const scope time_t*, tm*);
+
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        char* __ctime64_r(const scope time_t*, char*);
+        tm*   __gmtime64_r(const scope time_t*, tm*);
+        tm*   __localtime64_r(const scope time_t*, tm*);
+
+        alias gmtime_r = __gmtime64_r;
+        alias localtime_r = __localtime64_r;
+        alias ctime_r = __ctime64_r;
+    }
+    else
+    {
+        char* ctime_r(const scope time_t*, char*);
+        tm*   gmtime_r(const scope time_t*, tm*);
+        tm*   localtime_r(const scope time_t*, tm*);
+    }
 }
 else version (CRuntime_UClibc)
 {

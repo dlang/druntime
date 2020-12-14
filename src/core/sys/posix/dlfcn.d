@@ -282,6 +282,8 @@ else version (CRuntime_Bionic)
 }
 else version (CRuntime_Musl)
 {
+    import core.sys.posix.sys.types : CRuntime_Musl_Needs_Time64_Compat_Layer;
+
     enum {
         RTLD_LAZY     = 1,
         RTLD_NOW      = 2,
@@ -293,7 +295,13 @@ else version (CRuntime_Musl)
     int          dlclose(void*);
     const(char)* dlerror();
     void*        dlopen(const scope char*, int);
-    void*        dlsym(void*, const scope char*);
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        void* __dlsym_time64(void*, const scope char*);
+        alias dlsym = __dlsym_time64;
+    }
+    else
+        void*        dlsym(void*, const scope char*);
 
     int dladdr(scope const void *addr, Dl_info *info);
     struct Dl_info
