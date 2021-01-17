@@ -410,12 +410,11 @@ class Thread : ThreadBase
         version (Windows) {} else
         version (Posix)
         {
-            size_t stksz = adjustStackSize( m_sz );
-
             pthread_attr_t  attr;
 
             if ( pthread_attr_init( &attr ) )
                 onThreadError( "Error initializing thread attributes" );
+            size_t stksz = adjustStackSize( m_sz, &attr );
             if ( stksz && pthread_attr_setstacksize( &attr, stksz ) )
                 onThreadError( "Error initializing thread stack size" );
         }
@@ -2592,13 +2591,12 @@ ThreadID createLowLevelThread(void delegate() nothrow dg, uint stacksize = 0,
             return null;
         }
 
-        size_t stksz = adjustStackSize(stacksize);
-
         pthread_attr_t  attr;
 
         int rc;
         if ((rc = pthread_attr_init(&attr)) != 0)
             return ThreadID.init;
+        size_t stksz = adjustStackSize(stacksize, &attr);
         if (stksz && (rc = pthread_attr_setstacksize(&attr, stksz)) != 0)
             return ThreadID.init;
         if ((rc = pthread_create(&tid, &attr, &thread_lowlevelEntry, context)) != 0)
@@ -2675,20 +2673,54 @@ nothrow @nogc unittest
 }
 
 version (Posix)
-private size_t adjustStackSize(size_t sz) nothrow @nogc
+private size_t adjustStackSize(size_t sz, const(pthread_attr_t)* attr) nothrow @nogc
 {
     if (sz == 0)
         return 0;
 
-    // stack size must be at least PTHREAD_STACK_MIN for most platforms.
-    if (PTHREAD_STACK_MIN > sz)
-        sz = PTHREAD_STACK_MIN;
-
+    // On glibc, TLS uses the top of the stack, so add its size to the requested size
     version (CRuntime_Glibc)
     {
-        // On glibc, TLS uses the top of the stack, so add its size to the requested size
-        sz += externDFunc!("rt.sections_elf_shared.sizeOfTLS",
-                           size_t function() @nogc nothrow)();
+        alias funcT = extern (C) size_t function(const(pthread_attr_t)* attr) nothrow @nogc;
+        __gshared static funcT __pthread_get_minstack = null;
+
+        extern (C) void initPthreadGetMinStackSize() nothrow @nogc
+        {
+            // Use dlsym() to get the symbol value at runtime to avoid creating
+            // dependencies on glibc private symbols.
+            import core.sys.posix.dlfcn;
+            void* handle = dlopen(null, RTLD_LAZY);
+            scope(exit) dlclose(handle);
+            if (handle !is null)
+                __pthread_get_minstack = cast(funcT) dlsym(handle, "__pthread_get_minstack");
+        }
+
+        import core.sys.posix.pthread;
+        __gshared static pthread_once_t initOnce = PTHREAD_ONCE_INIT;
+        pthread_once(&initOnce, &initPthreadGetMinStackSize);
+
+        // we prefer `__pthread_get_minstack` function to get the value including TCB,
+        // which was added in glibc >= 2.15.
+        if (__pthread_get_minstack !is null)
+        {
+            size_t minimalStackSize = __pthread_get_minstack(attr);
+            if (minimalStackSize > sz)
+                sz = minimalStackSize;
+        }
+        else
+        {
+            // fallback.
+            size_t minimalStackSize = PTHREAD_STACK_MIN + externDFunc!("rt.sections_elf_shared.sizeOfTLS",
+                                                                       size_t function() @nogc nothrow)();
+            if (minimalStackSize > sz)
+                sz = minimalStackSize;
+        }
+    }
+    else
+    {
+        // stack size must be at least PTHREAD_STACK_MIN for most platforms.
+        if (PTHREAD_STACK_MIN > sz)
+            sz = PTHREAD_STACK_MIN;
     }
 
     // stack size must be a multiple of PAGESIZE
