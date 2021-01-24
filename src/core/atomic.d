@@ -196,7 +196,7 @@ T atomicFetchSub(MemoryOrder ms = MemoryOrder.seq, T)(ref T val, size_t mod) pur
 in (atomicValueIsProperlyAligned(val))
 {
     static if (is(T == U*, U))
-        return cast(T)core.internal.atomic.atomicFetchAdd!ms(cast(size_t*)&val, mod * U.sizeof);
+        return cast(T)core.internal.atomic.atomicFetchSub!ms(cast(size_t*)&val, mod * U.sizeof);
     else
         return core.internal.atomic.atomicFetchSub!ms(&val, cast(T)mod);
 }
@@ -1143,6 +1143,15 @@ version (CoreUnittest)
         }
     }
 
+    @betterC pure nothrow @nogc unittest{
+        shared byte* sptr = cast(byte*) 8;
+        byte* ptr = cast(shared byte*) 9;
+        assert(atomicFetchAdd(sptr, 1) == cast(shared byte*) 8);
+        assert(atomicFetchAdd(ptr, 1) == cast(byte*) 9);
+        assert(sptr == cast(shared byte*)9);
+        assert(ptr == cast(byte*)10);
+    }
+
     @betterC pure nothrow @nogc @safe unittest
     {
         shared ubyte u8 = 1;
@@ -1165,6 +1174,15 @@ version (CoreUnittest)
             assert(atomicOp!"-="(u64, 1) == 3);
             assert(atomicOp!"-="(i64, 1) == 7);
         }
+    }
+
+    @betterC pure nothrow @nogc unittest{
+        shared byte* sptr = cast(byte*) 8;
+        byte* ptr = cast(shared byte*) 9;
+        assert(atomicFetchSub(sptr, 1) == cast(shared byte*) 8);
+        assert(atomicFetchSub(ptr, 1) == cast(byte*) 9);
+        assert(sptr == cast(shared byte*)7);
+        assert(ptr == cast(byte*)8);
     }
 
     @betterC pure nothrow @nogc @safe unittest // issue 16651
