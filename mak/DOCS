@@ -16,6 +16,7 @@ DOCS=\
 	$(DOCDIR)\core_vararg.html \
 	\
 	$(DOCDIR)\core_stdc_assert_.html \
+	$(DOCDIR)\core_stdc_config.html \
 	$(DOCDIR)\core_stdc_complex.html \
 	$(DOCDIR)\core_stdc_ctype.html \
 	$(DOCDIR)\core_stdc_errno.html \
@@ -46,4 +47,25 @@ DOCS=\
 	$(DOCDIR)\core_sync_exception.html \
 	$(DOCDIR)\core_sync_mutex.html \
 	$(DOCDIR)\core_sync_rwmutex.html \
-	$(DOCDIR)\core_sync_semaphore.html
+	$(DOCDIR)\core_sync_semaphore.html \
+	\
+	$(DOCDIR)\core_sys_darwin_crt_externs.html \
+	$(DOCDIR)\core_sys_darwin_dlfcn.html \
+	$(DOCDIR)\core_sys_darwin_execinfo.html \
+	$(DOCDIR)\core_sys_darwin_pthread.html \
+	$(DOCDIR)\core_sys_darwin_mach_dyld.html \
+	$(DOCDIR)\core_sys_darwin_mach_getsect.html \
+	$(DOCDIR)\core_sys_darwin_mach_kern_return.html \
+	$(DOCDIR)\core_sys_darwin_mach_loader.html \
+	$(DOCDIR)\core_sys_darwin_mach_nlist.html \
+	$(DOCDIR)\core_sys_darwin_mach_port.html \
+	$(DOCDIR)\core_sys_darwin_mach_semaphore.html \
+	$(DOCDIR)\core_sys_darwin_mach_stab.html \
+	$(DOCDIR)\core_sys_darwin_mach_thread_act.html \
+	$(DOCDIR)\core_sys_darwin_netinet_in_.html \
+	\
+	$(DOCDIR)\core_thread.html \
+	$(DOCDIR)\core_thread_fiber.html \
+	$(DOCDIR)\core_thread_osthread.html \
+	\
+	$(DOCDIR)\rt_util_typeinfo.html \
