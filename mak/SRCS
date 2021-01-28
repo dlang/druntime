@@ -12,7 +12,6 @@ SRCS=\
 	src\core\memory.d \
 	src\core\runtime.d \
 	src\core\simd.d \
-	src\core\thread.d \
 	src\core\time.d \
 	src\core\vararg.d \
 	\
@@ -23,6 +22,9 @@ SRCS=\
 	src\core\internal\spinlock.d \
 	src\core\internal\string.d \
 	src\core\internal\traits.d \
+	\
+	src\core\internal\vararg\aarch64.d \
+	src\core\internal\vararg\sysv_x64.d \
 	\
 	src\core\stdc\assert_.d \
 	src\core\stdc\complex.d \
@@ -55,10 +57,14 @@ SRCS=\
 	src\core\sync\rwmutex.d \
 	src\core\sync\semaphore.d \
 	\
+	src\core\sys\bionic\err.d \
+	src\core\sys\bionic\fcntl.d \
 	src\core\sys\bionic\string.d \
+	src\core\sys\bionic\unistd.d \
 	\
 	src\core\sys\darwin\crt_externs.d \
 	src\core\sys\darwin\dlfcn.d \
+	src\core\sys\darwin\err.d \
 	src\core\sys\darwin\execinfo.d \
 	src\core\sys\darwin\pthread.d \
 	src\core\sys\darwin\string.d \
@@ -66,8 +72,10 @@ SRCS=\
 	src\core\sys\darwin\mach\getsect.d \
 	src\core\sys\darwin\mach\kern_return.d \
 	src\core\sys\darwin\mach\loader.d \
+	src\core\sys\darwin\mach\nlist.d \
 	src\core\sys\darwin\mach\port.d \
 	src\core\sys\darwin\mach\semaphore.d \
+	src\core\sys\darwin\mach\stab.d \
 	src\core\sys\darwin\mach\thread_act.d \
 	src\core\sys\darwin\netinet\in_.d \
 	\
@@ -76,10 +84,14 @@ SRCS=\
 	src\core\sys\darwin\sys\mman.d \
 	\
 	src\core\sys\freebsd\dlfcn.d \
+	src\core\sys\freebsd\err.d \
 	src\core\sys\freebsd\execinfo.d \
 	src\core\sys\freebsd\netinet\in_.d \
 	src\core\sys\freebsd\pthread_np.d \
 	src\core\sys\freebsd\string.d \
+	src\core\sys\freebsd\time.d \
+	src\core\sys\freebsd\unistd.d \
+	\
 	src\core\sys\freebsd\sys\_bitset.d \
 	src\core\sys\freebsd\sys\_cpuset.d \
 	src\core\sys\freebsd\sys\cdefs.d \
@@ -91,36 +103,39 @@ SRCS=\
 	src\core\sys\freebsd\sys\link_elf.d \
 	src\core\sys\freebsd\sys\mman.d \
 	src\core\sys\freebsd\sys\mount.d \
-	src\core\sys\freebsd\time.d \
-	src\core\sys\freebsd\unistd.d \
 	\
 	src\core\sys\dragonflybsd\dlfcn.d \
+	src\core\sys\dragonflybsd\err.d \
 	src\core\sys\dragonflybsd\execinfo.d \
 	src\core\sys\dragonflybsd\netinet\in_.d \
 	src\core\sys\dragonflybsd\pthread_np.d \
 	src\core\sys\dragonflybsd\string.d \
+	src\core\sys\dragonflybsd\time.d \
+	\
 	src\core\sys\dragonflybsd\sys\_bitset.d \
 	src\core\sys\dragonflybsd\sys\_cpuset.d \
 	src\core\sys\dragonflybsd\sys\cdefs.d \
-	src\core\sys\dragonflybsd\sys\elf_common.d \
 	src\core\sys\dragonflybsd\sys\elf.d \
 	src\core\sys\dragonflybsd\sys\elf32.d \
 	src\core\sys\dragonflybsd\sys\elf64.d \
+	src\core\sys\dragonflybsd\sys\elf_common.d \
 	src\core\sys\dragonflybsd\sys\event.d \
 	src\core\sys\dragonflybsd\sys\link_elf.d \
 	src\core\sys\dragonflybsd\sys\mman.d \
-	src\core\sys\dragonflybsd\time.d \
+	src\core\sys\dragonflybsd\sys\socket.d \
 	\
 	src\core\sys\linux\config.d \
 	src\core\sys\linux\dlfcn.d \
 	src\core\sys\linux\elf.d \
 	src\core\sys\linux\epoll.d \
+	src\core\sys\linux\err.d \
 	src\core\sys\linux\errno.d \
 	src\core\sys\linux\execinfo.d \
 	src\core\sys\linux\fcntl.d \
 	src\core\sys\linux\ifaddrs.d \
 	src\core\sys\linux\link.d \
 	src\core\sys\linux\sched.d \
+	src\core\sys\linux\stdio.d \
 	src\core\sys\linux\string.d \
 	src\core\sys\linux\termios.d \
 	src\core\sys\linux\time.d \
@@ -143,11 +158,33 @@ SRCS=\
 	src\core\sys\linux\sys\time.d \
 	src\core\sys\linux\sys\prctl.d \
 	\
-	src\core\sys\netbsd\sys\featuretest.d \
+	src\core\sys\netbsd\dlfcn.d \
+	src\core\sys\netbsd\err.d \
+	src\core\sys\netbsd\execinfo.d \
 	src\core\sys\netbsd\string.d \
+	src\core\sys\netbsd\time.d \
+	\
+	src\core\sys\netbsd\sys\elf.d \
+	src\core\sys\netbsd\sys\elf32.d \
+	src\core\sys\netbsd\sys\elf64.d \
+	src\core\sys\netbsd\sys\elf_common.d \
+	src\core\sys\netbsd\sys\event.d \
+	src\core\sys\netbsd\sys\featuretest.d \
+	src\core\sys\netbsd\sys\link_elf.d \
+	src\core\sys\netbsd\sys\mman.d \
 	\
 	src\core\sys\openbsd\dlfcn.d \
+	src\core\sys\openbsd\err.d \
 	src\core\sys\openbsd\string.d \
+	src\core\sys\openbsd\time.d \
+	\
+	src\core\sys\openbsd\sys\cdefs.d \
+	src\core\sys\openbsd\sys\elf.d \
+	src\core\sys\openbsd\sys\elf32.d \
+	src\core\sys\openbsd\sys\elf64.d \
+	src\core\sys\openbsd\sys\elf_common.d \
+	src\core\sys\openbsd\sys\link_elf.d \
+	src\core\sys\openbsd\sys\mman.d \
 	\
 	src\core\sys\posix\arpa\inet.d \
 	src\core\sys\posix\aio.d \
@@ -159,6 +196,8 @@ SRCS=\
 	src\core\sys\posix\iconv.d \
 	src\core\sys\posix\inttypes.d \
 	src\core\sys\posix\libgen.d \
+	src\core\sys\posix\locale.d \
+	src\core\sys\posix\mqueue.d \
 	src\core\sys\posix\netdb.d \
 	src\core\sys\posix\poll.d \
 	src\core\sys\posix\pthread.d \
@@ -170,6 +209,8 @@ SRCS=\
 	src\core\sys\posix\spawn.d \
 	src\core\sys\posix\stdio.d \
 	src\core\sys\posix\stdlib.d \
+	src\core\sys\posix\string.d \
+	src\core\sys\posix\strings.d \
 	src\core\sys\posix\syslog.d \
 	src\core\sys\posix\termios.d \
 	src\core\sys\posix\time.d \
@@ -182,11 +223,14 @@ SRCS=\
 	src\core\sys\posix\netinet\in_.d \
 	src\core\sys\posix\netinet\tcp.d \
 	\
+	src\core\sys\posix\stdc\time.d \
+	\
 	src\core\sys\posix\sys\filio.d \
 	src\core\sys\posix\sys\ioccom.d \
 	src\core\sys\posix\sys\ioctl.d \
 	src\core\sys\posix\sys\ipc.d \
 	src\core\sys\posix\sys\mman.d \
+	src\core\sys\posix\sys\msg.d \
 	src\core\sys\posix\sys\resource.d \
 	src\core\sys\posix\sys\select.d \
 	src\core\sys\posix\sys\shm.d \
@@ -203,6 +247,7 @@ SRCS=\
 	\
 	src\core\sys\solaris\dlfcn.d \
 	src\core\sys\solaris\elf.d \
+	src\core\sys\solaris\err.d \
 	src\core\sys\solaris\execinfo.d \
 	src\core\sys\solaris\libelf.d \
 	src\core\sys\solaris\link.d \
@@ -334,6 +379,7 @@ SRCS=\
 	src\core\sys\windows\rpcnsip.d \
 	src\core\sys\windows\rpcnterr.d \
 	src\core\sys\windows\schannel.d \
+	src\core\sys\windows\sdkddkver.d \
 	src\core\sys\windows\secext.d \
 	src\core\sys\windows\security.d \
 	src\core\sys\windows\servprov.d \
@@ -351,6 +397,7 @@ SRCS=\
 	src\core\sys\windows\sspi.d \
 	src\core\sys\windows\stacktrace.d \
 	src\core\sys\windows\stat.d \
+	src\core\sys\windows\stdc\time.d \
 	src\core\sys\windows\subauth.d \
 	src\core\sys\windows\threadaux.d \
 	src\core\sys\windows\tlhelp32.d \
@@ -383,6 +430,14 @@ SRCS=\
 	src\core\sys\windows\winver.d \
 	src\core\sys\windows\wtsapi32.d \
 	src\core\sys\windows\wtypes.d \
+	\
+	src\core\thread\fiber.d \
+	src\core\thread\types.d \
+	src\core\thread\threadgroup.d \
+	src\core\thread\threadbase.d \
+	src\core\thread\osthread.d \
+	src\core\thread\context.d \
+	src\core\thread\package.d \
 	\
 	src\gc\bits.d \
 	src\gc\config.d \
@@ -453,43 +508,5 @@ SRCS=\
 	src\rt\util\container\common.d \
 	src\rt\util\container\hashtab.d \
 	src\rt\util\container\treap.d \
-	\
-	src\rt\typeinfo\ti_Acdouble.d \
-	src\rt\typeinfo\ti_Acfloat.d \
-	src\rt\typeinfo\ti_Acreal.d \
-	src\rt\typeinfo\ti_Adouble.d \
-	src\rt\typeinfo\ti_Afloat.d \
-	src\rt\typeinfo\ti_Ag.d \
-	src\rt\typeinfo\ti_Aint.d \
-	src\rt\typeinfo\ti_Along.d \
-	src\rt\typeinfo\ti_Areal.d \
-	src\rt\typeinfo\ti_Ashort.d \
-	src\rt\typeinfo\ti_byte.d \
-	src\rt\typeinfo\ti_C.d \
-	src\rt\typeinfo\ti_cdouble.d \
-	src\rt\typeinfo\ti_cent.d \
-	src\rt\typeinfo\ti_cfloat.d \
-	src\rt\typeinfo\ti_char.d \
-	src\rt\typeinfo\ti_creal.d \
-	src\rt\typeinfo\ti_dchar.d \
-	src\rt\typeinfo\ti_delegate.d \
-	src\rt\typeinfo\ti_double.d \
-	src\rt\typeinfo\ti_float.d \
-	src\rt\typeinfo\ti_idouble.d \
-	src\rt\typeinfo\ti_ifloat.d \
-	src\rt\typeinfo\ti_int.d \
-	src\rt\typeinfo\ti_ireal.d \
-	src\rt\typeinfo\ti_long.d \
-	src\rt\typeinfo\ti_n.d \
-	src\rt\typeinfo\ti_ptr.d \
-	src\rt\typeinfo\ti_real.d \
-	src\rt\typeinfo\ti_short.d \
-	src\rt\typeinfo\ti_ubyte.d \
-	src\rt\typeinfo\ti_ucent.d \
-	src\rt\typeinfo\ti_uint.d \
-	src\rt\typeinfo\ti_ulong.d \
-	src\rt\typeinfo\ti_ushort.d \
-	src\rt\typeinfo\ti_void.d \
-	src\rt\typeinfo\ti_wchar.d \
 	\
 	src\etc\linux\memoryerror.d
