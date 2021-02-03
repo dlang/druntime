@@ -14,6 +14,7 @@ SRCS=\
 	src\core\simd.d \
 	src\core\time.d \
 	src\core\vararg.d \
+	src\core\volatile.d \
 	\
 	src\core\internal\abort.d \
 	src\core\internal\arrayop.d \
