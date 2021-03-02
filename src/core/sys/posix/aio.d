@@ -488,6 +488,25 @@ else version (CRuntime_UClibc)
         int lio_listio(int mode, const(aiocb*)* aiocb_list, int nitems, sigevent* sevp);
     }
 }
+else version (CRuntime_Musl)
+{
+    int aio_read(aiocb* aiocbp);
+    int aio_write(aiocb* aiocbp);
+    int aio_fsync(int op, aiocb* aiocbp);
+    int aio_error(const(aiocb)* aiocbp);
+    ssize_t aio_return(aiocb* aiocbp);
+    int aio_cancel(int fd, aiocb* aiocbp);
+    int lio_listio(int mode, const(aiocb*)* aiocb_list, int nitems, sigevent* sevp);
+
+    import core.sys.posix.time : CRuntime_Musl_Needs_Time64_Compat_Layer;
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __aio_suspend_time64(const(aiocb*)* aiocb_list, int nitems, const(timespec)* timeout);
+        alias aio_suspend = __aio_suspend_time64;
+    }
+    else
+        int aio_suspend(const(aiocb*)* aiocb_list, int nitems, const(timespec)* timeout);
+}
 else version (OpenBSD)
 {
     // OpenBSD does not implement aio.h
