@@ -870,6 +870,7 @@ class PrimaryExpression : Expression
             case TOK___LINE__:
             case TOK___FUNCTION__:
             case TOK___PRETTY_FUNCTION__:
+            case TOK___MANGLED_FUNCTION__:
             case TOK___MODULE__:
                 auto expr = new ast.PrimaryExpression(p.tok);
                 p.pushNode(expr);
