@@ -345,7 +345,7 @@ extern(Windows) BOOL FixupDebugHeader(HANDLE hProcess, ULONG ActionCode,
     return FALSE;
 }
 
-private size_t generateSearchPath(ref char[MAX_PATH] path)
+private char[] generateSearchPathAlloc()
 {
     __gshared string[3] defaultPathList = [
         "_NT_SYMBOL_PATH", "_NT_ALTERNATE_SYMBOL_PATH", "SYSTEMROOT"
@@ -353,20 +353,30 @@ private size_t generateSearchPath(ref char[MAX_PATH] path)
 
     char[MAX_PATH] temp = void;
     DWORD len;
-    size_t index = 0;
+    DWORD total;
     foreach (e; defaultPathList)
     {
         if ((len = GetEnvironmentVariableA(e.ptr, temp.ptr, temp.length)) > 0)
         {
-            path[index .. index + len] = temp[0 .. len];
-            index += len;
-            path[index] = ';';
-            index += 1;
+            total += len + 1;
         }
     }
-    path[index] = '\0';
-    index += 1;
-    return index;
+
+    if(total > 0)
+    {
+        auto buffer = cast(char[]) malloc(total + 1)[0 .. total + 1];
+        foreach (e; defaultPathList)
+        {
+            if ((len = GetEnvironmentVariableA(e.ptr, &buffer[len], buffer.length - len)) > 0)
+            {
+                buffer[len] = ';';
+                len += 1;
+            }
+        }
+        buffer[$-1] = '\0';
+        return buffer;
+    }
+    return [];
 }
 
 
@@ -402,12 +412,12 @@ shared static this()
     symOptions |= SYMOPT_DEFERRED_LOAD;
     symOptions  = dbghelp.SymSetOptions( symOptions );
 
-    char[MAX_PATH] buffer;
-    generateSearchPath(buffer);
+    auto paths = generateSearchPathAlloc(buffer);
+    scope(exit) if(paths.length > 0) free(paths);
 
-    debug(PRINTF) printf("Search paths: %s\n", buffer.ptr);
+    debug(PRINTF) printf("Search paths: %s\n", paths.ptr);
 
-    if (!dbghelp.SymInitialize(hProcess, buffer.ptr, TRUE))
+    if (!dbghelp.SymInitialize(hProcess, paths.ptr, TRUE))
         return;
 
     dbghelp.SymRegisterCallback64(hProcess, &FixupDebugHeader, 0);
