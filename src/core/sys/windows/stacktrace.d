@@ -413,7 +413,7 @@ shared static this()
     symOptions  = dbghelp.SymSetOptions( symOptions );
 
     auto paths = generateSearchPathAlloc(buffer);
-    scope(exit) if(paths.length > 0) free(paths);
+    scope(exit) if(paths.length > 0) free(paths.ptr);
 
     debug(PRINTF) printf("Search paths: %s\n", paths.ptr);
 
