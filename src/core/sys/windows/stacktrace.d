@@ -345,7 +345,7 @@ extern(Windows) BOOL FixupDebugHeader(HANDLE hProcess, ULONG ActionCode,
     return FALSE;
 }
 
-private size_t generateSearchPath(char[] path)
+private size_t generateSearchPath(ref char[MAX_PATH] path)
 {
     __gshared string[3] defaultPathList = [
         "_NT_SYMBOL_PATH", "_NT_ALTERNATE_SYMBOL_PATH", "SYSTEMROOT"
