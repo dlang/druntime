@@ -31,6 +31,7 @@ void main()
     issue16974();
     issue18071();
     issue20440();
+    issue21015();
     issue21442();
     testIterationWithConst();
     testStructArrayKey();
@@ -708,6 +709,16 @@ void issue20440() @safe
     S[S] aa;
     assert(aa.require(S(1), S(2)) == S(2));
     assert(aa[S(1)] == S(2));
+}
+
+/// Ensure that keys returned by byKey and byKeyValue are not mutable.
+/// https://issues.dlang.org/show_bug.cgi?id=21015
+void issue21015()
+{
+    int[int] aa;
+
+    assert(is(typeof(aa.byKey.front) == const(int)));
+    assert(is(typeof(aa.byKeyValue.front.key) == const(int)));
 }
 
 ///
