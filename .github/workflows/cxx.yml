@@ -219,7 +219,7 @@ jobs:
       if: runner.os == 'Windows'
       uses: actions/cache@v1
       with:
-        path: ${{ github.workspace }}/tools/
+        path: ${{ github.workspace }}\tools\
         key: ${{ matrix.os }}-dmc857
 
     - name: '[Windows] Install dmc'
@@ -268,7 +268,7 @@ jobs:
         HOST_DMD: ${{ env.DC }}
       run: |
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-        dmd -run ./dmd/src/build.d -j2 MODEL=64
+        dmd -run dmd\src\build.d -j2 MODEL=64
         if %errorlevel% neq 0 exit /b %errorlevel%
         rem Note: Only CC for druntime and AR for Phobos are required ATM,
         rem but providing all three to avoid surprise for future contributors
