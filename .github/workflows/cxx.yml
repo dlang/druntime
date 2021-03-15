@@ -270,9 +270,9 @@ jobs:
         call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         dmd -run ./dmd/src/build.d -j2 MODEL=64
         if %errorlevel% neq 0 exit /b %errorlevel%
-        # Note: Only CC for druntime and AR for Phobos are required ATM,
-        # but providing all three to avoid surprise for future contributors
-        # Those should really be in the path, though.
+        rem Note: Only CC for druntime and AR for Phobos are required ATM,
+        rem but providing all three to avoid surprise for future contributors
+        rem Those should really be in the path, though.
         cd druntime
         make -f win64.mak CC=cl LD=link AR=lib
         if %errorlevel% neq 0 exit /b %errorlevel%
