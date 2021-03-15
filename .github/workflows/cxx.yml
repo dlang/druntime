@@ -234,10 +234,17 @@ jobs:
         }
         Expand-Archive '${{ github.workspace }}\tools\dmc.zip' -DestinationPath ${{ github.workspace }}\tools\
 
+    - name: '[Windows] Add VC toolset to PATH'
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: '[Windows] Set environment variables'
       if: runner.os == 'Windows'
+      shell: bash
       run: |
-        echo "${{ github.workspace }}\tools\dm\bin\" >> $GITHUB_PATH
+        echo "VISUAL_STUDIO_LIB_NOT_DM=$(which lib.exe)" >> $GITHUB_ENV
+        echo "HOST_DMD=${{ env.DC }}" >> $GITHUB_ENV
+        echo "${{ github.workspace }}/tools/dm/bin/" >> $GITHUB_PATH
 
     ########################################
     #    Building DMD, druntime, Phobos    #
@@ -260,23 +267,20 @@ jobs:
 
     - name: '[Windows] Build compiler & standard library'
       if: runner.os == 'Windows'
-      shell: cmd
-      env:
-        HOST_DMD: ${{ env.DC }}
+      shell: bash
       run: |
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-        dmd -run dmd\src\build.d -j2 MODEL=64
-        if %errorlevel% neq 0 exit /b %errorlevel%
-        rem Note: Only CC for druntime and AR for Phobos are required ATM,
-        rem but providing all three to avoid surprise for future contributors
-        rem Those should really be in the path, though.
+        dmd -run dmd/src/build.d -j2 MODEL=64
+        if [ $? -ne 0 ]; then return 1; fi
+        # Note: Only CC for druntime and AR for Phobos are required ATM,
+        # but providing all three to avoid surprise for future contributors
+        # Those should really be in the path, though.
         cd druntime
-        make -f win64.mak CC=cl LD=link AR=lib
-        if %errorlevel% neq 0 exit /b %errorlevel%
-        cd ..\phobos\
-        make -f win64.mak CC=cl LD=link AR=lib
-        if %errorlevel% neq 0 exit /b %errorlevel%
-        cd ..\
+        make -f win64.mak CC=cl.exe LD=link "AR=$VISUAL_STUDIO_LIB_NOT_DM"
+        if [ $? -ne 0 ]; then return 1; fi
+        cd ../phobos/
+        make -f win64.mak CC=cl.exe LD=link "AR=$VISUAL_STUDIO_LIB_NOT_DM"
+        if [ $? -ne 0 ]; then return 1; fi
+        cd ../
 
     ########################################
     #        Running the test suite        #
@@ -292,14 +296,11 @@ jobs:
 
     - name: '[Windows] Run C++ test suite'
       if: runner.os == 'Windows'
-      shell: cmd
-      env:
-        HOST_DMD: ${{ env.DC }}
+      shell: bash
       run: |
-        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         cd druntime
-        make -f win64.mak test_stdcpp CC=cl LD=link AR=lib
-        if %errorlevel% neq 0 exit /b %errorlevel%
+        make -f win64.mak test_stdcpp CC=cl.exe LD=link "AR=$VISUAL_STUDIO_LIB_NOT_DM"
+        if [ $? -ne 0 ]; then return 1; fi
 
     ########################################
     #     Dump symbols on link failure     #
