@@ -29,18 +29,18 @@ jobs:
       fail-fast: false
       # Matches the matrix in DMD to support the same platforms
       matrix:
-        os: [ macOS-10.15, ubuntu-16.04, windows-2019 ]
+        os: [ macOS-10.15, ubuntu-18.04, windows-2019 ]
         target: [
-          clang-9.0.0, clang-8.0.0, clang-7.0.0, clang-6.0.0,
+          clang-9.0.0, clang-8.0.0,
           g++-9, g++-8, g++-7, g++-6, g++-5,
           msvc-2019, msvc-2017, msvc-2015
         ]
 
         exclude:
           # Ubuntu supports clang and g++
-          - { os: ubuntu-16.04, target: msvc-2019 }
-          - { os: ubuntu-16.04, target: msvc-2017 }
-          - { os: ubuntu-16.04, target: msvc-2015 }
+          - { os: ubuntu-18.04, target: msvc-2019 }
+          - { os: ubuntu-18.04, target: msvc-2017 }
+          - { os: ubuntu-18.04, target: msvc-2015 }
           # OSX only supports clang
           - { os: macOS-10.15, target: g++-9 }
           - { os: macOS-10.15, target: g++-8 }
@@ -67,15 +67,11 @@ jobs:
           - { os: windows-2019, target: msvc-2015 }
           - { os: windows-2019, target: clang-9.0.0 }
           - { os: windows-2019, target: clang-8.0.0 }
-          - { os: windows-2019, target: clang-7.0.0 }
-          - { os: windows-2019, target: clang-6.0.0 }
 
         include:
           # Clang boilerplate
           - { target: clang-9.0.0, compiler: clang, cxx-version: 9.0.0 }
           - { target: clang-8.0.0, compiler: clang, cxx-version: 8.0.0 }
-          - { target: clang-7.0.0, compiler: clang, cxx-version: 7.0.0 }
-          - { target: clang-6.0.0, compiler: clang, cxx-version: 6.0.0 }
           # g++ boilerplace
           - { target: g++-9, compiler: g++, cxx-version: 9.3.0 }
           - { target: g++-8, compiler: g++, cxx-version: 8.4.0 }
@@ -83,7 +79,7 @@ jobs:
           - { target: g++-6, compiler: g++, cxx-version: 6.5.0 }
           - { target: g++-5, compiler: g++, cxx-version: 5.5.0 }
           # Platform boilerplate
-          - { os: ubuntu-16.04, arch: x86_64-linux-gnu-ubuntu-16.04 }
+          - { os: ubuntu-18.04, arch: x86_64-linux-gnu-ubuntu-18.04 }
           - { os: macOS-10.15,  arch: x86_64-apple-darwin }
           # Clang 9.0.0 have a different arch for OSX
           - { os: macOS-10.15, target: clang-9.0.0, arch: x86_64-darwin-apple }
@@ -255,11 +251,12 @@ jobs:
         make -C phobos   -f posix.mak -j2 MODEL=64
         # Both version can live side by side (they end up in a different directory)
         # However, since clang does not provide a multilib package, only test 32 bits with g++
-        if [ ${{ matrix.compiler }} == "g++" ]; then
-          ./dmd/src/build.d -j2 MODEL=32
-          make -C druntime -f posix.mak -j2 MODEL=32
-          make -C phobos   -f posix.mak -j2 MODEL=32
-        fi
+        #if [ ${{ matrix.compiler }} == "g++" ]; then
+        #  ./dmd/src/build.d -j2 MODEL=32
+        #  make -C druntime -f posix.mak -j2 MODEL=32
+        #  make -C phobos   -f posix.mak -j2 MODEL=32
+        #fi
+        echo "Skipping 32 bits C++ tests"
 
     - name: '[Windows] Build compiler & standard library'
       if: runner.os == 'Windows'
@@ -288,9 +285,10 @@ jobs:
       if: runner.os != 'Windows'
       run: |
         make -C druntime -f posix.mak test/stdcpp/.run MODEL=64
-        if [ ${{ matrix.compiler }} == "g++" ]; then
-          make -C druntime -f posix.mak test/stdcpp/.run MODEL=32
-        fi
+        #if [ ${{ matrix.compiler }} == "g++" ]; then
+        #  make -C druntime -f posix.mak test/stdcpp/.run MODEL=32
+        #fi
+        echo "Skipping 32 bits C++ tests"
 
     - name: '[Windows] Run C++ test suite'
       if: runner.os == 'Windows'
