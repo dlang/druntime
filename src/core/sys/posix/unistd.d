@@ -2408,7 +2408,6 @@ int        fchdir(int);
 c_long     gethostid();
 pid_t      getpgid(pid_t);
 pid_t      getsid(pid_t);
-char*      getwd(char*); // LEGACY
 int        lchown(const scope char*, uid_t, gid_t);
 int        lockf(int, int, off_t);
 int        nice(int);
@@ -2420,9 +2419,6 @@ int        setreuid(uid_t, uid_t);
 void       swab(const scope void*, void*, ssize_t);
 void       sync();
 int        truncate(const scope char*, off_t);
-useconds_t ualarm(useconds_t, useconds_t);
-int        usleep(useconds_t);
-pid_t      vfork();
 */
 
 version (CRuntime_Glibc)
@@ -2434,7 +2430,6 @@ version (CRuntime_Glibc)
     c_long     gethostid() @trusted;
     pid_t      getpgid(pid_t) @trusted;
     pid_t      getsid(pid_t) @trusted;
-    char*      getwd(char*); // LEGACY
     int        lchown(const scope char*, uid_t, gid_t);
     //int        lockf(int, int, off_t);
     int        nice(int) @trusted;
@@ -2446,9 +2441,6 @@ version (CRuntime_Glibc)
     void       swab(const scope void*, void*, ssize_t);
     void       sync() @trusted;
     //int        truncate(const scope char*, off_t);
-    useconds_t ualarm(useconds_t, useconds_t) @trusted;
-    int        usleep(useconds_t) @trusted;
-    pid_t      vfork();
 
   static if ( __USE_FILE_OFFSET64 )
   {
@@ -2487,7 +2479,6 @@ else version (Darwin)
     c_long     gethostid() @trusted;
     pid_t      getpgid(pid_t) @trusted;
     pid_t      getsid(pid_t) @trusted;
-    char*      getwd(char*); // LEGACY
     int        lchown(const scope char*, uid_t, gid_t);
     int        lockf(int, int, off_t) @trusted;
     int        nice(int) @trusted;
@@ -2499,9 +2490,6 @@ else version (Darwin)
     void       swab(const scope void*, void*, ssize_t);
     void       sync() @trusted;
     int        truncate(const scope char*, off_t);
-    useconds_t ualarm(useconds_t, useconds_t) @trusted;
-    int        usleep(useconds_t) @trusted;
-    pid_t      vfork();
 }
 else version (FreeBSD)
 {
@@ -2512,7 +2500,6 @@ else version (FreeBSD)
     c_long     gethostid() @trusted;
     int        getpgid(pid_t) @trusted;
     int        getsid(pid_t) @trusted;
-    char*      getwd(char*); // LEGACY
     int        lchown(const scope char*, uid_t, gid_t);
     int        lockf(int, int, off_t) @trusted;
     int        nice(int) @trusted;
@@ -2524,9 +2511,6 @@ else version (FreeBSD)
     void       swab(const scope void*, void*, ssize_t);
     void       sync() @trusted;
     int        truncate(const scope char*, off_t);
-    useconds_t ualarm(useconds_t, useconds_t) @trusted;
-    int        usleep(useconds_t) @trusted;
-    pid_t      vfork();
 }
 else version (NetBSD)
 {
@@ -2537,7 +2521,6 @@ else version (NetBSD)
     c_long     gethostid() @trusted;
     int        getpgid(pid_t) @trusted;
     int        getsid(pid_t) @trusted;
-    char*      getwd(char*); // LEGACY
     int        lchown(const scope char*, uid_t, gid_t);
     int        lockf(int, int, off_t) @trusted;
     int        nice(int) @trusted;
@@ -2549,9 +2532,6 @@ else version (NetBSD)
     void       swab(const scope void*, void*, ssize_t);
     void       sync() @trusted;
     int        truncate(const scope char*, off_t);
-    useconds_t ualarm(useconds_t, useconds_t) @trusted;
-    int        usleep(useconds_t) @trusted;
-    pid_t      vfork();
 }
 else version (OpenBSD)
 {
@@ -2562,7 +2542,6 @@ else version (OpenBSD)
     c_long     gethostid() @trusted;
     pid_t      getpgid(pid_t) @trusted;
     pid_t      getsid(pid_t) @trusted;
-    char*      getwd(char*);
     int        lchown(const scope char*, uid_t, gid_t);
     int        lockf(int, int, off_t) @trusted;
     int        nice(int) @trusted;
@@ -2574,9 +2553,6 @@ else version (OpenBSD)
     void       swab(const scope void*, void*, ssize_t);
     void       sync() @trusted;
     int        truncate(const scope char*, off_t);
-    useconds_t ualarm(useconds_t, useconds_t) @trusted;
-    int        usleep(useconds_t) @trusted;
-    pid_t      vfork();
 }
 else version (DragonFlyBSD)
 {
@@ -2587,7 +2563,6 @@ else version (DragonFlyBSD)
     c_long     gethostid() @trusted;
     int        getpgid(pid_t) @trusted;
     int        getsid(pid_t) @trusted;
-    char*      getwd(char*); // LEGACY
     int        lchown(const scope char*, uid_t, gid_t);
     int        lockf(int, int, off_t) @trusted;
     int        nice(int) @trusted;
@@ -2599,9 +2574,6 @@ else version (DragonFlyBSD)
     void       swab(const scope void*, void*, ssize_t);
     void       sync() @trusted;
     int        truncate(const scope char*, off_t);
-    useconds_t ualarm(useconds_t, useconds_t) @trusted;
-    int        usleep(useconds_t) @trusted;
-    pid_t      vfork();
 }
 else version (CRuntime_Bionic)
 {
@@ -2616,8 +2588,6 @@ else version (CRuntime_Bionic)
     int        setreuid(uid_t, uid_t) @trusted;
     int        sync() @trusted;
     int        truncate(const scope char*, off_t);
-    int        usleep(c_ulong) @trusted;
-    pid_t      vfork();
 }
 else version (Solaris)
 {
@@ -2628,7 +2598,6 @@ else version (Solaris)
     c_long     gethostid();
     pid_t      getpgid(pid_t);
     pid_t      getsid(pid_t);
-    char*      getwd(char*); // LEGACY
     int        lchown(const scope char*, uid_t, gid_t);
     int        nice(int);
     pid_t      setpgrp();
@@ -2636,9 +2605,6 @@ else version (Solaris)
     int        setreuid(uid_t, uid_t);
     void       swab(const scope void*, void*, ssize_t);
     void       sync();
-    useconds_t ualarm(useconds_t, useconds_t);
-    int        usleep(useconds_t);
-    pid_t      vfork();
 
     version (D_LP64)
     {
@@ -2688,7 +2654,6 @@ else version (CRuntime_UClibc)
     c_long     gethostid() @trusted;
     pid_t      getpgid(pid_t) @trusted;
     pid_t      getsid(pid_t) @trusted;
-    char*      getwd(char*); // LEGACY
     int        lchown(const scope char*, uid_t, gid_t);
     int        nice(int) @trusted;
     pid_t      setpgrp() @trusted;
@@ -2696,9 +2661,6 @@ else version (CRuntime_UClibc)
     int        setreuid(uid_t, uid_t) @trusted;
     void       swab(const scope void*, void*, ssize_t);
     void       sync() @trusted;
-    useconds_t ualarm(useconds_t, useconds_t) @trusted;
-    int        usleep(useconds_t) @trusted;
-    pid_t      vfork();
 
   static if ( __USE_FILE_OFFSET64 )
   {
@@ -2721,4 +2683,156 @@ else version (CRuntime_UClibc)
     ssize_t    pwrite(int, const scope void*, size_t, off_t);
     int        truncate(const scope char*, off_t);
   }
+}
+
+//
+// XSI Legacy Functions
+//
+/*
+*** _POSIX_C_SOURCE < 200112L || __XSI_VISIBLE < 600 ***
+int        chroot(const scope char*);
+int        getdtablesize();
+int        getpagesize();
+char*      getpass(const scope char*);
+int        brk(void*);
+void*      sbrk(intptr_t);
+*** _POSIX_C_SOURCE < 200809L || __XSI_VISIBLE < 700 ***
+char*      getwd(char*);
+useconds_t ualarm(useconds_t, useconds_t);
+int        usleep(useconds_t);
+pid_t      vfork();
+*/
+// TODO: Should these be marked as deprecated?
+version (CRuntime_Glibc)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    int        brk(void*);
+    void*      sbrk(intptr_t);
+    char*      getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
+}
+else version (CRuntime_Bionic)
+{
+    int        chroot(const scope char*);
+    //int        getdtablesize();
+    int        getpagesize();
+    //char*      getpass(const scope char*);
+    int        brk(void*);
+    void*      sbrk(intptr_t);
+    //char*      getwd(char*);
+    //useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
+}
+else version (CRuntime_Musl)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    //int        brk(void*);
+    //void*      sbrk(intptr_t);
+    //char*      getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
+}
+else version (CRuntime_UClibc)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    int        brk(void*);
+    void*      sbrk(intptr_t);
+    //char*    getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
+}
+else version (Darwin)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    char*      getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    version (OSX)   // not in WatchOS, TVOS.
+    {
+        int    brk(void*);
+        void*  sbrk(intptr_t);
+        pid_t  vfork();
+    }
+}
+else version (DragonFlyBSD)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    //int        brk(void*);
+    void*      sbrk(intptr_t);
+    char*      getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
+}
+else version (FreeBSD)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    int        brk(void*);
+    void*      sbrk(intptr_t);
+    char*      getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
+}
+else version (NetBSD)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    int        brk(void*);
+    void*      sbrk(intptr_t);
+    char*      getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
+}
+else version (OpenBSD)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    int        brk(void*);
+    void*      sbrk(intptr_t);
+    char*      getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
+}
+else version (Solaris)
+{
+    int        chroot(const scope char*);
+    int        getdtablesize();
+    int        getpagesize();
+    char*      getpass(const scope char*);
+    int        brk(void*);
+    void*      sbrk(intptr_t);
+    char*      getwd(char*);
+    useconds_t ualarm(useconds_t, useconds_t) @trusted;
+    int        usleep(useconds_t) @trusted;
+    pid_t      vfork();
 }
