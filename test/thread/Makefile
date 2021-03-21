@@ -1,6 +1,9 @@
 include ../common.mak
 
-TESTS:=fiber_guard_page external_threads tlsgc_sections test_import tlsstack
+TESTS:=tlsgc_sections test_import tlsstack
+ifeq (,$(findstring win,$(OS)))
+TESTS+=fiber_guard_page external_threads
+endif
 
 .PHONY: all clean
 all: $(addprefix $(ROOT)/,$(addsuffix .done,$(TESTS)))
