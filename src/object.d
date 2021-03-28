@@ -2168,14 +2168,22 @@ const:
      */
     @property string name() nothrow pure @nogc
     {
-        if (true || flags & MIname) // always available for now
+        import core.stdc.string : strlen;
+        static if (1) // always available for now
         {
-            import core.stdc.string : strlen;
-
             auto p = cast(immutable char*)addrOf(MIname);
             return p[0 .. strlen(p)];
         }
-        // return null;
+        else
+        {
+            if (flags & MIname)
+            {
+                auto p = cast(immutable char*)addrOf(MIname);
+                return p[0 .. strlen(p)];
+            }
+            else
+                return null;
+        }
     }
 
     static int opApply(scope int delegate(ModuleInfo*) dg)
