@@ -151,7 +151,8 @@ void resolveAddresses(const(ubyte)[] debugLineSectionData, Location[] locations,
             {
                 // adjust to ASLR offset
                 address += baseAddress;
-                debug(DwarfDebugMachine) printf("-- offsetting 0x%x to 0x%x\n", address - baseAddress, address);
+                debug (DwarfDebugMachine)
+                    printf("-- offsetting 0x%zx to 0x%zx\n", address - baseAddress, address);
                 // If loc.line != -1, then it has been set previously.
                 // Some implementations (eg. dmd) write an address to
                 // the debug data multiple times, but so far I have found
@@ -160,7 +161,7 @@ void resolveAddresses(const(ubyte)[] debugLineSectionData, Location[] locations,
                 {
                     if (loc.address == address)
                     {
-                        debug(DwarfDebugMachine) printf("-- found for [0x%x]:\n", loc.address);
+                        debug(DwarfDebugMachine) printf("-- found for [0x%zx]:\n", loc.address);
                         debug(DwarfDebugMachine) printf("--   file: %.*s\n", cast(int) lp.fileNames[locInfo.file - 1].length, lp.fileNames[locInfo.file - 1].ptr);
                         debug(DwarfDebugMachine) printf("--   line: %d\n", locInfo.line);
                         loc.file = lp.fileNames[locInfo.file - 1];
@@ -169,7 +170,7 @@ void resolveAddresses(const(ubyte)[] debugLineSectionData, Location[] locations,
                     }
                     else if (loc.address < address && lastAddress < loc.address && lastAddress != 0)
                     {
-                        debug(DwarfDebugMachine) printf("-- found for [0x%x]:\n", loc.address);
+                        debug(DwarfDebugMachine) printf("-- found for [0x%zx]:\n", loc.address);
                         debug(DwarfDebugMachine) printf("--   file: %.*s\n", cast(int) lp.fileNames[lastLoc.file - 1].length, lp.fileNames[lastLoc.file - 1].ptr);
                         debug(DwarfDebugMachine) printf("--   line: %d\n", lastLoc.line);
                         loc.file = lp.fileNames[lastLoc.file - 1];
@@ -226,7 +227,7 @@ bool runStateMachine(ref const(LineNumberProgram) lp, scope RunStateMachineCallb
                     {
                         case endSequence:
                             machine.isEndSequence = true;
-                            debug(DwarfDebugMachine) printf("endSequence 0x%x\n", machine.address);
+                            debug(DwarfDebugMachine) printf("endSequence 0x%zx\n", machine.address);
                             if (!callback(machine.address, LocationInfo(machine.fileIndex, machine.line), true)) return true;
                             machine = StateMachine.init;
                             machine.isStatement = lp.defaultIsStatement;
@@ -234,7 +235,7 @@ bool runStateMachine(ref const(LineNumberProgram) lp, scope RunStateMachineCallb
 
                         case setAddress:
                             size_t address = program.read!size_t();
-                            debug(DwarfDebugMachine) printf("setAddress 0x%x\n", address);
+                            debug(DwarfDebugMachine) printf("setAddress 0x%zx\n", address);
                             machine.address = address;
                             machine.operationIndex = 0;
                             break;
@@ -260,7 +261,7 @@ bool runStateMachine(ref const(LineNumberProgram) lp, scope RunStateMachineCallb
                     break;
 
                 case copy:
-                    debug(DwarfDebugMachine) printf("copy 0x%x\n", machine.address);
+                    debug(DwarfDebugMachine) printf("copy 0x%zx\n", machine.address);
                     if (!callback(machine.address, LocationInfo(machine.fileIndex, machine.line), false)) return true;
                     machine.isBasicBlock = false;
                     machine.isPrologueEnd = false;
@@ -271,7 +272,7 @@ bool runStateMachine(ref const(LineNumberProgram) lp, scope RunStateMachineCallb
                 case advancePC:
                     const operationAdvance = cast(size_t) readULEB128(program);
                     advanceAddressAndOpIndex(operationAdvance);
-                    debug(DwarfDebugMachine) printf("advancePC %d to 0x%x\n", cast(int) operationAdvance, machine.address);
+                    debug(DwarfDebugMachine) printf("advancePC %d to 0x%zx\n", cast(int) operationAdvance, machine.address);
                     break;
 
                 case advanceLine:
@@ -305,14 +306,14 @@ bool runStateMachine(ref const(LineNumberProgram) lp, scope RunStateMachineCallb
                 case constAddPC:
                     const operationAdvance = (255 - lp.opcodeBase) / lp.lineRange;
                     advanceAddressAndOpIndex(operationAdvance);
-                    debug(DwarfDebugMachine) printf("constAddPC 0x%x\n", machine.address);
+                    debug(DwarfDebugMachine) printf("constAddPC 0x%zx\n", machine.address);
                     break;
 
                 case fixedAdvancePC:
                     const add = program.read!ushort();
                     machine.address += add;
                     machine.operationIndex = 0;
-                    debug(DwarfDebugMachine) printf("fixedAdvancePC %d to 0x%x\n", cast(int) add, machine.address);
+                    debug(DwarfDebugMachine) printf("fixedAdvancePC %d to 0x%zx\n", cast(int) add, machine.address);
                     break;
 
                 case setPrologueEnd:
@@ -343,7 +344,10 @@ bool runStateMachine(ref const(LineNumberProgram) lp, scope RunStateMachineCallb
             const lineIncrement = lp.lineBase + (opcode % lp.lineRange);
             machine.line += lineIncrement;
 
-            debug(DwarfDebugMachine) printf("special %d %d to 0x%x line %d\n", cast(int) addressIncrement, cast(int) lineIncrement, machine.address, machine.line);
+            debug (DwarfDebugMachine)
+                printf("special %d %d to 0x%zx line %d\n", cast(int) addressIncrement,
+                       cast(int) lineIncrement, machine.address, machine.line);
+
             if (!callback(machine.address, LocationInfo(machine.fileIndex, machine.line), false)) return true;
 
             machine.isBasicBlock = false;
