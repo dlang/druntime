@@ -52,6 +52,7 @@ DOCS=\
 	$(DOCDIR)\core_sys_darwin_crt_externs.html \
 	$(DOCDIR)\core_sys_darwin_dlfcn.html \
 	$(DOCDIR)\core_sys_darwin_execinfo.html \
+	$(DOCDIR)\core_sys_darwin_fcntl.html \
 	$(DOCDIR)\core_sys_darwin_pthread.html \
 	$(DOCDIR)\core_sys_darwin_mach_dyld.html \
 	$(DOCDIR)\core_sys_darwin_mach_getsect.html \
