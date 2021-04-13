@@ -183,7 +183,7 @@ private int __switchSearch(T)(/*in*/ const scope T[][] cases, /*in*/ const scope
 Compiler lowers final switch default case to this (which is a runtime error)
 Old implementation is in core/exception.d
 */
-void __switch_error()(string file = __FILE__, size_t line = __LINE__)
+noreturn __switch_error()(string file = __FILE__, size_t line = __LINE__)
 {
     import core.exception : __switch_errorT;
     __switch_errorT(file, line);
