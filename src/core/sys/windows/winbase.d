@@ -1770,8 +1770,8 @@ extern (Windows) nothrow @nogc {
     BOOL EnumResourceTypesA(HMODULE, ENUMRESTYPEPROC, LONG_PTR);
     BOOL EnumResourceTypesW(HMODULE, ENUMRESTYPEPROC, LONG_PTR);
     BOOL EscapeCommFunction(HANDLE, DWORD);
-    void ExitProcess(UINT); // Never returns
-    void ExitThread(DWORD); // Never returns
+    noreturn ExitProcess(UINT); // Never returns
+    noreturn ExitThread(DWORD); // Never returns
     DWORD ExpandEnvironmentStringsA(LPCSTR, LPSTR, DWORD);
     DWORD ExpandEnvironmentStringsW(LPCWSTR, LPWSTR, DWORD);
     void FatalAppExitA(UINT, LPCSTR);
@@ -1802,7 +1802,7 @@ extern (Windows) nothrow @nogc {
     BOOL FreeEnvironmentStringsA(LPSTR);
     BOOL FreeEnvironmentStringsW(LPWSTR);
     BOOL FreeLibrary(HMODULE);
-    void FreeLibraryAndExitThread(HMODULE, DWORD); // never returns
+    noreturn FreeLibraryAndExitThread(HMODULE, DWORD); // never returns
     BOOL FreeResource(HGLOBAL);
     UINT GetAtomNameA(ATOM, LPSTR, int);
     UINT GetAtomNameW(ATOM, LPWSTR, int);

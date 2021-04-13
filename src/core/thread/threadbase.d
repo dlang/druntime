@@ -1214,7 +1214,7 @@ do
 * Throws:
 *  ThreadError.
 */
-package void onThreadError(string msg) nothrow @nogc
+package noreturn onThreadError(string msg) nothrow @nogc
 {
     __gshared ThreadError error = new ThreadError(null);
     error.msg = msg;

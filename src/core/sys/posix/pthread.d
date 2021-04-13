@@ -725,7 +725,7 @@ int pthread_condattr_init(pthread_condattr_t*);
 int pthread_create(pthread_t*, const scope pthread_attr_t*, void* function(void*), void*);
 int pthread_detach(pthread_t);
 int pthread_equal(pthread_t, pthread_t);
-void pthread_exit(void*);
+noreturn pthread_exit(void*);
 void* pthread_getspecific(pthread_key_t);
 int pthread_join(pthread_t, void**);
 int pthread_key_create(pthread_key_t*, void function(void*));
