@@ -1712,7 +1712,7 @@ struct Gcx
 
         LargeObjectPool* pool;
         size_t pn;
-        immutable npages = LargeObjectPool.numPages(size);
+        immutable npages = pool.numPages(size);
         if (npages == size_t.max)
             onOutOfMemoryErrorNoGC(); // size just below size_t.max requested
 
