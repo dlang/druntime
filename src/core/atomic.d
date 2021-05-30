@@ -29,9 +29,12 @@ enum MemoryOrder
      */
     rlx = 0,
     /**
-     * ditto
+     * Deprecated.
+     * Not sequenced.
+     * Corresponds to $(LINK2 https://llvm.org/docs/Atomics.html#monotonic, LLVM AtomicOrdering.Monotonic)
+     * and C++11/C11 `memory_order_relaxed`.
      */
-    deprecated raw = 0,
+    raw = 0,
     /**
      * Hoist-load + hoist-store barrier.
      * Corresponds to $(LINK2 https://llvm.org/docs/Atomics.html#acquire, LLVM AtomicOrdering.Acquire)
