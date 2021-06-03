@@ -94,6 +94,7 @@ COPY=\
 	$(IMPDIR)\core\stdc\math.d \
 	$(IMPDIR)\core\stdc\signal.d \
 	$(IMPDIR)\core\stdc\stdarg.d \
+	$(IMPDIR)\core\stdc\stdbool.d \
 	$(IMPDIR)\core\stdc\stddef.d \
 	$(IMPDIR)\core\stdc\stdint.d \
 	$(IMPDIR)\core\stdc\stdio.d \

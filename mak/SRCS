@@ -93,6 +93,7 @@ SRCS=\
 	src\core\stdc\math.d \
 	src\core\stdc\signal.d \
 	src\core\stdc\stdarg.d \
+	src\core\stdc\stdbool.d \
 	src\core\stdc\stddef.d \
 	src\core\stdc\stdint.d \
 	src\core\stdc\stdio.d \

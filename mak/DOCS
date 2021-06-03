@@ -89,6 +89,7 @@ DOCS=\
 	$(DOCDIR)\core_stdc_limits.html \
 	$(DOCDIR)\core_stdc_math.html \
 	$(DOCDIR)\core_stdc_stdarg.html \
+	$(DOCDIR)\core_stdc_stdbool.html \
 	$(DOCDIR)\core_stdc_stdint.html \
 	$(DOCDIR)\core_stdc_stdlib.html \
 	$(DOCDIR)\core_stdc_tgmath.html \
