@@ -7,7 +7,8 @@ DFLAGS := $(subst -release,,$(DFLAGS))
 DFLAGS += $(OPTIONAL_COVERAGE)
 
 TESTS=stderr_msg unittest_assert invalid_memory_operation unknown_gc static_dtor \
-	  future_message refcounted rt_trap_exceptions_drt catch_in_finally
+	  future_message refcounted rt_trap_exceptions_drt catch_in_finally \
+	  assert_fail
 
 ifeq ($(OS)-$(BUILD),linux-debug)
 	TESTS+=line_trace long_backtrace_trunc rt_trap_exceptions
@@ -27,10 +28,6 @@ endif
 ifeq ($(OS)-$(BUILD),osx-debug)
 	TESTS+=line_trace long_backtrace_trunc
 	LINE_TRACE_DFLAGS:=
-endif
-
-ifeq ($(BUILD),debug)
-	TESTS+=assert_fail
 endif
 
 DIFF:=diff
