@@ -3,6 +3,9 @@ include ../common.mak
 # Strip -release s.t. the test code still checks assert's, ...
 DFLAGS := $(subst -release,,$(DFLAGS))
 
+# Add -cov when doing coverage testing
+DFLAGS += $(OPTIONAL_COVERAGE)
+
 TESTS=stderr_msg unittest_assert invalid_memory_operation unknown_gc static_dtor \
 	  future_message refcounted rt_trap_exceptions_drt catch_in_finally
 

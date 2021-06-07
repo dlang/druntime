@@ -454,7 +454,7 @@ test/shared/.run: $(DRUNTIMESO)
 test/%/.run: test/%/Makefile $(DMD)
 	$(QUIET)$(MAKE) -C test/$* MODEL=$(MODEL) OS=$(OS) DMD=$(abspath $(DMD)) BUILD=$(BUILD) \
 		DRUNTIME=$(abspath $(DRUNTIME)) DRUNTIMESO=$(abspath $(DRUNTIMESO)) LINKDL=$(LINKDL) \
-		QUIET=$(QUIET) TIMELIMIT='$(TIMELIMIT)' PIC=$(PIC)
+		QUIET=$(QUIET) TIMELIMIT='$(TIMELIMIT)' PIC=$(PIC) OPTIONAL_COVERAGE=$(OPTIONAL_COVERAGE)
 
 #################### benchmark suite ##########################
 
