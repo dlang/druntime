@@ -11,7 +11,6 @@ extern (C):
 nothrow:
 @nogc:
 
-alias _Bool = bool;
 
 // bool is already defined in D
 // true is already defined in D
