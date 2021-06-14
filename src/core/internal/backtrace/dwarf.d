@@ -1059,10 +1059,7 @@ LineNumberProgram readLineNumberProgram(ref const(ubyte)[] data) @nogc nothrow
         data.readULEB128(); // last mod
         data.readULEB128(); // file len
 
-        return SourceFile(
-            file,
-            dirIndex,
-        );
+        return SourceFile(file, dirIndex);
     }
     lp.sourceFiles = readSequence!readFileNameEntry(data);
 
