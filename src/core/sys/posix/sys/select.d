@@ -502,8 +502,19 @@ else version (CRuntime_Musl)
     {
         fdset.fds_bits[0 .. $] = 0;
     }
-    int pselect(int, fd_set*, fd_set*, fd_set*, const scope timespec*, const scope sigset_t*);
-    int select(int, fd_set*, fd_set*, fd_set*, timeval*);
+
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __pselect_time64(int, fd_set*, fd_set*, fd_set*, const scope timespec*, const scope sigset_t*);
+        int __select_time64(int, fd_set*, fd_set*, fd_set*, timeval*);
+        alias select = __select_time64;
+        alias pselect = __pselect_time64;
+    }
+    else
+    {
+        int pselect(int, fd_set*, fd_set*, fd_set*, const scope timespec*, const scope sigset_t*);
+        int select(int, fd_set*, fd_set*, fd_set*, timeval*);
+    }
 }
 else version (CRuntime_UClibc)
 {
@@ -608,4 +619,3 @@ pure unittest
         assert(!FD_ISSET(i, &fd));
     }
 }
-

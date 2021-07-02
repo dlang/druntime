@@ -75,8 +75,13 @@ else version (CRuntime_Musl)
     struct sched_param {
         int sched_priority;
         int sched_ss_low_priority;
-        timespec sched_ss_repl_period;
-        timespec sched_ss_init_budget;
+        static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+            long[4] reserved;
+        else
+        {
+            timespec sched_ss_repl_period;
+            timespec sched_ss_init_budget;
+        }
         int sched_ss_max_repl;
     }
 }
@@ -306,7 +311,13 @@ else version (CRuntime_Musl)
 {
     int sched_get_priority_max(int);
     int sched_get_priority_min(int);
-    int sched_rr_get_interval(pid_t, timespec*);
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __sched_rr_get_interval_time64(pid_t, timespec*);
+        alias sched_rr_get_interval = __sched_rr_get_interval_time64;
+    }
+    else
+        int sched_rr_get_interval(pid_t, timespec*);
 }
 else version (CRuntime_UClibc)
 {

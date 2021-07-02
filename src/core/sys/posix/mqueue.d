@@ -179,8 +179,16 @@ ssize_t mq_receive (mqd_t mqdes, char* msg_ptr, size_t msg_len, uint* msg_prio);
  *   On success, mq_receive() returns the number of bytes in the received
  *   message; on error, -1 is returned, with errno set to indicate the error
  */
-ssize_t mq_timedreceive (mqd_t mqdes, char* msg_ptr, size_t msg_len,
-                         uint* msg_prio, const(timespec)* abs_timeout);
+static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+{
+    ssize_t __mq_timedreceive_time64 (mqd_t mqdes, char* msg_ptr, size_t msg_len,
+                                      uint* msg_prio, const(timespec)* abs_timeout);
+    alias mq_timedreceive = __mq_timedreceive_time64;
+
+}
+else
+    ssize_t mq_timedreceive (mqd_t mqdes, char* msg_ptr, size_t msg_len,
+                             uint* msg_prio, const(timespec)* abs_timeout);
 
 
 /**
@@ -217,5 +225,12 @@ int mq_send (mqd_t mqdes, const(char)* msg_ptr, size_t msg_len, uint msg_prio);
  *   with errno set to indicate the error.
  *
  */
-int mq_timedsend (mqd_t mqdes, const(char)* msg_ptr, size_t msg_len,
-                   uint msg_prio, const(timespec)* abs_timeout);
+static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+{
+    ssize_t __mq_timedreceive_time64 (mqd_t mqdes, char* msg_ptr, size_t msg_len,
+                                      uint* msg_prio, const(timespec)* abs_timeout);
+    alias mq_timedreceive = __mq_timedreceive_time64;
+}
+else
+    int mq_timedsend (mqd_t mqdes, const(char)* msg_ptr, size_t msg_len,
+                      uint msg_prio, const(timespec)* abs_timeout);

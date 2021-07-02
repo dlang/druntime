@@ -509,8 +509,10 @@ else version (CRuntime_Musl)
     alias uint id_t;
     version (D_X32)
         alias long susseconds_t;
-    else
+    else version (CRuntime_Musl_Pre_Time64)
         alias c_long suseconds_t;
+    else
+        alias long   suseconds_t;
 }
 else version (CRuntime_UClibc)
 {
@@ -1569,3 +1571,16 @@ trace_event_id_t
 trace_event_set_t
 trace_id_t
 */
+
+/*
+ * Musl-specific boolean exposed for internal use only
+ * This allows to enable time64 compat layer whenever needed
+ */
+version (CRuntime_Musl)
+{
+    package(core)
+        enum CRuntime_Musl_Needs_Time64_Compat_Layer = (time_t.sizeof > c_long.sizeof);
+}
+else
+    package(core)
+        enum CRuntime_Musl_Needs_Time64_Compat_Layer = false;

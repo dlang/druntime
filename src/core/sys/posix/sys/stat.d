@@ -1745,10 +1745,26 @@ else version (CRuntime_Musl)
             blksize_t st_blksize;
             blkcnt_t st_blocks;
 
+            // Time64 on 32 bits
+            // See https://git.musl-libc.org/cgit/musl/commit/?id=38143339646a4ccce8afe298c34467767c899f51
+            static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+            {
+                private struct old_timespec {
+                    long tv_sec;
+                    long tv_nsec;
+                }
+
+                old_timespec __st_atim32;
+                old_timespec __st_mtim32;
+                old_timespec __st_ctim32;
+                ino_t st_ino;
+            }
+
             timespec st_atim;
             timespec st_mtim;
             timespec st_ctim;
-            ino_t st_ino;
+            static if (!CRuntime_Musl_Needs_Time64_Compat_Layer)
+                ino_t st_ino;
 
             extern(D) @safe @property inout pure nothrow
             {
@@ -1962,8 +1978,15 @@ else version (CRuntime_Musl)
     extern (D) bool S_ISLNK( mode_t mode )  { return S_ISTYPE( mode, S_IFLNK );  }
     extern (D) bool S_ISSOCK( mode_t mode ) { return S_ISTYPE( mode, S_IFSOCK ); }
 
-    int utimensat(int dirfd, const char *pathname,
-        ref const(timespec)[2] times, int flags);
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __utimensat_time64(int dirfd, const char *pathname,
+                               ref const(timespec)[2] times, int flags);
+        alias utimensat = __utimensat_time64;
+    }
+    else
+        int utimensat(int dirfd, const char *pathname,
+            ref const(timespec)[2] times, int flags);
 }
 else version (CRuntime_UClibc)
 {
@@ -2329,9 +2352,22 @@ else version (CRuntime_Bionic)
 }
 else version (CRuntime_Musl)
 {
-    int stat(const scope char*, stat_t*);
-    int fstat(int, stat_t*);
-    int lstat(const scope char*, stat_t*);
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __stat_time64(const scope char*, stat_t*);
+        int __fstat_time64(int, stat_t*);
+        int __lstat_time64(const scope char*, stat_t*);
+
+        alias stat = __stat_time64;
+        alias fstat = __fstat_time64;
+        alias lstat = __lstat_time64;
+    }
+    else
+    {
+        int stat(const scope char*, stat_t*);
+        int fstat(int, stat_t*);
+        int lstat(const scope char*, stat_t*);
+    }
 
     alias fstat fstat64;
     alias lstat lstat64;
