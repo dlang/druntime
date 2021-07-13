@@ -35,23 +35,23 @@ nothrow:
 @nogc:
 
 ///
-inout(void)* memchr(return inout void* s, int c, size_t n) pure;
+inout(void)* memchr(return inout void* ptr, int value, size_t n) pure;
 ///
-int   memcmp(scope const void* s1, scope const void* s2, size_t n) pure;
+int   memcmp(scope const void* dest, scope const void* src, size_t n) pure;
 ///
-void* memcpy(return void* s1, scope const void* s2, size_t n) pure;
+void* memcpy(return void* dest, scope const void* src, size_t n) pure;
 version (Windows)
 {
     ///
     int memicmp(scope const char* s1, scope const char* s2, size_t n);
 }
 ///
-void* memmove(return void* s1, scope const void* s2, size_t n) pure;
+void* memmove(return void* dst, scope const void* src, size_t n) pure;
 ///
-void* memset(return void* s, int c, size_t n) pure;
+void* memset(return void* ptr, int value, size_t n) pure;
 
 ///
-char*  strcat(return char* s1, scope const char* s2) pure;
+char*  strcat(return char* dst, scope const char* src) pure;
 ///
 inout(char)*  strchr(return inout(char)* s, int c) pure;
 ///
