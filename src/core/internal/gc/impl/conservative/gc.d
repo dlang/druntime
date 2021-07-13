@@ -1733,7 +1733,7 @@ struct Gcx
         auto biti = (p - pool.baseAddr) >> pool.shiftBy;
         assert(pool.freebits.test(biti));
         if (collectInProgress)
-            pool.mark.set(biti); // be sure that the child is aware of the page being used
+            pool.mark.setLocked(biti); // be sure that the child is aware of the page being used
         pool.freebits.clear(biti);
         if (bits)
             pool.setBits(biti, bits);
@@ -1814,7 +1814,7 @@ struct Gcx
 
         debug(PRINTF) printFreeInfo(&pool.base);
         if (collectInProgress)
-            pool.mark.set(pn);
+            pool.mark.setLocked(pn);
         usedLargePages += npages;
 
         debug(PRINTF) printFreeInfo(&pool.base);
@@ -2031,7 +2031,7 @@ struct Gcx
     /**
      * Search a range of memory values and mark any pointers into the GC pool.
      */
-    private void mark(bool precise, bool parallel)(ScanRange!precise rng) scope nothrow
+    private void mark(bool precise, bool parallel, bool shared_mem)(ScanRange!precise rng) scope nothrow
     {
         alias toscan = scanStack!precise;
 
@@ -2115,7 +2115,7 @@ struct Gcx
                     biti = offsetBase >> Pool.ShiftBy.Small;
                     //debug(PRINTF) printf("\t\tbiti = x%x\n", biti);
 
-                    if (!pool.mark.testAndSet!parallel(biti) && !pool.noscan.test(biti))
+                    if (!pool.mark.testAndSet!shared_mem(biti) && !pool.noscan.test(biti))
                     {
                         tgt.pbot = pool.baseAddr + offsetBase;
                         tgt.ptop = tgt.pbot + binsize[bin];
@@ -2142,7 +2142,7 @@ struct Gcx
                     if (tgt.pbot != sentinel_sub(p) && pool.nointerior.nbits && pool.nointerior.test(biti))
                         goto LnextPtr;
 
-                    if (!pool.mark.testAndSet!parallel(biti) && !pool.noscan.test(biti))
+                    if (!pool.mark.testAndSet!shared_mem(biti) && !pool.noscan.test(biti))
                     {
                         tgt.ptop = tgt.pbot + (cast(LargeObjectPool*)pool).getSize(pn);
                         goto LaddLargeRange;
@@ -2157,7 +2157,7 @@ struct Gcx
                     if (pool.nointerior.nbits && pool.nointerior.test(biti))
                         goto LnextPtr;
 
-                    if (!pool.mark.testAndSet!parallel(biti) && !pool.noscan.test(biti))
+                    if (!pool.mark.testAndSet!shared_mem(biti) && !pool.noscan.test(biti))
                     {
                         tgt.pbot = pool.baseAddr + (pn * PAGESIZE);
                         tgt.ptop = tgt.pbot + (cast(LargeObjectPool*)pool).getSize(pn);
@@ -2264,16 +2264,16 @@ struct Gcx
         }
     }
 
-    void markConservative(void *pbot, void *ptop) scope nothrow
+    void markConservative(bool shared_mem)(void *pbot, void *ptop) scope nothrow
     {
         if (pbot < ptop)
-            mark!(false, false)(ScanRange!false(pbot, ptop));
+            mark!(false, false, shared_mem)(ScanRange!false(pbot, ptop));
     }
 
-    void markPrecise(void *pbot, void *ptop) scope nothrow
+    void markPrecise(bool shared_mem)(void *pbot, void *ptop) scope nothrow
     {
         if (pbot < ptop)
-            mark!(true, false)(ScanRange!true(pbot, ptop, null));
+            mark!(true, false, shared_mem)(ScanRange!true(pbot, ptop, null));
     }
 
     version (COLLECT_PARALLEL)
@@ -2704,9 +2704,9 @@ struct Gcx
                 if (doParallel)
                     markParallel(nostack);
                 else if (ConservativeGC.isPrecise)
-                    markAll!markPrecise(nostack);
+                    markAll!(markPrecise!true)(nostack);
                 else
-                    markAll!markConservative(nostack);
+                    markAll!(markConservative!true)(nostack);
                 _Exit(0);
                 //return ChildStatus.done; // bogus
             default: // the parent
@@ -2726,9 +2726,9 @@ struct Gcx
                     if (doParallel)
                         markParallel(nostack);
                     else if (ConservativeGC.isPrecise)
-                        markAll!markPrecise(nostack);
+                        markAll!(markPrecise!false)(nostack);
                     else
-                        markAll!markConservative(nostack);
+                        markAll!(markConservative!false)(nostack);
                 } else {
                     assert(r == ChildStatus.done);
                     assert(r != ChildStatus.running);
@@ -2854,9 +2854,9 @@ Lmark:
             else
             {
                 if (ConservativeGC.isPrecise)
-                    markAll!markPrecise(nostack);
+                    markAll!(markPrecise!false)(nostack);
                 else
-                    markAll!markConservative(nostack);
+                    markAll!(markConservative!false)(nostack);
             }
 
             thread_processGCMarks(&isMarked);
@@ -3062,9 +3062,9 @@ Lmark:
         debug(PARALLEL_PRINTF) printf("mark %lld roots\n", cast(ulong)(ptop - pbot));
 
         if (ConservativeGC.isPrecise)
-            mark!(true, true)(ScanRange!true(pbot, ptop, null));
+            mark!(true, true, true)(ScanRange!true(pbot, ptop, null));
         else
-            mark!(false, true)(ScanRange!false(pbot, ptop));
+            mark!(false, true, true)(ScanRange!false(pbot, ptop));
 
         busyThreads.atomicOp!"-="(1);
 
@@ -3227,7 +3227,7 @@ Lmark:
             {
                 debug(PARALLEL_PRINTF) printf("scanBackground thread %d scanning range [%p,%lld] from stack\n", threadId,
                                               rng.pbot, cast(long) (rng.ptop - rng.pbot));
-                mark!(precise, true)(rng);
+                mark!(precise, true, true)(rng);
             }
             busyThreads.atomicOp!"-="(1);
         }
