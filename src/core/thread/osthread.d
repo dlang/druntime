@@ -256,7 +256,7 @@ class Thread : ThreadBase
      * In:
      *  fn must not be null.
      */
-    this( void function() fn, size_t sz = 0 ) @safe pure nothrow @nogc
+    this(return scope void function() fn, size_t sz = 0) @safe pure nothrow @nogc
     {
         super(fn, sz);
     }
@@ -273,7 +273,7 @@ class Thread : ThreadBase
      * In:
      *  dg must not be null.
      */
-    this( void delegate() dg, size_t sz = 0 ) @safe pure nothrow @nogc
+    this(return scope void delegate() dg, size_t sz = 0) @safe pure nothrow @nogc
     {
         super(dg, sz);
     }
