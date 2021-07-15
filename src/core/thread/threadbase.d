@@ -100,14 +100,14 @@ class ThreadBase
     // Initialization
     ///////////////////////////////////////////////////////////////////////////
 
-    this(void function() fn, size_t sz = 0) @safe pure nothrow @nogc
+    this(return scope void function() fn, size_t sz = 0) @safe pure nothrow @nogc
     in(fn)
     {
         this(sz);
         m_call = fn;
     }
 
-    this(void delegate() dg, size_t sz = 0) @safe pure nothrow @nogc
+    this(return scope void delegate() dg, size_t sz = 0) @safe pure nothrow @nogc
     in(dg)
     {
         this(sz);
