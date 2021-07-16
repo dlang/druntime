@@ -1419,6 +1419,9 @@ struct Gcx
                     auto pool = list.pool;
                     auto biti = cast(size_t)(cast(void*)list - pool.baseAddr) >> Pool.ShiftBy.Small;
                     assert(pool.freebits.test(biti));
+                    ppprev = pprev;
+                    pprev = prev;
+                    prev = list;
                 }
             }
         }
@@ -2672,6 +2675,23 @@ struct Gcx
         return rc;
     }
 
+    version (linux)
+    {
+        // clone() fits better as we don't want to do anything but scanning in the child process.
+        // no fork-handlera are called, so we can avoid deadlocks due to malloc locks. Probably related:
+        //  https://sourceware.org/bugzilla/show_bug.cgi?id=4737
+        enum has_clone = true;
+        import core.sys.linux.sched : clone;
+        enum CLONE_CHILD_CLEARTID = 0x00200000; /* Register exit futex and memory */
+        enum CLONE_CHILD_SETTID = 0x01000000; /* Store TID in userlevel buffer in the child.  */
+        import core.sys.posix.signal : SIGCHLD;
+    }
+    else
+    {
+        enum has_clone = false;
+    }
+
+
     version (COLLECT_FORK)
     ChildStatus markFork(bool nostack, bool block, bool doParallel) nothrow
     {
@@ -2686,29 +2706,50 @@ struct Gcx
         // (unless they allocate or use the GC themselves, in which case
         // the global GC lock will stop them).
         // fork now and sweep later
+        int child_mark() scope
+        {
+            if (doParallel)
+                markParallel(nostack);
+            else if (ConservativeGC.isPrecise)
+                markAll!(markPrecise!true)(nostack);
+            else
+                markAll!(markConservative!true)(nostack);
+            return 0;
+        }
+
         import core.stdc.stdlib : _Exit;
         debug (PRINTF_TO_FILE)
         {
             import core.stdc.stdio : fflush;
             fflush(null); // avoid duplicated FILE* output
         }
-        fork_needs_lock = false;
-        auto pid = fork();
-        fork_needs_lock = true;
+        static if (has_clone)
+        {
+            const flags = CLONE_CHILD_CLEARTID | SIGCHLD; // child thread id not needed
+            scope int delegate() scope dg = &child_mark;
+            extern(C) static int wrap_delegate(void* arg)
+            {
+                auto dg = cast(int delegate() scope*)arg;
+                return (*dg)();
+            }
+            char[256] stackbuf; // enough space to place some info for the child without stomping the parent stack
+            auto stack = stackbuf.ptr + (isStackGrowingDown ? stackbuf.length : 0);
+            auto pid = clone(&wrap_delegate, stack, flags, &dg);
+        }
+        else
+        {
+            fork_needs_lock = false;
+            auto pid = fork();
+            fork_needs_lock = true;
+        }
         assert(pid != -1);
         switch (pid)
         {
             case -1: // fork() failed, retry without forking
                 return ChildStatus.error;
-            case 0: // child process
-                if (doParallel)
-                    markParallel(nostack);
-                else if (ConservativeGC.isPrecise)
-                    markAll!(markPrecise!true)(nostack);
-                else
-                    markAll!(markConservative!true)(nostack);
+            case 0: // child process (not run with has_clone)
+                child_mark();
                 _Exit(0);
-                //return ChildStatus.done; // bogus
             default: // the parent
                 thread_resumeAll();
                 if (!block)
@@ -2819,7 +2860,7 @@ Lmark:
             prepTime += (stop - start);
             start = stop;
 
-            if (doFork && !isFinal) // don't start a new fork during termination
+            if (doFork && !isFinal && !block) // don't start a new fork during termination
             {
                 version (COLLECT_FORK)
                 {
