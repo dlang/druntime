@@ -2798,10 +2798,10 @@ struct Gcx
         debug(COLLECT_PRINTF) printf("Gcx.fullcollect()\n");
         version (COLLECT_PARALLEL)
         {
-            bool doParallel = config.parallel > 0;
+            bool doParallel = config.parallel > 0 && !config.fork;
             if (doParallel && !scanThreadData)
             {
-                if (nostack) // only used during shutdown, avoid starting threads for parallel marking
+                if (isFinal) // avoid starting threads for parallel marking
                     doParallel = false;
                 else
                     startScanThreads();
