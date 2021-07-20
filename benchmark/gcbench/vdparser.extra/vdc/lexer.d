@@ -1026,6 +1026,7 @@ const string[] keywords =
     "__LINE__",
     "__FUNCTION__",
     "__PRETTY_FUNCTION__",
+    "__MANGLED_FUNCTION__",
     "__MODULE__",
 
     "shared",
