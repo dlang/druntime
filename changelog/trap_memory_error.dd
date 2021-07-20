@@ -1,0 +1,38 @@
+Page protection error handling can now be registered via `--DRT-memoryError=1`
+
+In environments where attaching a debugger or retrieving a core dump isn't possible or hard,
+on Linux x86_64 one has always been able to attach druntime's  memory handler:
+
+---
+shared static this()
+{
+    import etc.linux.memoryerror : registerMemoryErrorHandler;
+    registerMemoryErrorHandler;
+}
+
+void main() {
+    int* ptr = null;
+    (*ptr)++;
+}
+---
+
+And thus retrieved the full segfault as D `Error` on the command-line:
+
+$(CONSOLE dmd -g -run test.d
+etc.linux.memoryerror.NullPointerError@src/etc/linux/memoryerror.d(325)
+$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)
+??:? void etc.linux.memoryerror.sigsegvUserspaceProcess(void*) [0x8353df09]
+??:? void etc.linux.memoryerror.sigsegvDataHandler() [0x8353de4a]
+test.d:9 _Dmain [0x8353c2b5]
+)
+
+With this release, instead of recompiling the binary and adding the `registerMemoryError`,
+one can use the runtime flag `--DRT-memoryError=1` to activate druntime's memory error handling.
+
+$(CONSOLE dmd -g test.d && ./test --DRT-memoryError=1
+etc.linux.memoryerror.NullPointerError@src/etc/linux/memoryerror.d(325)
+$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)$(NDASH)
+??:? void etc.linux.memoryerror.sigsegvUserspaceProcess(void*) [0x8353df09]
+??:? void etc.linux.memoryerror.sigsegvDataHandler() [0x8353de4a]
+test.d:2 _Dmain [0x8353c2b5]
+)
