@@ -390,7 +390,7 @@ extern (Windows) {
     RPC_STATUS RpcBindingServerFromClient(RPC_BINDING_HANDLE, RPC_BINDING_HANDLE*);
 
     // never returns
-    void RpcRaiseException(RPC_STATUS);
+    noreturn RpcRaiseException(RPC_STATUS);
     RPC_STATUS RpcTestCancel();
     RPC_STATUS RpcCancelThread(void*);
     RPC_STATUS UuidCreate(UUID*);

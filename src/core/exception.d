@@ -10,7 +10,7 @@
 module core.exception;
 
 // Compiler lowers final switch default case to this (which is a runtime error)
-void __switch_errorT()(string file = __FILE__, size_t line = __LINE__) @trusted
+noreturn __switch_errorT()(string file = __FILE__, size_t line = __LINE__) @trusted
 {
     // Consider making this a compile time check.
     version (D_Exceptions)
@@ -29,13 +29,13 @@ version (D_BetterC)
     // templates even for ordinary builds instead of providing them as an
     // extern(C) library.
 
-    void onOutOfMemoryError()(void* pretend_sideffect = null) @nogc nothrow pure @trusted
+    noreturn onOutOfMemoryError()(void* pretend_sideffect = null) @nogc nothrow pure @trusted
     {
         assert(0, "Memory allocation failed");
     }
     alias onOutOfMemoryErrorNoGC = onOutOfMemoryError;
 
-    void onInvalidMemoryOperationError()(void* pretend_sideffect = null) @nogc nothrow pure @trusted
+    noreturn onInvalidMemoryOperationError()(void* pretend_sideffect = null) @nogc nothrow pure @trusted
     {
         assert(0, "Invalid memory operation");
     }
@@ -479,7 +479,7 @@ extern (C) void onUnittestErrorMsg( string file, size_t line, string msg ) nothr
  * Throws:
  *  $(LREF RangeError).
  */
-extern (C) void onRangeError( string file = __FILE__, size_t line = __LINE__ ) @trusted pure nothrow @nogc
+extern (C) noreturn onRangeError( string file = __FILE__, size_t line = __LINE__ ) @trusted pure nothrow @nogc
 {
     throw staticError!RangeError( file, line, null );
 }
@@ -497,7 +497,7 @@ extern (C) void onRangeError( string file = __FILE__, size_t line = __LINE__ ) @
  * Throws:
  *  $(LREF FinalizeError).
  */
-extern (C) void onFinalizeError( TypeInfo info, Throwable e, string file = __FILE__, size_t line = __LINE__ ) @trusted nothrow
+extern (C) noreturn onFinalizeError( TypeInfo info, Throwable e, string file = __FILE__, size_t line = __LINE__ ) @trusted nothrow
 {
     // This error is thrown during a garbage collection, so no allocation must occur while
     //  generating this object. So we use a preallocated instance
@@ -511,14 +511,14 @@ extern (C) void onFinalizeError( TypeInfo info, Throwable e, string file = __FIL
  * Throws:
  *  $(LREF OutOfMemoryError).
  */
-extern (C) void onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure nothrow @nogc /* dmd @@@BUG11461@@@ */
+extern (C) noreturn onOutOfMemoryError(void* pretend_sideffect = null) @trusted pure nothrow @nogc /* dmd @@@BUG11461@@@ */
 {
     // NOTE: Since an out of memory condition exists, no allocation must occur
     //       while generating this object.
     throw staticError!OutOfMemoryError();
 }
 
-extern (C) void onOutOfMemoryErrorNoGC() @trusted nothrow @nogc
+extern (C) noreturn onOutOfMemoryErrorNoGC() @trusted nothrow @nogc
 {
     // suppress stacktrace until they are @nogc
     throw staticError!OutOfMemoryError(false);
@@ -532,7 +532,7 @@ extern (C) void onOutOfMemoryErrorNoGC() @trusted nothrow @nogc
  * Throws:
  *  $(LREF InvalidMemoryOperationError).
  */
-extern (C) void onInvalidMemoryOperationError(void* pretend_sideffect = null) @trusted pure nothrow @nogc /* dmd @@@BUG11461@@@ */
+extern (C) noreturn onInvalidMemoryOperationError(void* pretend_sideffect = null) @trusted pure nothrow @nogc /* dmd @@@BUG11461@@@ */
 {
     // The same restriction applies as for onOutOfMemoryError. The GC is in an
     // undefined state, thus no allocation must occur while generating this object.
@@ -551,7 +551,7 @@ extern (C) void onInvalidMemoryOperationError(void* pretend_sideffect = null) @t
  * Throws:
  *  $(LREF UnicodeException).
  */
-extern (C) void onUnicodeError( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__ ) @safe pure
+extern (C) noreturn onUnicodeError( string msg, size_t idx, string file = __FILE__, size_t line = __LINE__ ) @safe pure
 {
     throw new UnicodeException( msg, idx, file, line );
 }
@@ -615,13 +615,13 @@ extern (C)
 
     /* Called when an array index is out of bounds
      */
-    void _d_arrayboundsp(immutable(char*) file, uint line)
+    noreturn _d_arrayboundsp(immutable(char*) file, uint line)
     {
         import core.stdc.string : strlen;
         onRangeError(file[0 .. strlen(file)], line);
     }
 
-    void _d_arraybounds(string file, uint line)
+    noreturn _d_arraybounds(string file, uint line)
     {
         onRangeError(file, line);
     }
