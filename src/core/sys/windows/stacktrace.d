@@ -345,26 +345,38 @@ extern(Windows) BOOL FixupDebugHeader(HANDLE hProcess, ULONG ActionCode,
     return FALSE;
 }
 
-private string generateSearchPath()
+private char[] generateSearchPathAlloc()
 {
-    __gshared string[3] defaultPathList = ["_NT_SYMBOL_PATH",
-                                           "_NT_ALTERNATE_SYMBOL_PATH",
-                                           "SYSTEMROOT"];
+    __gshared string[3] defaultPathList = [
+        "_NT_SYMBOL_PATH", "_NT_ALTERNATE_SYMBOL_PATH", "SYSTEMROOT"
+    ];
 
-    string path;
-    char[2048] temp = void;
+    char[MAX_PATH] temp = void;
     DWORD len;
-
-    foreach ( e; defaultPathList )
+    DWORD total;
+    foreach (e; defaultPathList)
     {
-        if ( (len = GetEnvironmentVariableA( e.ptr, temp.ptr, temp.length )) > 0 )
+        if ((len = GetEnvironmentVariableA(e.ptr, temp.ptr, temp.length)) > 0)
         {
-            path ~= temp[0 .. len];
-            path ~= ";";
+            total += len + 1;
         }
     }
-    path ~= "\0";
-    return path;
+
+    if(total > 0)
+    {
+        auto buffer = cast(char[]) malloc(total + 1)[0 .. total + 1];
+        foreach (e; defaultPathList)
+        {
+            if ((len = GetEnvironmentVariableA(e.ptr, &buffer[len], buffer.length - len)) > 0)
+            {
+                buffer[len] = ';';
+                len += 1;
+            }
+        }
+        buffer[$-1] = '\0';
+        return buffer;
+    }
+    return [];
 }
 
 
@@ -400,9 +412,12 @@ shared static this()
     symOptions |= SYMOPT_DEFERRED_LOAD;
     symOptions  = dbghelp.SymSetOptions( symOptions );
 
-    debug(PRINTF) printf("Search paths: %s\n", generateSearchPath().ptr);
+    auto paths = generateSearchPathAlloc(buffer);
+    scope(exit) if(paths.length > 0) free(paths.ptr);
 
-    if (!dbghelp.SymInitialize(hProcess, generateSearchPath().ptr, TRUE))
+    debug(PRINTF) printf("Search paths: %s\n", paths.ptr);
+
+    if (!dbghelp.SymInitialize(hProcess, paths.ptr, TRUE))
         return;
 
     dbghelp.SymRegisterCallback64(hProcess, &FixupDebugHeader, 0);
