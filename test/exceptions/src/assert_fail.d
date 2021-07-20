@@ -444,6 +444,36 @@ void testException()
     test(MayThrow(0), MayThrow(1), `Some message != <toString() failed: "Error", called on MayThrow(1)>`);
 }
 
+void testDestruction()
+{
+    static class Test
+    {
+        __gshared string unary, binary;
+        __gshared bool run;
+
+        ~this()
+        {
+            run = true;
+            unary = _d_assert_fail!int("", 1);
+            binary = _d_assert_fail!int("==", 1, 2);
+        }
+    }
+
+    static void createGarbage()
+    {
+        new Test();
+        new long[100];
+    }
+
+    import core.memory : GC;
+    createGarbage();
+    GC.collect();
+
+    assert(Test.run);
+    assert(Test.unary == "Assertion failed (rich formatting is disabled in finalizers)");
+    assert(Test.binary == "Assertion failed (rich formatting is disabled in finalizers)");
+}
+
 int main()
 {
     testIntegers();
@@ -476,6 +506,7 @@ int main()
     testExternClasses();
     testShared();
     testException();
+    testDestruction();
 
     if (!__ctfe)
         fprintf(stderr, "success.\n");
