@@ -17,7 +17,7 @@ module core.stdc.wctype;
 public  import core.stdc.wchar_; // for wint_t, WEOF
 
 extern (C):
-@trusted: // Only a couple of functions below operate on unsafe C strings.
+@safe: // Only a couple of functions below operate on unsafe C strings.
 nothrow:
 @nogc:
 

@@ -15,7 +15,7 @@
 module core.stdc.ctype;
 
 extern (C):
-@trusted: // All of these operate on integers only.
+@safe: // All of these operate on integers only.
 nothrow:
 @nogc:
 

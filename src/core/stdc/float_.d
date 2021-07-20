@@ -15,7 +15,7 @@
 module core.stdc.float_;
 
 extern (C):
-@trusted: // Constants only.
+@safe: // Constants only.
 nothrow:
 @nogc:
 

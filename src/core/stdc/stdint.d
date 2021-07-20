@@ -28,11 +28,11 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
-// Can't be `private` because of @@@BUG11173@@@.
+// Can't be `private` because of http://issues.dlang.org/show_bug.cgi?id=11173
 T _typify(T)(T val) @safe pure nothrow { return val; }
 
 extern (C):
-@trusted: // Types and constants only.
+@safe: // Types and constants only.
 nothrow:
 @nogc:
 

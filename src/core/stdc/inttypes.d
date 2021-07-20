@@ -18,7 +18,7 @@ public import core.stdc.stddef; // for wchar_t
 public import core.stdc.stdint; // required by spec
 
 extern (C):
-@trusted: // Types and constants only.
+@safe:
 nothrow:
 @nogc:
 
@@ -430,14 +430,14 @@ else
 }
 
 ///
-intmax_t  imaxabs(intmax_t j);
+@safe intmax_t  imaxabs(intmax_t j);
 ///
-imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom);
+@safe imaxdiv_t imaxdiv(intmax_t numer, intmax_t denom);
 ///
-intmax_t  strtoimax(const scope char* nptr, char** endptr, int base);
+@system intmax_t  strtoimax(const scope char* nptr, char** endptr, int base);
 ///
-uintmax_t strtoumax(const scope char* nptr, char** endptr, int base);
+@system uintmax_t strtoumax(const scope char* nptr, char** endptr, int base);
 ///
-intmax_t  wcstoimax(const scope wchar_t* nptr, wchar_t** endptr, int base);
+@system intmax_t  wcstoimax(const scope wchar_t* nptr, wchar_t** endptr, int base);
 ///
-uintmax_t wcstoumax(const scope wchar_t* nptr, wchar_t** endptr, int base);
+@system uintmax_t wcstoumax(const scope wchar_t* nptr, wchar_t** endptr, int base);

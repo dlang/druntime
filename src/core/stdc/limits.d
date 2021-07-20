@@ -26,7 +26,7 @@ else version (WatchOS)
 import core.stdc.config;
 
 extern (C):
-@trusted: // Constants only.
+@safe: // Constants only.
 nothrow:
 @nogc:
 
