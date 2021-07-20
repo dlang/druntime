@@ -2827,7 +2827,7 @@ auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
         @property bool empty()  @safe { return _aaRangeEmpty(r); }
         @property ref front() @trusted
         {
-            return *cast(substInout!K*) _aaRangeFrontKey(r);
+            return *cast(substInout!(const(K*))) _aaRangeFrontKey(r);
         }
         void popFront() @safe { _aaRangePopFront(r); }
         @property Result save() { return this; }
@@ -2926,7 +2926,7 @@ auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 
                 @property ref key() inout @trusted
                 {
-                    return *cast(substInout!K*) keyp;
+                    return *cast(substInout!(const(K*))) keyp;
                 }
                 @property ref value() inout @trusted
                 {
