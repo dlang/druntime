@@ -49,7 +49,7 @@ pure:
  */
 
 pragma(inline, true)
-int adds()(int x, int y, ref bool overflow)
+int adds(int x, int y, ref bool overflow)
 {
     long r = cast(long)x + cast(long)y;
     if (r < int.min || r > int.max)
@@ -84,7 +84,7 @@ unittest
 
 /// ditto
 pragma(inline, true)
-long adds()(long x, long y, ref bool overflow)
+long adds(long x, long y, ref bool overflow)
 {
     long r = cast(ulong)x + cast(ulong)y;
     if (x <  0 && y <  0 && r >= 0 ||
@@ -122,7 +122,7 @@ static if (is(cent))
 {
 /// ditto
 pragma(inline, true)
-cent adds()(cent x, cent y, ref bool overflow)
+cent adds(cent x, cent y, ref bool overflow)
 {
     cent r = cast(ucent)x + cast(ucent)y;
     if (x <  0 && y <  0 && r >= 0 ||
@@ -165,7 +165,7 @@ unittest
  */
 
 pragma(inline, true)
-uint addu()(uint x, uint y, ref bool overflow)
+uint addu(uint x, uint y, ref bool overflow)
 {
     immutable uint r = x + y;
     if (r < x || r < y)
@@ -200,7 +200,7 @@ unittest
 
 /// ditto
 pragma(inline, true)
-ulong addu()(ulong x, ulong y, ref bool overflow)
+ulong addu(ulong x, ulong y, ref bool overflow)
 {
     immutable ulong r = x + y;
     if (r < x || r < y)
@@ -237,7 +237,7 @@ static if (is(ucent))
 {
 /// ditto
 pragma(inline, true)
-ucent addu()(ucent x, ucent y, ref bool overflow)
+ucent addu(ucent x, ucent y, ref bool overflow)
 {
     immutable ucent r = x + y;
     if (r < x || r < y)
@@ -279,7 +279,7 @@ unittest
  */
 
 pragma(inline, true)
-int subs()(int x, int y, ref bool overflow)
+int subs(int x, int y, ref bool overflow)
 {
     immutable long r = cast(long)x - cast(long)y;
     if (r < int.min || r > int.max)
@@ -314,7 +314,7 @@ unittest
 
 /// ditto
 pragma(inline, true)
-long subs()(long x, long y, ref bool overflow)
+long subs(long x, long y, ref bool overflow)
 {
     immutable long r = cast(ulong)x - cast(ulong)y;
     if (x <  0 && y >= 0 && r >= 0 ||
@@ -355,7 +355,7 @@ static if (is(cent))
 {
 /// ditto
 pragma(inline, true)
-cent subs()(cent x, cent y, ref bool overflow)
+cent subs(cent x, cent y, ref bool overflow)
 {
     immutable cent r = cast(ucent)x - cast(ucent)y;
     if (x <  0 && y >= 0 && r >= 0 ||
@@ -400,7 +400,7 @@ unittest
  */
 
 pragma(inline, true)
-uint subu()(uint x, uint y, ref bool overflow)
+uint subu(uint x, uint y, ref bool overflow)
 {
     if (x < y)
         overflow = true;
@@ -435,7 +435,7 @@ unittest
 
 /// ditto
 pragma(inline, true)
-ulong subu()(ulong x, ulong y, ref bool overflow)
+ulong subu(ulong x, ulong y, ref bool overflow)
 {
     if (x < y)
         overflow = true;
@@ -471,7 +471,7 @@ static if (is(ucent))
 {
 /// ditto
 pragma(inline, true)
-ucent subu()(ucent x, ucent y, ref bool overflow)
+ucent subu(ucent x, ucent y, ref bool overflow)
 {
     if (x < y)
         overflow = true;
@@ -509,7 +509,7 @@ unittest
  */
 
 pragma(inline, true)
-int negs()(int x, ref bool overflow)
+int negs(int x, ref bool overflow)
 {
     if (x == int.min)
         overflow = true;
@@ -539,7 +539,7 @@ unittest
 
 /// ditto
 pragma(inline, true)
-long negs()(long x, ref bool overflow)
+long negs(long x, ref bool overflow)
 {
     if (x == long.min)
         overflow = true;
@@ -571,7 +571,7 @@ static if (is(cent))
 {
 /// ditto
 pragma(inline, true)
-cent negs()(cent x, ref bool overflow)
+cent negs(cent x, ref bool overflow)
 {
     if (x == cent.min)
         overflow = true;
@@ -609,7 +609,7 @@ unittest
  */
 
 pragma(inline, true)
-int muls()(int x, int y, ref bool overflow)
+int muls(int x, int y, ref bool overflow)
 {
     long r = cast(long)x * cast(long)y;
     if (r < int.min || r > int.max)
@@ -647,7 +647,7 @@ unittest
 
 /// ditto
 pragma(inline, true)
-long muls()(long x, long y, ref bool overflow)
+long muls(long x, long y, ref bool overflow)
 {
     immutable long r = cast(ulong)x * cast(ulong)y;
     enum not0or1 = ~1L;
@@ -694,7 +694,7 @@ static if (is(cent))
 {
 /// ditto
 pragma(inline, true)
-cent muls()(cent x, cent y, ref bool overflow)
+cent muls(cent x, cent y, ref bool overflow)
 {
     immutable cent r = cast(ucent)x * cast(ucent)y;
     enum not0or1 = ~1L;
@@ -741,7 +741,7 @@ unittest
  *      the product
  */
 pragma(inline, true)
-uint mulu()(uint x, uint y, ref bool overflow)
+uint mulu(uint x, uint y, ref bool overflow)
 {
     immutable ulong r = ulong(x) * ulong(y);
     if (r >> 32)
@@ -772,7 +772,7 @@ unittest
 
 /// ditto
 pragma(inline, true)
-ulong mulu()(ulong x, uint y, ref bool overflow)
+ulong mulu(ulong x, uint y, ref bool overflow)
 {
     ulong r = x * y;
     if (x >> 32 &&
@@ -783,7 +783,7 @@ ulong mulu()(ulong x, uint y, ref bool overflow)
 
 /// ditto
 pragma(inline, true)
-ulong mulu()(ulong x, ulong y, ref bool overflow)
+ulong mulu(ulong x, ulong y, ref bool overflow)
 {
     immutable ulong r = x * y;
     if ((x | y) >> 32 &&
@@ -842,7 +842,7 @@ static if (is(ucent))
 {
 /// ditto
 pragma(inline, true)
-ucent mulu()(ucent x, ucent y, ref bool overflow)
+ucent mulu(ucent x, ucent y, ref bool overflow)
 {
     immutable ucent r = x * y;
     if (x && (r / x) != y)
