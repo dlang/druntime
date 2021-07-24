@@ -46,6 +46,7 @@ import core.thread;
 static import core.memory;
 
 version (GNU) import gcc.builtins;
+version (OSX) extern(C) pid_t __fork() nothrow;
 
 debug (PRINTF_TO_FILE) import core.stdc.stdio : sprintf, fprintf, fopen, fflush, FILE;
 else                   import core.stdc.stdio : sprintf, printf; // needed to output profiling results
@@ -2723,7 +2724,11 @@ struct Gcx
             import core.stdc.stdio : fflush;
             fflush(null); // avoid duplicated FILE* output
         }
-        static if (has_clone)
+        version (OSX)
+        {
+            auto pid = __fork(); // avoids calling handlers (from libc source code)
+        }
+        else static if (has_clone)
         {
             const flags = CLONE_CHILD_CLEARTID | SIGCHLD; // child thread id not needed
             scope int delegate() scope dg = &child_mark;
