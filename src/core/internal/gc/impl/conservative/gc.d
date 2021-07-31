@@ -46,7 +46,6 @@ import core.thread;
 static import core.memory;
 
 version (GNU) import gcc.builtins;
-version (OSX) extern(C) pid_t __fork() nothrow;
 
 debug (PRINTF_TO_FILE) import core.stdc.stdio : sprintf, fprintf, fopen, fflush, FILE;
 else                   import core.stdc.stdio : sprintf, printf; // needed to output profiling results
@@ -92,6 +91,10 @@ private
         // to avoid inlining - see issue 13725.
         void onInvalidMemoryOperationError(void* pretend_sideffect = null) @trusted pure nothrow @nogc;
         void onOutOfMemoryErrorNoGC() @trusted nothrow @nogc;
+
+        version (COLLECT_FORK)
+            version (OSX)
+                pid_t __fork() nothrow;
     }
 
     enum
@@ -2676,23 +2679,6 @@ struct Gcx
         return rc;
     }
 
-    version (linux)
-    {
-        // clone() fits better as we don't want to do anything but scanning in the child process.
-        // no fork-handlera are called, so we can avoid deadlocks due to malloc locks. Probably related:
-        //  https://sourceware.org/bugzilla/show_bug.cgi?id=4737
-        enum has_clone = true;
-        import core.sys.linux.sched : clone;
-        enum CLONE_CHILD_CLEARTID = 0x00200000; /* Register exit futex and memory */
-        enum CLONE_CHILD_SETTID = 0x01000000; /* Store TID in userlevel buffer in the child.  */
-        import core.sys.posix.signal : SIGCHLD;
-    }
-    else
-    {
-        enum has_clone = false;
-    }
-
-
     version (COLLECT_FORK)
     ChildStatus markFork(bool nostack, bool block, bool doParallel) nothrow
     {
@@ -2728,8 +2714,14 @@ struct Gcx
         {
             auto pid = __fork(); // avoids calling handlers (from libc source code)
         }
-        else static if (has_clone)
+        else version (linux)
         {
+            // clone() fits better as we don't want to do anything but scanning in the child process.
+            // no fork-handlera are called, so we can avoid deadlocks due to malloc locks. Probably related:
+            //  https://sourceware.org/bugzilla/show_bug.cgi?id=4737
+            import core.sys.linux.sched : clone;
+            import core.sys.posix.signal : SIGCHLD;
+            enum CLONE_CHILD_CLEARTID = 0x00200000; /* Register exit futex and memory */
             const flags = CLONE_CHILD_CLEARTID | SIGCHLD; // child thread id not needed
             scope int delegate() scope dg = &child_mark;
             extern(C) static int wrap_delegate(void* arg)
@@ -2737,7 +2729,7 @@ struct Gcx
                 auto dg = cast(int delegate() scope*)arg;
                 return (*dg)();
             }
-            char[256] stackbuf; // enough space to place some info for the child without stomping the parent stack
+            char[256] stackbuf; // enough stack space for clone() to place some info for the child without stomping the parent stack
             auto stack = stackbuf.ptr + (isStackGrowingDown ? stackbuf.length : 0);
             auto pid = clone(&wrap_delegate, stack, flags, &dg);
         }
@@ -2752,7 +2744,7 @@ struct Gcx
         {
             case -1: // fork() failed, retry without forking
                 return ChildStatus.error;
-            case 0: // child process (not run with has_clone)
+            case 0: // child process (not run with clone)
                 child_mark();
                 _Exit(0);
             default: // the parent

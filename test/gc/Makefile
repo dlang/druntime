@@ -2,7 +2,7 @@ include ../common.mak
 
 TESTS := attributes sentinel sentinel1 sentinel2 printf memstomp invariant logging \
 		 precise precisegc forkgc forkgc2 \
-		 sigmaskgc startbackgc recoverfree nocollect hospital
+		 sigmaskgc startbackgc recoverfree nocollect concurrent precise_concurrent hospital
 
 SRC_GC = ../../src/core/internal/gc/impl/conservative/gc.d
 SRC = $(SRC_GC) ../../src/rt/lifetime.d
@@ -44,6 +44,14 @@ $(ROOT)/precise.done: RUN_ARGS += --DRT-gcopt=gc:precise
 
 $(ROOT)/precisegc: $(SRC) precisegc.d
 	$(DMD) $(UDFLAGS) -gx -of$@ $(SRC) precisegc.d
+
+$(ROOT)/concurrent: $(SRC)
+	$(DMD) $(UDFLAGS) -main -of$@ $(SRC)
+$(ROOT)/concurrent.done: RUN_ARGS += --DRT-gcopt=fork:1
+
+$(ROOT)/precise_concurrent: $(SRC)
+	$(DMD) $(UDFLAGS) -main -of$@ $(SRC)
+$(ROOT)/precise_concurrent.done: RUN_ARGS += "--DRT-gcopt=gc:precise fork:1"
 
 $(ROOT)/attributes: attributes.d
 	$(DMD) $(UDFLAGS) -of$@ attributes.d
