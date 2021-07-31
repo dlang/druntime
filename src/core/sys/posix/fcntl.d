@@ -162,6 +162,11 @@ version (CRuntime_Glibc)
         enum O_SYNC         = 0x101000; // octal 04010000
         enum O_DSYNC        = 0x1000;   // octal   010000
         enum O_RSYNC        = O_SYNC;
+
+        version (linux)
+        {
+            enum O_CLOEXEC  = 0x80000;  // ocal 02000000
+        }
     }
     else version (HPPA_Any)
     {
@@ -201,6 +206,12 @@ version (CRuntime_Glibc)
         enum O_SYNC         = 0x101000; // octal 04010000
         enum O_DSYNC        = 0x1000;   // octal   010000
         enum O_RSYNC        = O_SYNC;
+
+        version (linux)
+        {
+            enum O_CLOEXEC  = 0x80000;  // ocal 02000000
+        }
+
     }
     else version (ARM_Any)
     {
@@ -214,6 +225,11 @@ version (CRuntime_Glibc)
         enum O_SYNC         = 0x101000; // octal 04010000
         enum O_DSYNC        = 0x1000;   // octal   010000
         enum O_RSYNC        = O_SYNC;
+
+        version (linux)
+        {
+            enum O_CLOEXEC  = 0x80000;  // ocal 02000000
+        }
     }
     else version (RISCV_Any)
     {
