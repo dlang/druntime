@@ -333,6 +333,19 @@ T* emplace(T, Args...)(void[] chunk, auto ref Args args)
     assert(s1.a == 42 && s1.b == 43);
 }
 
+///
+@betterC
+@safe unittest
+{
+    struct S
+    {
+        string str;
+    }
+    ubyte[S.sizeof] buf = void;
+    auto s = emplace!S(buf, "Hello");
+    assert(s.str == "Hello");
+}
+
 // Bulk of emplace unittests starts here
 
 @betterC
