@@ -208,7 +208,7 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args)
     enum alignment = maxAlignment!(void*, typeof(T.tupleof));
     assert((cast(size_t) chunk.ptr) % alignment == 0, "chunk is not aligned.");
 
-    return emplace!T(cast(T)(chunk.ptr), forward!args);
+    return emplace!T((() @trusted => cast(T)(chunk.ptr))(), forward!args);
 }
 
 ///
