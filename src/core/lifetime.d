@@ -212,7 +212,7 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args)
 }
 
 ///
-@system unittest
+@safe unittest
 {
     static class C
     {
