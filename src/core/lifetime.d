@@ -224,6 +224,18 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args)
     assert(c.i == 5);
 }
 
+@safe unittest
+{
+    static class C
+    {
+        string str;
+        this(string str){this.str = str;}
+    }
+    auto buf = new void[__traits(classInstanceSize, C)];
+    auto c = emplace!C(buf, "D");
+    assert(c.str == "D");
+}
+
 @system unittest
 {
     class Outer
