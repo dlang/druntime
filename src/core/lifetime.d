@@ -313,8 +313,8 @@ T* emplace(T, Args...)(void[] chunk, auto ref Args args)
     assert(chunk.length >= T.sizeof, "chunk size too small.");
     assert((cast(size_t) chunk.ptr) % T.alignof == 0, "emplace: Chunk is not aligned.");
 
-    emplaceRef!(T, Unqual!T)(*cast(Unqual!T*) chunk.ptr, forward!args);
-    return cast(T*) chunk.ptr;
+    emplaceRef!(T, Unqual!T)(*(() @trusted => cast(Unqual!T*) chunk.ptr)(), forward!args);
+    return (() @trusted => cast(T*) chunk.ptr)();
 }
 
 ///
