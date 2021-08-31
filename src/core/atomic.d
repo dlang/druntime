@@ -110,7 +110,7 @@ TailShared!T atomicLoad(MemoryOrder ms = MemoryOrder.seq, T)(ref shared const T 
  *  newval = The value to store.
  */
 void atomicStore(MemoryOrder ms = MemoryOrder.seq, T, V)(ref T val, V newval) pure nothrow @nogc @trusted
-    if (!is(T == shared) && !is(V == shared))
+    if (!is(T == shared) && !is(V == shared) && is(V : T))
 {
     import core.internal.traits : hasElaborateCopyConstructor;
     static assert (!hasElaborateCopyConstructor!T, "`T` may not have an elaborate copy: atomic operations override regular copying semantics.");
