@@ -798,6 +798,12 @@ extern (C) bool thread_isMainThread() nothrow @nogc
  * Registers the calling thread for use with the D Runtime.  If this routine
  * is called for a thread which is already registered, no action is performed.
  *
+ * Threads registered by this routine should normally be deregistered by $(D
+ * thread_detachThis).  Although $(D thread_detachByAddr) and $(D
+ * thread_detachInstance) can be used as well, such threads cannot be registered
+ * again by $(D thread_attachThis) unless $(D thread_setThis) is called with the
+ * $(D null) value first.
+ *
  * NOTE: This routine does not run thread-local static constructors when called.
  *       If full functionality as a D thread is desired, the following function
  *       must be called after thread_attachThis:
@@ -826,8 +832,14 @@ package ThreadT thread_attachThis_tpl(ThreadT)()
  */
 extern (C) void thread_detachThis() nothrow @nogc
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     if (auto t = ThreadBase.getThis())
+	{
         ThreadBase.remove(t);
+		t.setThis(null);
+	}
 }
 
 
@@ -844,6 +856,9 @@ extern (C) void thread_detachThis() nothrow @nogc
  */
 extern (C) void thread_detachByAddr(ThreadID addr)
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     if (auto t = thread_findByAddr(addr))
         ThreadBase.remove(t);
 }
@@ -852,6 +867,9 @@ extern (C) void thread_detachByAddr(ThreadID addr)
 /// ditto
 extern (C) void thread_detachInstance(ThreadBase t) nothrow @nogc
 {
+    Thread.slock.lock_nothrow();
+    scope(exit) Thread.slock.unlock_nothrow();
+
     ThreadBase.remove(t);
 }
 
@@ -940,6 +958,18 @@ extern (C) void thread_joinAll()
     ThreadBase.slock.unlock_nothrow();
 }
 
+unittest
+{
+    auto t = new Thread(
+    {
+        auto old = Thread.getThis();
+        assert(old !is null);
+        thread_setThis(null);
+        assert(Thread.getThis() is null);
+        thread_setThis(old);
+    }).start;
+    t.join();
+}
 
 /**
  * Performs intermediate shutdown of the thread module.

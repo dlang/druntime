@@ -216,6 +216,7 @@ class Thread : ThreadBase
     version (Posix)
     {
         private shared bool     m_isRunning;
+		private bool            m_isOwned;
     }
 
     version (Darwin)
@@ -299,9 +300,12 @@ class Thread : ThreadBase
         }
         else version (Posix)
         {
-            if (m_addr != m_addr.init)
-                pthread_detach( m_addr );
-            m_addr = m_addr.init;
+            if (m_isOwned)
+            {
+                if (m_addr != m_addr.init)
+                	pthread_detach( m_addr );
+                m_addr = m_addr.init;
+            }
         }
         version (Darwin)
         {
@@ -657,6 +661,7 @@ class Thread : ThreadBase
                     // by definition
                     result.PRIORITY_DEFAULT = 0;
                 }
+                m_isOwned = true;
             }
             else version (Posix)
             {
@@ -1248,6 +1253,7 @@ private extern (D) ThreadBase attachThread(ThreadBase _thisThread) @nogc nothrow
         thisContext.tstack = thisContext.bstack;
 
         atomicStore!(MemoryOrder.raw)(thisThread.toThread.m_isRunning, true);
+		thisThread.m_isOwned = false;
     }
     thisThread.m_isDaemon = true;
     thisThread.tlsGCdataInit();
@@ -1267,8 +1273,16 @@ private extern (D) ThreadBase attachThread(ThreadBase _thisThread) @nogc nothrow
 }
 
 /**
- * Registers the calling thread for use with the D Runtime.  If this routine
- * is called for a thread which is already registered, no action is performed.
+ * Registers the calling thread for use with the D Runtime.  If this routine is
+ * called for a thread which is already registered, no action is performed.  On
+ * Posix systems, the D Runtime does not take ownership of the thread;
+ * specifically, it does not call `pthread_detach` during cleanup.
+ *
+ * Threads registered by this routine should normally be deregistered by
+ * `thread_detachThis`.  Although `thread_detachByAddr` and
+ * `thread_detachInstance` can be used as well, such threads cannot be registered
+ * again by `thread_attachThis` unless `thread_setThis` is called with the
+ * `null` reference first.
  *
  * NOTE: This routine does not run thread-local static constructors when called.
  *       If full functionality as a D thread is desired, the following function
