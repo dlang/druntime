@@ -916,6 +916,18 @@ extern (C) void thread_setThis(ThreadBase t) nothrow @nogc
     ThreadBase.setThis(t);
 }
 
+unittest
+{
+    auto t = new ThreadBase(
+    {
+        auto old = ThreadBase.getThis();
+        assert(old !is null);
+        thread_setThis(null);
+        assert(Thread.getThis() is null);
+        thread_setThis(old);
+    }).start;
+    t.join();
+}
 
 /**
  * Joins all non-daemon threads that are currently running.  This is done by
