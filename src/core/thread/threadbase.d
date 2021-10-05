@@ -923,7 +923,7 @@ unittest
         auto old = ThreadBase.getThis();
         assert(old !is null);
         thread_setThis(null);
-        assert(Thread.getThis() is null);
+        assert(ThreadBase.getThis() is null);
         thread_setThis(old);
     }).start;
     t.join();
