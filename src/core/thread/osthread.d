@@ -496,6 +496,7 @@ class Thread : ThreadBase
                 }
                 if ( pthread_attr_destroy( &attr ) != 0 )
                     onThreadError( "Error destroying thread attributes" );
+                m_isOwned = true;
             }
             version (Darwin)
             {
@@ -661,7 +662,6 @@ class Thread : ThreadBase
                     // by definition
                     result.PRIORITY_DEFAULT = 0;
                 }
-                m_isOwned = true;
             }
             else version (Posix)
             {
