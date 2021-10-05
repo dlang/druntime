@@ -832,8 +832,8 @@ package ThreadT thread_attachThis_tpl(ThreadT)()
  */
 extern (C) void thread_detachThis() nothrow @nogc
 {
-    Thread.slock.lock_nothrow();
-    scope(exit) Thread.slock.unlock_nothrow();
+    ThreadBase.slock.lock_nothrow();
+    scope(exit) ThreadBase.slock.unlock_nothrow();
 
     if (auto t = ThreadBase.getThis())
     {
@@ -856,8 +856,8 @@ extern (C) void thread_detachThis() nothrow @nogc
  */
 extern (C) void thread_detachByAddr(ThreadID addr)
 {
-    Thread.slock.lock_nothrow();
-    scope(exit) Thread.slock.unlock_nothrow();
+    ThreadBase.slock.lock_nothrow();
+    scope(exit) ThreadBase.slock.unlock_nothrow();
 
     if (auto t = thread_findByAddr(addr))
         ThreadBase.remove(t);
@@ -867,8 +867,8 @@ extern (C) void thread_detachByAddr(ThreadID addr)
 /// ditto
 extern (C) void thread_detachInstance(ThreadBase t) nothrow @nogc
 {
-    Thread.slock.lock_nothrow();
-    scope(exit) Thread.slock.unlock_nothrow();
+    ThreadBase.slock.lock_nothrow();
+    scope(exit) ThreadBase.slock.unlock_nothrow();
 
     ThreadBase.remove(t);
 }
