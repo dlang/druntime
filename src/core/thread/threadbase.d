@@ -836,10 +836,10 @@ extern (C) void thread_detachThis() nothrow @nogc
     scope(exit) Thread.slock.unlock_nothrow();
 
     if (auto t = ThreadBase.getThis())
-	{
+    {
         ThreadBase.remove(t);
-		t.setThis(null);
-	}
+        t.setThis(null);
+    }
 }
 
 
