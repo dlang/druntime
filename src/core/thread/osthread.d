@@ -303,7 +303,7 @@ class Thread : ThreadBase
             if (m_isOwned)
             {
                 if (m_addr != m_addr.init)
-                	pthread_detach( m_addr );
+                    pthread_detach( m_addr );
                 m_addr = m_addr.init;
             }
         }
