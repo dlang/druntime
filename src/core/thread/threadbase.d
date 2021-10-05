@@ -958,19 +958,6 @@ extern (C) void thread_joinAll()
     ThreadBase.slock.unlock_nothrow();
 }
 
-unittest
-{
-    auto t = new Thread(
-    {
-        auto old = Thread.getThis();
-        assert(old !is null);
-        thread_setThis(null);
-        assert(Thread.getThis() is null);
-        thread_setThis(old);
-    }).start;
-    t.join();
-}
-
 /**
  * Performs intermediate shutdown of the thread module.
  */
