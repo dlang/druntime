@@ -970,6 +970,7 @@ extern (C) void thread_joinAll()
     ThreadBase.slock.unlock_nothrow();
 }
 
+
 /**
  * Performs intermediate shutdown of the thread module.
  */
