@@ -216,7 +216,7 @@ class Thread : ThreadBase
     version (Posix)
     {
         private shared bool     m_isRunning;
-		private bool            m_isOwned;
+        private bool            m_isOwned;
     }
 
     version (Darwin)
