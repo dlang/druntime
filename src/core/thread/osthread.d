@@ -1253,7 +1253,7 @@ private extern (D) ThreadBase attachThread(ThreadBase _thisThread) @nogc nothrow
         thisContext.tstack = thisContext.bstack;
 
         atomicStore!(MemoryOrder.raw)(thisThread.toThread.m_isRunning, true);
-		thisThread.m_isOwned = false;
+        thisThread.m_isOwned = false;
     }
     thisThread.m_isDaemon = true;
     thisThread.tlsGCdataInit();
