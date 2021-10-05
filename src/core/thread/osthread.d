@@ -1042,6 +1042,20 @@ unittest
 
 unittest
 {
+    auto t = new Thread(
+    {
+        auto old = Thread.getThis();
+        assert(old !is null);
+        thread_setThis(null);
+        assert(Thread.getThis() is null);
+        thread_setThis(old);
+    }).start;
+    t.join();
+}
+
+
+unittest
+{
     enum MSG = "Test message.";
     string caughtMsg;
 
