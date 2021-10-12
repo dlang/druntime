@@ -15,6 +15,8 @@ import core.internal.traits : Unqual;
  * Does array initialization (not assignment) from another array of the same element type.
  * Params:
  *  from = what data the array should be initialized with
+ *  makeWeaklyPure = unused; its purpose is to prevent the function from becoming
+ *      pure and risk being optimised out
  * Returns:
  *  The created and initialized array `to`
  * Bugs:
