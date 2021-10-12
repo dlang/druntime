@@ -21,9 +21,17 @@ import core.internal.traits : Unqual;
  *  This function template was ported from a much older runtime hook that bypassed safety,
  *  purity, and throwabilty checks. To prevent breaking existing code, this function template
  *  is temporarily declared `@trusted` until the implementation can be brought up to modern D expectations.
+ *
+ *  The third parameter is never used, but is necessary in order for the
+ *  function be treated as weakly pure, instead of strongly pure.
+ *  This is needed because constructions such as the one below can be ignored by
+ *  the compiler if `_d_arrayctor` is believed to be pure, because purity would
+ *  mean the call to `_d_arrayctor` has no effects (no side effects and the
+ *  return value is ignored), despite it actually modifying the contents of `a`.
+ *      const S[2] b;
+ *      const S[2] a = b;  // this would get lowered to _d_arrayctor(a, b)
  */
-Tarr1 _d_arrayctor(Tarr1 : T1[], Tarr2 : T2[], T1, T2)(scope Tarr2 from) @trusted
-    if (is(Unqual!T1 == Unqual!T2))
+Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* makeWeaklyPure = null) @trusted
 {
     pragma(inline, false);
     import core.internal.traits : hasElaborateCopyConstructor;
@@ -45,7 +53,7 @@ Tarr1 _d_arrayctor(Tarr1 : T1[], Tarr2 : T2[], T1, T2)(scope Tarr2 from) @truste
     void[] vFrom = (cast(void*) from.ptr)[0..from.length];
     void[] vTo = (cast(void*) toUn.to.ptr)[0..Tarr1.length];
 
-    // Force `enforceRawArraysConformable` to be `pure`
+    // Force `enforceRawArraysConformable` to remain weakly `pure`
     void enforceRawArraysConformable(const char[] action, const size_t elementSize,
         const void[] a1, const void[] a2) @trusted
     {
