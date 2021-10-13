@@ -16,7 +16,7 @@ import core.internal.traits : Unqual;
  * Params:
  *  from = what data the array should be initialized with
  *  makeWeaklyPure = unused; its purpose is to prevent the function from becoming
- *      pure and risk being optimised out
+ *      strongly pure and risk being optimised out
  * Returns:
  *  The created and initialized array `to`
  * Bugs:
