@@ -99,6 +99,11 @@ else version (AArch64)
 }
 
 /**
+ * ProtoObject will replace Object as root
+ */
+class ProtoObject { }
+
+/**
  * All D class objects inherit from Object.
  */
 class Object
