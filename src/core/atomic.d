@@ -14,7 +14,16 @@ import core.internal.atomic;
 import core.internal.attributes : betterC;
 import core.internal.traits : hasUnsharedIndirections;
 
-import std: canFind;
+bool canFind(A, E)(A a, E e) 
+{
+    foreach(i; a){
+        if(e == i){
+            return true;
+        }
+    }
+    return false;
+}
+
 /**
  * Specifies the memory ordering semantics of an atomic operation.
  *
@@ -568,7 +577,7 @@ in (atomicValueIsProperlyAligned(val))
                 "^",  "<<", ">>", ">>>", 
                 "~",  // skip "in"
                 "==", "!=", "<", "<=",
-                ">",  ">="].canFind(op)>=0)
+                ">",  ">="].canFind(op))
     {
         T get = atomicLoad!(MemoryOrder.raw, T)(val);
         mixin("return get " ~ op ~ " mod;");
