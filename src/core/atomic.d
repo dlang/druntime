@@ -562,12 +562,12 @@ in (atomicValueIsProperlyAligned(val))
     // +    -   *   /   %   ^^  &
     // |    ^   <<  >>  >>> ~   in
     // ==   !=  <   <=  >   >=
-    static if (op == "+"  || op == "-"  || op == "*"  || op == "/"   ||
-                op == "%"  || op == "^^" || op == "&"  || op == "|"   ||
-                op == "^"  || op == "<<" || op == ">>" || op == ">>>" ||
-                op == "~"  || // skip "in"
-                op == "==" || op == "!=" || op == "<"  || op == "<="  ||
-                op == ">"  || op == ">=")
+    static if (op in ["+",  "-", "*", "/", 
+                "%",  "^^", "&", "|",  
+                "^",  "<<", ">>", ">>>", 
+                "~",  // skip "in"
+                "==", "!=", "<", "<=",
+                ">",  ">="])
     {
         T get = atomicLoad!(MemoryOrder.raw, T)(val);
         mixin("return get " ~ op ~ " mod;");
