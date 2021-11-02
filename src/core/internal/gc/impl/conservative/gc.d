@@ -450,7 +450,6 @@ class ConservativeGC : GC
      * Params:
      *  size = The desired allocation size in bytes.
      *  bits = A bitmask of the attributes to set on this block.
-     *  alloc_size = The actuall size allocated in bytes.
      *  ti = TypeInfo to describe the memory.
      *
      * Returns:
@@ -459,7 +458,7 @@ class ConservativeGC : GC
      * Throws:
      *  OutOfMemoryError on allocation failure
      */
-    void *malloc(size_t size, uint bits = 0, size_t *alloc_size = null, const TypeInfo ti = null) nothrow
+    void *malloc(size_t size, uint bits = 0, const TypeInfo ti = null) nothrow
     {
         if (!size)
         {
@@ -538,7 +537,6 @@ class ConservativeGC : GC
      * Params:
      *  size = The desired allocation size in bytes.
      *  bits = A bitmask of the attributes to set on this block.
-     *  alloc_size = The actuall size allocated in bytes.
      *  ti = TypeInfo to describe the memory.
      *
      * Returns:
@@ -547,7 +545,7 @@ class ConservativeGC : GC
      * Throws:
      *  OutOfMemoryError on allocation failure.
      */
-    void *calloc(size_t size, uint bits = 0, size_t *alloc_size = null, const TypeInfo ti = null) nothrow
+    void *calloc(size_t size, uint bits = 0, const TypeInfo ti = null) nothrow
     {
         if (!size)
         {
@@ -578,7 +576,6 @@ class ConservativeGC : GC
      *  p = A pointer to the root of a valid memory block or to null.
      *  size = The desired allocation size in bytes.
      *  bits = A bitmask of the attributes to set on this block.
-     *  alloc_size = The actuall size allocated in bytes.
      *  ti = TypeInfo to describe the memory.
      *
      * Returns:
@@ -588,7 +585,7 @@ class ConservativeGC : GC
      * Throws:
      *  OutOfMemoryError on allocation failure.
      */
-    void *realloc(void *p, size_t size, uint bits = 0, size_t *alloc_size = null, const TypeInfo ti = null) nothrow
+    void *realloc(void *p, size_t size, uint bits = 0, const TypeInfo ti = null) nothrow
     {
         size_t localAllocSize = void;
         auto oldp = p;
