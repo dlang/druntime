@@ -304,7 +304,7 @@ in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
  *  The non-shared lvalue.
  */
 ref T assumeUnshared(T)(ref shared T val) @system @nogc pure nothrow
-    if(!is(T == class) && !is(T == interface))
+    if (!is(T == class) && !is(T == interface))
 {
     return *cast(T*) &val;
 }
