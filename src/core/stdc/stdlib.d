@@ -153,6 +153,13 @@ else
     void    srand(uint seed);
 }
 
+version (CRuntime_Glibc)
+{
+    version = AlignedAllocSupported;
+}
+// Add other C runtimes as necessary...
+else {}
+
 // We don't mark these @trusted. Given that they return a void*, one has
 // to do a pointer cast to do anything sensible with the result. Thus,
 // functions using these already have to be @trusted, allowing them to
@@ -165,8 +172,12 @@ void*   calloc(size_t nmemb, size_t size);
 void*   realloc(void* ptr, size_t size);
 ///
 void    free(void* ptr);
-/// (since C11)
-void* aligned_alloc(size_t alignment, size_t size);
+
+/// since C11
+version(AlignedAllocSupported)
+{
+    void* aligned_alloc(size_t alignment, size_t size);
+}
 
 ///
 noreturn abort() @safe;
