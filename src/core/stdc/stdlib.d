@@ -174,7 +174,7 @@ void*   realloc(void* ptr, size_t size);
 void    free(void* ptr);
 
 /// since C11
-version(AlignedAllocSupported)
+version (AlignedAllocSupported)
 {
     void* aligned_alloc(size_t alignment, size_t size);
 }
