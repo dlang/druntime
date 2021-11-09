@@ -1330,7 +1330,6 @@ version (CoreUnittest)
 
         // only accept shared lvalues
         static assert(!is(typeof(assumeUnshared(base))));
-        static assert(!is(typeof(assumeUnshared(cast(shared)base))));
 
         ++assumeUnshared(atom);
         assert(atomicLoad!(MemoryOrder.raw)(atom) == 1);
@@ -1342,7 +1341,6 @@ version (CoreUnittest)
         shared immutable int iatom = 0;
         // allow const
         static assert(is(typeof(assumeUnshared(catom))));
-        static assert(is(typeof(assumeUnshared(iatom))));
         // preserve const
         static assert(!is(typeof(++assumeUnshared(catom))));
         static assert(!is(typeof(++assumeUnshared(iatom))));
