@@ -26,6 +26,10 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
+version (CRuntime_Glibc)
+    version = AlignedAllocSupported;
+else {}
+
 extern (C):
 @system:
 
@@ -152,13 +156,6 @@ else
     ///
     void    srand(uint seed);
 }
-
-version (CRuntime_Glibc)
-{
-    version = AlignedAllocSupported;
-}
-// Add other C runtimes as necessary...
-else {}
 
 // We don't mark these @trusted. Given that they return a void*, one has
 // to do a pointer cast to do anything sensible with the result. Thus,
