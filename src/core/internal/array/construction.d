@@ -14,6 +14,7 @@ import core.internal.traits : Unqual;
 /**
  * Does array initialization (not assignment) from another array of the same element type.
  * Params:
+ *  to = what array to initialize
  *  from = what data the array should be initialized with
  *  makeWeaklyPure = unused; its purpose is to prevent the function from becoming
  *      strongly pure and risk being optimised out
@@ -42,18 +43,10 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* ma
     import core.stdc.stdint : uintptr_t;
     debug(PRINTF) import core.stdc.stdio : printf;
 
-    debug(PRINTF) printf("_d_arrayctor(from = %p,%d) size = %d\n", from.ptr, from.length, T1.sizeof);
-
-    // Declare `to` inside a union so `__ArrayDtor(to)` isn't called in case
-    // `copyEmplace` throws.
-    union ToArr
-    {
-        Unqual!Tarr1 to;
-    }
-    ToArr toUn = void;
+    debug(PRINTF) printf("_d_arrayctor(from = %p,%d) size = %d\n", from.ptr, from.length, T.sizeof);
 
     void[] vFrom = (cast(void*) from.ptr)[0..from.length];
-    void[] vTo = (cast(void*) toUn.to.ptr)[0..Tarr1.length];
+    void[] vTo = (cast(void*) to.ptr)[0..to.length];
 
     // Force `enforceRawArraysConformable` to remain weakly `pure`
     void enforceRawArraysConformable(const char[] action, const size_t elementSize,
@@ -66,15 +59,15 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* ma
         (cast(Type)&enforceRawArraysConformableNogc)(action, elementSize, a1, a2, false);
     }
 
-    enforceRawArraysConformable("initialization", T1.sizeof, vFrom, vTo);
+    enforceRawArraysConformable("initialization", T.sizeof, vFrom, vTo);
 
-    static if (hasElaborateCopyConstructor!T1)
+    static if (hasElaborateCopyConstructor!T)
     {
         size_t i;
         try
         {
-            for (i = 0; i < toUn.to.length; i++)
-                copyEmplace(from[i], cast(T1) toUn.to[i]);
+            for (i = 0; i < to.length; i++)
+                copyEmplace(from[i], to[i]);
         }
         catch (Exception o)
         {
@@ -82,7 +75,7 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* ma
             */
             while (i--)
             {
-                auto elem = cast(Unqual!T1*) &toUn.to[i];
+                auto elem = cast(Unqual!T*) &to[i];
                 destroy(*elem);
             }
 
@@ -92,10 +85,10 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* ma
     else
     {
         // blit all elements at once
-        memcpy(cast(void*) toUn.to.ptr, from.ptr, toUn.to.length * T1.sizeof);
+        memcpy(cast(void*) to.ptr, from.ptr, to.length * T.sizeof);
     }
 
-    return cast(Tarr1) toUn;
+    return to;
 }
 
 // postblit
@@ -110,7 +103,7 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* ma
 
     S[4] arr1;
     S[4] arr2 = [S(0), S(1), S(2), S(3)];
-    arr1 = _d_arrayctor!(typeof(arr1))(arr2[]);
+    _d_arrayctor(arr1[], arr2[]);
 
     assert(counter == 4);
     assert(arr1 == arr2);
@@ -133,7 +126,7 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* ma
 
     S[4] arr1;
     S[4] arr2 = [S(0), S(1), S(2), S(3)];
-    arr1 = _d_arrayctor!(typeof(arr1))(arr2[]);
+    _d_arrayctor(arr1[], arr2[]);
 
     assert(counter == 4);
     assert(arr1 == arr2);
@@ -159,7 +152,7 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* ma
     {
         Throw[4] a;
         Throw[4] b = [Throw(1), Throw(2), Throw(3), Throw(4)];
-        a = _d_arrayctor!(typeof(a))(b[]);
+        _d_arrayctor(a[], b[]);
     }
     catch (Exception)
     {
@@ -184,7 +177,7 @@ Tarr _d_arrayctor(Tarr : T[], T)(return scope Tarr to, scope Tarr from, char* ma
     {
         NoThrow[4] a;
         NoThrow[4] b = [NoThrow(1), NoThrow(2), NoThrow(3), NoThrow(4)];
-        a = _d_arrayctor!(typeof(a))(b[]);
+        _d_arrayctor(a[], b[]);
     }
     catch (Exception)
     {
@@ -290,7 +283,7 @@ void _d_arraysetctor(Tarr : T[], T)(scope Tarr p, scope ref T value) @trusted
     {
         Throw[4] a;
         Throw[4] b = [Throw(1), Throw(2), Throw(3), Throw(4)];
-        a = _d_arrayctor!(typeof(a))(b[]);
+        _d_arrayctor(a[], b[]);
     }
     catch (Exception)
     {
