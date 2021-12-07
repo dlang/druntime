@@ -226,7 +226,7 @@ unittest
 // Returns a reference to an array element, eliding bounds check and
 // casting void to ubyte.
 pragma(inline, true)
-ref at(T)(T[] r, size_t i) @trusted
+ref at(T)(in T[] r, size_t i) @trusted
     // exclude opaque structs due to https://issues.dlang.org/show_bug.cgi?id=20959
     if (!(is(T == struct) && !is(typeof(T.sizeof))))
 {
