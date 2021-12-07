@@ -16,7 +16,7 @@ pragma(lib, "advapi32");
 
 import core.sys.windows.w32api, core.sys.windows.winbase, core.sys.windows.windef;
 
-enum : HKEY { // for some reason, DMD errors if I don't give all the values explicitly
+enum RegistryHives : HKEY { // for some reason, DMD errors if I don't give all the values explicitly
     HKEY_CLASSES_ROOT        = cast(HKEY) 0x80000000,
     HKEY_CURRENT_USER        = cast(HKEY) 0x80000001,
     HKEY_LOCAL_MACHINE       = cast(HKEY) 0x80000002,
@@ -38,7 +38,7 @@ enum : DWORD {
     REG_OPENED_EXISTING_KEY
 }
 
-enum : DWORD {
+enum RegistryValueTypes : DWORD {
     REG_NONE                       = 0,
     REG_SZ,
     REG_EXPAND_SZ,
