@@ -83,6 +83,13 @@ template _d_arrayappendTImpl(Tarr : T[], T)
 
     private enum errorMessage = "Cannot append to array if compiling without support for runtime type information!";
 
+    ref Tarr _d_arrayappendTImpure(return scope ref Tarr x, scope Tarr y)
+    {
+        pragma(inline, false);
+
+        mixin(_d_arrayappendTBody);
+    }
+
     /**
      * Append array `y` to array `x`.
      * Params:
@@ -98,16 +105,14 @@ template _d_arrayappendTImpl(Tarr : T[], T)
     static if (isCopyingNothrow!T)
         ref Tarr _d_arrayappendT(return scope ref Tarr x, scope Tarr y) @trusted pure nothrow
         {
-            pragma(inline, false);
-
-            mixin(_d_arrayappendTBody);
+            alias Type = ref Tarr function(return scope ref Tarr x, scope Tarr y) pure nothrow;
+            return (cast(Type) &_d_arrayappendTImpure)(x, y);
         }
     else
         ref Tarr _d_arrayappendT(return scope ref Tarr x, scope Tarr y) @trusted pure
         {
-            pragma(inline, false);
-
-            mixin(_d_arrayappendTBody);
+            alias Type = ref Tarr function(return scope ref Tarr x, scope Tarr y) pure;
+            return (cast(Type) &_d_arrayappendTImpure)(x, y);
         }
 
     private enum _d_arrayappendTBody = q{
