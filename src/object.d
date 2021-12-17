@@ -3431,12 +3431,12 @@ else
 
 bool _xopEquals(in void*, in void*)
 {
-    throw new Error("TypeInfo.equals is not implemented");
+    assert(0, "TypeInfo.equals is not implemented");
 }
 
 bool _xopCmp(in void*, in void*)
 {
-    throw new Error("TypeInfo.compare is not implemented");
+    assert(0, "TypeInfo.compare is not implemented");
 }
 
 /******************************************
