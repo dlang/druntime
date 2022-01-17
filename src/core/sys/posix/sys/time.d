@@ -90,8 +90,19 @@ else version (CRuntime_Musl)
         time_t      tv_sec;
         suseconds_t tv_usec;
     }
-    int gettimeofday(timeval*, void*);
-    int utimes(const scope char*, ref const(timeval)[2]);
+    static if (CRuntime_Musl_Needs_Time64_Compat_Layer)
+    {
+        int __gettimeofday_time64(timeval*, void*);
+        int __utimes_time64(const scope char*, ref const(timeval)[2]);
+
+        alias gettimeofday = __gettimeofday_time64;
+        alias utimes = __utimes_time64;
+    }
+    else
+    {
+        int gettimeofday(timeval*, void*);
+        int utimes(const scope char*, ref const(timeval)[2]);
+    }
 }
 else version (Darwin)
 {
