@@ -293,9 +293,12 @@ in (atomicPtrIsProperlyAligned(here), "Argument `here` is not properly aligned")
  *
  * Note: this function does not perform any ordering.
  *
- * Note: assumeUnshared is a special-purpose primitive and should be used with care. When accessing
+ * Note: `assumeUnshared` is a special-purpose primitive and should be used with care. When accessing
  * shared variables both inside and outside of synchronized blocks, atomic operations should be
  * used instead.
+ *
+ * Note: the result of assumeUnshared is an object for which `shared` has been stripped transitively.
+ * Therefore, any field that is accessed from the assumed unshared object will also be unshared.
  *
  * Params:
  *  val = the shared lvalue.
