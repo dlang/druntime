@@ -43,18 +43,32 @@ Source: $(DRUNTIMESRC rt/_config.d)
 
 module rt.config;
 
-// put each variable in its own COMDAT by making them template instances
-template rt_envvars_enabled()
+version (GNU)
 {
-    extern(C) pragma(mangle, "rt_envvars_enabled") __gshared bool rt_envvars_enabled = false;
+    // mark variables as "weak" by using a GDC-specific attribute
+    import gcc.attributes;
+    extern(C) pragma(mangle, "rt_envvars_enabled") @attribute("weak") __gshared bool rt_envvars_enabled_ = false;
+    extern(C) pragma(mangle, "rt_cmdline_enabled") @attribute("weak") __gshared bool rt_cmdline_enabled_ = true;
+    extern(C) pragma(mangle, "rt_options") @attribute("weak") __gshared string[] rt_options_ = [];
+    ref auto rt_envvars_enabled()() { return rt_envvars_enabled_; }
+    ref auto rt_cmdline_enabled()() { return rt_cmdline_enabled_; }
+    ref auto rt_options()() { return rt_options_; }
 }
-template rt_cmdline_enabled()
+else
 {
-    extern(C) pragma(mangle, "rt_cmdline_enabled") __gshared bool rt_cmdline_enabled = true;
-}
-template rt_options()
-{
-    extern(C) pragma(mangle, "rt_options") __gshared string[] rt_options = [];
+    // put each variable in its own COMDAT by making them template instances
+    template rt_envvars_enabled()
+    {
+        extern(C) pragma(mangle, "rt_envvars_enabled") __gshared bool rt_envvars_enabled = false;
+    }
+    template rt_cmdline_enabled()
+    {
+        extern(C) pragma(mangle, "rt_cmdline_enabled") __gshared bool rt_cmdline_enabled = true;
+    }
+    template rt_options()
+    {
+        extern(C) pragma(mangle, "rt_options") __gshared string[] rt_options = [];
+    }
 }
 
 import core.stdc.ctype : toupper;
