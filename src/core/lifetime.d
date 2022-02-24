@@ -2641,7 +2641,7 @@ if (!Init.length ||
  *      constructed instance of the type
  */
 T _d_newThrowable(T, Args...)(auto ref Args args) @trusted
-    if (is(T : Throwable) && is(typeof(T.__ctor(forward!args))) &&
+    if (is(T : Throwable) && is(typeof(T.__ctor(args))) &&
         __traits(getLinkage, T) == "D")
 {
     debug(PRINTF) printf("_d_newThrowable(%s)\n", cast(char*) T.stringof);
@@ -2673,7 +2673,7 @@ T _d_newThrowable(T, Args...)(auto ref Args args) @trusted
     (cast(Throwable) p).refcount() = 1;
 
     auto t = cast(T) p;
-    t.__ctor(forward!args);
+    t.__ctor(args);
 
     return t;
 }
