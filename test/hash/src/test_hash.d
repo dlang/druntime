@@ -16,6 +16,7 @@ void main()
     issue21642();
     issue22024();
     issue22076();
+    issue22136();
     testTypeInfoArrayGetHash1();
     testTypeInfoArrayGetHash2();
     pr2243();
@@ -310,6 +311,21 @@ void issue22076()
     auto c1 = new C1();
     cast(void) hashOf(c1);
     cast(void) hashOf(c1, 0);
+}
+
+void issue22136()
+{
+    interface IObject {
+        size_t toHash() @trusted nothrow;
+    }
+    interface Dummy {}
+    interface Bug : Dummy, IObject {}
+    interface Ok : IObject, Dummy {}
+
+    Bug bug;
+    Ok ok;
+    assert(hashOf(bug) == hashOf(Object.init)); // Regression: failed to compile.
+    assert(hashOf(ok) == hashOf(Object.init));
 }
 
 /// Tests ensure TypeInfo_Array.getHash uses element hash functions instead
