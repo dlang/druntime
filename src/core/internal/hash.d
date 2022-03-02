@@ -608,7 +608,10 @@ if (!is(T == enum) && (is(T == interface) || is(T == class))
     static if (__traits(compiles, {size_t h = val.toHash();}))
     {
         static if (is(__traits(parent, val.toHash) P) && !is(immutable T* : immutable P*)
-                && is(typeof((ref P p) => p is null)))
+                && is(typeof((ref P p) => p is null))
+                // https://issues.dlang.org/show_bug.cgi?id=22136
+                && __traits(getAliasThis, T).length
+                && is(P == typeof(__traits(getMember, val, __traits(getAliasThis, T)))))
             return val ? hashOf(__traits(getMember, val, __traits(getAliasThis, T))) : 0;
         else
             return val ? val.toHash() : 0;
@@ -625,7 +628,10 @@ if (!is(T == enum) && (is(T == interface) || is(T == class))
     static if (__traits(compiles, {size_t h = val.toHash();}))
     {
         static if (is(__traits(parent, val.toHash) P) && !is(immutable T* : immutable P*)
-                && is(typeof((ref P p) => p is null)))
+                && is(typeof((ref P p) => p is null))
+                // https://issues.dlang.org/show_bug.cgi?id=22136
+                && __traits(getAliasThis, T).length
+                && is(P == typeof(__traits(getMember, val, __traits(getAliasThis, T)))))
             return hashOf(val ? hashOf(__traits(getMember, val, __traits(getAliasThis, T)))
                               : size_t(0), seed);
         else
