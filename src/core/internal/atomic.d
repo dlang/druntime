@@ -263,8 +263,8 @@ version (DigitalMars)
             }
             else
             {
-                enum DestReg = SizedReg!SI;
-                enum ValReg = SizedReg!(DI, T);
+                enum DestReg = SizedReg!DI;
+                enum ValReg = SizedReg!(SI, T);
             }
             enum ResReg = result ? SizedReg!(AX, T) : null;
 
@@ -536,9 +536,9 @@ version (DigitalMars)
                 }
                 else
                 {
-                    enum DestAddr = SizedReg!DX;
+                    enum DestAddr = SizedReg!DI;
                     enum Cmp = SizedReg!(SI, T);
-                    enum Val = SizedReg!(DI, T);
+                    enum Val = SizedReg!(DX, T);
                 }
                 enum AXReg = SizedReg!(AX, T);
 
