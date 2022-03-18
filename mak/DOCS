@@ -196,6 +196,13 @@ DOCS=\
 	$(DOCDIR)\core_sys_freebsd_sys_event.html \
 	$(DOCDIR)\core_sys_freebsd_sys_mount.html \
 	\
+	$(DOCDIR)\core_sys_hurd_config.html \
+	$(DOCDIR)\core_sys_hurd_dlfcn.html \
+	$(DOCDIR)\core_sys_hurd_elfclass.html \
+	$(DOCDIR)\core_sys_hurd_elf.html \
+	$(DOCDIR)\core_sys_hurd_link.html \
+	$(DOCDIR)\core_sys_hurd_time.html \
+	\
 	$(DOCDIR)\core_sys_linux_config.html \
 	$(DOCDIR)\core_sys_linux_dlfcn.html \
 	$(DOCDIR)\core_sys_linux_elf.html \

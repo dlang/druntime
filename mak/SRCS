@@ -206,6 +206,13 @@ SRCS=\
 	\
 	src\core\sys\elf\package.d \
 	\
+	src\core\sys\hurd\config.d \
+	src\core\sys\hurd\dlfcn.d \
+	src\core\sys\hurd\elfclass.d \
+	src\core\sys\hurd\elf.d \
+	src\core\sys\hurd\link.d \
+	src\core\sys\hurd\time.d \
+	\
 	src\core\sys\linux\config.d \
 	src\core\sys\linux\dlfcn.d \
 	src\core\sys\linux\elf.d \

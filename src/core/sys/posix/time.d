@@ -155,6 +155,10 @@ else version (Solaris)
 {
     enum CLOCK_MONOTONIC = 4;
 }
+else version (Hurd)
+{
+    enum CLOCK_MONOTONIC = 1;
+}
 else
 {
     static assert(0);

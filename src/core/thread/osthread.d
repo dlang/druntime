@@ -35,6 +35,9 @@ else version (TVOS)
 else version (WatchOS)
     version = Darwin;
 
+version (NetBSD) version = FakePriority;
+version (Hurd)   version = FakePriority;
+
 version (D_InlineAsm_X86)
 {
     version (Windows)
@@ -649,6 +652,12 @@ class Thread : ThreadBase
                     result.PRIORITY_DEFAULT = 0;
                 }
             }
+            else version (FakePriority)
+            {
+                result.PRIORITY_MIN = int.min;
+                result.PRIORITY_DEFAULT = 0;
+                result.PRIORITY_MAX = int.max;
+            }
             else version (Posix)
             {
                 int         policy;
@@ -708,10 +717,10 @@ class Thread : ThreadBase
         }
     }
 
-    version (NetBSD)
+    // Defined when platform does not support priority for default policy
+    // or it is not possible change policy without root access
+    version (FakePriority)
     {
-        //NetBSD does not support priority for default policy
-        // and it is not possible change policy without root access
         int fakePriority = int.max;
     }
 
@@ -730,9 +739,9 @@ class Thread : ThreadBase
         {
             return GetThreadPriority( m_hndl );
         }
-        else version (NetBSD)
+        else version (FakePriority)
         {
-           return fakePriority==int.max? PRIORITY_DEFAULT : fakePriority;
+           return fakePriority == int.max ? PRIORITY_DEFAULT : fakePriority;
         }
         else version (Posix)
         {
@@ -798,7 +807,7 @@ class Thread : ThreadBase
             if (priocntl(idtype_t.P_LWPID, P_MYID, PC_SETPARMS, &pcparm) == -1)
                 throw new ThreadException( "Unable to set scheduling class" );
         }
-        else version (NetBSD)
+        else version (FakePriority)
         {
            fakePriority = val;
         }

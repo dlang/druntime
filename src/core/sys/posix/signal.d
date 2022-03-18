@@ -537,6 +537,30 @@ else version (Solaris)
     enum SIGUSR2 = 17;
     enum SIGURG = 21;
 }
+else version (Hurd)
+{
+    //SIGABRT (defined in core.stdc.signal)
+    enum SIGALRM = 14;
+    enum SIGBUS = 10;
+    enum SIGCHLD = 20;
+    enum SIGCONT = 19;
+    //SIGFPE (defined in core.stdc.signal)
+    enum SIGHUP = 1;
+    //SIGILL (defined in core.stdc.signal)
+    //SIGINT (defined in core.stdc.signal)
+    enum SIGKILL = 9;
+    enum SIGPIPE = 13;
+    enum SIGQUIT = 3;
+    //SIGSEGV (defined in core.stdc.signal)
+    enum SIGSTOP = 17;
+    //SIGTERM (defined in core.stdc.signal)
+    enum SIGTSTP = 18;
+    enum SIGTTIN = 21;
+    enum SIGTTOU = 22;
+    enum SIGUSR1 = 30;
+    enum SIGUSR2 = 31;
+    enum SIGURG = 16;
+}
 else
 {
     static assert(false, "Unsupported platform");
@@ -2875,6 +2899,25 @@ else version (Solaris)
     }
 
     alias timespec timestruc_t;
+}
+else version (Hurd)
+{
+    struct timespec
+    {
+        time_t tv_sec;
+        version (D_LP64)
+            slong_t tv_nsec;
+        else version (BigEndian)
+        {
+            int __pad;
+            c_long tv_nsec;
+        }
+        else
+        {
+            c_long tv_nsec;
+            int __pad;
+        }
+    }
 }
 else
 {

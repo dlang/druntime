@@ -206,6 +206,13 @@ COPY=\
 	\
 	$(IMPDIR)\core\sys\elf\package.d \
 	\
+	$(IMPDIR)\core\sys\hurd\config.d \
+	$(IMPDIR)\core\sys\hurd\dlfcn.d \
+	$(IMPDIR)\core\sys\hurd\elfclass.d \
+	$(IMPDIR)\core\sys\hurd\elf.d \
+	$(IMPDIR)\core\sys\hurd\link.d \
+	$(IMPDIR)\core\sys\hurd\time.d \
+	\
 	$(IMPDIR)\core\sys\linux\config.d \
 	$(IMPDIR)\core\sys\linux\dlfcn.d \
 	$(IMPDIR)\core\sys\linux\elf.d \

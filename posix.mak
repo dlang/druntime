@@ -234,6 +234,9 @@ $(DOC_OUTPUT_DIR)/core_sys_freebsd_netinet_%.html : src/core/sys/freebsd/netinet
 $(DOC_OUTPUT_DIR)/core_sys_freebsd_sys_%.html : src/core/sys/freebsd/sys/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
+$(DOC_OUTPUT_DIR)/core_sys_hurd_%.html : src/core/sys/hurd/%.d $(DMD)
+	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
+
 $(DOC_OUTPUT_DIR)/core_sys_linux_%.html : src/core/sys/linux/%.d $(DMD)
 	$(DMD) $(DDOCFLAGS) -Df$@ project.ddoc $(DOCFMT) $<
 
