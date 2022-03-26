@@ -70,6 +70,17 @@ alias string  = immutable(char)[];
 alias wstring = immutable(wchar)[];
 alias dstring = immutable(dchar)[];
 
+alias u8 = ubyte;
+alias u16 = ushort;
+alias u32 = uint;
+alias u64 = ulong;
+
+alias s8 = byte;
+alias s16 = short;
+alias s32 = int;
+alias s64 = long;
+
+
 version (D_ObjectiveC)
 {
     deprecated("explicitly import `selector` instead using: `import core.attribute : selector;`")
