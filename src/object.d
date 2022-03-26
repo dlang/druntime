@@ -80,6 +80,9 @@ alias s16 = short;
 alias s32 = int;
 alias s64 = long;
 
+alias f32 = float;
+alias f64 = double;
+
 
 version (D_ObjectiveC)
 {
