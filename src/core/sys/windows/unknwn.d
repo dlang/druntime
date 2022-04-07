@@ -9,6 +9,7 @@
 module core.sys.windows.unknwn;
 version (Windows):
 @system:
+nothrow @nogc:
 
 import core.sys.windows.objfwd, core.sys.windows.windef, core.sys.windows.wtypes;
 import core.sys.windows.basetyps;
