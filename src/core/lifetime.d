@@ -1198,7 +1198,10 @@ pure nothrow @safe /* @nogc */ unittest
     }
     void[] buf;
 
-    static align(A.alignof) byte[__traits(classInstanceSize, A)] sbuf;
+    import core.internal.traits : maxAlignment;
+    enum Aalignment = maxAlignment!(void*, A.tupleof);
+
+    static align(Aalignment) byte[__traits(classInstanceSize, A)] sbuf;
     buf = sbuf[];
     auto a = emplace!A(buf, 55);
     assert(a.x == 55 && a.y == 55);

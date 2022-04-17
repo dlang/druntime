@@ -59,13 +59,23 @@ unittest
  */
 class ArrayIndexError : RangeError
 {
+    import core.internal.string : unsignedToTempString, numDigits;
+
     /// Index into array
     const size_t index;
     /// Length of indexed array
     const size_t length;
 
     // Buffer to avoid GC allocations
-    private immutable char[100] msgBuf = '\0';
+    private static immutable MSG = [
+        "index [",
+        "] is out of bounds for array of length "
+    ];
+    private static immutable MAX_NUMDIGITS = size_t.max.numDigits;
+    // NOTE: Update this value when changing the error message
+    private static immutable MSG_LENGTH =
+        MSG[0].length + MAX_NUMDIGITS + MSG[1].length + MAX_NUMDIGITS;
+    private immutable char[MSG_LENGTH] msgBuf = '\0';
 
     this(size_t index, size_t length, string file = __FILE__,
          size_t line = __LINE__, Throwable next = null) @nogc nothrow pure @safe
@@ -77,13 +87,12 @@ class ArrayIndexError : RangeError
         // It's essentially `printf("index [%zu] is out of bounds for array of length [%zu]", index, length)`,
         // but even `snprintf` isn't `pure`.
         // Also string concatenation isn't `@nogc`, and casting to/from immutable isn't `@safe`
-        import core.internal.string : unsignedToTempString;
-        char[msgBuf.length] buf = void;
-        char[20] tmpBuf = void;
+        char[MSG_LENGTH] buf = void;
+        char[MAX_NUMDIGITS] tmpBuf = void;
         char[] sink = buf[];
-        sink.rangeMsgPut("index [");
+        sink.rangeMsgPut(MSG[0]);
         sink.rangeMsgPut(unsignedToTempString!10(index, tmpBuf));
-        sink.rangeMsgPut("] is out of bounds for array of length ");
+        sink.rangeMsgPut(MSG[1]);
         sink.rangeMsgPut(unsignedToTempString!10(length, tmpBuf));
         this.msgBuf = buf;
         super(msgBuf[0..$-sink.length], file, line, next);
@@ -118,12 +127,27 @@ unittest
  */
 class ArraySliceError : RangeError
 {
+    import core.internal.string : unsignedToTempString, numDigits;
+    import core.internal.util.math : max;
+
     /// Lower/upper bound passed to slice: `array[lower .. upper]`
     const size_t lower, upper;
     /// Length of sliced array
     const size_t length;
 
-    private immutable char[120] msgBuf = '\0';
+    private static immutable MSG = [
+        "slice [",
+        " .. ",
+        "] ",
+        "has a larger lower index than upper index",
+        "extends past source array of length "
+    ];
+    private static immutable MAX_NUMDIGITS = size_t.max.numDigits;
+    // NOTE: Update this value when changing the error message
+    private static immutable MSG_LENGTH =
+        MSG[0].length + MAX_NUMDIGITS + MSG[1].length + MAX_NUMDIGITS +
+        MSG[2].length + max(MSG[3].length, MSG[4].length + MAX_NUMDIGITS);
+    private immutable char[MSG_LENGTH] msgBuf = '\0';
 
     this(size_t lower, size_t upper, size_t length, string file = __FILE__,
          size_t line = __LINE__, Throwable next = null) @nogc nothrow pure @safe
@@ -133,22 +157,21 @@ class ArraySliceError : RangeError
         this.length = length;
 
         // Constructing the message is a bit clumsy for the same reasons as ArrayIndexError
-        import core.internal.string : unsignedToTempString;
-        char[msgBuf.length] buf = void;
-        char[20] tmpBuf = void;
+        char[MSG_LENGTH] buf = void;
+        char[MAX_NUMDIGITS] tmpBuf = void;
         char[] sink = buf;
-        sink.rangeMsgPut("slice [");
+        sink.rangeMsgPut(MSG[0]);
         sink.rangeMsgPut(unsignedToTempString!10(lower, tmpBuf));
-        sink.rangeMsgPut(" .. ");
+        sink.rangeMsgPut(MSG[1]);
         sink.rangeMsgPut(unsignedToTempString!10(upper, tmpBuf));
-        sink.rangeMsgPut("] ");
+        sink.rangeMsgPut(MSG[2]);
         if (lower > upper)
         {
-            sink.rangeMsgPut("has a larger lower index than upper index");
+            sink.rangeMsgPut(MSG[3]);
         }
         else
         {
-            sink.rangeMsgPut("extends past source array of length ");
+            sink.rangeMsgPut(MSG[4]);
             sink.rangeMsgPut(unsignedToTempString!10(length, tmpBuf));
         }
 
@@ -855,8 +878,42 @@ extern (C)
     }
 }
 
+private size_t maxStoreSize()
+{
+    size_t size;
+    foreach (s; [
+        __traits(classInstanceSize, ArrayIndexError),
+        __traits(classInstanceSize, ArraySliceError),
+        __traits(classInstanceSize, AssertError),
+        __traits(classInstanceSize, FinalizeError),
+        __traits(classInstanceSize, ForkError),
+        __traits(classInstanceSize, InvalidMemoryOperationError),
+        __traits(classInstanceSize, OutOfMemoryError),
+        __traits(classInstanceSize, RangeError),
+        __traits(classInstanceSize, SwitchError),
+    ])
+        if (s > size) size = s;
+
+    return size;
+}
+
+// max alignment of all fields plus the hidden pointer
+private static immutable maxStoreAlignment =
+    imported!"core.internal.traits".maxAlignment!(
+        void*,
+        typeof(ArrayIndexError.tupleof),
+        typeof(ArraySliceError.tupleof),
+        typeof(AssertError.tupleof),
+        typeof(FinalizeError.tupleof),
+        typeof(ForkError.tupleof),
+        typeof(InvalidMemoryOperationError.tupleof),
+        typeof(OutOfMemoryError.tupleof),
+        typeof(RangeError.tupleof),
+        typeof(SwitchError.tupleof),
+    );
+
 // TLS storage shared for all errors, chaining might create circular reference
-private align(2 * size_t.sizeof) void[256] _store;
+private align(maxStoreAlignment) void[maxStoreSize()] _store;
 
 // only Errors for now as those are rarely chained
 private T staticError(T, Args...)(auto ref Args args)
