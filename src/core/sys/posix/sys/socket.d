@@ -607,7 +607,7 @@ else version (Darwin)
         {
             return ( cast(socklen_t)mhdr.msg_controllen >= cmsghdr.sizeof ? cast(inout(cmsghdr)*) mhdr.msg_control : cast(inout(cmsghdr)*) null );
         }
-    } 
+    }
 
     enum : uint
     {
