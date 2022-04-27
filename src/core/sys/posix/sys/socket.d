@@ -578,34 +578,34 @@ else version (Darwin)
 
     struct msghdr
     {
-        void*    msg_name;
-        uint     msg_namelen;
-        iovec*   msg_iov;
-        uint     msg_iovlen;
-        void*    msg_control;
-        uint     msg_controllen;
-        int      msg_flags;
+        void*     msg_name;
+        socklen_t msg_namelen;
+        iovec*    msg_iov;
+        int       msg_iovlen;
+        void*     msg_control;
+        socklen_t msg_controllen;
+        int       msg_flags;
     }
 
     struct cmsghdr
     {
-        uint  cmsg_len;
-        int   cmsg_level;
-        int   cmsg_type;
+        socklen_t  cmsg_len;
+        int        cmsg_level;
+        int        cmsg_type;
     }
 
 
     extern (D)
     {
-        uint CMSG_ALIGN( uint len ) pure nothrow @nogc { return (len + uint.sizeof - 1) & cast(uint) (~(uint.sizeof - 1)); }
-        uint CMSG_SPACE(uint len) pure nothrow @nogc { return CMSG_ALIGN(len) + CMSG_ALIGN(cmsghdr.sizeof); }
-        uint CMSG_LEN( uint len ) pure nothrow @nogc { return CMSG_ALIGN(cmsghdr.sizeof) + len; }
+        socklen_t CMSG_ALIGN(socklen_t len) pure nothrow @nogc { return (len + socklen_t.sizeof - 1) & cast(socklen_t) (~(socklen_t.sizeof - 1)); }
+        socklen_t CMSG_SPACE(socklen_t len) pure nothrow @nogc { return CMSG_ALIGN(len) + CMSG_ALIGN(cmsghdr.sizeof); }
+        socklen_t CMSG_LEN(socklen_t len) pure nothrow @nogc { return CMSG_ALIGN(cmsghdr.sizeof) + len; }
 
         inout(ubyte)*   CMSG_DATA( return scope inout(cmsghdr)* cmsg ) pure nothrow @nogc { return cast(ubyte*)( cmsg + 1 ); }
 
         inout(cmsghdr)* CMSG_FIRSTHDR( inout(msghdr)* mhdr ) pure nothrow @nogc
         {
-            return ( cast(uint)mhdr.msg_controllen >= cmsghdr.sizeof ? cast(inout(cmsghdr)*) mhdr.msg_control : cast(inout(cmsghdr)*) null );
+            return ( cast(socklen_t)mhdr.msg_controllen >= cmsghdr.sizeof ? cast(inout(cmsghdr)*) mhdr.msg_control : cast(inout(cmsghdr)*) null );
         }
     } 
 
