@@ -1563,7 +1563,7 @@ template forward(args...)
 {
     import core.internal.traits : AliasSeq;
 
-    template fwd(alias arg)
+    static template fwd(alias arg)
     {
         // by ref || lazy || const/immutable
         static if (__traits(isRef,  arg) ||
