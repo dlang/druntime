@@ -512,6 +512,12 @@ alias INT32_C = _typify!int32_t;
 ///
 alias INT64_C = _typify!int64_t;
 
+static if (is(ucent))
+{
+///
+alias INT128_C = _typify!int128_t;
+}
+
 ///
 alias UINT8_C  = _typify!uint8_t ;
 ///
@@ -520,6 +526,12 @@ alias UINT16_C = _typify!uint16_t;
 alias UINT32_C = _typify!uint32_t;
 ///
 alias UINT64_C = _typify!uint64_t;
+
+static if (is(ucent))
+{
+///
+alias UINT128_C = _typify!uint128_t;
+}
 
 ///
 alias INTMAX_C  = _typify!intmax_t ;
