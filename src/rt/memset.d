@@ -4,6 +4,7 @@
  * Copyright: Copyright Digital Mars 2004 - 2010.
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright
+ * Source: $(DRUNTIMESRC rt/_memset.d)
  */
 
 /*          Copyright Digital Mars 2004 - 2010.
@@ -12,6 +13,8 @@
  *          http://www.boost.org/LICENSE_1_0.txt)
  */
 module rt.memset;
+
+import rt.util.utility : d_cdouble, d_creal;
 
 extern (C)
 {
@@ -67,10 +70,10 @@ long *_memset64(long *p, long value, size_t count)
     return pstart;
 }
 
-cdouble *_memset128(cdouble *p, cdouble value, size_t count)
+d_cdouble *_memset128(d_cdouble *p, d_cdouble value, size_t count)
 {
-    cdouble *pstart = p;
-    cdouble *ptop;
+    d_cdouble *pstart = p;
+    d_cdouble *ptop;
 
     for (ptop = &p[count]; p < ptop; p++)
         *p = value;
@@ -97,10 +100,10 @@ real *_memset80(real *p, real value, size_t count)
     return pstart;
 }
 
-creal *_memset160(creal *p, creal value, size_t count)
+d_creal *_memset160(d_creal *p, d_creal value, size_t count)
 {
-    creal *pstart = p;
-    creal *ptop;
+    d_creal *pstart = p;
+    d_creal *ptop;
 
     for (ptop = &p[count]; p < ptop; p++)
         *p = value;

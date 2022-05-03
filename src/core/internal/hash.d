@@ -9,8 +9,7 @@
  */
 module core.internal.hash;
 
-import core.internal.convert;
-import core.internal.traits : allSatisfy, Unconst, Unqual;
+import core.internal.traits : Unconst;
 
 // If true ensure that positive zero and negative zero have the same hash.
 // Historically typeid(float).getHash did this but hashOf(float) did not.
@@ -63,7 +62,7 @@ private template isCppClassWithoutHash(T)
         enum isCppClassWithoutHash = false;
     else
         enum bool isCppClassWithoutHash = __traits(getLinkage, T) == "C++"
-            && !is(Unqual!T : Object) && !hasCallableToHash!T;
+            && !is(immutable T* : immutable Object*) && !hasCallableToHash!T;
 }
 
 /+
@@ -100,7 +99,10 @@ private template canBitwiseHash(T)
         static if (hasCallableToHash!T || __traits(isNested, T))
             enum canBitwiseHash = false;
         else
+        {
+            import core.internal.traits : allSatisfy;
             enum canBitwiseHash = allSatisfy!(.canBitwiseHash, typeof(T.tupleof));
+        }
     }
     else static if (is(T == union))
     {
@@ -128,22 +130,17 @@ private template canBitwiseHash(T)
 
 //enum hash. CTFE depends on base type
 size_t hashOf(T)(auto ref T val, size_t seed = 0)
-if (is(T EType == enum) && (!__traits(isScalar, T) || is(T == __vector)))
+if (is(T == enum) && !__traits(isScalar, T))
 {
-    static if (is(T EType == enum)) //for EType
-    {
-        return hashOf(cast(EType) val, seed);
-    }
-    else
-    {
-        static assert(0);
-    }
+    static if (is(T EType == enum)) {} //for EType
+    return hashOf(cast(EType) val, seed);
 }
 
 //CTFE ready (depends on base type).
 size_t hashOf(T)(scope const auto ref T val, size_t seed = 0)
 if (!is(T == enum) && __traits(isStaticArray, T) && canBitwiseHash!T)
 {
+    import core.internal.convert : toUbyte;
     // FIXME:
     // We would like to to do this:
     //
@@ -194,10 +191,9 @@ if (!is(T == enum) && __traits(isStaticArray, T) && !canBitwiseHash!T)
 
 //dynamic array hash
 size_t hashOf(T)(scope const T val, size_t seed = 0)
-if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStaticArray, T)
-    && !is(T == struct) && !is(T == class) && !is(T == union)
-    && (__traits(isScalar, S) || canBitwiseHash!S))
+if (is(T == S[], S) && (__traits(isScalar, S) || canBitwiseHash!S)) // excludes enum types
 {
+    import core.internal.convert : toUbyte;
     alias ElementType = typeof(val[0]);
     static if (!canBitwiseHash!ElementType)
     {
@@ -222,9 +218,7 @@ if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStati
 
 //dynamic array hash
 size_t hashOf(T)(T val, size_t seed = 0)
-if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStaticArray, T)
-    && !is(T == struct) && !is(T == class) && !is(T == union)
-    && !(__traits(isScalar, S) || canBitwiseHash!S))
+if (is(T == S[], S) && !(__traits(isScalar, S) || canBitwiseHash!S)) // excludes enum types
 {
     size_t hash = seed;
     foreach (ref o; val)
@@ -235,10 +229,8 @@ if (!is(T == enum) && !is(T : typeof(null)) && is(T S: S[]) && !__traits(isStati
 }
 
 // Indicates if F is a built-in complex number type.
-private enum bool isComplex(F) = is(Unqual!F == cfloat) || is(Unqual!F == cdouble) || is(Unqual!F == creal);
-
 private F coalesceFloat(F)(const F val)
-if (__traits(isFloating, val) && !is(F == __vector) && !isComplex!F)
+if (__traits(isFloating, val) && !is(F == __vector) && !is(F : creal))
 {
     static if (floatCoalesceZeroes)
         if (val == cast(F) 0)
@@ -263,6 +255,11 @@ size_t hashOf(T)(scope const T val) if (__traits(isScalar, T) && !is(T == __vect
         size_t result = cast(size_t) val;
         return result ^ (result >> 4);
     }
+    else static if (is(T EType == enum) && is(typeof(val[0])))
+    {
+        // Enum type whose base type is vector.
+        return hashOf(cast(EType) val);
+    }
     else static if (__traits(isIntegral, T))
     {
         static if (T.sizeof <= size_t.sizeof)
@@ -270,7 +267,7 @@ size_t hashOf(T)(scope const T val) if (__traits(isScalar, T) && !is(T == __vect
         else
             return cast(size_t) (val ^ (val >>> (size_t.sizeof * 8)));
     }
-    else static if (isComplex!T)
+    else static if (is(T : creal))
     {
         return hashOf(coalesceFloat(val.re), hashOf(coalesceFloat(val.im)));
     }
@@ -283,7 +280,10 @@ size_t hashOf(T)(scope const T val) if (__traits(isScalar, T) && !is(T == __vect
         else static if (T.sizeof == double.sizeof && T.mant_dig == double.mant_dig)
             return hashOf(*cast(const ulong*) &data);
         else
+        {
+            import core.internal.convert : floatSize, toUbyte;
             return bytesHashWithExactSizeAndAlignment!T(toUbyte(data)[0 .. floatSize!T], 0);
+        }
     }
 }
 
@@ -299,6 +299,11 @@ size_t hashOf(T)(scope const T val, size_t seed) if (__traits(isScalar, T) && !i
             assert(0, "Unable to calculate hash of non-null pointer at compile time");
         }
         return hashOf(cast(size_t) val, seed);
+    }
+    else static if (is(T EType == enum) && is(typeof(val[0])))
+    {
+        // Enum type whose base type is vector.
+        return hashOf(cast(EType) val, seed);
     }
     else static if (__traits(isIntegral, val) && T.sizeof <= size_t.sizeof)
     {
@@ -333,7 +338,7 @@ size_t hashOf(T)(scope const T val, size_t seed) if (__traits(isScalar, T) && !i
             seed = hashOf(cast(size_t) (val >>> (size_t.sizeof * 8 * i)), seed);
         return seed;
     }
-    else static if (isComplex!T)
+    else static if (is(T : creal))
     {
         return hashOf(val.re, hashOf(val.im, seed));
     }
@@ -345,7 +350,10 @@ size_t hashOf(T)(scope const T val, size_t seed) if (__traits(isScalar, T) && !i
         else static if (T.sizeof == double.sizeof && T.mant_dig == double.mant_dig)
             return hashOf(*cast(const ulong*) &data, seed);
         else
+        {
+            import core.internal.convert : floatSize, toUbyte;
             return bytesHashWithExactSizeAndAlignment!T(toUbyte(data)[0 .. floatSize!T], seed);
+        }
     }
     else
     {
@@ -353,15 +361,15 @@ size_t hashOf(T)(scope const T val, size_t seed) if (__traits(isScalar, T) && !i
     }
 }
 
-size_t hashOf(T)(scope const auto ref T val, size_t seed = 0) @safe @nogc nothrow pure
-if (is(T == __vector) && !is(T == enum))
+size_t hashOf(T)(scope const T val, size_t seed = 0) @safe @nogc nothrow pure
+if (is(T == __vector)) // excludes enum types
 {
     static if (__traits(isFloating, T) && (floatCoalesceZeroes || floatCoalesceNaNs))
     {
         if (__ctfe)
         {
             // Workaround for CTFE bug.
-            alias E = Unqual!(typeof(val[0]));
+            static if (is(immutable typeof(val[0]) == immutable E, E)) {} // Get E.
             E[T.sizeof / E.sizeof] array;
             foreach (i; 0 .. T.sizeof / E.sizeof)
                 array[i] = val[i];
@@ -371,6 +379,7 @@ if (is(T == __vector) && !is(T == enum))
     }
     else
     {
+        import core.internal.convert : toUbyte;
         return bytesHashAlignedBy!T(toUbyte(val), seed);
     }
 }
@@ -395,13 +404,25 @@ q{
     static if (!isChained) enum size_t seed = 0;
     static if (hasCallableToHash!(typeof(val))) //CTFE depends on toHash()
     {
-        static if (isChained)
-            return hashOf(cast(size_t) val.toHash(), seed);
+        static if (!__traits(isSame, typeof(val), __traits(parent, val.toHash))
+            && is(typeof(val is null)))
+        {
+            static if (isChained)
+                return hashOf(__traits(getMember, val, __traits(getAliasThis, typeof(val))), seed);
+            else
+                return hashOf(__traits(getMember, val, __traits(getAliasThis, typeof(val))));
+        }
         else
-            return val.toHash();
+        {
+            static if (isChained)
+                return hashOf(cast(size_t) val.toHash(), seed);
+            else
+                return val.toHash();
+        }
     }
     else
     {
+        import core.internal.convert : toUbyte;
         static if (__traits(hasMember, T, "toHash") && is(typeof(T.toHash) == function))
         {
             // TODO: in the future maybe this should be changed to a static
@@ -413,6 +434,12 @@ q{
             pragma(msg, "Warning: struct "~__traits(identifier, T)
                 ~" has method toHash, however it cannot be called with "
                 ~typeof(val).stringof~" this.");
+            static if (__traits(compiles, __traits(getLocation, T.toHash)))
+            {
+                enum file = __traits(getLocation, T.toHash)[0];
+                enum line = __traits(getLocation, T.toHash)[1].stringof;
+                pragma(msg, "  ",__traits(identifier, T),".toHash defined here: ",file,"(",line,")");
+            }
         }
 
         static if (T.tupleof.length == 0)
@@ -440,10 +467,21 @@ q{
                 {
                     static if (hasCallableToHash!F)
                     {
-                        static if (i == 0 && !isChained)
-                            size_t h = val.tupleof[i].toHash();
+                        static if (!__traits(isSame, F, __traits(parent, val.tupleof[i].toHash))
+                            && is(typeof(val.tupleof[i] is null)))
+                        {
+                            static if (i == 0 && !isChained)
+                                size_t h = hashOf(__traits(getMember, val.tupleof[i], __traits(getAliasThis, F)));
+                            else
+                                h = hashOf(__traits(getMember, val.tupleof[i], __traits(getAliasThis, F)), h);
+                        }
                         else
-                            h = hashOf(cast(size_t) val.tupleof[i].toHash(), h);
+                        {
+                            static if (i == 0 && !isChained)
+                                size_t h = val.tupleof[i].toHash();
+                            else
+                                h = hashOf(cast(size_t) val.tupleof[i].toHash(), h);
+                        }
                     }
                     else static if (F.tupleof.length == 1)
                     {
@@ -568,7 +606,13 @@ if (!is(T == enum) && (is(T == interface) || is(T == class))
     && !canBitwiseHash!T)
 {
     static if (__traits(compiles, {size_t h = val.toHash();}))
-        return val ? val.toHash() : 0;
+    {
+        static if (is(__traits(parent, val.toHash) P) && !is(immutable T* : immutable P*)
+                && is(typeof((ref P p) => p is null)))
+            return val ? hashOf(__traits(getMember, val, __traits(getAliasThis, T))) : 0;
+        else
+            return val ? val.toHash() : 0;
+    }
     else
         return val ? (cast(Object)val).toHash() : 0;
 }
@@ -579,7 +623,14 @@ if (!is(T == enum) && (is(T == interface) || is(T == class))
     && !canBitwiseHash!T)
 {
     static if (__traits(compiles, {size_t h = val.toHash();}))
-        return hashOf(val ? cast(size_t) val.toHash() : size_t(0), seed);
+    {
+        static if (is(__traits(parent, val.toHash) P) && !is(immutable T* : immutable P*)
+                && is(typeof((ref P p) => p is null)))
+            return hashOf(val ? hashOf(__traits(getMember, val, __traits(getAliasThis, T)))
+                              : size_t(0), seed);
+        else
+            return hashOf(val ? cast(size_t) val.toHash() : size_t(0), seed);
+    }
     else
         return hashOf(val ? (cast(Object)val).toHash() : 0, seed);
 }
@@ -595,13 +646,8 @@ size_t hashOf(T)(T aa) if (!is(T == enum) && __traits(isAssociativeArray, T))
     size_t h = 0;
 
     // The computed hash is independent of the foreach traversal order.
-    foreach (key, ref val; aa)
-    {
-        size_t[2] hpair;
-        hpair[0] = key.hashOf();
-        hpair[1] = val.hashOf();
-        h += hpair.hashOf();
-    }
+    foreach (ref key, ref val; aa)
+        h += hashOf(hashOf(val), hashOf(key));
     return h;
 }
 

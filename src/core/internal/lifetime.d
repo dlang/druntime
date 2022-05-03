@@ -34,7 +34,7 @@ void emplaceRef(T, UT, Args...)(ref UT chunk, auto ref Args args)
             T payload;
             this()(auto ref Args args)
             {
-                static if (is(typeof(payload = forward!args)))
+                static if (__traits(compiles, payload = forward!args))
                     payload = forward!args;
                 else
                     payload = T(forward!args);
@@ -42,9 +42,9 @@ void emplaceRef(T, UT, Args...)(ref UT chunk, auto ref Args args)
         }
         if (__ctfe)
         {
-            static if (is(typeof(chunk = T(forward!args))))
+            static if (__traits(compiles, chunk = T(forward!args)))
                 chunk = T(forward!args);
-            else static if (args.length == 1 && is(typeof(chunk = forward!(args[0]))))
+            else static if (args.length == 1 && __traits(compiles, chunk = forward!(args[0])))
                 chunk = forward!(args[0]);
             else assert(0, "CTFE emplace doesn't support "
                 ~ T.stringof ~ " from " ~ Args.stringof);
@@ -90,36 +90,33 @@ In contrast to `emplaceRef(chunk)`, there are no checks for disabled default
 constructors etc.
 +/
 void emplaceInitializer(T)(scope ref T chunk) nothrow pure @trusted
-    if (!is(T == const) && !is(T == immutable) && !is(T == inout))
+if (!is(T == const) && !is(T == immutable) && !is(T == inout))
 {
     import core.internal.traits : hasElaborateAssign;
 
-    static if (!hasElaborateAssign!T && __traits(compiles, chunk = T.init))
+    static if (__traits(isZeroInit, T))
+    {
+        import core.stdc.string : memset;
+        memset(cast(void*) &chunk, 0, T.sizeof);
+    }
+    else static if (__traits(isScalar, T) ||
+                    T.sizeof <= 16 && !hasElaborateAssign!T && __traits(compiles, (){ T chunk; chunk = T.init; }))
     {
         chunk = T.init;
     }
-    else static if (__traits(isZeroInit, T))
+    else static if (__traits(isStaticArray, T))
     {
-        static if (is(T U == shared U))
-            alias Unshared = U;
-        else
-            alias Unshared = T;
-
-        import core.stdc.string : memset;
-        memset(cast(Unshared*) &chunk, 0, T.sizeof);
+        // For static arrays there is no initializer symbol created. Instead, we emplace elements one-by-one.
+        foreach (i; 0 .. T.length)
+        {
+            emplaceInitializer(chunk[i]);
+        }
     }
     else
     {
-        // emplace T.init (an rvalue) without extra variable (and according destruction)
-        alias RawBytes = void[T.sizeof];
-
-        static union U
-        {
-            T dummy = T.init; // U.init corresponds to T.init
-            RawBytes data;
-        }
-
-        *cast(RawBytes*) &chunk = U.init.data;
+        import core.stdc.string : memcpy;
+        const initializer = __traits(initSymbol, T);
+        memcpy(cast(void*)&chunk, initializer.ptr, initializer.length);
     }
 }
 
@@ -160,10 +157,38 @@ void emplaceInitializer(T)(scope ref T chunk) nothrow pure @trusted
         this(this) {}
     }
 
+    static union LargeNonZeroUnion
+    {
+        byte[128] a = 1;
+    }
+
     testInitializer!int();
     testInitializer!double();
     testInitializer!ElaborateAndZero();
     testInitializer!ElaborateAndNonZero();
+    testInitializer!LargeNonZeroUnion();
+
+    static if (is(__vector(double[4])))
+    {
+        // DMD 2.096 and GDC 11.1 can't compare vectors with `is` so can't use
+        // testInitializer.
+        enum VE : __vector(double[4])
+        {
+            a = [1.0, 2.0, 3.0, double.nan],
+            b = [4.0, 5.0, 6.0, double.nan],
+        }
+        const VE expected = VE.a;
+        VE dst = VE.b;
+        shared VE sharedDst = VE.b;
+        emplaceInitializer(dst);
+        emplaceInitializer(sharedDst);
+        () @trusted {
+            import core.stdc.string : memcmp;
+            assert(memcmp(&expected, &dst, VE.sizeof) == 0);
+            assert(memcmp(&expected, cast(void*) &sharedDst, VE.sizeof) == 0);
+        }();
+        static assert(!__traits(compiles, emplaceInitializer(expected)));
+    }
 }
 
 /*

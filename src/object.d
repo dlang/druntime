@@ -1,4 +1,50 @@
 /**
+ * $(SCRIPT inhibitQuickIndex = 1;)
+ * $(DIVC quickindex,
+ * $(BOOKTABLE,
+ * $(TR $(TH Category) $(TH Symbols))
+ * $(TR $(TD Arrays) $(TD
+ *     $(MYREF assumeSafeAppend)
+ *     $(MYREF capacity)
+ *     $(MYREF idup)
+ *     $(MYREF reserve)
+ * ))
+ * $(TR $(TD Associative arrays) $(TD
+ *     $(MYREF byKey)
+ *     $(MYREF byKeyValue)
+ *     $(MYREF byValue)
+ *     $(MYREF clear)
+ *     $(MYREF get)
+ *     $(MYREF keys)
+ *     $(MYREF rehash)
+ *     $(MYREF require)
+ *     $(MYREF update)
+ *     $(MYREF values)
+ * ))
+ * $(TR $(TD General) $(TD
+ *     $(MYREF destroy)
+ *     $(MYREF dup)
+ *     $(MYREF hashOf)
+ *     $(MYREF opEquals)
+ * ))
+ * $(TR $(TD Types) $(TD
+ *     $(MYREF Error)
+ *     $(MYREF Exception)
+ *     $(MYREF noreturn)
+ *     $(MYREF Object)
+ *     $(MYREF Throwable)
+ * ))
+ * $(TR $(TD Type info) $(TD
+ *     $(MYREF Interface)
+ *     $(MYREF ModuleInfo)
+ *     $(MYREF OffsetTypeInfo)
+ *     $(MYREF RTInfoImpl)
+ *     $(MYREF rtinfoNoPointers)
+ *     $(MYREF TypeInfo)
+ *     $(MYREF TypeInfo_Class)
+ * ))
+ * ))
+ *
  * Forms the symbols available to all D programs. Includes Object, which is
  * the root of the class object hierarchy.  This module is implicitly
  * imported.
@@ -6,31 +52,19 @@
  * Copyright: Copyright Digital Mars 2000 - 2011.
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Sean Kelly
+ * Source: $(DRUNTIMESRC object.d)
  */
 
 module object;
 
-// NOTE: For some reason, this declaration method doesn't work
-//       in this particular file (and this file only).  It must
-//       be a DMD thing.
-//alias typeof(int.sizeof)                    size_t;
-//alias typeof(cast(void*)0 - cast(void*)0)   ptrdiff_t;
+alias size_t = typeof(int.sizeof);
+alias ptrdiff_t = typeof(cast(void*)0 - cast(void*)0);
 
-version (D_LP64)
-{
-    alias size_t = ulong;
-    alias ptrdiff_t = long;
-}
-else
-{
-    alias size_t = uint;
-    alias ptrdiff_t = int;
-}
+alias sizediff_t = ptrdiff_t; // For backwards compatibility only.
+alias noreturn = typeof(*null);  /// bottom type
 
-alias sizediff_t = ptrdiff_t; //For backwards compatibility only.
-
-alias hash_t = size_t; //For backwards compatibility only.
-alias equals_t = bool; //For backwards compatibility only.
+alias hash_t = size_t; // For backwards compatibility only.
+alias equals_t = bool; // For backwards compatibility only.
 
 alias string  = immutable(char)[];
 alias wstring = immutable(wchar)[];
@@ -44,18 +78,22 @@ version (D_ObjectiveC)
 version (Posix) public import core.attribute : gnuAbiTag;
 
 // Some ABIs use a complex varargs implementation requiring TypeInfo.argTypes().
-version (X86_64)
+version (GNU)
+{
+    // No TypeInfo-based core.vararg.va_arg().
+}
+else version (X86_64)
 {
     version (DigitalMars) version = WithArgTypes;
     else version (Windows) { /* no need for Win64 ABI */ }
     else version = WithArgTypes;
 }
-version (AArch64)
+else version (AArch64)
 {
     // Apple uses a trivial varargs implementation
     version (OSX) {}
     else version (iOS) {}
-    else version (TVOS){}
+    else version (TVOS) {}
     else version (WatchOS) {}
     else version = WithArgTypes;
 }
@@ -71,6 +109,20 @@ class Object
     string toString()
     {
         return typeid(this).name;
+    }
+
+    @system unittest
+    {
+        enum unittest_sym_name = __traits(identifier, __traits(parent, (){}));
+        enum fqn_unittest = "object.Object." ~ unittest_sym_name; // object.__unittest_LX_CY
+
+        class C {}
+
+        Object obj = new Object;
+        C c = new C;
+
+        assert(obj.toString() == "object.Object");
+        assert(c.toString() == fqn_unittest ~ ".C");
     }
 
     /**
@@ -108,10 +160,50 @@ class Object
         //return this !is o;
     }
 
+    @system unittest
+    {
+        Object obj = new Object;
+
+        bool gotCaught;
+        try
+        {
+            obj.opCmp(new Object);
+        }
+        catch (Exception e)
+        {
+            gotCaught = true;
+            assert(e.msg == "need opCmp for class object.Object");
+        }
+        assert(gotCaught);
+    }
+
     /**
      * Test whether $(D this) is equal to $(D o).
      * The default implementation only compares by identity (using the $(D is) operator).
-     * Generally, overrides for $(D opEquals) should attempt to compare objects by their contents.
+     * Generally, overrides and overloads for $(D opEquals) should attempt to compare objects by their contents.
+     * A class will most likely want to add an overload that takes your specific type as the argument
+     * and does the content comparison. Then you can override this and forward it to your specific
+     * typed overload with a cast. Remember to check for `null` on the typed overload.
+     *
+     * Examples:
+     * ---
+     * class Child {
+     *    int contents;
+     *    // the typed overload first. It can use all the attribute you want
+     *    bool opEquals(const Child c) const @safe pure nothrow @nogc
+     *    {
+     *        if (c is null)
+     *            return false;
+     *        return this.contents == c.contents;
+     *    }
+     *
+     *    // and now the generic override forwards with a cast
+     *    override bool opEquals(Object o)
+     *    {
+     *        return this.opEquals(cast(Child) o);
+     *    }
+     * }
+     * ---
      */
     bool opEquals(Object o)
     {
@@ -157,43 +249,61 @@ class Object
         }
         return null;
     }
-}
 
-bool opEquals(Object lhs, Object rhs)
-{
-    // If aliased to the same object or both null => equal
-    if (lhs is rhs) return true;
-
-    // If either is null => non-equal
-    if (lhs is null || rhs is null) return false;
-
-    if (!lhs.opEquals(rhs)) return false;
-
-    // If same exact type => one call to method opEquals
-    if (typeid(lhs) is typeid(rhs) ||
-        !__ctfe && typeid(lhs).opEquals(typeid(rhs)))
-            /* CTFE doesn't like typeid much. 'is' works, but opEquals doesn't
-            (issue 7147). But CTFE also guarantees that equal TypeInfos are
-            always identical. So, no opEquals needed during CTFE. */
+    @system unittest
     {
-        return true;
-    }
+        Object valid_obj = Object.factory("object.Object");
+        Object invalid_obj = Object.factory("object.__this_class_doesnt_exist__");
 
-    // General case => symmetric calls to method opEquals
-    return rhs.opEquals(lhs);
+        assert(valid_obj !is null);
+        assert(invalid_obj is null);
+    }
 }
 
-/************************
-* Returns true if lhs and rhs are equal.
-*/
-bool opEquals(const Object lhs, const Object rhs)
+/++
+    Implementation for class opEquals override. Calls the class-defined methods after a null check.
+    Please note this is not nogc right now, even if your implementation is, because of
+    the typeinfo name string compare. This is because of dmd's dll implementation. However,
+    it can infer to @safe if your class' opEquals is.
++/
+bool opEquals(LHS, RHS)(LHS lhs, RHS rhs) if (is(LHS : const Object) && is(RHS : const Object))
 {
-    // A hack for the moment.
-    return opEquals(cast()lhs, cast()rhs);
+    static if (__traits(compiles, lhs.opEquals(rhs)) && __traits(compiles, rhs.opEquals(lhs)))
+    {
+        // If aliased to the same object or both null => equal
+        if (lhs is rhs) return true;
+
+        // If either is null => non-equal
+        if (lhs is null || rhs is null) return false;
+
+        if (!lhs.opEquals(rhs)) return false;
+
+        // If same exact type => one call to method opEquals
+        if (typeid(lhs) is typeid(rhs) ||
+            !__ctfe && typeid(lhs).opEquals(typeid(rhs)))
+                /* CTFE doesn't like typeid much. 'is' works, but opEquals doesn't
+                (issue 7147). But CTFE also guarantees that equal TypeInfos are
+                always identical. So, no opEquals needed during CTFE. */
+        {
+            return true;
+        }
+
+        // General case => symmetric calls to method opEquals
+        return rhs.opEquals(lhs);
+    }
+    else
+    {
+        // this is a compatibility hack for the old const cast behavior
+        // if none of the new overloads compile, we'll go back plain Object,
+        // including casting away const. It does this through the pointer
+        // to bypass any opCast that may be present on the original class.
+        return .opEquals!(Object, Object)(*cast(Object*) &lhs, *cast(Object*) &rhs);
+
+    }
 }
 
 /// If aliased to the same object or both null => equal
-@system unittest
+@system unittest // this one is not @safe because it goes through the Object base method
 {
     class F { int flag; this(int flag) { this.flag = flag; } }
 
@@ -213,7 +323,8 @@ bool opEquals(const Object lhs, const Object rhs)
 }
 
 /// If same exact type => one call to method opEquals
-@system unittest
+/// This test passes `@safe` because it defines a new opEquals with `@safe`
+@safe unittest
 {
     class F
     {
@@ -224,9 +335,9 @@ bool opEquals(const Object lhs, const Object rhs)
             this.flag = flag;
         }
 
-        override bool opEquals(const Object o)
+        bool opEquals(const F o) const @safe nothrow pure
         {
-            return flag == (cast(F) o).flag;
+            return flag == o.flag;
         }
     }
 
@@ -236,7 +347,7 @@ bool opEquals(const Object lhs, const Object rhs)
 }
 
 /// General case => symmetric calls to method opEquals
-@system unittest
+@safe unittest
 {
     int fEquals, gEquals;
 
@@ -253,10 +364,10 @@ bool opEquals(const Object lhs, const Object rhs)
     {
         this(int flag) { super(flag); }
 
-        override bool opEquals(const Object o)
+        bool opEquals(const Base o) @safe
         {
             fEquals++;
-            return flag == (cast(Base) o).flag;
+            return flag == o.flag;
         }
     }
 
@@ -264,16 +375,134 @@ bool opEquals(const Object lhs, const Object rhs)
     {
         this(int flag) { super(flag); }
 
-        override bool opEquals(const Object o)
+        bool opEquals(const Base o) @safe
         {
             gEquals++;
-            return flag == (cast(Base) o).flag;
+            return flag == o.flag;
         }
     }
 
     assert(new F(1) == new G(1));
     assert(fEquals == 1);
     assert(gEquals == 1);
+}
+
+/++
+    This test shows an example for a comprehensive inheritance equality chain too.
++/
+unittest
+{
+    static class Base
+    {
+        int member;
+
+        this(int member) pure @safe nothrow @nogc
+        {
+            this.member = member;
+        }
+
+        override bool opEquals(Object rhs) const
+        {
+            return this.opEquals(cast(Base) rhs);
+        }
+
+        bool opEquals(const Base rhs) const @nogc pure nothrow @safe
+        {
+            if (rhs is null)
+                return false;
+            return this.member == rhs.member;
+        }
+    }
+
+    // works through the direct class with attributes enabled, except for pure and nogc in the current TypeInfo implementation
+    bool testThroughBase() nothrow @safe
+    {
+        Base b1 = new Base(0);
+        Base b2 = new Base(0);
+        assert(b1 == b2);
+        Base b3 = new Base(1);
+        assert(b1 != b3);
+        return true;
+    }
+
+    static assert(testThroughBase());
+
+    // also works through the base class interface thanks to the override, but no more attributes
+    bool testThroughObject()
+    {
+        Object o1 = new Base(0);
+        Object o2 = new Base(0);
+        assert(o1 == o2);
+        Object o3 = new Base(1);
+        assert(o1 != o3);
+        return true;
+    }
+
+    static assert(testThroughObject());
+
+    // Each time you make a child, you want to override all old opEquals
+    // and add a new overload for the new child.
+    static class Child : Base
+    {
+        int member2;
+
+        this(int member, int member2) pure @safe nothrow @nogc
+        {
+            super(member);
+            this.member2 = member2;
+        }
+
+        // override the whole chain so it works consistently though any base
+        override bool opEquals(Object rhs) const
+        {
+            return this.opEquals(cast(Child) rhs);
+        }
+        override bool opEquals(const Base rhs) const
+        {
+            return this.opEquals(cast(const Child) rhs);
+        }
+        // and then add the new overload, if necessary, to handle new members
+        bool opEquals(const Child rhs) const @nogc pure nothrow @safe
+        {
+            if (rhs is null)
+                return false;
+            // can call back to the devirtualized base test with implicit conversion
+            // then compare the new member too. or we could have just compared the base
+            // member directly here as well.
+            return Base.opEquals(rhs) && this.member2 == rhs.member2;
+        }
+
+        // a mixin template, of course, could automate this.
+    }
+
+    bool testThroughChild()
+    {
+        Child a = new Child(0, 0);
+        Child b = new Child(0, 1);
+        assert(a != b);
+
+        Base ba = a;
+        Base bb = b;
+        assert(ba != bb);
+
+        Object oa = a;
+        Object ob = b;
+        assert(oa != ob);
+
+        return true;
+    }
+
+    static assert(testThroughChild());
+}
+
+// To cover const Object opEquals
+@system unittest
+{
+    const Object obj1 = new Object;
+    const Object obj2 = new Object;
+
+    assert(obj1 == obj1);
+    assert(obj1 != obj2);
 }
 
 private extern(C) void _d_setSameMutex(shared Object ownee, shared Object owner) nothrow;
@@ -283,6 +512,24 @@ void setSameMutex(shared Object ownee, shared Object owner)
     _d_setSameMutex(ownee, owner);
 }
 
+@system unittest
+{
+    shared Object obj1 = new Object;
+    synchronized class C
+    {
+        void bar() {}
+    }
+    shared C obj2 = new shared(C);
+    obj2.bar();
+
+    assert(obj1.__monitor != obj2.__monitor);
+    assert(obj1.__monitor is null);
+
+    setSameMutex(obj1, obj2);
+    assert(obj1.__monitor == obj2.__monitor);
+    assert(obj1.__monitor !is null);
+}
+
 /**
  * Information about an interface.
  * When an object is accessed via an interface, an Interface* appears as the
@@ -290,7 +537,8 @@ void setSameMutex(shared Object ownee, shared Object owner)
  */
 struct Interface
 {
-    TypeInfo_Class   classinfo;  /// .classinfo for this interface (not for containing class)
+    /// Class info returned by `typeid` for this interface (not for containing class)
+    TypeInfo_Class   classinfo;
     void*[]     vtbl;
     size_t      offset;     /// offset to Interface 'this' from Object 'this'
 }
@@ -312,7 +560,7 @@ struct OffsetTypeInfo
  */
 class TypeInfo
 {
-    override string toString() const pure @safe nothrow
+    override string toString() const @safe nothrow
     {
         return typeid(this).name;
     }
@@ -322,28 +570,45 @@ class TypeInfo
         return hashOf(this.toString());
     }
 
-    override int opCmp(Object o)
+    override int opCmp(Object rhs)
     {
-        import core.internal.string : dstrcmp;
-
-        if (this is o)
+        if (this is rhs)
             return 0;
-        TypeInfo ti = cast(TypeInfo)o;
+        auto ti = cast(TypeInfo) rhs;
         if (ti is null)
             return 1;
-        return dstrcmp(this.toString(), ti.toString());
+        return __cmp(this.toString(), ti.toString());
+    }
+
+    @system unittest
+    {
+        assert(typeid(void) <= typeid(void));
+        assert(typeid(void).opCmp(null));
+        assert(!typeid(void).opCmp(typeid(void)));
     }
 
     override bool opEquals(Object o)
+    {
+        return opEquals(cast(TypeInfo) o);
+    }
+
+    bool opEquals(const TypeInfo ti) @safe nothrow const
     {
         /* TypeInfo instances are singletons, but duplicates can exist
          * across DLL's. Therefore, comparing for a name match is
          * sufficient.
          */
-        if (this is o)
+        if (this is ti)
             return true;
-        auto ti = cast(const TypeInfo)o;
         return ti && this.toString() == ti.toString();
+    }
+
+    @system unittest
+    {
+        auto anotherObj = new Object();
+
+        assert(typeid(void).opEquals(typeid(void)));
+        assert(typeid(void) != anotherObj); // calling .opEquals here directly is a type mismatch
     }
 
     /**
@@ -372,13 +637,57 @@ class TypeInfo
     /// Swaps two instances of the type.
     void swap(void* p1, void* p2) const
     {
-        immutable size_t n = tsize;
-        for (size_t i = 0; i < n; i++)
+        size_t remaining = tsize;
+        // If the type might contain pointers perform the swap in pointer-sized
+        // chunks in case a garbage collection pass interrupts this function.
+        if ((cast(size_t) p1 | cast(size_t) p2) % (void*).alignof == 0)
+        {
+            while (remaining >= (void*).sizeof)
+            {
+                void* tmp = *cast(void**) p1;
+                *cast(void**) p1 = *cast(void**) p2;
+                *cast(void**) p2 = tmp;
+                p1 += (void*).sizeof;
+                p2 += (void*).sizeof;
+                remaining -= (void*).sizeof;
+            }
+        }
+        for (size_t i = 0; i < remaining; i++)
         {
             byte t = (cast(byte *)p1)[i];
             (cast(byte*)p1)[i] = (cast(byte*)p2)[i];
             (cast(byte*)p2)[i] = t;
         }
+    }
+
+    @system unittest
+    {
+        class _TypeInfo_Dummy : TypeInfo
+        {
+            override const(void)[] initializer() const { return []; }
+            @property override size_t tsize() nothrow pure const @safe @nogc { return tsize_val; }
+
+            size_t tsize_val;
+        }
+        auto dummy = new _TypeInfo_Dummy();
+        cast(void)dummy.initializer(); // For coverage completeness
+
+        int a = 2, b = -2;
+        dummy.swap(&a, &b);
+        // does nothing because tsize is 0
+        assert(a == 2);
+        assert(b == -2);
+
+        dummy.tsize_val = int.sizeof;
+        dummy.swap(&a, &b);
+        assert(a == -2);
+        assert(b == 2);
+
+        void* ptr_a = null, ptr_b = cast(void*)1;
+        dummy.tsize_val = (void*).sizeof;
+        dummy.swap(&ptr_a, &ptr_b);
+        assert(ptr_a is cast(void*)1);
+        assert(ptr_b is null);
     }
 
     /** Get TypeInfo for 'next' type, as defined by what kind of type this is,
@@ -422,9 +731,87 @@ class TypeInfo
     @property immutable(void)* rtInfo() nothrow pure const @safe @nogc { return rtinfoHasPointers; } // better safe than sorry
 }
 
+@system unittest
+{
+    class _TypeInfo_Dummy : TypeInfo
+    {
+        override const(void)[] initializer() const { return []; }
+    }
+    auto dummy = new _TypeInfo_Dummy();
+    cast(void)dummy.initializer(); // For coverage completeness
+
+    assert(dummy.rtInfo() is rtinfoHasPointers);
+    assert(typeid(void).rtInfo() is rtinfoNoPointers);
+
+    assert(dummy.tsize() == 0);
+
+    bool gotCaught;
+    try
+    {
+        dummy.compare(null, null);
+    } catch (Error e)
+    {
+        gotCaught = true;
+        assert(e.msg == "TypeInfo.compare is not implemented");
+    }
+    assert(gotCaught);
+
+    assert(dummy.equals(null, null));
+    assert(!dummy.equals(cast(void*)1, null));
+}
+
+@system unittest
+{
+    assert(typeid(void).next() is null);
+    assert(typeid(void).offTi() is null);
+    assert(typeid(void).tsize() == 1);
+
+    version (WithArgTypes)
+    {
+        TypeInfo ti1;
+        TypeInfo ti2;
+        assert(typeid(void).argTypes(ti1, ti2) == 0);
+        assert(typeid(void) is ti1);
+
+        assert(ti1 !is null);
+        assert(ti2 is null);
+    }
+}
+
+@system unittest
+{
+    class _ZypeInfo_Dummy : TypeInfo
+    {
+        override const(void)[] initializer() const { return []; }
+    }
+    auto dummy2 = new _ZypeInfo_Dummy();
+    cast(void)dummy2.initializer(); // For coverage completeness
+
+    assert(typeid(void) > dummy2);
+    assert(dummy2 < typeid(void));
+}
+
+@safe unittest
+{
+    enum unittest_sym_name = __traits(identifier, __traits(parent, (){}));
+    enum fqn_unittest = "object." ~ unittest_sym_name; // object.__unittest_LX_CY
+
+    class _TypeInfo_Dummy : TypeInfo
+    {
+        override const(void)[] initializer() const { return []; }
+    }
+
+    auto dummy = new _TypeInfo_Dummy();
+    cast(void)dummy.initializer(); // For coverage completeness
+
+    assert(dummy.toString() == fqn_unittest ~ "._TypeInfo_Dummy");
+    assert(dummy.toHash() == hashOf(dummy.toString()));
+    assert(dummy.getHash(null) == 0);
+}
+
 class TypeInfo_Enum : TypeInfo
 {
-    override string toString() const { return name; }
+    override string toString() const pure { return name; }
 
     override bool opEquals(Object o)
     {
@@ -435,14 +822,116 @@ class TypeInfo_Enum : TypeInfo
                     this.base == c.base;
     }
 
+    @system unittest
+    {
+        enum E { A, B, C }
+        enum EE { A, B, C }
+
+        assert(typeid(E).opEquals(typeid(E)));
+        assert(!typeid(E).opEquals(typeid(EE)));
+    }
+
     override size_t getHash(scope const void* p) const { return base.getHash(p); }
-    override bool equals(scope const void* p1, scope const void* p2) const { return base.equals(p1, p2); }
-    override int compare(scope const void* p1, scope const void* p2) const { return base.compare(p1, p2); }
+
+    @system unittest
+    {
+        enum E { A, B, C }
+        E e1 = E.A;
+        E e2 = E.B;
+
+        assert(typeid(E).getHash(&e1) == hashOf(E.A));
+        assert(typeid(E).getHash(&e2) == hashOf(E.B));
+
+        enum ES : string { A = "foo", B = "bar" }
+        ES es1 = ES.A;
+        ES es2 = ES.B;
+
+        assert(typeid(ES).getHash(&es1) == hashOf("foo"));
+        assert(typeid(ES).getHash(&es2) == hashOf("bar"));
+    }
+
+    override bool equals(in void* p1, in void* p2) const { return base.equals(p1, p2); }
+
+    @system unittest
+    {
+        enum E { A, B, C }
+
+        E e1 = E.A;
+        E e2 = E.B;
+
+        assert(typeid(E).equals(&e1, &e1));
+        assert(!typeid(E).equals(&e1, &e2));
+    }
+
+    override int compare(in void* p1, in void* p2) const { return base.compare(p1, p2); }
+
+    @system unittest
+    {
+        enum E { A, B, C }
+
+        E e1 = E.A;
+        E e2 = E.B;
+
+        assert(typeid(E).compare(&e1, &e1) == 0);
+        assert(typeid(E).compare(&e1, &e2) < 0);
+        assert(typeid(E).compare(&e2, &e1) > 0);
+    }
+
     override @property size_t tsize() nothrow pure const { return base.tsize; }
+
+    @safe unittest
+    {
+        enum E { A, B, C }
+        enum ES : string { A = "a", B = "b", C = "c"}
+
+        assert(typeid(E).tsize == E.sizeof);
+        assert(typeid(ES).tsize == ES.sizeof);
+        assert(typeid(E).tsize != ES.sizeof);
+    }
+
     override void swap(void* p1, void* p2) const { return base.swap(p1, p2); }
 
+    @system unittest
+    {
+        enum E { A, B, C }
+
+        E e1 = E.A;
+        E e2 = E.B;
+
+        typeid(E).swap(&e1, &e2);
+        assert(e1 == E.B);
+        assert(e2 == E.A);
+    }
+
     override @property inout(TypeInfo) next() nothrow pure inout { return base.next; }
+
+    @system unittest
+    {
+        enum E { A, B, C }
+
+        assert(typeid(E).next is null);
+    }
+
     override @property uint flags() nothrow pure const { return base.flags; }
+
+    @safe unittest
+    {
+        enum E { A, B, C }
+
+        assert(typeid(E).flags == 0);
+    }
+
+    override const(OffsetTypeInfo)[] offTi() const { return base.offTi; }
+
+    @system unittest
+    {
+        enum E { A, B, C }
+
+        assert(typeid(E).offTi is null);
+    }
+
+    override void destroy(void* p) const { return base.destroy(p); }
+    override void postblit(void* p) const { return base.postblit(p); }
 
     override const(void)[] initializer() const
     {
@@ -462,6 +951,18 @@ class TypeInfo_Enum : TypeInfo
     string   name;
     void[]   m_init;
 }
+
+@safe unittest
+{
+    enum unittest_sym_name = __traits(identifier, __traits(parent, (){}));
+    enum fqn_unittest = "object." ~ unittest_sym_name; // object.__unittest_LX_CY
+
+    enum E { A, B, C }
+    enum EE { A, B, C }
+
+    assert(typeid(E).toString() == fqn_unittest ~ ".E");
+}
+
 
 @safe unittest // issue 12233
 {
@@ -496,12 +997,8 @@ class TypeInfo_Pointer : TypeInfo
 
     override int compare(in void* p1, in void* p2) const
     {
-        if (*cast(void**)p1 < *cast(void**)p2)
-            return -1;
-        else if (*cast(void**)p1 > *cast(void**)p2)
-            return 1;
-        else
-            return 0;
+        const v1 = *cast(void**) p1, v2 = *cast(void**) p2;
+        return (v1 > v2) - (v1 < v2);
     }
 
     override @property size_t tsize() nothrow pure const
@@ -575,7 +1072,7 @@ class TypeInfo_Array : TypeInfo
             if (result)
                 return result;
         }
-        return cast(int)a1.length - cast(int)a2.length;
+        return (a1.length > a2.length) - (a1.length < a2.length);
     }
 
     override @property size_t tsize() nothrow pure const
@@ -626,7 +1123,9 @@ class TypeInfo_StaticArray : TypeInfo
         import core.internal.string : unsignedToTempString;
 
         char[20] tmpBuff = void;
-        return value.toString() ~ "[" ~ unsignedToTempString(len, tmpBuff, 10) ~ "]";
+        const lenString = unsignedToTempString(len, tmpBuff);
+
+        return (() @trusted => cast(string) (value.toString() ~ "[" ~ lenString ~ "]"))();
     }
 
     override bool opEquals(Object o)
@@ -675,28 +1174,22 @@ class TypeInfo_StaticArray : TypeInfo
 
     override void swap(void* p1, void* p2) const
     {
-        import core.memory;
         import core.stdc.string : memcpy;
 
-        void* tmp;
-        size_t sz = value.tsize;
-        ubyte[16] buffer;
-        void* pbuffer;
-
-        if (sz < buffer.sizeof)
-            tmp = buffer.ptr;
-        else
-            tmp = pbuffer = (new void[sz]).ptr;
-
-        for (size_t u = 0; u < len; u += sz)
+        size_t remaining = value.tsize * len;
+        void[size_t.sizeof * 4] buffer = void;
+        while (remaining > buffer.length)
         {
-            size_t o = u * sz;
-            memcpy(tmp, p1 + o, sz);
-            memcpy(p1 + o, p2 + o, sz);
-            memcpy(p2 + o, tmp, sz);
+            memcpy(buffer.ptr, p1, buffer.length);
+            memcpy(p1, p2, buffer.length);
+            memcpy(p2, buffer.ptr, buffer.length);
+            p1 += buffer.length;
+            p2 += buffer.length;
+            remaining -= buffer.length;
         }
-        if (pbuffer)
-            GC.free(pbuffer);
+        memcpy(buffer.ptr, p1, remaining);
+        memcpy(p1, p2, remaining);
+        memcpy(p2, buffer.ptr, remaining);
     }
 
     override const(void)[] initializer() nothrow pure const
@@ -744,6 +1237,23 @@ class TypeInfo_StaticArray : TypeInfo
 
     // just return the rtInfo of the element, we have no generic type T to run RTInfo!T on
     override @property immutable(void)* rtInfo() nothrow pure const @safe { return value.rtInfo(); }
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=21315
+@system unittest
+{
+    int[16] a, b;
+    foreach (int i; 0 .. 16)
+    {
+        a[i] = i;
+        b[i] = ~i;
+    }
+    typeid(int[16]).swap(&a, &b);
+    foreach (int i; 0 .. 16)
+    {
+        assert(a[i] == ~i);
+        assert(b[i] == i);
+    }
 }
 
 class TypeInfo_AssociativeArray : TypeInfo
@@ -840,14 +1350,14 @@ class TypeInfo_Vector : TypeInfo
 
 class TypeInfo_Function : TypeInfo
 {
-    override string toString() const
+    override string toString() const pure @trusted
     {
         import core.demangle : demangleType;
 
         alias SafeDemangleFunctionType = char[] function (const(char)[] buf, char[] dst = null) @safe nothrow pure;
-        SafeDemangleFunctionType demangle = ( () @trusted => cast(SafeDemangleFunctionType)(&demangleType) ) ();
+        SafeDemangleFunctionType demangle = cast(SafeDemangleFunctionType) &demangleType;
 
-        return (() @trusted => cast(string)(demangle(deco))) ();
+        return cast(string) demangle(deco);
     }
 
     override bool opEquals(Object o)
@@ -895,24 +1405,57 @@ class TypeInfo_Function : TypeInfo
     assert(typeid(functionTypes[2]).toString() == "int function(int, int)");
 }
 
+@system unittest
+{
+    abstract class C
+    {
+       void func();
+       void func(int a);
+    }
+
+    alias functionTypes = typeof(__traits(getVirtualFunctions, C, "func"));
+
+    Object obj = typeid(functionTypes[0]);
+    assert(obj.opEquals(typeid(functionTypes[0])));
+    assert(typeid(functionTypes[0]) == typeid(functionTypes[0]));
+    assert(typeid(functionTypes[0]) != typeid(functionTypes[1]));
+
+    assert(typeid(functionTypes[0]).tsize() == 0);
+    assert(typeid(functionTypes[0]).initializer() is null);
+    assert(typeid(functionTypes[0]).rtInfo() is null);
+}
+
 class TypeInfo_Delegate : TypeInfo
 {
-    override string toString() const
+    override string toString() const pure @trusted
     {
         import core.demangle : demangleType;
 
         alias SafeDemangleFunctionType = char[] function (const(char)[] buf, char[] dst = null) @safe nothrow pure;
-        SafeDemangleFunctionType demangle = ( () @trusted => cast(SafeDemangleFunctionType)(&demangleType) ) ();
+        SafeDemangleFunctionType demangle = cast(SafeDemangleFunctionType) &demangleType;
 
-        return (() @trusted => cast(string)(demangle(deco))) ();
+        return cast(string) demangle(deco);
     }
 
-    unittest
+    @safe unittest
     {
         double sqr(double x) { return x * x; }
-        assert(typeid(typeof(&sqr)).toString() == "double delegate(double) pure nothrow @nogc @safe");
+        sqr(double.init); // for coverage completeness
+
+        auto delegate_str = "double delegate(double) pure nothrow @nogc @safe";
+
+        assert(typeid(typeof(&sqr)).toString() == delegate_str);
+        assert(delegate_str.hashOf() == typeid(typeof(&sqr)).hashOf());
+        assert(typeid(typeof(&sqr)).toHash() == typeid(typeof(&sqr)).hashOf());
+
         int g;
-        assert(typeid(typeof((int a, int b) => a + b + g)).toString() == "int delegate(int, int) pure nothrow @nogc @safe");
+
+        alias delegate_type = typeof((int a, int b) => a + b + g);
+        delegate_str = "int delegate(int, int) pure nothrow @nogc @safe";
+
+        assert(typeid(delegate_type).toString() == delegate_str);
+        assert(delegate_str.hashOf() == typeid(delegate_type).hashOf());
+        assert(typeid(delegate_type).toHash() == typeid(delegate_type).hashOf());
     }
 
     override bool opEquals(Object o)
@@ -921,6 +1464,19 @@ class TypeInfo_Delegate : TypeInfo
             return true;
         auto c = cast(const TypeInfo_Delegate)o;
         return c && this.deco == c.deco;
+    }
+
+    @system unittest
+    {
+        double sqr(double x) { return x * x; }
+        int dbl(int x) { return x + x; }
+        sqr(double.init); // for coverage completeness
+        dbl(int.init); // for coverage completeness
+
+        Object obj = typeid(typeof(&sqr));
+        assert(obj.opEquals(typeid(typeof(&sqr))));
+        assert(typeid(typeof(&sqr)) == typeid(typeof(&sqr)));
+        assert(typeid(typeof(&dbl)) != typeid(typeof(&sqr)));
     }
 
     override size_t getHash(scope const void* p) @trusted const
@@ -987,18 +1543,18 @@ private extern (C) int _d_isbaseof(scope TypeInfo_Class child,
 /**
  * Runtime type information about a class.
  * Can be retrieved from an object instance by using the
- * $(DDSUBLINK spec/property,classinfo, .classinfo) property.
+ * $(DDSUBLINK spec/expression,typeid_expressions,typeid expression).
  */
 class TypeInfo_Class : TypeInfo
 {
-    override string toString() const { return info.name; }
+    override string toString() const pure { return name; }
 
-    override bool opEquals(Object o)
+    override bool opEquals(const TypeInfo o) const
     {
         if (this is o)
             return true;
         auto c = cast(const TypeInfo_Class)o;
-        return c && this.info.name == c.info.name;
+        return c && this.name == c.name;
     }
 
     override size_t getHash(scope const void* p) @trusted const
@@ -1054,8 +1610,8 @@ class TypeInfo_Class : TypeInfo
         return m_offTi;
     }
 
-    @property auto info() @safe nothrow pure const return { return this; }
-    @property auto typeinfo() @safe nothrow pure const return { return this; }
+    final @property auto info() @safe @nogc nothrow pure const return { return this; }
+    final @property auto typeinfo() @safe @nogc nothrow pure const return { return this; }
 
     byte[]      m_init;         /** class static initializer
                                  * (init.length gives size in bytes of class)
@@ -1176,7 +1732,7 @@ alias ClassInfo = TypeInfo_Class;
 
 class TypeInfo_Interface : TypeInfo
 {
-    override string toString() const { return info.name; }
+    override string toString() const pure { return info.name; }
 
     override bool opEquals(Object o)
     {
@@ -1279,17 +1835,33 @@ class TypeInfo_Interface : TypeInfo
     }
 }
 
+@safe unittest
+{
+    enum unittest_sym_name = __traits(identifier, __traits(parent, (){}));
+    enum fqn_unittest = "object." ~ unittest_sym_name; // object.__unittest_LX_CY
+
+    interface I {}
+
+    assert(fqn_unittest ~ ".I" == typeid(I).info.name);
+    assert((fqn_unittest ~ ".I").hashOf() == typeid(I).hashOf());
+    assert(typeid(I).toHash() == typeid(I).hashOf());
+}
+
 class TypeInfo_Struct : TypeInfo
 {
     override string toString() const { return name; }
+
+    override size_t toHash() const
+    {
+        return hashOf(this.mangledName);
+    }
 
     override bool opEquals(Object o)
     {
         if (this is o)
             return true;
         auto s = cast(const TypeInfo_Struct)o;
-        return s && this.name == s.name &&
-                    this.initializer().length == s.initializer().length;
+        return s && this.mangledName == s.mangledName;
     }
 
     override size_t getHash(scope const void* p) @trusted pure nothrow const
@@ -1312,7 +1884,10 @@ class TypeInfo_Struct : TypeInfo
         if (!p1 || !p2)
             return false;
         else if (xopEquals)
-            return (*xopEquals)(p1, p2);
+        {
+            const dg = _memberFunc(p1, xopEquals);
+            return dg.xopEquals(p2);
+        }
         else if (p1 == p2)
             return true;
         else
@@ -1332,7 +1907,10 @@ class TypeInfo_Struct : TypeInfo
                 if (!p2)
                     return true;
                 else if (xopCmp)
-                    return (*xopCmp)(p2, p1);
+                {
+                    const dg = _memberFunc(p1, xopCmp);
+                    return dg.xopCmp(p2);
+                }
                 else
                     // BUG: relies on the GC not moving objects
                     return memcmp(p1, p2, initializer().length);
@@ -1374,7 +1952,29 @@ class TypeInfo_Struct : TypeInfo
             (*xpostblit)(p);
     }
 
-    string name;
+    string mangledName;
+
+    final @property string name() nothrow const @trusted
+    {
+        import core.demangle : demangleType;
+
+        if (mangledName is null) // e.g., opaque structs
+            return null;
+
+        const key = cast(const void*) this; // faster lookup than TypeInfo_Struct, at the cost of potential duplicates per binary
+        static string[typeof(key)] demangledNamesCache; // per thread
+
+        // not nothrow:
+        //return demangledNamesCache.require(key, cast(string) demangleType(mangledName));
+
+        if (auto pDemangled = key in demangledNamesCache)
+            return *pDemangled;
+
+        const demangled = cast(string) demangleType(mangledName);
+        demangledNamesCache[key] = demangled;
+        return demangled;
+    }
+
     void[] m_init;      // initializer; m_init.ptr == null if 0 initialize
 
     @safe pure nothrow
@@ -1414,6 +2014,28 @@ class TypeInfo_Struct : TypeInfo
         TypeInfo m_arg2;
     }
     immutable(void)* m_RTInfo;                // data for precise GC
+
+    // The xopEquals and xopCmp members are function pointers to member
+    // functions, which is not guaranteed to share the same ABI, as it is not
+    // known whether the `this` parameter is the first or second argument.
+    // This wrapper is to convert it to a delegate which will always pass the
+    // `this` parameter in the correct way.
+    private struct _memberFunc
+    {
+        union
+        {
+            struct // delegate
+            {
+                const void* ptr;
+                const void* funcptr;
+            }
+            @safe pure nothrow
+            {
+                bool delegate(in void*) xopEquals;
+                int delegate(in void*) xopCmp;
+            }
+        }
+    }
 }
 
 @system unittest
@@ -1624,7 +2246,7 @@ struct ModuleInfo
     }
 
 const:
-    private void* addrOf(int flag) nothrow pure @nogc
+    private void* addrOf(int flag) return nothrow pure @nogc
     in
     {
         assert(flag >= MItlsctor && flag <= MIname);
@@ -1760,7 +2382,7 @@ const:
      * Returns:
      *  array of pointers to the ModuleInfo's of modules imported by this one
      */
-    @property immutable(ModuleInfo*)[] importedModules() nothrow pure @nogc
+    @property immutable(ModuleInfo*)[] importedModules() return nothrow pure @nogc
     {
         if (flags & MIimportedModules)
         {
@@ -1774,7 +2396,7 @@ const:
      * Returns:
      *  array of TypeInfo_Class references for classes defined in this module
      */
-    @property TypeInfo_Class[] localClasses() nothrow pure @nogc
+    @property TypeInfo_Class[] localClasses() return nothrow pure @nogc
     {
         if (flags & MIlocalClasses)
         {
@@ -1788,16 +2410,12 @@ const:
      * Returns:
      *  name of module, `null` if no name
      */
-    @property string name() nothrow pure @nogc
+    @property string name() return nothrow pure @nogc
     {
-        if (true || flags & MIname) // always available for now
-        {
-            import core.stdc.string : strlen;
+        import core.stdc.string : strlen;
 
-            auto p = cast(immutable char*)addrOf(MIname);
-            return p[0 .. strlen(p)];
-        }
-        // return null;
+        auto p = cast(immutable char*) addrOf(MIname);
+        return p[0 .. strlen(p)];
     }
 
     static int opApply(scope int delegate(ModuleInfo*) dg)
@@ -1961,6 +2579,8 @@ class Throwable : Object
     {
         this.msg = msg;
         this.nextInChain = nextInChain;
+        if (nextInChain && nextInChain._refcount)
+            ++nextInChain._refcount;
         //this.info = _d_traceContext();
     }
 
@@ -1986,7 +2606,7 @@ class Throwable : Object
     override string toString()
     {
         string s;
-        toString((buf) { s ~= buf; });
+        toString((in buf) { s ~= buf; });
         return s;
     }
 
@@ -2004,7 +2624,7 @@ class Throwable : Object
 
         sink(typeid(this).name);
         sink("@"); sink(file);
-        sink("("); sink(unsignedToTempString(line, tmpBuff, 10)); sink(")");
+        sink("("); sink(unsignedToTempString(line, tmpBuff)); sink(")");
 
         if (msg.length)
         {
@@ -2029,13 +2649,18 @@ class Throwable : Object
 
     /**
      * Get the message describing the error.
-     * Base behavior is to return the `Throwable.msg` field.
-     * Override to return some other error message.
+     *
+     * This getter is an alternative way to access the Exception's message,
+     * with the added advantage of being override-able in subclasses.
+     * Subclasses are hence free to do their own memory managements without
+     * being tied to the requirement of providing a `string` in a field.
+     *
+     * The default behavior is to return the `Throwable.msg` field.
      *
      * Returns:
-     *  Error message
+     *  A message representing the cause of the `Throwable`
      */
-    @__future const(char)[] message() const
+    @__future const(char)[] message() const @safe nothrow
     {
         return this.msg;
     }
@@ -2205,8 +2830,8 @@ extern (C)
 
     private struct AA { void* impl; }
     // size_t _aaLen(in AA aa) pure nothrow @nogc;
-    private void* _aaGetY(AA* paa, const TypeInfo_AssociativeArray ti, const size_t valsz, const scope void* pkey) pure nothrow;
-    private void* _aaGetX(AA* paa, const TypeInfo_AssociativeArray ti, const size_t valsz, const scope void* pkey, out bool found) pure nothrow;
+    private void* _aaGetY(scope AA* paa, const TypeInfo_AssociativeArray ti, const size_t valsz, const scope void* pkey) pure nothrow;
+    private void* _aaGetX(scope AA* paa, const TypeInfo_AssociativeArray ti, const size_t valsz, const scope void* pkey, out bool found) pure nothrow;
     // inout(void)* _aaGetRvalueX(inout AA aa, in TypeInfo keyti, in size_t valsz, in void* pkey);
     inout(void[]) _aaValues(inout AA aa, const size_t keysz, const size_t valsz, const TypeInfo tiValueArray) pure nothrow;
     inout(void[]) _aaKeys(inout AA aa, const size_t keysz, const TypeInfo tiKeyArray) pure nothrow;
@@ -2255,7 +2880,7 @@ void clear(Value, Key)(Value[Key] aa)
     _aaClear(*cast(AA *) &aa);
 }
 
-/* ditto */
+/** ditto */
 void clear(Value, Key)(Value[Key]* aa)
 {
     _aaClear(*cast(AA *) aa);
@@ -2302,21 +2927,21 @@ T rehash(T : Value[Key], Value, Key)(T aa)
     return aa;
 }
 
-/* ditto */
+/** ditto */
 T rehash(T : Value[Key], Value, Key)(T* aa)
 {
     _aaRehash(cast(AA*)aa, typeid(Value[Key]));
     return *aa;
 }
 
-/* ditto */
+/** ditto */
 T rehash(T : shared Value[Key], Value, Key)(T aa)
 {
     _aaRehash(cast(AA*)&aa, typeid(Value[Key]));
     return aa;
 }
 
-/* ditto */
+/** ditto */
 T rehash(T : shared Value[Key], Value, Key)(T* aa)
 {
     _aaRehash(cast(AA*)aa, typeid(Value[Key]));
@@ -2324,8 +2949,8 @@ T rehash(T : shared Value[Key], Value, Key)(T* aa)
 }
 
 /***********************************
- * Create a new associative array of the same size and copy the contents of the
- * associative array into it.
+ * Creates a new associative array of the same size and copies the contents of
+ * the associative array into it.
  * Params:
  *      aa =     The associative array.
  */
@@ -2351,22 +2976,22 @@ V[K] dup(T : V[K], K, V)(T aa)
         return *cast(V*)pv;
     }
 
-    static if (__traits(hasPostblit, V))
+    foreach (k, ref v; aa)
     {
-        auto postblit = _getPostblit!V();
-        foreach (k, ref v; aa)
-            postblit(duplicateElem(k, v));
-    }
-    else
-    {
-        foreach (k, ref v; aa)
+        static if (!__traits(hasPostblit, V))
             duplicateElem(k, v);
+        else static if (__traits(isStaticArray, V))
+            _doPostblit(duplicateElem(k, v)[]);
+        else static if (!is(typeof(v.__xpostblit())) && is(immutable V == immutable UV, UV))
+            (() @trusted => *cast(UV*) &duplicateElem(k, v))().__xpostblit();
+        else
+            duplicateElem(k, v).__xpostblit();
     }
 
     return result;
 }
 
-/* ditto */
+/** ditto */
 V[K] dup(T : V[K], K, V)(T* aa)
 {
     return (*aa).dup;
@@ -2393,11 +3018,27 @@ private AARange _aaToRange(T: V[K], K, V)(ref T aa) pure nothrow @nogc @safe
 }
 
 /***********************************
- * Returns a forward range over the keys of the associative array.
+ * Returns a $(REF_ALTTEXT forward range, isForwardRange, std,range,primitives)
+ * which will iterate over the keys of the associative array. The keys are
+ * returned by reference.
+ *
+ * If structural changes are made to the array (removing or adding keys), all
+ * ranges previously obtained through this function are invalidated. The
+ * following example program will dereference a null pointer:
+ *
+ *---
+ * import std.stdio : writeln;
+ *
+ * auto dict = ["k1": 1, "k2": 2];
+ * auto keyRange = dict.byKey;
+ * dict.clear;
+ * writeln(keyRange.front);    // Segmentation fault
+ *---
+ *
  * Params:
  *      aa =     The associative array.
  * Returns:
- *      A forward range.
+ *      A forward range referencing the keys of the associative array.
  */
 auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 {
@@ -2409,10 +3050,9 @@ auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 
     pure nothrow @nogc:
         @property bool empty()  @safe { return _aaRangeEmpty(r); }
-        @property ref front()
+        @property ref front() @trusted
         {
-            auto p = (() @trusted => cast(substInout!K*) _aaRangeFrontKey(r)) ();
-            return *p;
+            return *cast(substInout!K*) _aaRangeFrontKey(r);
         }
         void popFront() @safe { _aaRangePopFront(r); }
         @property Result save() { return this; }
@@ -2421,7 +3061,7 @@ auto byKey(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
     return Result(_aaToRange(aa));
 }
 
-/* ditto */
+/** ditto */
 auto byKey(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byKey();
@@ -2430,7 +3070,7 @@ auto byKey(T : V[K], K, V)(T* aa) pure nothrow @nogc
 ///
 @safe unittest
 {
-    auto dict = [1: 0, 2: 0];
+    auto dict = [1: "v1", 2: "v2"];
     int sum;
     foreach (v; dict.byKey)
         sum += v;
@@ -2439,11 +3079,27 @@ auto byKey(T : V[K], K, V)(T* aa) pure nothrow @nogc
 }
 
 /***********************************
- * Returns a forward range over the values of the associative array.
+ * Returns a $(REF_ALTTEXT forward range, isForwardRange, std,range,primitives)
+ * which will iterate over the values of the associative array. The values are
+ * returned by reference.
+ *
+ * If structural changes are made to the array (removing or adding keys), all
+ * ranges previously obtained through this function are invalidated. The
+ * following example program will dereference a null pointer:
+ *
+ *---
+ * import std.stdio : writeln;
+ *
+ * auto dict = ["k1": 1, "k2": 2];
+ * auto valueRange = dict.byValue;
+ * dict.clear;
+ * writeln(valueRange.front);    // Segmentation fault
+ *---
+ *
  * Params:
  *      aa =     The associative array.
  * Returns:
- *      A forward range.
+ *      A forward range referencing the values of the associative array.
  */
 auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 {
@@ -2455,10 +3111,9 @@ auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 
     pure nothrow @nogc:
         @property bool empty() @safe { return _aaRangeEmpty(r); }
-        @property ref front()
+        @property ref front() @trusted
         {
-            auto p = (() @trusted => cast(substInout!V*) _aaRangeFrontValue(r)) ();
-            return *p;
+            return *cast(substInout!V*) _aaRangeFrontValue(r);
         }
         void popFront() @safe { _aaRangePopFront(r); }
         @property Result save() { return this; }
@@ -2467,7 +3122,7 @@ auto byValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
     return Result(_aaToRange(aa));
 }
 
-/* ditto */
+/** ditto */
 auto byValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byValue();
@@ -2485,11 +3140,35 @@ auto byValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
 }
 
 /***********************************
- * Returns a forward range over the key value pairs of the associative array.
+ * Returns a $(REF_ALTTEXT forward range, isForwardRange, std,range,primitives)
+ * which will iterate over the key-value pairs of the associative array. The
+ * returned pairs are represented by an opaque type with `.key` and `.value`
+ * properties for accessing references to the key and value of the pair,
+ * respectively.
+ *
+ * If structural changes are made to the array (removing or adding keys), all
+ * ranges previously obtained through this function are invalidated. The
+ * following example program will dereference a null pointer:
+ *
+ *---
+ * import std.stdio : writeln;
+ *
+ * auto dict = ["k1": 1, "k2": 2];
+ * auto kvRange = dict.byKeyValue;
+ * dict.clear;
+ * writeln(kvRange.front.key, ": ", kvRange.front.value);    // Segmentation fault
+ *---
+ *
+ * Note that this is a low-level interface to iterating over the associative
+ * array and is not compatible withth the
+ * $(LINK2 $(ROOT_DIR)phobos/std_typecons.html#.Tuple,`Tuple`) type in Phobos.
+ * For compatibility with `Tuple`, use
+ * $(LINK2 $(ROOT_DIR)phobos/std_array.html#.byPair,std.array.byPair) instead.
+ *
  * Params:
  *      aa =     The associative array.
  * Returns:
- *      A forward range.
+ *      A forward range referencing the pairs of the associative array.
  */
 auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
 {
@@ -2510,15 +3189,13 @@ auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
                 private void* keyp;
                 private void* valp;
 
-                @property ref key() inout
+                @property ref key() inout @trusted
                 {
-                    auto p = (() @trusted => cast(substInout!K*) keyp) ();
-                    return *p;
+                    return *cast(substInout!K*) keyp;
                 }
-                @property ref value() inout
+                @property ref value() inout @trusted
                 {
-                    auto p = (() @trusted => cast(substInout!V*) valp) ();
-                    return *p;
+                    return *cast(substInout!V*) valp;
                 }
             }
             return Pair(_aaRangeFrontKey(r),
@@ -2531,7 +3208,7 @@ auto byKeyValue(T : V[K], K, V)(T aa) pure nothrow @nogc @safe
     return Result(_aaToRange(aa));
 }
 
-/* ditto */
+/** ditto */
 auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
 {
     return (*aa).byKeyValue();
@@ -2543,18 +3220,21 @@ auto byKeyValue(T : V[K], K, V)(T* aa) pure nothrow @nogc
     auto dict = ["k1": 1, "k2": 2];
     int sum;
     foreach (e; dict.byKeyValue)
+    {
+        assert(e.key[1] == e.value + '0');
         sum += e.value;
+    }
 
     assert(sum == 3);
 }
 
 /***********************************
- * Returns a dynamic array, the elements of which are the keys in the
- * associative array.
+ * Returns a newly allocated dynamic array containing a copy of the keys from
+ * the associative array.
  * Params:
  *      aa =     The associative array.
  * Returns:
- *      A dynamic array.
+ *      A dynamic array containing a copy of the keys.
  */
 Key[] keys(T : Value[Key], Value, Key)(T aa) @property
 {
@@ -2563,21 +3243,23 @@ Key[] keys(T : Value[Key], Value, Key)(T aa) @property
         alias realAA = aa;
     else
         const(Value[Key]) realAA = aa;
-    auto a = cast(void[])_aaKeys(*cast(inout(AA)*)&realAA, Key.sizeof, typeid(Key[]));
-    auto res = *cast(Key[]*)&a;
+    auto res = () @trusted {
+        auto a = cast(void[])_aaKeys(*cast(inout(AA)*)&realAA, Key.sizeof, typeid(Key[]));
+        return *cast(Key[]*)&a;
+    }();
     static if (__traits(hasPostblit, Key))
         _doPostblit(res);
     return res;
 }
 
-/* ditto */
+/** ditto */
 Key[] keys(T : Value[Key], Value, Key)(T *aa) @property
 {
     return (*aa).keys;
 }
 
 ///
-@system unittest
+@safe unittest
 {
     auto aa = [1: "v1", 2: "v2"];
     int sum;
@@ -2587,7 +3269,7 @@ Key[] keys(T : Value[Key], Value, Key)(T *aa) @property
     assert(sum == 3);
 }
 
-@system unittest
+@safe unittest
 {
     static struct S
     {
@@ -2600,13 +3282,43 @@ Key[] keys(T : Value[Key], Value, Key)(T *aa) @property
     assert(s.keys.length == 0);
 }
 
+@safe unittest
+{
+    @safe static struct Key
+    {
+         string str;
+         this(this) @safe {}
+    }
+    string[Key] aa;
+    static assert(__traits(compiles, {
+                void test() @safe {
+                    const _ = aa.keys;
+                }
+            }));
+}
+
+@safe unittest
+{
+    static struct Key
+    {
+        string str;
+        this(this) @system {}
+    }
+    string[Key] aa;
+    static assert(!__traits(compiles, {
+                void test() @safe {
+                    const _ = aa.keys;
+                }
+            }));
+}
+
 /***********************************
- * Returns a dynamic array, the elements of which are the values in the
- * associative array.
+ * Returns a newly allocated dynamic array containing a copy of the values from
+ * the associative array.
  * Params:
  *      aa =     The associative array.
  * Returns:
- *      A dynamic array.
+ *      A dynamic array containing a copy of the values.
  */
 Value[] values(T : Value[Key], Value, Key)(T aa) @property
 {
@@ -2615,21 +3327,23 @@ Value[] values(T : Value[Key], Value, Key)(T aa) @property
         alias realAA = aa;
     else
         const(Value[Key]) realAA = aa;
-    auto a = cast(void[])_aaValues(*cast(inout(AA)*)&realAA, Key.sizeof, Value.sizeof, typeid(Value[]));
-    auto res = *cast(Value[]*)&a;
+    auto res = () @trusted {
+        auto a = cast(void[])_aaValues(*cast(inout(AA)*)&realAA, Key.sizeof, Value.sizeof, typeid(Value[]));
+        return *cast(Value[]*)&a;
+    }();
     static if (__traits(hasPostblit, Value))
         _doPostblit(res);
     return res;
 }
 
-/* ditto */
+/** ditto */
 Value[] values(T : Value[Key], Value, Key)(T *aa) @property
 {
     return (*aa).values;
 }
 
 ///
-@system unittest
+@safe unittest
 {
     auto aa = ["k1": 1, "k2": 2];
     int sum;
@@ -2639,7 +3353,7 @@ Value[] values(T : Value[Key], Value, Key)(T *aa) @property
     assert(sum == 3);
 }
 
-@system unittest
+@safe unittest
 {
     static struct S
     {
@@ -2650,6 +3364,36 @@ Value[] values(T : Value[Key], Value, Key)(T *aa) @property
 
     auto s = S("a");
     assert(s.values.length == 0);
+}
+
+@safe unittest
+{
+    @safe static struct Value
+    {
+        string str;
+        this(this) @safe {}
+    }
+    Value[string] aa;
+    static assert(__traits(compiles, {
+                void test() @safe {
+                    const _ = aa.values;
+                }
+            }));
+}
+
+@safe unittest
+{
+    static struct Value
+    {
+        string str;
+        this(this) @system {}
+    }
+    Value[string] aa;
+    static assert(!__traits(compiles, {
+                void test() @safe {
+                    const _ = aa.values;
+                }
+            }));
 }
 
 /***********************************
@@ -2668,12 +3412,13 @@ inout(V) get(K, V)(inout(V[K]) aa, K key, lazy inout(V) defaultValue)
     return p ? *p : defaultValue;
 }
 
-/* ditto */
+/** ditto */
 inout(V) get(K, V)(inout(V[K])* aa, K key, lazy inout(V) defaultValue)
 {
     return (*aa).get(key, defaultValue);
 }
 
+///
 @safe unittest
 {
     auto aa = ["k1": 1];
@@ -2965,7 +3710,7 @@ enum immutable(void)* rtinfoHasPointers = cast(void*)1;
 
 // Helper functions
 
-private inout(TypeInfo) getElement(inout TypeInfo value) @trusted pure nothrow
+private inout(TypeInfo) getElement(return scope inout TypeInfo value) @trusted pure nothrow
 {
     TypeInfo element = cast() value;
     for (;;)
@@ -3006,7 +3751,6 @@ private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr,
             || cast(const TypeInfo_Interface) element;
     }
 
-    import core.internal.traits : externDFunc;
     if (!hasCustomToHash(element))
         return hashOf(ptr[0 .. elementSize * count]);
 
@@ -3024,11 +3768,7 @@ private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr,
     static assert(is(T : Unconst!T), "Cannot implicitly convert type "~T.stringof~
                   " to "~Unconst!T.stringof~" in dup.");
 
-    // wrap unsafe _dup in @trusted to preserve @safe postblit
-    static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(T, Unconst!T)(a);
-    else
-        return _dup!(T, Unconst!T)(a);
+    return _dup!(T, Unconst!T)(a);
 }
 
 ///
@@ -3046,11 +3786,7 @@ private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr,
 @property T[] dup(T)(const(T)[] a)
     if (is(const(T) : T))
 {
-    // wrap unsafe _dup in @trusted to preserve @safe postblit
-    static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(const(T), T)(a);
-    else
-        return _dup!(const(T), T)(a);
+    return _dup!(const(T), T)(a);
 }
 
 
@@ -3059,12 +3795,7 @@ private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr,
 {
     static assert(is(T : immutable(T)), "Cannot implicitly convert type "~T.stringof~
                   " to immutable in idup.");
-
-    // wrap unsafe _dup in @trusted to preserve @safe postblit
-    static if (__traits(compiles, (T b) @safe { T a = b; }))
-        return _trustedDup!(T, immutable(T))(a);
-    else
-        return _dup!(T, immutable(T))(a);
+    return _dup!(T, immutable(T))(a);
 }
 
 /// ditto
@@ -3082,35 +3813,71 @@ private size_t getArrayHash(const scope TypeInfo element, const scope void* ptr,
     assert(s == "abc");
 }
 
-private U[] _trustedDup(T, U)(T[] a) @trusted
-{
-    return _dup!(T, U)(a);
-}
-
-private U[] _dup(T, U)(T[] a) // pure nothrow depends on postblit
+private U[] _dup(T, U)(scope T[] a) pure nothrow @trusted if (__traits(isPOD, T))
 {
     if (__ctfe)
-    {
-        static if (is(T : void))
-            assert(0, "Cannot dup a void[] array at compile time.");
-        else
-        {
-            U[] res;
-            foreach (ref e; a)
-                res ~= e;
-            return res;
-        }
-    }
+        return _dupCtfe!(T, U)(a);
 
     import core.stdc.string : memcpy;
+    auto arr = _d_newarrayU(typeid(T[]), a.length);
+    memcpy(arr.ptr, cast(const(void)*) a.ptr, T.sizeof * a.length);
+    return *cast(U[]*) &arr;
+}
 
-    void[] arr = _d_newarrayU(typeid(T[]), a.length);
-    memcpy(arr.ptr, cast(const(void)*)a.ptr, T.sizeof * a.length);
-    auto res = *cast(U[]*)&arr;
+private U[] _dupCtfe(T, U)(scope T[] a)
+{
+    static if (is(T : void))
+        assert(0, "Cannot dup a void[] array at compile time.");
+    else
+    {
+        U[] res;
+        foreach (ref e; a)
+            res ~= e;
+        return res;
+    }
+}
 
-    static if (__traits(hasPostblit, T))
-        _doPostblit(res);
+private U[] _dup(T, U)(T[] a) if (!__traits(isPOD, T))
+{
+    // note: copyEmplace is `@system` inside a `@trusted` block, so the __ctfe branch
+    // has the extra duty to infer _dup `@system` when the copy-constructor is `@system`.
+    if (__ctfe)
+        return _dupCtfe!(T, U)(a);
+
+    import core.lifetime: copyEmplace;
+    U[] res = () @trusted {
+        auto arr = cast(U*) _d_newarrayU(typeid(T[]), a.length);
+        size_t i;
+        scope (failure)
+        {
+            import core.internal.lifetime: emplaceInitializer;
+            // Initialize all remaining elements to not destruct garbage
+            foreach (j; i .. a.length)
+                emplaceInitializer(cast() arr[j]);
+        }
+        for (; i < a.length; i++)
+        {
+            copyEmplace(a.ptr[i], arr[i]);
+        }
+        return cast(U[])(arr[0..a.length]);
+    } ();
+
     return res;
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=22107
+@safe unittest
+{
+    static int i;
+    @safe struct S
+    {
+        this(this) { i++; }
+    }
+
+    void fun(scope S[] values...) @safe
+    {
+        values.dup;
+    }
 }
 
 // HACK:  This is a lie.  `_d_arraysetcapacity` is neither `nothrow` nor `pure`, but this lie is
@@ -3300,43 +4067,21 @@ auto ref inout(T[]) assumeSafeAppend(T)(auto ref inout(T[]) arr) nothrow @system
     assert(is(typeof(b3) == immutable(int[])));
 }
 
-private extern (C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow;
-
-
-/**************
- * Get the postblit for type T.
- * Returns:
- *      null if no postblit is necessary
- *      function pointer for struct postblits
- *      delegate for class postblits
- */
-private auto _getPostblit(T)() @trusted pure nothrow @nogc
-{
-    // infer static postblit type, run postblit if any
-    static if (is(T == struct))
-    {
-        import core.internal.traits : Unqual;
-        // use typeid(Unqual!T) here to skip TypeInfo_Const/Shared/...
-        alias _PostBlitType = typeof(function (ref T t){ T a = t; });
-        return cast(_PostBlitType)typeid(Unqual!T).xpostblit;
-    }
-    else if ((&typeid(T).postblit).funcptr !is &TypeInfo.postblit)
-    {
-        alias _PostBlitType = typeof(delegate (ref T t){ T a = t; });
-        return cast(_PostBlitType)&typeid(T).postblit;
-    }
-    else
-        return null;
-}
+private extern (C) void[] _d_newarrayU(const scope TypeInfo ti, size_t length) pure nothrow;
 
 private void _doPostblit(T)(T[] arr)
 {
     // infer static postblit type, run postblit if any
     static if (__traits(hasPostblit, T))
     {
-        auto postblit = _getPostblit!T();
-        foreach (ref elem; arr)
-            postblit(elem);
+        static if (__traits(isStaticArray, T) && is(T : E[], E))
+            _doPostblit(cast(E[]) arr);
+        else static if (!is(typeof(arr[0].__xpostblit())) && is(immutable T == immutable U, U))
+            foreach (ref elem; (() @trusted => cast(U[]) arr)())
+                elem.__xpostblit();
+        else
+            foreach (ref elem; arr)
+                elem.__xpostblit();
     }
 }
 
@@ -3405,20 +4150,77 @@ private void _doPostblit(T)(T[] arr)
     static struct Sunpure { this(this) @safe nothrow {} }
     static struct Sthrow { this(this) @safe pure {} }
     static struct Sunsafe { this(this) @system pure nothrow {} }
+    static struct Snocopy { @disable this(this); }
 
-    static assert( __traits(compiles, ()         { [].dup!Sunpure; }));
+    [].dup!Sunpure;
+    [].dup!Sthrow;
+    cast(void) [].dup!Sunsafe;
     static assert(!__traits(compiles, () pure    { [].dup!Sunpure; }));
-    static assert( __traits(compiles, ()         { [].dup!Sthrow; }));
     static assert(!__traits(compiles, () nothrow { [].dup!Sthrow; }));
-    static assert( __traits(compiles, ()         { [].dup!Sunsafe; }));
+    static assert(!__traits(compiles, () @safe   { [].dup!Sunsafe; }));
+    static assert(!__traits(compiles, ()         { [].dup!Snocopy; }));
+
+    [].idup!Sunpure;
+    [].idup!Sthrow;
+    [].idup!Sunsafe;
+    static assert(!__traits(compiles, () pure    { [].idup!Sunpure; }));
+    static assert(!__traits(compiles, () nothrow { [].idup!Sthrow; }));
+    static assert(!__traits(compiles, () @safe   { [].idup!Sunsafe; }));
+    static assert(!__traits(compiles, ()         { [].idup!Snocopy; }));
+}
+
+@safe unittest
+{
+    // test that the copy-constructor is called with .dup
+    static struct ArrElem
+    {
+        int a;
+        this(int a)
+        {
+            this.a = a;
+        }
+        this(ref const ArrElem)
+        {
+            a = 2;
+        }
+        this(ref ArrElem) immutable
+        {
+            a = 3;
+        }
+    }
+
+    auto arr = [ArrElem(1), ArrElem(1)];
+
+    ArrElem[] b = arr.dup;
+    assert(b[0].a == 2 && b[1].a == 2);
+
+    immutable ArrElem[] c = arr.idup;
+    assert(c[0].a == 3 && c[1].a == 3);
+}
+
+@system unittest
+{
+    static struct Sunpure { this(ref const typeof(this)) @safe nothrow {} }
+    static struct Sthrow { this(ref const typeof(this)) @safe pure {} }
+    static struct Sunsafe { this(ref const typeof(this)) @system pure nothrow {} }
+    [].dup!Sunpure;
+    [].dup!Sthrow;
+    cast(void) [].dup!Sunsafe;
+    static assert(!__traits(compiles, () pure    { [].dup!Sunpure; }));
+    static assert(!__traits(compiles, () nothrow { [].dup!Sthrow; }));
     static assert(!__traits(compiles, () @safe   { [].dup!Sunsafe; }));
 
-    static assert( __traits(compiles, ()         { [].idup!Sunpure; }));
-    static assert(!__traits(compiles, () pure    { [].idup!Sunpure; }));
-    static assert( __traits(compiles, ()         { [].idup!Sthrow; }));
-    static assert(!__traits(compiles, () nothrow { [].idup!Sthrow; }));
-    static assert( __traits(compiles, ()         { [].idup!Sunsafe; }));
-    static assert(!__traits(compiles, () @safe   { [].idup!Sunsafe; }));
+    // for idup to work on structs that have copy constructors, it is necessary
+    // that the struct defines a copy constructor that creates immutable objects
+    static struct ISunpure { this(ref const typeof(this)) immutable @safe nothrow {} }
+    static struct ISthrow { this(ref const typeof(this)) immutable @safe pure {} }
+    static struct ISunsafe { this(ref const typeof(this)) immutable @system pure nothrow {} }
+    [].idup!ISunpure;
+    [].idup!ISthrow;
+    [].idup!ISunsafe;
+    static assert(!__traits(compiles, () pure    { [].idup!ISunpure; }));
+    static assert(!__traits(compiles, () nothrow { [].idup!ISthrow; }));
+    static assert(!__traits(compiles, () @safe   { [].idup!ISunsafe; }));
 }
 
 @safe unittest
@@ -3484,6 +4286,71 @@ private void _doPostblit(T)(T[] arr)
     int p;
     scope S[1] arr = [S(&p)];
     auto a = arr.dup; // dup does escape
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=21983
+// dup/idup destroys partially constructed arrays on failure
+@safe unittest
+{
+    static struct SImpl(bool postblit)
+    {
+        int num;
+        long l = 0xDEADBEEF;
+
+        static if (postblit)
+        {
+            this(this)
+            {
+                if (this.num == 3)
+                    throw new Exception("");
+            }
+        }
+        else
+        {
+            this(scope ref const SImpl other)
+            {
+                if (other.num == 3)
+                    throw new Exception("");
+
+                this.num = other.num;
+                this.l = other.l;
+            }
+        }
+
+        ~this() @trusted
+        {
+            if (l != 0xDEADBEEF)
+            {
+                import core.stdc.stdio;
+                printf("Unexpected value: %lld\n", l);
+                fflush(stdout);
+                assert(false);
+            }
+        }
+    }
+
+    alias Postblit = SImpl!true;
+    alias Copy = SImpl!false;
+
+    static int test(S)()
+    {
+        S[4] arr = [ S(1), S(2), S(3), S(4) ];
+        try
+        {
+            arr.dup();
+            assert(false);
+        }
+        catch (Exception)
+        {
+            return 1;
+        }
+    }
+
+    static assert(test!Postblit());
+    assert(test!Postblit());
+
+    static assert(test!Copy());
+    assert(test!Copy());
 }
 
 /**
@@ -3573,12 +4440,16 @@ void destroy(bool initialize = true, T)(T obj) if (is(T == class))
 
         static if (initialize)
         {
-            enum classSize = __traits(classInstanceSize, T);
-            (cast(void*)obj)[0 .. classSize] = typeid(T).initializer[];
+            const initializer = __traits(initSymbol, T);
+            (cast(void*)obj)[0 .. initializer.length] = initializer[];
         }
     }
     else
-        rt_finalize(cast(void*)obj);
+    {
+        // Bypass overloaded opCast
+        auto ptr = (() @trusted => *cast(void**) &obj)();
+        rt_finalize(ptr);
+    }
 }
 
 /// ditto
@@ -3719,6 +4590,10 @@ void destroy(bool initialize = true, T)(T obj) if (is(T == interface))
     destroy(b);
     assert(A.dtorCount == 0);
     assert(B.dtorCount == 1);
+
+    auto a = new A;
+    destroy(a);
+    assert(A.dtorCount == 1);
 }
 
 @system unittest
@@ -3836,9 +4711,21 @@ nothrow unittest
     assert(C.dtorCount == 1);
 }
 
+// https://issues.dlang.org/show_bug.cgi?id=22832
+nothrow unittest
+{
+    static struct A {}
+    static class B
+    {
+        A opCast(T : A)() { return A(); }
+    }
+
+    destroy(B.init);
+}
+
 /// ditto
-void destroy(bool initialize = true, T : U[n], U, size_t n)(ref T obj)
-if (!is(T == struct) && !is(T == class) && !is(T == interface))
+void destroy(bool initialize = true, T)(ref T obj)
+if (__traits(isStaticArray, T))
 {
     foreach_reverse (ref e; obj[])
         destroy!initialize(e);
@@ -3995,11 +4882,11 @@ they are only intended to be instantiated by the compiler, not the user.
 
 public import core.internal.entrypoint : _d_cmain;
 
-public import core.internal.array.appending : _d_arrayappendTImpl;
+public import core.internal.array.appending : _d_arrayappendT;
+public import core.internal.array.appending : _d_arrayappendTTrace;
 public import core.internal.array.appending : _d_arrayappendcTXImpl;
 public import core.internal.array.comparison : __cmp;
 public import core.internal.array.equality : __equals;
-public import core.internal.array.equality : __ArrayEq;
 public import core.internal.array.casting: __ArrayCast;
 public import core.internal.array.concatenation : _d_arraycatnTXImpl;
 public import core.internal.array.construction : _d_arrayctor;
@@ -4017,20 +4904,39 @@ public import core.internal.postblit: __ArrayPostblit;
 public import core.internal.switch_: __switch;
 public import core.internal.switch_: __switch_error;
 
+public import core.lifetime : _d_delstructImpl;
+public import core.lifetime : _d_newThrowable;
+
 public @trusted @nogc nothrow pure extern (C) void _d_delThrowable(scope Throwable);
 
 // Compare class and interface objects for ordering.
-private int __cmp(Obj)(Obj lhs, Obj rhs)
-if (is(Obj : Object))
+int __cmp(C1, C2)(C1 lhs, C2 rhs)
+if ((is(C1 : const(Object)) || (is(C1 == interface) && (__traits(getLinkage, C1) == "D"))) &&
+    (is(C2 : const(Object)) || (is(C2 == interface) && (__traits(getLinkage, C2) == "D"))))
 {
-    if (lhs is rhs)
+    static if (is(C1 == typeof(null)) && is(C2 == typeof(null)))
+    {
         return 0;
-    // Regard null references as always being "less than"
-    if (!lhs)
+    }
+    else static if (is(C1 == typeof(null)))
+    {
+        // Regard null references as always being "less than"
         return -1;
-    if (!rhs)
+    }
+    else static if (is(C2 == typeof(null)))
+    {
         return 1;
-    return lhs.opCmp(rhs);
+    }
+    else
+    {
+        if (lhs is rhs)
+            return 0;
+        if (lhs is null)
+            return -1;
+        if (rhs is null)
+            return 1;
+        return lhs.opCmp(rhs);
+    }
 }
 
 // objects
@@ -4106,4 +5012,80 @@ template _arrayOp(Args...)
     alias _arrayOp = arrayOp!Args;
 }
 
-void __ctfeWrite(scope const(char)[] s) @nogc @safe pure nothrow {}
+public import core.builtins : __ctfeWrite;
+
+/**
+
+Provides an "inline import", i.e. an `import` that is only available for a
+limited lookup. For example:
+
+---
+void fun(imported!"std.stdio".File input)
+{
+    ... use File from std.stdio normally ...
+}
+---
+
+There is no need to import `std.stdio` at top level, so `fun` carries its own
+dependencies. The same approach can be used for template constraints:
+
+---
+void fun(T)(imported!"std.stdio".File input, T value)
+if (imported!"std.traits".isIntegral!T)
+{
+    ...
+}
+---
+
+An inline import may be used in conjunction with the `with` statement as well.
+Inside the scope controlled by `with`, all symbols in the imported module are
+made available:
+
+---
+void fun()
+{
+    with (imported!"std.datetime")
+    with (imported!"std.stdio")
+    {
+        Clock.currTime.writeln;
+    }
+}
+---
+
+The advantages of inline imports over top-level uses of the `import` declaration
+are the following:
+
+$(UL
+$(LI The `imported` template specifies dependencies at declaration level, not at
+module level. This allows reasoning about the dependency cost of declarations in
+separation instead of aggregated at module level.)
+$(LI Declarations using `imported` are easier to move around because they don't
+require top-level context, making for simpler and quicker refactorings.)
+$(LI Declarations using `imported` scale better with templates. This is because
+templates that are not instantiated do not have their parameters and constraints
+instantiated, so additional modules are not imported without necessity. This
+makes the cost of unused templates negligible. Dependencies are pulled on a need
+basis depending on the declarations used by client code.)
+)
+
+The use of `imported` also has drawbacks:
+
+$(UL
+$(LI If most declarations in a module need the same imports, then factoring them
+at top level, outside the declarations, is simpler than repeating them.)
+$(LI Traditional dependency-tracking tools such as make and other build systems
+assume file-level dependencies and need special tooling (such as rdmd) in order
+to work efficiently.)
+$(LI Dependencies at the top of a module are easier to inspect quickly than
+dependencies spread throughout the module.)
+)
+
+See_Also: The $(HTTP forum.dlang.org/post/tzqzmqhankrkbrfsrmbo@forum.dlang.org,
+forum discussion) that led to the creation of the `imported` facility. Credit is
+due to Daniel Nielsen and Dominikus Dittes Scherkl.
+
+*/
+template imported(string moduleName)
+{
+    mixin("import imported = " ~ moduleName ~ ";");
+}

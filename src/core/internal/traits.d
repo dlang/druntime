@@ -14,7 +14,7 @@ template Fields(T)
 {
     static if (is(T == struct) || is(T == union))
         alias Fields = typeof(T.tupleof[0 .. $ - __traits(isNested, T)]);
-    else static if (is(T == class))
+    else static if (is(T == class) || is(T == interface))
         alias Fields = typeof(T.tupleof);
     else
         alias Fields = AliasSeq!T;
@@ -25,38 +25,32 @@ T trustedCast(T, U)(auto ref U u) @trusted pure nothrow
     return cast(T)u;
 }
 
-template Unconst(T)
-{
-         static if (is(T U ==   immutable U)) alias Unconst = U;
-    else static if (is(T U == inout const U)) alias Unconst = U;
-    else static if (is(T U == inout       U)) alias Unconst = U;
-    else static if (is(T U ==       const U)) alias Unconst = U;
-    else                                      alias Unconst = T;
-}
+alias Unconst(T : const U, U) = U;
 
 /// taken from std.traits.Unqual
-template Unqual(T)
+template Unqual(T : const U, U)
 {
-    version (none) // Error: recursive alias declaration @@@BUG1308@@@
-    {
-             static if (is(T U ==     const U)) alias Unqual = Unqual!U;
-        else static if (is(T U == immutable U)) alias Unqual = Unqual!U;
-        else static if (is(T U ==     inout U)) alias Unqual = Unqual!U;
-        else static if (is(T U ==    shared U)) alias Unqual = Unqual!U;
-        else                                    alias Unqual =        T;
-    }
-    else // workaround
-    {
-             static if (is(T U ==          immutable U)) alias Unqual = U;
-        else static if (is(T U == shared inout const U)) alias Unqual = U;
-        else static if (is(T U == shared inout       U)) alias Unqual = U;
-        else static if (is(T U == shared       const U)) alias Unqual = U;
-        else static if (is(T U == shared             U)) alias Unqual = U;
-        else static if (is(T U ==        inout const U)) alias Unqual = U;
-        else static if (is(T U ==        inout       U)) alias Unqual = U;
-        else static if (is(T U ==              const U)) alias Unqual = U;
-        else                                             alias Unqual = T;
-    }
+    static if (is(U == shared V, V))
+        alias Unqual = V;
+    else
+        alias Unqual = U;
+}
+
+template BaseElemOf(T)
+{
+    static if (is(T == E[N], E, size_t N))
+        alias BaseElemOf = BaseElemOf!E;
+    else
+        alias BaseElemOf = T;
+}
+
+unittest
+{
+    static assert(is(BaseElemOf!(int) == int));
+    static assert(is(BaseElemOf!(int[1]) == int));
+    static assert(is(BaseElemOf!(int[1][2]) == int));
+    static assert(is(BaseElemOf!(int[1][]) == int[1][]));
+    static assert(is(BaseElemOf!(int[][1]) == int[]));
 }
 
 // [For internal use]
@@ -225,20 +219,16 @@ template anySatisfy(alias F, Ts...)
 }
 
 // simplified from std.traits.maxAlignment
-template maxAlignment(U...)
+template maxAlignment(Ts...)
+if (Ts.length > 0)
 {
-    static if (U.length == 0)
-        static assert(0);
-    else static if (U.length == 1)
-        enum maxAlignment = U[0].alignof;
-    else static if (U.length == 2)
-        enum maxAlignment = U[0].alignof > U[1].alignof ? U[0].alignof : U[1].alignof;
-    else
+    enum maxAlignment =
     {
-        enum a = maxAlignment!(U[0 .. ($+1)/2]);
-        enum b = maxAlignment!(U[($+1)/2 .. $]);
-        enum maxAlignment = a > b ? a : b;
-    }
+        size_t result = 0;
+        static foreach (T; Ts)
+            if (T.alignof > result) result = T.alignof;
+        return result;
+    }();
 }
 
 template classInstanceAlignment(T)
@@ -250,9 +240,9 @@ if (is(T == class))
 /// See $(REF hasElaborateMove, std,traits)
 template hasElaborateMove(S)
 {
-    static if (__traits(isStaticArray, S) && S.length)
+    static if (__traits(isStaticArray, S))
     {
-        enum bool hasElaborateMove = hasElaborateMove!(typeof(S.init[0]));
+        enum bool hasElaborateMove = S.sizeof && hasElaborateMove!(BaseElemOf!S);
     }
     else static if (is(S == struct))
     {
@@ -269,9 +259,9 @@ template hasElaborateMove(S)
 // std.traits.hasElaborateDestructor
 template hasElaborateDestructor(S)
 {
-    static if (__traits(isStaticArray, S) && S.length)
+    static if (__traits(isStaticArray, S))
     {
-        enum bool hasElaborateDestructor = hasElaborateDestructor!(typeof(S.init[0]));
+        enum bool hasElaborateDestructor = S.sizeof && hasElaborateDestructor!(BaseElemOf!S);
     }
     else static if (is(S == struct))
     {
@@ -287,9 +277,9 @@ template hasElaborateDestructor(S)
 // std.traits.hasElaborateCopyDestructor
 template hasElaborateCopyConstructor(S)
 {
-    static if (__traits(isStaticArray, S) && S.length)
+    static if (__traits(isStaticArray, S))
     {
-        enum bool hasElaborateCopyConstructor = hasElaborateCopyConstructor!(typeof(S.init[0]));
+        enum bool hasElaborateCopyConstructor = S.sizeof && hasElaborateCopyConstructor!(BaseElemOf!S);
     }
     else static if (is(S == struct))
     {
@@ -311,6 +301,7 @@ template hasElaborateCopyConstructor(S)
     }
 
     static assert(hasElaborateCopyConstructor!S);
+    static assert(!hasElaborateCopyConstructor!(S[0][1]));
 
     static struct S2
     {
@@ -332,9 +323,9 @@ template hasElaborateCopyConstructor(S)
 
 template hasElaborateAssign(S)
 {
-    static if (__traits(isStaticArray, S) && S.length)
+    static if (__traits(isStaticArray, S))
     {
-        enum bool hasElaborateAssign = hasElaborateAssign!(typeof(S.init[0]));
+        enum bool hasElaborateAssign = S.sizeof && hasElaborateAssign!(BaseElemOf!S);
     }
     else static if (is(S == struct))
     {
@@ -351,9 +342,9 @@ template hasElaborateAssign(S)
 template hasIndirections(T)
 {
     static if (is(T == struct) || is(T == union))
-        enum hasIndirections = anySatisfy!(.hasIndirections, Fields!T);
-    else static if (__traits(isStaticArray, T) && is(T : E[N], E, size_t N))
-        enum hasIndirections = is(E == void) ? true : hasIndirections!E;
+        enum hasIndirections = anySatisfy!(.hasIndirections, typeof(T.tupleof));
+    else static if (is(T == E[N], E, size_t N))
+        enum hasIndirections = T.sizeof && is(E == void) ? true : hasIndirections!(BaseElemOf!E);
     else static if (isFunctionPointer!T)
         enum hasIndirections = false;
     else
@@ -363,20 +354,39 @@ template hasIndirections(T)
 
 template hasUnsharedIndirections(T)
 {
-    static if (is(T == struct) || is(T == union))
+    static if (is(T == immutable))
+        enum hasUnsharedIndirections = false;
+    else static if (is(T == struct) || is(T == union))
         enum hasUnsharedIndirections = anySatisfy!(.hasUnsharedIndirections, Fields!T);
     else static if (is(T : E[N], E, size_t N))
         enum hasUnsharedIndirections = is(E == void) ? false : hasUnsharedIndirections!E;
     else static if (isFunctionPointer!T)
         enum hasUnsharedIndirections = false;
     else static if (isPointer!T)
-        enum hasUnsharedIndirections = !is(T : shared(U)*, U);
+        enum hasUnsharedIndirections = !is(T : shared(U)*, U) && !is(T : immutable(U)*, U);
     else static if (isDynamicArray!T)
-        enum hasUnsharedIndirections = !is(T : shared(V)[], V);
+        enum hasUnsharedIndirections = !is(T : shared(V)[], V) && !is(T : immutable(V)[], V);
     else static if (is(T == class) || is(T == interface))
         enum hasUnsharedIndirections = !is(T : shared(W), W);
     else
         enum hasUnsharedIndirections = isDelegate!T || __traits(isAssociativeArray, T); // TODO: how to handle these?
+}
+
+unittest
+{
+    static struct Foo { shared(int)* val; }
+
+    static assert(!hasUnsharedIndirections!(immutable(char)*));
+    static assert(!hasUnsharedIndirections!(string));
+
+    static assert(!hasUnsharedIndirections!(Foo));
+    static assert( hasUnsharedIndirections!(Foo*));
+    static assert(!hasUnsharedIndirections!(shared(Foo)*));
+    static assert(!hasUnsharedIndirections!(immutable(Foo)*));
+
+    int local;
+    struct HasContextPointer { int opCall() { return ++local; } }
+    static assert(hasIndirections!HasContextPointer);
 }
 
 enum bool isAggregateType(T) = is(T == struct) || is(T == union) ||

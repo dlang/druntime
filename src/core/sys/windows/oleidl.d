@@ -4,7 +4,7 @@
  * Translated from MinGW Windows headers
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_oleidl.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_oleidl.d)
  */
 module core.sys.windows.oleidl;
 version (Windows):
@@ -14,10 +14,10 @@ version (Windows):
 // what is it doing in here?
 //alias IEnumOleUndoUnits LPENUMOLEUNDOUNITS;
 
-private import core.sys.windows.basetyps, core.sys.windows.objidl, core.sys.windows.unknwn, core.sys.windows.windef,
+import core.sys.windows.basetyps, core.sys.windows.objidl, core.sys.windows.unknwn, core.sys.windows.windef,
   core.sys.windows.winuser, core.sys.windows.wtypes;
-private import core.sys.windows.objfwd; // for LPMONIKER
-private import core.sys.windows.wingdi; // for LPLOGPALETTE
+import core.sys.windows.objfwd; // for LPMONIKER
+import core.sys.windows.wingdi; // for LPLOGPALETTE
 
 enum MK_ALT = 32;
 

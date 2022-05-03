@@ -4,7 +4,7 @@
  * Translated from MinGW Windows headers
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_lmremutl.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_lmremutl.d)
  */
 module core.sys.windows.lmremutl;
 version (Windows):
@@ -13,7 +13,7 @@ pragma(lib, "netapi32");
 
 // D Conversion Note: DESC_CHAR is defined as TCHAR.
 
-private import core.sys.windows.lmcons, core.sys.windows.windef;
+import core.sys.windows.lmcons, core.sys.windows.windef;
 
 enum SUPPORTS_REMOTE_ADMIN_PROTOCOL =  2;
 enum SUPPORTS_RPC                   =  4;

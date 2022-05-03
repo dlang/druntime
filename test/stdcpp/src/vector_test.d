@@ -1,5 +1,14 @@
 import core.stdcpp.vector;
 
+alias TestIssue21323IsFixed = vector!(vector!int);
+
+void testIssue21468IsFixed(vector!StructWithAVector a) {}
+
+struct StructWithAVector
+{
+    vector!int a;
+}
+
 unittest
 {
     // test vector a bit
@@ -12,6 +21,7 @@ unittest
     vec[] = [1, 2, 3, 4, 5];
     assert(sumOfElements_val(vec) == 45);
     assert(sumOfElements_ref(vec) == 15);
+    assert(vec == vector!int([1, 2, 3, 4, 5]));
 
     vec.push_back(6);
     vec.push_back(7);

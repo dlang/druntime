@@ -14,9 +14,9 @@
 
 module core.stdc.wchar_;
 
-private import core.stdc.config;
-private import core.stdc.stdarg; // for va_list
-private import core.stdc.stdio;  // for FILE, not exposed per spec
+import core.stdc.config;
+import core.stdc.stdarg; // for va_list
+import core.stdc.stdio;  // for FILE, not exposed per spec
 public import core.stdc.stddef;  // for wchar_t
 public import core.stdc.time;    // for tm
 public import core.stdc.stdint;  // for WCHAR_MIN, WCHAR_MAX
@@ -173,11 +173,12 @@ extern (D) @trusted
     wint_t getwchar()                     { return fgetwc(stdin);     }
     ///
     wint_t putwchar(wchar_t c)            { return fputwc(c,stdout);  }
-    ///
-    wint_t getwc(FILE* stream)            { return fgetwc(stream);    }
-    ///
-    wint_t putwc(wchar_t c, FILE* stream) { return fputwc(c, stream); }
 }
+
+///
+alias getwc = fgetwc;
+///
+alias putwc = fputwc;
 
 // No unsafe pointer manipulation.
 @trusted
@@ -212,13 +213,13 @@ c_ulong wcstoul(const scope wchar_t* nptr, wchar_t** endptr, int base);
 ulong   wcstoull(const scope wchar_t* nptr, wchar_t** endptr, int base);
 
 ///
-pure wchar_t* wcscpy(return wchar_t* s1, scope const wchar_t* s2);
+pure wchar_t* wcscpy(return scope wchar_t* s1, scope const wchar_t* s2);
 ///
-pure wchar_t* wcsncpy(return wchar_t* s1, scope const wchar_t* s2, size_t n);
+pure wchar_t* wcsncpy(return scope wchar_t* s1, scope const wchar_t* s2, size_t n);
 ///
-pure wchar_t* wcscat(return wchar_t* s1, scope const wchar_t* s2);
+pure wchar_t* wcscat(return scope wchar_t* s1, scope const wchar_t* s2);
 ///
-pure wchar_t* wcsncat(return wchar_t* s1, scope const wchar_t* s2, size_t n);
+pure wchar_t* wcsncat(return scope wchar_t* s1, scope const wchar_t* s2, size_t n);
 ///
 pure int wcscmp(scope const wchar_t* s1, scope const wchar_t* s2);
 ///
@@ -228,32 +229,32 @@ pure int wcsncmp(scope const wchar_t* s1, scope const wchar_t* s2, size_t n);
 ///
 size_t   wcsxfrm(scope wchar_t* s1, scope const wchar_t* s2, size_t n);
 ///
-pure inout(wchar_t)* wcschr(return inout(wchar_t)* s, wchar_t c);
+pure inout(wchar_t)* wcschr(return scope inout(wchar_t)* s, wchar_t c);
 ///
 pure size_t wcscspn(scope const wchar_t* s1, scope const wchar_t* s2);
 ///
-pure inout(wchar_t)* wcspbrk(return inout(wchar_t)* s1, scope const wchar_t* s2);
+pure inout(wchar_t)* wcspbrk(return scope inout(wchar_t)* s1, scope const wchar_t* s2);
 ///
-pure inout(wchar_t)* wcsrchr(return inout(wchar_t)* s, wchar_t c);
+pure inout(wchar_t)* wcsrchr(return scope inout(wchar_t)* s, wchar_t c);
 ///
 pure size_t wcsspn(scope const wchar_t* s1, scope const wchar_t* s2);
 ///
-pure inout(wchar_t)* wcsstr(return inout(wchar_t)* s1, scope const wchar_t* s2);
+pure inout(wchar_t)* wcsstr(return scope inout(wchar_t)* s1, scope const wchar_t* s2);
 ///
-wchar_t* wcstok(return wchar_t* s1, scope const wchar_t* s2, wchar_t** ptr);
+wchar_t* wcstok(return scope wchar_t* s1, scope const wchar_t* s2, wchar_t** ptr);
 ///
 pure size_t wcslen(scope const wchar_t* s);
 
 ///
-pure inout(wchar_t)* wmemchr(return inout wchar_t* s, wchar_t c, size_t n);
+pure inout(wchar_t)* wmemchr(return scope inout wchar_t* s, wchar_t c, size_t n);
 ///
 pure int      wmemcmp(scope const wchar_t* s1, scope const wchar_t* s2, size_t n);
 ///
-pure wchar_t* wmemcpy(return wchar_t* s1, scope const wchar_t* s2, size_t n);
+pure wchar_t* wmemcpy(return scope wchar_t* s1, scope const wchar_t* s2, size_t n);
 ///
-pure wchar_t* wmemmove(return wchar_t* s1, scope const wchar_t* s2, size_t n);
+pure wchar_t* wmemmove(return scope wchar_t* s1, scope const wchar_t* s2, size_t n);
 ///
-pure wchar_t* wmemset(return wchar_t* s, wchar_t c, size_t n);
+pure wchar_t* wmemset(return scope wchar_t* s, wchar_t c, size_t n);
 
 ///
 size_t wcsftime(wchar_t* s, size_t maxsize, const scope wchar_t* format, const scope tm* timeptr);

@@ -17,54 +17,60 @@ builds.  It is separate from `__ArrayCast` to minimize code
 bloat.
 
 Params:
-    fromType = name of the type being cast from
-    fromSize = total size in bytes of the array being cast from
-    toType   = name of the type being cast o
-    toSize   = total size in bytes of the array being cast to
+    fromType   = name of the type being cast from
+    fromSize   = total size in bytes of the array being cast from
+    fromLength = length of array being cast from
+    toType     = name of the type being cast to
+    toElemSize = element size of array being cast to
  */
-private void onArrayCastError()(string fromType, size_t fromSize, string toType, size_t toSize) @trusted
+private void onArrayCastError()(string fromType, size_t fromSize, size_t fromLength, string toType, size_t toElemSize) @trusted
 {
     import core.internal.string : unsignedToTempString;
+    import core.memory : pureMalloc;
 
-    const(char)[][9] msgComponents =
-    [
-        "An array of size "
-        , unsignedToTempString(fromSize)
-        , " does not align on an array of size "
-        , unsignedToTempString(toSize)
-        , ", so `"
-        , fromType
-        , "` cannot be cast to `"
-        , toType
-        , "`"
-    ];
-
-    // convert discontiguous `msgComponents` to contiguous string on the stack
+    // convert discontiguous `msgComponents` to contiguous string on the C heap
     enum msgLength = 2048;
-    char[msgLength] msg;
+    // note: never freed!
+    char* msg = cast(char *)pureMalloc(msgLength);
 
     size_t index = 0;
-    foreach (m; msgComponents)
+    void add(const(char)[] m)
     {
-        foreach (c; m)
-        {
-            msg[index++] = c;
-            if (index >= (msgLength - 1))
-                break;
-        }
+        import core.stdc.string : memcpy;
 
-        if (index >= (msgLength - 1))
-            break;
+        auto N = msgLength - 1 - index;
+        if (N > m.length)
+            N = m.length;
+        // prevent superfluous and betterC-unfriendly checks via direct memcpy
+        memcpy(msg + index, m.ptr, N);
+        index += N;
     }
+
+    add("`");
+    add(fromType);
+    add("[]` of length ");
+    auto s = unsignedToTempString(fromLength);
+    add(s[]);
+    add(" cannot be cast to `");
+    add(toType);
+    add("[]` as its length in bytes (");
+    s = unsignedToTempString(fromSize);
+    add(s[]);
+    add(") is not a multiple of `");
+    add(toType);
+    add(".sizeof` (");
+    s = unsignedToTempString(toElemSize);
+    add(s[]);
+    add(").");
     msg[index] = '\0'; // null-termination
 
     // first argument must evaluate to `false` at compile-time to maintain memory safety in release builds
-    assert(false, msg);
+    assert(false, msg[0 .. index]);
 }
 
 /**
 The compiler lowers expressions of `cast(TTo[])TFrom[]` to
-this implementation.
+this implementation. Note that this does not detect alignment problems.
 
 Params:
     from = the array to reinterpret-cast
@@ -72,14 +78,14 @@ Params:
 Returns:
     `from` reinterpreted as `TTo[]`
  */
-TTo[] __ArrayCast(TFrom, TTo)(TFrom[] from) @nogc pure @trusted
+TTo[] __ArrayCast(TFrom, TTo)(return scope TFrom[] from) @nogc pure @trusted
 {
     const fromSize = from.length * TFrom.sizeof;
     const toLength = fromSize / TTo.sizeof;
 
     if ((fromSize % TTo.sizeof) != 0)
     {
-        onArrayCastError(TFrom.stringof, fromSize, TTo.stringof, toLength * TTo.sizeof);
+        onArrayCastError(TFrom.stringof, fromSize, from.length, TTo.stringof, TTo.sizeof);
     }
 
     struct Array
@@ -112,4 +118,27 @@ TTo[] __ArrayCast(TFrom, TTo)(TFrom[] from) @nogc pure @trusted
     assert(s.length == 6);
     foreach (v; s)
         assert(v == cast(short) 0xabab);
+}
+
+@system nothrow unittest
+{
+    string msg;
+    try
+    {
+        auto str = "hello";
+        auto wstr = cast(wstring) str;
+    }
+    catch (Throwable t)
+        msg = t.msg;
+
+    static immutable expected = "`immutable(char)[]` of length 5 cannot be cast to `immutable(wchar)[]` as " ~
+                            "its length in bytes (5) is not a multiple of `immutable(wchar).sizeof` (2).";
+
+    if (msg != expected)
+    {
+        import core.stdc.stdio;
+        printf("Expected: |%.*s|\n", cast(int) expected.length, expected.ptr);
+        printf("Actual  : |%.*s|\n", cast(int) msg.length, msg.ptr);
+        assert(false);
+    }
 }

@@ -4,7 +4,7 @@
  * Translated from MinGW Windows headers
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_richedit.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_richedit.d)
  */
 module core.sys.windows.richedit;
 version (Windows):
@@ -12,8 +12,8 @@ version (Windows):
 
 version (ANSI) {} else version = Unicode;
 
-private import core.sys.windows.windef, core.sys.windows.winuser;
-private import core.sys.windows.wingdi; // for LF_FACESIZE
+import core.sys.windows.windef, core.sys.windows.winuser;
+import core.sys.windows.wingdi; // for LF_FACESIZE
 
 align(4):
 

@@ -5,7 +5,7 @@
  *
  * Authors: Stewart Gordon
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_winldap.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_winldap.d)
  */
 module core.sys.windows.winldap;
 version (Windows):
@@ -31,7 +31,7 @@ version (ANSI) {} else version = Unicode;
 */
 
 import core.sys.windows.schannel, core.sys.windows.winber;
-private import core.sys.windows.wincrypt, core.sys.windows.windef;
+import core.sys.windows.wincrypt, core.sys.windows.windef;
 
 //align(4):
 

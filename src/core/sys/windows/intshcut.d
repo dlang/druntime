@@ -5,7 +5,7 @@
  *
  * Authors: Stewart Gordon
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_intshcut.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_intshcut.d)
  */
 module core.sys.windows.intshcut;
 version (Windows):
@@ -13,7 +13,7 @@ version (Windows):
 
 version (ANSI) {} else version = Unicode;
 
-private import core.sys.windows.unknwn, core.sys.windows.windef;
+import core.sys.windows.unknwn, core.sys.windows.windef;
 
 enum : SCODE {
     E_FLAGS                     = 0x80041000,

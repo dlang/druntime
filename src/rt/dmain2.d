@@ -11,29 +11,27 @@
 
 module rt.dmain2;
 
-private
-{
-    import rt.memory;
-    import rt.sections;
-    import core.atomic;
-    import core.stdc.stddef;
-    import core.stdc.stdlib;
-    import core.stdc.string;
-    import core.stdc.stdio;   // for printf()
-    import core.stdc.errno : errno;
-}
+import rt.memory;
+import rt.sections;
+import core.atomic;
+import core.stdc.stddef;
+import core.stdc.stdlib;
+import core.stdc.string;
+import core.stdc.stdio;   // for printf()
+import core.stdc.errno : errno;
 
 version (Windows)
 {
-    private import core.stdc.wchar_;
-    private import core.sys.windows.basetsd /+: HANDLE+/;
-    private import core.sys.windows.shellapi /+: CommandLineToArgvW+/;
-    private import core.sys.windows.winbase /+: FreeLibrary, GetCommandLineW, GetProcAddress,
-        IsDebuggerPresent, LoadLibraryA, LoadLibraryW, LocalFree, WriteFile+/;
-    private import core.sys.windows.wincon /+: CONSOLE_SCREEN_BUFFER_INFO, GetConsoleOutputCP, GetConsoleScreenBufferInfo+/;
-    private import core.sys.windows.winnls /+: CP_UTF8, MultiByteToWideChar, WideCharToMultiByte+/;
-    private import core.sys.windows.winnt /+: WCHAR+/;
-    private import core.sys.windows.winuser /+: MB_ICONERROR, MessageBoxW+/;
+    import core.stdc.wchar_;
+    import core.sys.windows.basetsd : HANDLE;
+    import core.sys.windows.shellapi : CommandLineToArgvW;
+    import core.sys.windows.winbase : FreeLibrary, GetCommandLineW, GetProcAddress,
+        IsDebuggerPresent, LoadLibraryW, LocalFree, WriteFile;
+    import core.sys.windows.wincon : CONSOLE_SCREEN_BUFFER_INFO, GetConsoleOutputCP,
+        GetConsoleScreenBufferInfo;
+    import core.sys.windows.winnls : CP_UTF8, MultiByteToWideChar, WideCharToMultiByte;
+    import core.sys.windows.winnt : WCHAR;
+    import core.sys.windows.winuser : MB_ICONERROR, MessageBoxW;
 
     pragma(lib, "shell32.lib"); // needed for CommandLineToArgvW
 }
@@ -81,70 +79,6 @@ extern (C) void _d_initMonoTime();
 version (CRuntime_Microsoft)
 {
     extern(C) void init_msvc();
-}
-
-/***********************************
- * These are a temporary means of providing a GC hook for DLL use.  They may be
- * replaced with some other similar functionality later.
- */
-extern (C)
-{
-    void* gc_getProxy();
-    void  gc_setProxy(void* p);
-    void  gc_clrProxy();
-
-    alias void* function()      gcGetFn;
-    alias void  function(void*) gcSetFn;
-    alias void  function()      gcClrFn;
-}
-
-version (Windows)
-{
-    /*******************************************
-     * Loads a DLL written in D with the name 'name'.
-     * Returns:
-     *      opaque handle to the DLL if successfully loaded
-     *      null if failure
-     */
-    extern (C) void* rt_loadLibrary(const char* name)
-    {
-        return initLibrary(.LoadLibraryA(name));
-    }
-
-    extern (C) void* rt_loadLibraryW(const WCHAR* name)
-    {
-        return initLibrary(.LoadLibraryW(name));
-    }
-
-    void* initLibrary(void* mod)
-    {
-        // BUG: LoadLibrary() call calls rt_init(), which fails if proxy is not set!
-        // (What? LoadLibrary() is a Windows API call, it shouldn't call rt_init().)
-        if (mod is null)
-            return mod;
-        gcSetFn gcSet = cast(gcSetFn) GetProcAddress(mod, "gc_setProxy");
-        if (gcSet !is null)
-        {   // BUG: Set proxy, but too late
-            gcSet(gc_getProxy());
-        }
-        return mod;
-    }
-
-    /*************************************
-     * Unloads DLL that was previously loaded by rt_loadLibrary().
-     * Input:
-     *      ptr     the handle returned by rt_loadLibrary()
-     * Returns:
-     *      1   succeeded
-     *      0   some failure happened
-     */
-    extern (C) int rt_unloadLibrary(void* ptr)
-    {
-        gcClrFn gcClr  = cast(gcClrFn) GetProcAddress(ptr, "gc_clrProxy");
-        if (gcClr !is null)
-            gcClr();
-        return FreeLibrary(ptr) != 0;
-    }
 }
 
 /* To get out-of-band access to the args[] passed to main().
@@ -452,15 +386,8 @@ private extern (C) int _d_run_main2(char[][] args, size_t totalArgsLength, MainF
     version (CRuntime_Microsoft)
     {
         // enable full precision for reals
-        version (GNU)
+        version (D_InlineAsm_X86_64)
         {
-            size_t fpu_cw;
-            asm { "fstcw %0" : "=m" (fpu_cw); }
-            fpu_cw |= 0b11_00_111111;  // 11: use 64 bit extended-precision
-                                       // 111111: mask all FP exceptions
-            asm { "fldcw %0" : "=m" (fpu_cw); }
-        }
-        else version (Win64)
             asm
             {
                 push    RAX;
@@ -470,7 +397,8 @@ private extern (C) int _d_run_main2(char[][] args, size_t totalArgsLength, MainF
                 fldcw   word ptr [RSP];
                 pop     RAX;
             }
-        else version (Win32)
+        }
+        else version (D_InlineAsm_X86)
         {
             asm
             {
@@ -560,7 +488,7 @@ private extern (C) int _d_run_main2(char[][] args, size_t totalArgsLength, MainF
                     if (utResult.passed == 0)
                         .fprintf(.stderr, "No unittests run\n");
                     else
-                        .fprintf(.stderr, "%d unittests passed\n",
+                        .fprintf(.stderr, "%d modules passed unittests\n",
                                  cast(int)utResult.passed);
                 }
                 if (utResult.runMain)
@@ -571,7 +499,7 @@ private extern (C) int _d_run_main2(char[][] args, size_t totalArgsLength, MainF
             else
             {
                 if (utResult.summarize)
-                    .fprintf(.stderr, "%d/%d unittests FAILED\n",
+                    .fprintf(.stderr, "%d/%d modules FAILED unittests\n",
                              cast(int)(utResult.executed - utResult.passed),
                              cast(int)utResult.executed);
                 result = EXIT_FAILURE;
@@ -599,7 +527,7 @@ private extern (C) int _d_run_main2(char[][] args, size_t totalArgsLength, MainF
     return result;
 }
 
-private void formatThrowable(Throwable t, scope void delegate(const scope char[] s) nothrow sink)
+private void formatThrowable(Throwable t, scope void delegate(in char[] s) nothrow sink)
 {
     foreach (u; t)
     {
@@ -685,7 +613,7 @@ extern (C) void _d_print_throwable(Throwable t)
             {
                 WSink caption;
                 if (t)
-                    caption.sink(t.classinfo.name);
+                    caption.sink(typeid(t).name);
 
                 // Avoid static user32.dll dependency for console applications
                 // by loading it dynamically as needed
@@ -728,9 +656,9 @@ extern (C) void _d_print_throwable(Throwable t)
         }
     }
 
-    void sink(const scope char[] buf) scope nothrow
+    void sink(in char[] buf) scope nothrow
     {
-        fprintf(stderr, "%.*s", cast(int)buf.length, buf.ptr);
+        fwrite(buf.ptr, char.sizeof, buf.length, stderr);
     }
     formatThrowable(t, &sink);
 }

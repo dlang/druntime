@@ -12,6 +12,7 @@
 
 module rt.lifetime;
 
+import core.attribute : weak;
 import core.memory;
 debug(PRINTF) import core.stdc.stdio;
 static import rt.tlsgc;
@@ -39,30 +40,15 @@ private
     }
 }
 
-private immutable bool callStructDtorsDuringGC;
-
 extern (C) void lifetime_init()
 {
     // this is run before static ctors, so it is safe to modify immutables
-    import rt.config;
-    string s = rt_configOption("callStructDtorsDuringGC");
-    if (s != null)
-    {
-        // @@@DEPRECATED_v2.094@@@
-        // Deprecated in v2.088.
-        // To be removed in v2.094, if not earlier.
-        import core.stdc.stdio : fprintf, stderr;
-        fprintf(stderr, "Deprecation: The `callStructDtorsDuringGC` option has been deprecated and will be removed in a future release.\n");
-        cast() callStructDtorsDuringGC = s[0] == '1' || s[0] == 'y' || s[0] == 'Y';
-    }
-    else
-        cast() callStructDtorsDuringGC = true;
 }
 
 /**
  *
  */
-extern (C) void* _d_allocmemory(size_t sz)
+extern (C) void* _d_allocmemory(size_t sz) @weak
 {
     return GC.malloc(sz);
 }
@@ -70,7 +56,7 @@ extern (C) void* _d_allocmemory(size_t sz)
 /**
  *
  */
-extern (C) Object _d_newclass(const ClassInfo ci)
+extern (C) Object _d_newclass(const ClassInfo ci) @weak
 {
     import core.stdc.stdlib;
     import core.exception : onOutOfMemoryError;
@@ -147,7 +133,7 @@ private extern (D) alias void function (Object) fp_t;
 /**
  *
  */
-extern (C) void _d_delclass(Object* p)
+extern (C) void _d_delclass(Object* p) @weak
 {
     if (*p)
     {
@@ -182,7 +168,7 @@ extern (C) void _d_delclass(Object* p)
  * being deleted is a pointer to a struct with a destructor
  * but doesn't have an overloaded delete operator.
  */
-extern (C) void _d_delstruct(void** p, TypeInfo_Struct inf)
+extern (C) void _d_delstruct(void** p, TypeInfo_Struct inf) @weak
 {
     if (*p)
     {
@@ -195,7 +181,7 @@ extern (C) void _d_delstruct(void** p, TypeInfo_Struct inf)
 }
 
 // strip const/immutable/shared/inout from type info
-inout(TypeInfo) unqualify(inout(TypeInfo) cti) pure nothrow @nogc
+inout(TypeInfo) unqualify(return scope inout(TypeInfo) cti) pure nothrow @nogc
 {
     TypeInfo ti = cast() cti;
     while (ti)
@@ -219,9 +205,6 @@ inout(TypeInfo) unqualify(inout(TypeInfo) cti) pure nothrow @nogc
 // size used to store the TypeInfo at the end of an allocation for structs that have a destructor
 size_t structTypeInfoSize(const TypeInfo ti) pure nothrow @nogc
 {
-    if (!callStructDtorsDuringGC)
-        return 0;
-
     if (ti && typeid(ti) is typeid(TypeInfo_Struct)) // avoid a complete dynamic type cast
     {
         auto sti = cast(TypeInfo_Struct)cast(void*)ti;
@@ -398,7 +381,7 @@ size_t __arrayAllocLength(ref BlkInfo info, const TypeInfo tinext) pure nothrow
 /**
   get the start of the array for the given block
   */
-void *__arrayStart(return BlkInfo info) nothrow pure
+void *__arrayStart(return scope BlkInfo info) nothrow pure
 {
     return info.base + ((info.size & BIGLENGTHMASK) ? LARGEPREFIX : 0);
 }
@@ -433,7 +416,7 @@ private void __arrayClearPad(ref BlkInfo info, size_t arrsize, size_t padsize) n
   allocate an array memory block by applying the proper padding and
   assigning block attributes if not inherited from the existing block
   */
-BlkInfo __arrayAlloc(size_t arrsize, const TypeInfo ti, const TypeInfo tinext) nothrow pure
+BlkInfo __arrayAlloc(size_t arrsize, const scope TypeInfo ti, const TypeInfo tinext) nothrow pure
 {
     import core.checkedint;
 
@@ -455,7 +438,7 @@ BlkInfo __arrayAlloc(size_t arrsize, const TypeInfo ti, const TypeInfo tinext) n
     return bi;
 }
 
-BlkInfo __arrayAlloc(size_t arrsize, ref BlkInfo info, const TypeInfo ti, const TypeInfo tinext)
+BlkInfo __arrayAlloc(size_t arrsize, ref BlkInfo info, const scope TypeInfo ti, const TypeInfo tinext)
 {
     import core.checkedint;
 
@@ -764,7 +747,7 @@ void __doPostblit(void *ptr, size_t len, const TypeInfo ti)
  * of 0 to get the current capacity.  Returns the number of elements that can
  * actually be stored once the resizing is done.
  */
-extern(C) size_t _d_arraysetcapacity(const TypeInfo ti, size_t newcapacity, void[]* p)
+extern(C) size_t _d_arraysetcapacity(const TypeInfo ti, size_t newcapacity, void[]* p) @weak
 in
 {
     assert(ti);
@@ -937,7 +920,7 @@ Lcontinue:
  * Allocate a new uninitialized array of length elements.
  * ti is the type of the resulting array, or pointer to element.
  */
-extern (C) void[] _d_newarrayU(const TypeInfo ti, size_t length) pure nothrow
+extern (C) void[] _d_newarrayU(const scope TypeInfo ti, size_t length) pure nothrow @weak
 {
     import core.exception : onOutOfMemoryError;
 
@@ -998,7 +981,7 @@ Lcontinue:
  * ti is the type of the resulting array, or pointer to element.
  * (For when the array is initialized to 0)
  */
-extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length) pure nothrow
+extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length) pure nothrow @weak
 {
     import core.stdc.string;
 
@@ -1013,7 +996,7 @@ extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length) pure nothrow
 /**
  * For when the array has a non-zero initializer.
  */
-extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
+extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow @weak
 {
     import core.internal.traits : AliasSeq;
 
@@ -1028,8 +1011,12 @@ extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow
     foreach (T; AliasSeq!(ubyte, ushort, uint, ulong))
     {
     case T.sizeof:
-        (cast(T*)result.ptr)[0 .. size * length / T.sizeof] = *cast(T*)init.ptr;
-        return result;
+        if (tinext.talign % T.alignof == 0)
+        {
+            (cast(T*)result.ptr)[0 .. size * length / T.sizeof] = *cast(T*)init.ptr;
+            return result;
+        }
+        goto default;
     }
 
     default:
@@ -1088,7 +1075,7 @@ void[] _d_newarrayOpT(alias op)(const TypeInfo ti, size_t[] dims)
 /**
  *
  */
-extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t[] dims)
+extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t[] dims) @weak
 {
     debug(PRINTF) printf("_d_newarraymT(dims.length = %d)\n", dims.length);
 
@@ -1104,7 +1091,7 @@ extern (C) void[] _d_newarraymTX(const TypeInfo ti, size_t[] dims)
 /**
  *
  */
-extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims)
+extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims) @weak
 {
     debug(PRINTF) printf("_d_newarraymiT(dims.length = %d)\n", dims.length);
 
@@ -1120,7 +1107,7 @@ extern (C) void[] _d_newarraymiTX(const TypeInfo ti, size_t[] dims)
  * Allocate an uninitialized non-array item.
  * This is an optimization to avoid things needed for arrays like the __arrayPad(size).
  */
-extern (C) void* _d_newitemU(in TypeInfo _ti)
+extern (C) void* _d_newitemU(scope const TypeInfo _ti) pure nothrow @weak
 {
     auto ti = unqualify(_ti);
     auto flags = !(ti.flags & 1) ? BlkAttr.NO_SCAN : 0;
@@ -1135,7 +1122,8 @@ extern (C) void* _d_newitemU(in TypeInfo _ti)
 
     if (tiSize)
     {
-        *cast(TypeInfo*)(p + itemSize) = null; // the GC might not have cleared this area
+        // the GC might not have cleared the padding area in the block
+        *cast(TypeInfo*)(p + (itemSize & ~(size_t.sizeof - 1))) = null;
         *cast(TypeInfo*)(p + blkInf.size - tiSize) = cast() ti;
     }
 
@@ -1143,7 +1131,7 @@ extern (C) void* _d_newitemU(in TypeInfo _ti)
 }
 
 /// Same as above, zero initializes the item.
-extern (C) void* _d_newitemT(in TypeInfo _ti)
+extern (C) void* _d_newitemT(in TypeInfo _ti) pure nothrow @weak
 {
     import core.stdc.string;
     auto p = _d_newitemU(_ti);
@@ -1152,7 +1140,7 @@ extern (C) void* _d_newitemT(in TypeInfo _ti)
 }
 
 /// Same as above, for item with non-zero initializer.
-extern (C) void* _d_newitemiT(in TypeInfo _ti)
+extern (C) void* _d_newitemiT(in TypeInfo _ti) pure nothrow @weak
 {
     import core.stdc.string;
     auto p = _d_newitemU(_ti);
@@ -1187,7 +1175,7 @@ debug(PRINTF)
 /**
  *
  */
-extern (C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti)
+extern (C) void _d_delarray_t(void[]* p, const TypeInfo_Struct ti) @weak
 {
     if (p)
     {
@@ -1225,7 +1213,7 @@ deprecated unittest
     auto x = new S[10000];
     void* p = x.ptr;
     assert(GC.addrOf(p) != null);
-    delete x;
+    _d_delarray_t(cast(void[]*)&x, typeid(typeof(x[0]))); // delete x;
     assert(GC.addrOf(p) == null);
     assert(countDtor == 10000);
 
@@ -1234,7 +1222,7 @@ deprecated unittest
     auto z = y[200 .. 300];
     p = z.ptr;
     assert(GC.addrOf(p) != null);
-    delete z;
+    _d_delarray_t(cast(void[]*)&z, typeid(typeof(z[0]))); // delete z;
     assert(GC.addrOf(p) == null);
     assert(countDtor == 10000 + 400);
 }
@@ -1242,7 +1230,7 @@ deprecated unittest
 /**
  *
  */
-extern (C) void _d_delmemory(void* *p)
+extern (C) void _d_delmemory(void* *p) @weak
 {
     if (*p)
     {
@@ -1255,7 +1243,7 @@ extern (C) void _d_delmemory(void* *p)
 /**
  *
  */
-extern (C) void _d_callinterfacefinalizer(void *p)
+extern (C) void _d_callinterfacefinalizer(void *p) @weak
 {
     if (p)
     {
@@ -1269,7 +1257,7 @@ extern (C) void _d_callinterfacefinalizer(void *p)
 /**
  *
  */
-extern (C) void _d_callfinalizer(void* p)
+extern (C) void _d_callfinalizer(void* p) @weak
 {
     rt_finalize( p );
 }
@@ -1473,7 +1461,7 @@ extern (C) void rt_finalizeFromGC(void* p, size_t size, uint attr) nothrow
 /**
  * Resize dynamic arrays with 0 initializers.
  */
-extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p)
+extern (C) void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) @weak
 in
 {
     assert(ti);
@@ -1675,7 +1663,7 @@ do
  *      initsize        size of initializer
  *      ...             initializer
  */
-extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p)
+extern (C) void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) @weak
 in
 {
     assert(!(*p).length || (*p).ptr);
@@ -1887,7 +1875,7 @@ do
 /**
  * Append y[] to array x[]
  */
-extern (C) void[] _d_arrayappendT(const TypeInfo ti, ref byte[] x, byte[] y)
+extern (C) void[] _d_arrayappendT(const TypeInfo ti, ref byte[] x, byte[] y) @weak
 {
     import core.stdc.string;
     auto length = x.length;
@@ -1989,7 +1977,7 @@ size_t newCapacity(size_t newlength, size_t size)
  * Caller must initialize those elements.
  */
 extern (C)
-byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
+byte[] _d_arrayappendcTX(const TypeInfo ti, return scope ref byte[] px, size_t n) @weak
 {
     import core.stdc.string;
     // This is a cut&paste job from _d_arrayappendT(). Should be refactored.
@@ -2093,7 +2081,7 @@ byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n)
 /**
  * Append dchar to char[]
  */
-extern (C) void[] _d_arrayappendcd(ref byte[] x, dchar c)
+extern (C) void[] _d_arrayappendcd(ref byte[] x, dchar c) @weak
 {
     // c could encode into from 1 to 4 characters
     char[4] buf = void;
@@ -2138,7 +2126,7 @@ extern (C) void[] _d_arrayappendcd(ref byte[] x, dchar c)
 
     // Hack because _d_arrayappendT takes `x` as a reference
     auto xx = cast(shared(char)[])x;
-    object._d_arrayappendTImpl!(shared(char)[])._d_arrayappendT(xx, cast(shared(char)[])appendthis);
+    object._d_arrayappendT(xx, cast(shared(char)[])appendthis);
     x = cast(byte[])xx;
     return x;
 }
@@ -2175,7 +2163,7 @@ unittest
 /**
  * Append dchar to wchar[]
  */
-extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c)
+extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c) @weak
 {
     // c could encode into from 1 to 2 w characters
     wchar[2] buf = void;
@@ -2199,7 +2187,7 @@ extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c)
     //
 
     auto xx = (cast(shared(wchar)*)x.ptr)[0 .. x.length];
-    object._d_arrayappendTImpl!(shared(wchar)[])._d_arrayappendT(xx, cast(shared(wchar)[])appendthis);
+    object._d_arrayappendT(xx, cast(shared(wchar)[])appendthis);
     x = (cast(byte*)xx.ptr)[0 .. xx.length];
     return x;
 }
@@ -2208,7 +2196,7 @@ extern (C) void[] _d_arrayappendwd(ref byte[] x, dchar c)
 /**
  *
  */
-extern (C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y)
+extern (C) byte[] _d_arraycatT(const TypeInfo ti, byte[] x, byte[] y) @weak
 out (result)
 {
     auto tinext = unqualify(ti.next);
@@ -2274,7 +2262,7 @@ do
 /**
  *
  */
-extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs)
+extern (C) void[] _d_arraycatnTX(const TypeInfo ti, scope byte[][] arrs) @weak
 {
     import core.stdc.string;
 
@@ -2315,7 +2303,7 @@ extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs)
  * Allocate the array, rely on the caller to do the initialization of the array.
  */
 extern (C)
-void* _d_arrayliteralTX(const TypeInfo ti, size_t length)
+void* _d_arrayliteralTX(const TypeInfo ti, size_t length) @weak
 {
     auto tinext = unqualify(ti.next);
     auto sizeelem = tinext.tsize;              // array element size
@@ -2620,41 +2608,38 @@ deprecated unittest
 
     dtorCount = 0;
     S1* s1 = new S1;
-    delete s1;
+    _d_delstruct(cast(void**)&s1, typeid(typeof(*s1))); // delete s1;
     assert(dtorCount == 1);
 
     dtorCount = 0;
     S1[] arr1 = new S1[7];
-    delete arr1;
+    _d_delarray_t(cast(void[]*)&arr1, typeid(typeof(arr1[0]))); // delete arr1;
     assert(dtorCount == 7);
 
-    if (callStructDtorsDuringGC)
-    {
-        dtorCount = 0;
-        S1* s2 = new S1;
-        GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
-        assert(dtorCount == 1);
-        GC.free(s2);
+    dtorCount = 0;
+    S1* s2 = new S1;
+    GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
+    assert(dtorCount == 1);
+    GC.free(s2);
 
-        dtorCount = 0;
-        const(S1)* s3 = new const(S1);
-        GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
-        assert(dtorCount == 1);
-        GC.free(cast(void*)s3);
+    dtorCount = 0;
+    const(S1)* s3 = new const(S1);
+    GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
+    assert(dtorCount == 1);
+    GC.free(cast(void*)s3);
 
-        dtorCount = 0;
-        shared(S1)* s4 = new shared(S1);
-        GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
-        assert(dtorCount == 1);
-        GC.free(cast(void*)s4);
+    dtorCount = 0;
+    shared(S1)* s4 = new shared(S1);
+    GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
+    assert(dtorCount == 1);
+    GC.free(cast(void*)s4);
 
-        dtorCount = 0;
-        const(S1)[] carr1 = new const(S1)[5];
-        BlkInfo blkinf1 = GC.query(carr1.ptr);
-        GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
-        assert(dtorCount == 5);
-        GC.free(blkinf1.base);
-    }
+    dtorCount = 0;
+    const(S1)[] carr1 = new const(S1)[5];
+    BlkInfo blkinf1 = GC.query(carr1.ptr);
+    GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
+    assert(dtorCount == 5);
+    GC.free(blkinf1.base);
 
     dtorCount = 0;
     S1[] arr2 = new S1[10];
@@ -2662,14 +2647,11 @@ deprecated unittest
     arr2.assumeSafeAppend;
     assert(dtorCount == 4); // destructors run explicitely?
 
-    if (callStructDtorsDuringGC)
-    {
-        dtorCount = 0;
-        BlkInfo blkinf = GC.query(arr2.ptr);
-        GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
-        assert(dtorCount == 6);
-        GC.free(blkinf.base);
-    }
+    dtorCount = 0;
+    BlkInfo blkinf = GC.query(arr2.ptr);
+    GC.runFinalizers((cast(char*)(typeid(S1).xdtor))[0..1]);
+    assert(dtorCount == 6);
+    GC.free(blkinf.base);
 
     // associative arrays
     import rt.aaA : entryDtor;
@@ -2679,44 +2661,32 @@ deprecated unittest
     S1[int] aa1;
     aa1[0] = S1(0);
     aa1[1] = S1(1);
-    if (callStructDtorsDuringGC)
-    {
-        dtorCount = 0;
-        aa1 = null;
-        GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
-        assert(dtorCount == 2);
-    }
+    dtorCount = 0;
+    aa1 = null;
+    GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
+    assert(dtorCount == 2);
 
     int[S1] aa2;
     aa2[S1(0)] = 0;
     aa2[S1(1)] = 1;
     aa2[S1(2)] = 2;
-    if (callStructDtorsDuringGC)
-    {
-        dtorCount = 0;
-        aa2 = null;
-        GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
-        assert(dtorCount == 3);
-    }
+    dtorCount = 0;
+    aa2 = null;
+    GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
+    assert(dtorCount == 3);
 
     S1[2][int] aa3;
     aa3[0] = [S1(0),S1(2)];
     aa3[1] = [S1(1),S1(3)];
-    if (callStructDtorsDuringGC)
-    {
-        dtorCount = 0;
-        aa3 = null;
-        GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
-        assert(dtorCount == 4);
-    }
+    dtorCount = 0;
+    aa3 = null;
+    GC.runFinalizers((cast(char*)(&entryDtor))[0..1]);
+    assert(dtorCount == 4);
 }
 
 // test struct dtor handling not causing false pointers
 unittest
 {
-    if (!callStructDtorsDuringGC)
-        return;
-
     // for 64-bit, allocate a struct of size 40
     static struct S
     {
@@ -2824,9 +2794,6 @@ unittest
 debug(SENTINEL) {} else
 unittest
 {
-    if (!callStructDtorsDuringGC)
-        return;
-
     bool test(E)()
     {
         import core.exception;

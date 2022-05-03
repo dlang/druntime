@@ -14,8 +14,8 @@
  */
 module core.sys.posix.setjmp;
 
-private import core.sys.posix.config;
-private import core.sys.posix.signal; // for sigset_t
+import core.sys.posix.config;
+import core.sys.posix.signal; // for sigset_t
 
 version (Posix):
 extern (C) nothrow @nogc:
@@ -258,6 +258,10 @@ else version (OpenBSD)
         enum _JBLEN = 11;
     }
     else version (ARM)
+    {
+        enum _JBLEN = 64;
+    }
+    else version (AArch64)
     {
         enum _JBLEN = 64;
     }

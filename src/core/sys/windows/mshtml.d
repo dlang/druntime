@@ -4,13 +4,13 @@
  * Translated from MinGW Windows headers
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_mshtml.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_mshtml.d)
  */
 module core.sys.windows.mshtml;
 version (Windows):
 @system:
 
-private import core.sys.windows.basetyps, core.sys.windows.oaidl, core.sys.windows.unknwn,
+import core.sys.windows.basetyps, core.sys.windows.oaidl, core.sys.windows.unknwn,
   core.sys.windows.windef, core.sys.windows.wtypes;
 
 // These are used in this file, but not defined in MinGW.

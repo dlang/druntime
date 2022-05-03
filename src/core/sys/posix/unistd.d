@@ -14,8 +14,8 @@
  */
 module core.sys.posix.unistd;
 
-private import core.sys.posix.config;
-private import core.stdc.stddef;
+import core.sys.posix.config;
+import core.stdc.stddef;
 public import core.sys.posix.inttypes;  // for intptr_t
 public import core.sys.posix.sys.types; // for ssize_t, uid_t, gid_t, off_t, pid_t, useconds_t
 
@@ -2721,4 +2721,52 @@ else version (CRuntime_UClibc)
     ssize_t    pwrite(int, const scope void*, size_t, off_t);
     int        truncate(const scope char*, off_t);
   }
+}
+
+// Non-standard definition to access user process environment
+version (CRuntime_Glibc)
+{
+    extern __gshared const char** environ;
+}
+else version (Darwin)
+{
+    extern (D) @property const(char**) environ()()
+    {
+        pragma (inline, true);
+        import core.sys.darwin.crt_externs : _NSGetEnviron;
+        return *_NSGetEnviron();
+    }
+}
+else version (FreeBSD)
+{
+    extern __gshared const char** environ;
+}
+else version (NetBSD)
+{
+    extern __gshared const char** environ;
+}
+else version (OpenBSD)
+{
+    extern __gshared const char** environ;
+}
+else version (DragonFlyBSD)
+{
+    extern __gshared const char** environ;
+}
+else version (CRuntime_Bionic)
+{
+    extern __gshared const char** environ;
+}
+else version (CRuntime_Musl)
+{
+    extern __gshared const char** environ;
+}
+else version (Solaris)
+{
+    extern __gshared const char** environ;
+}
+else version (CRuntime_UClibc)
+{
+    extern __gshared const char** __environ;
+    alias environ = __environ;
 }

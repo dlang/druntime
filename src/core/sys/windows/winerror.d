@@ -4,7 +4,7 @@
  * Translated from MinGW Windows headers
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_winerror.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_winerror.d)
  */
 module core.sys.windows.winerror;
 version (Windows):
@@ -14,7 +14,7 @@ version (Windows):
  * WAIT_TIMEOUT is also defined in winbase.h
  */
 
-private import core.sys.windows.windef;
+import core.sys.windows.windef;
 
 alias int SCODE; // was in core.sys.windows.wtypes.
 

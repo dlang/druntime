@@ -38,6 +38,14 @@ T[] arrayOp(T : T[], Args...)(T[] res, Filter!(isType, Args) args) @trusted @nog
     alias scalarizedExp = staticMap!(toElementType, Args);
     alias check = typeCheck!(true, T, scalarizedExp); // must support all scalar ops
 
+    foreach (argsIdx, arg; typeof(args))
+    {
+        static if (is(arg == U[], U))
+        {
+            assert(res.length == args[argsIdx].length, "Mismatched array lengths for vector operation");
+        }
+    }
+
     size_t pos;
     static if (vectorizeable!(T[], Args))
     {
@@ -103,11 +111,11 @@ version (DigitalMars)
         alias vec = __vector(T[N]);
 
         static if (is(T == float))
-            return __simd(XMM.LODUPS, *cast(const vec*) p);
+            return cast(typeof(return)) __simd(XMM.LODUPS, *cast(const vec*) p);
         else static if (is(T == double))
-            return __simd(XMM.LODUPD, *cast(const vec*) p);
+            return cast(typeof(return)) __simd(XMM.LODUPD, *cast(const vec*) p);
         else
-            return __simd(XMM.LODDQU, *cast(const vec*) p);
+            return cast(typeof(return)) __simd(XMM.LODDQU, *cast(const vec*) p);
     }
 
     __vector(T[N]) binop(string op, T, size_t N)(const scope __vector(T[N]) a, const scope __vector(T[N]) b)
@@ -228,7 +236,6 @@ else
 
     version (X86_64) unittest
     {
-        pragma(msg, vectorizeable!(double[], const(double)[], double[], "+", "="));
         static assert(vectorizeable!(double[], const(double)[], double[], "+", "="));
         static assert(!vectorizeable!(double[], const(ulong)[], double[], "+", "="));
         // Vector type are (atm.) not implicitly convertible and would require
@@ -635,4 +642,29 @@ unittest
     result.length = data.length;
     result[] = -data[];
     assert(result[0] == -0.5);
+}
+
+// https://issues.dlang.org/show_bug.cgi?id=21110
+unittest
+{
+    import core.exception;
+
+    static void assertThrown(T : Throwable, E)(lazy E expression, string msg)
+    {
+        try
+            expression;
+        catch (T)
+            return;
+        assert(0, "msg");
+    }
+
+    int[] dst;
+    int[] a;
+    int[] b;
+    a.length = 3;
+    b.length = 3;
+    dst.length = 4;
+
+    void func() { dst[] = a[] + b[]; }
+    assertThrown!AssertError(func(), "Array operations with mismatched lengths must throw an error");
 }

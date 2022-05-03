@@ -68,7 +68,6 @@ module core.time;
 import core.exception;
 import core.stdc.time;
 import core.stdc.stdio;
-import core.internal.traits : _Unqual = Unqual;
 import core.internal.string;
 
 version (Windows)
@@ -162,7 +161,7 @@ version (CoreDdoc) enum ClockType
 
         On systems which do not support a coarser clock,
         $(D MonoTimeImpl!(ClockType.coarse)) will internally use the same clock
-        as $(D Monotime) does, and $(D Clock.currTime!(ClockType.coarse)) will
+        as $(D MonoTime) does, and $(D Clock.currTime!(ClockType.coarse)) will
         use the same clock as $(D Clock.currTime). This is because the coarse
         clock is doing the same thing as the normal clock (just at lower
         precision), whereas some of the other clock types
@@ -497,6 +496,81 @@ assert(std.datetime.Date(2010, 9, 7) - std.datetime.Date(2010, 10, 3) ==
  +/
 struct Duration
 {
+    /++
+        Converts this `Duration` to a `string`.
+
+        The string is meant to be human readable, not machine parseable (e.g.
+        whether there is an `'s'` on the end of the unit name usually depends on
+        whether it's plural or not, and empty units are not included unless the
+        Duration is `zero`). Any code needing a specific string format should
+        use `total` or `split` to get the units needed to create the desired
+        string format and create the string itself.
+
+        The format returned by toString may or may not change in the future.
+
+        Params:
+          sink = A sink object, expected to be a delegate or aggregate
+                 implementing `opCall` that accepts a `scope const(char)[]`
+                 as argument.
+      +/
+    void toString (SinkT) (scope SinkT sink) const scope
+    {
+        static immutable units = [
+            "weeks", "days", "hours", "minutes", "seconds", "msecs", "usecs"
+        ];
+
+        static void appListSep(SinkT sink, uint pos, bool last)
+        {
+            if (pos == 0)
+                return;
+            if (!last)
+                sink(", ");
+            else
+                sink(pos == 1 ? " and " : ", and ");
+        }
+
+        static void appUnitVal(string units)(SinkT sink, long val)
+        {
+            immutable plural = val != 1;
+            string unit;
+            static if (units == "seconds")
+                unit = plural ? "secs" : "sec";
+            else static if (units == "msecs")
+                unit = "ms";
+            else static if (units == "usecs")
+                unit = "μs";
+            else
+                unit = plural ? units : units[0 .. $-1];
+            sink(signedToTempString(val));
+            sink(" ");
+            sink(unit);
+        }
+
+        if (_hnsecs == 0)
+        {
+            sink("0 hnsecs");
+            return;
+        }
+
+        long hnsecs = _hnsecs;
+        uint pos;
+        static foreach (unit; units)
+        {
+            if (auto val = splitUnitsFromHNSecs!unit(hnsecs))
+            {
+                appListSep(sink, pos++, hnsecs == 0);
+                appUnitVal!unit(sink, val);
+            }
+            if (hnsecs == 0)
+                return;
+        }
+        if (hnsecs != 0)
+        {
+            appListSep(sink, pos++, true);
+            appUnitVal!"hnsecs"(sink, hnsecs);
+        }
+    }
+
 @safe pure:
 
 public:
@@ -542,11 +616,7 @@ public:
      +/
     int opCmp(Duration rhs) const nothrow @nogc
     {
-        if (_hnsecs < rhs._hnsecs)
-            return -1;
-        if (_hnsecs > rhs._hnsecs)
-            return 1;
-        return 0;
+        return (_hnsecs > rhs._hnsecs) - (_hnsecs < rhs._hnsecs);
     }
 
     version (CoreUnittest) unittest
@@ -620,12 +690,12 @@ public:
             rhs = The duration to add to or subtract from this $(D Duration).
       +/
     Duration opBinary(string op, D)(D rhs) const nothrow @nogc
-        if (((op == "+" || op == "-" || op == "%") && is(_Unqual!D == Duration)) ||
-           ((op == "+" || op == "-") && is(_Unqual!D == TickDuration)))
+        if (((op == "+" || op == "-" || op == "%") && is(immutable D == immutable Duration)) ||
+           ((op == "+" || op == "-") && is(immutable D == immutable TickDuration)))
     {
-        static if (is(_Unqual!D == Duration))
+        static if (is(immutable D == immutable Duration))
             return Duration(mixin("_hnsecs " ~ op ~ " rhs._hnsecs"));
-        else if (is(_Unqual!D == TickDuration))
+        else
             return Duration(mixin("_hnsecs " ~ op ~ " rhs.hnsecs"));
     }
 
@@ -706,7 +776,7 @@ public:
       +/
     Duration opBinaryRight(string op, D)(D lhs) const nothrow @nogc
         if ((op == "+" || op == "-") &&
-            is(_Unqual!D == TickDuration))
+            is(immutable D == immutable TickDuration))
     {
         return Duration(mixin("lhs.hnsecs " ~ op ~ " _hnsecs"));
     }
@@ -759,12 +829,12 @@ public:
             rhs = The duration to add to or subtract from this $(D Duration).
       +/
     ref Duration opOpAssign(string op, D)(const scope D rhs) nothrow @nogc
-        if (((op == "+" || op == "-" || op == "%") && is(_Unqual!D == Duration)) ||
-           ((op == "+" || op == "-") && is(_Unqual!D == TickDuration)))
+        if (((op == "+" || op == "-" || op == "%") && is(immutable D == immutable Duration)) ||
+           ((op == "+" || op == "-") && is(immutable D == immutable TickDuration)))
     {
-        static if (is(_Unqual!D == Duration))
+        static if (is(immutable D == immutable Duration))
             mixin("_hnsecs " ~ op ~ "= rhs._hnsecs;");
-        else if (is(_Unqual!D == TickDuration))
+        else
             mixin("_hnsecs " ~ op ~ "= rhs.hnsecs;");
         return this;
     }
@@ -1107,7 +1177,7 @@ public:
         $(D duration.to!TickDuration())
       +/
     TickDuration opCast(T)() const nothrow @nogc
-        if (is(_Unqual!T == TickDuration))
+        if (is(immutable T == immutable TickDuration))
     {
         return TickDuration.from!"hnsecs"(_hnsecs);
     }
@@ -1161,7 +1231,7 @@ public:
 
     //Temporary hack until bug http://d.puremagic.com/issues/show_bug.cgi?id=5747 is fixed.
     Duration opCast(T)() const nothrow @nogc
-        if (is(_Unqual!T == Duration))
+        if (is(immutable T == immutable Duration))
     {
         return this;
     }
@@ -1201,8 +1271,8 @@ public:
       +/
     template split(units...)
         if (allAreAcceptedUnits!("weeks", "days", "hours", "minutes", "seconds",
-                                "msecs", "usecs", "hnsecs", "nsecs")(units) &&
-           unitsAreInDescendingOrder(units))
+                                "msecs", "usecs", "hnsecs", "nsecs")([units]) &&
+           unitsAreInDescendingOrder([units]))
     {
         /++ Ditto +/
         void split(Args...)(out Args args) const nothrow @nogc
@@ -1507,10 +1577,7 @@ public:
            units == "hnsecs" ||
            units == "nsecs")
     {
-        static if (units == "nsecs")
-            return convert!("hnsecs", "nsecs")(_hnsecs);
-        else
-            return getUnitsFromHNSecs!units(_hnsecs);
+        return convert!("hnsecs", units)(_hnsecs);
     }
 
     ///
@@ -1547,71 +1614,12 @@ public:
         }
     }
 
-
-    /++
-        Converts this `Duration` to a `string`.
-
-        The string is meant to be human readable, not machine parseable (e.g.
-        whether there is an `'s'` on the end of the unit name usually depends on
-        whether it's plural or not, and empty units are not included unless the
-        Duration is `zero`). Any code needing a specific string format should
-        use `total` or `split` to get the units needed to create the desired
-        string format and create the string itself.
-
-        The format returned by toString may or may not change in the future.
-      +/
-    string toString() const nothrow pure @safe
+    /// Ditto
+    string toString() const scope nothrow
     {
-        static void appListSep(ref string res, uint pos, bool last)
-        {
-            if (pos == 0)
-                return;
-            if (!last)
-                res ~= ", ";
-            else
-                res ~= pos == 1 ? " and " : ", and ";
-        }
-
-        static void appUnitVal(string units)(ref string res, long val)
-        {
-            immutable plural = val != 1;
-            string unit;
-            static if (units == "seconds")
-                unit = plural ? "secs" : "sec";
-            else static if (units == "msecs")
-                unit = "ms";
-            else static if (units == "usecs")
-                unit = "μs";
-            else
-                unit = plural ? units : units[0 .. $-1];
-            res ~= signedToTempString(val, 10);
-            res ~= " ";
-            res ~= unit;
-        }
-
-        if (_hnsecs == 0)
-            return "0 hnsecs";
-
-        template TT(T...) { alias T TT; }
-        alias units = TT!("weeks", "days", "hours", "minutes", "seconds", "msecs", "usecs");
-
-        long hnsecs = _hnsecs; string res; uint pos;
-        foreach (unit; units)
-        {
-            if (auto val = splitUnitsFromHNSecs!unit(hnsecs))
-            {
-                appListSep(res, pos++, hnsecs == 0);
-                appUnitVal!unit(res, val);
-            }
-            if (hnsecs == 0)
-                break;
-        }
-        if (hnsecs != 0)
-        {
-            appListSep(res, pos++, true);
-            appUnitVal!"hnsecs"(res, hnsecs);
-        }
-        return res;
+        string result;
+        this.toString((in char[] data) { result ~= data; });
+        return result;
     }
 
     ///
@@ -1739,6 +1747,20 @@ unittest
     assert(myTime == 123.msecs);
 }
 
+// Ensure `toString` doesn't allocate if the sink doesn't
+version (CoreUnittest) @safe pure nothrow @nogc unittest
+{
+    char[256] buffer; size_t len;
+    scope sink = (in char[] data) {
+        assert(data.length + len <= buffer.length);
+        buffer[len .. len + data.length] = data[];
+        len += data.length;
+    };
+    auto dur = Duration(-12_096_020_900_003);
+    dur.toString(sink);
+    assert(buffer[0 .. len] == "-2 weeks, -2 secs, -90 ms, and -3 hnsecs");
+}
+
 /++
     Converts a $(D TickDuration) to the given units as either an integral
     value or a floating point value.
@@ -1752,7 +1774,7 @@ unittest
         td    = The TickDuration to convert
   +/
 T to(string units, T, D)(D td) @safe pure nothrow @nogc
-    if (is(_Unqual!D == TickDuration) &&
+    if (is(immutable D == immutable TickDuration) &&
        (units == "seconds" ||
         units == "msecs" ||
         units == "usecs" ||
@@ -1789,8 +1811,9 @@ unittest
     long tl = to!("seconds",long)(t);
     assert(tl == 1000);
 
+    import core.stdc.math : fabs;
     double td = to!("seconds",double)(t);
-    assert(_abs(td - 1000) < 0.001);
+    assert(fabs(td - 1000) < 0.001);
 }
 
 unittest
@@ -1805,9 +1828,9 @@ unittest
         auto _str(F)(F val)
         {
             static if (is(F == int) || is(F == long))
-                return signedToTempString(val, 10);
+                return signedToTempString(val);
             else
-                return unsignedToTempString(val, 10);
+                return unsignedToTempString(val);
         }
 
         foreach (F; AliasSeq!(int,uint,long,ulong,float,double,real))
@@ -2185,9 +2208,7 @@ struct MonoTimeImpl(ClockType clockType)
      +/
     int opCmp(MonoTimeImpl rhs) const pure nothrow @nogc
     {
-        if (_ticks < rhs._ticks)
-            return -1;
-        return _ticks > rhs._ticks ? 1 : 0;
+        return (_ticks > rhs._ticks) - (_ticks < rhs._ticks);
     }
 
     version (CoreUnittest) unittest
@@ -2404,15 +2425,15 @@ assert(before + timeElapsed == after);
     string toString() const pure nothrow
     {
         static if (clockType == ClockType.normal)
-            return "MonoTime(" ~ signedToTempString(_ticks, 10) ~ " ticks, " ~ signedToTempString(ticksPerSecond, 10) ~ " ticks per second)";
+            return "MonoTime(" ~ signedToTempString(_ticks) ~ " ticks, " ~ signedToTempString(ticksPerSecond) ~ " ticks per second)";
         else
-            return "MonoTimeImpl!(ClockType." ~ _clockName ~ ")(" ~ signedToTempString(_ticks, 10) ~ " ticks, " ~
-                   signedToTempString(ticksPerSecond, 10) ~ " ticks per second)";
+            return "MonoTimeImpl!(ClockType." ~ _clockName ~ ")(" ~ signedToTempString(_ticks) ~ " ticks, " ~
+                   signedToTempString(ticksPerSecond) ~ " ticks per second)";
     }
 
     version (CoreUnittest) unittest
     {
-        static min(T)(T a, T b) { return a < b ? a : b; }
+        import core.internal.util.math : min;
 
         static void eat(ref string s, const(char)[] exp)
         {
@@ -2427,9 +2448,9 @@ assert(before + timeElapsed == after);
         else
             eat(str, "MonoTimeImpl!(ClockType."~_clockName~")(");
 
-        eat(str, signedToTempString(mt._ticks, 10));
+        eat(str, signedToTempString(mt._ticks));
         eat(str, " ticks, ");
-        eat(str, signedToTempString(ticksPerSecond, 10));
+        eat(str, signedToTempString(ticksPerSecond));
         eat(str, " ticks per second)");
     }
 
@@ -2958,7 +2979,7 @@ struct TickDuration
         $(D tickDuration.to!Duration())
       +/
     Duration opCast(T)() @safe const pure nothrow @nogc
-        if (is(_Unqual!T == Duration))
+        if (is(immutable T == immutable Duration))
     {
         return Duration(hnsecs);
     }
@@ -2984,7 +3005,7 @@ struct TickDuration
 
     //Temporary hack until bug http://d.puremagic.com/issues/show_bug.cgi?id=5747 is fixed.
     TickDuration opCast(T)() @safe const pure nothrow @nogc
-        if (is(_Unqual!T == TickDuration))
+        if (is(immutable T == immutable TickDuration))
     {
         return this;
     }
@@ -3064,7 +3085,7 @@ struct TickDuration
         {
             T a = TickDuration.currSystemTick;
             T b = TickDuration.currSystemTick;
-            assert((a + b).seconds > 0);
+            assert((a + b).usecs > 0);
             assert((a - b).seconds <= 0);
         }
     }
@@ -3097,7 +3118,7 @@ struct TickDuration
       +/
     int opCmp(TickDuration rhs) @safe const pure nothrow @nogc
     {
-        return length < rhs.length ? -1 : (length == rhs.length ? 0 : 1);
+        return (length > rhs.length) - (length < rhs.length);
     }
 
     version (CoreUnittest) unittest
@@ -3703,7 +3724,6 @@ long splitUnitsFromHNSecs(string units)(ref long hnsecs) @safe pure nothrow @nog
     return value;
 }
 
-///
 unittest
 {
     auto hnsecs = 2595000000007L;
@@ -3716,87 +3736,10 @@ unittest
     assert(hnsecs == 7);
 }
 
-
-/+
-    This function is used to split out the units without getting the remaining
-    hnsecs.
-
-    See_Also:
-        $(LREF splitUnitsFromHNSecs)
-
-    Params:
-        units  = The units to split out.
-        hnsecs = The current total hnsecs.
-
-    Returns:
-        The split out value.
-  +/
-long getUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow @nogc
-    if (units == "weeks" ||
-       units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs")
-{
-    return convert!("hnsecs", units)(hnsecs);
-}
-
-///
-unittest
-{
-    auto hnsecs = 2595000000007L;
-    immutable days = getUnitsFromHNSecs!"days"(hnsecs);
-    assert(days == 3);
-    assert(hnsecs == 2595000000007L);
-}
-
-
-/+
-    This function is used to split out the units without getting the units but
-    just the remaining hnsecs.
-
-    See_Also:
-        $(LREF splitUnitsFromHNSecs)
-
-    Params:
-        units  = The units to split out.
-        hnsecs = The current total hnsecs.
-
-    Returns:
-        The remaining hnsecs.
-  +/
-long removeUnitsFromHNSecs(string units)(long hnsecs) @safe pure nothrow @nogc
-    if (units == "weeks" ||
-       units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs")
-{
-    immutable value = convert!("hnsecs", units)(hnsecs);
-
-    return hnsecs - convert!(units, "hnsecs")(value);
-}
-
-///
-unittest
-{
-    auto hnsecs = 2595000000007L;
-    auto returned = removeUnitsFromHNSecs!"days"(hnsecs);
-    assert(returned == 3000000007);
-    assert(hnsecs == 2595000000007L);
-}
-
-
 /+
     Whether all of the given strings are among the accepted strings.
   +/
-bool allAreAcceptedUnits(acceptedUnits...)(string[] units...)
+bool allAreAcceptedUnits(acceptedUnits...)(scope string[] units)
 {
     foreach (unit; units)
     {
@@ -3817,12 +3760,12 @@ bool allAreAcceptedUnits(acceptedUnits...)(string[] units...)
 
 unittest
 {
-    assert(allAreAcceptedUnits!("hours", "seconds")("seconds", "hours"));
-    assert(!allAreAcceptedUnits!("hours", "seconds")("minutes", "hours"));
-    assert(!allAreAcceptedUnits!("hours", "seconds")("seconds", "minutes"));
-    assert(allAreAcceptedUnits!("days", "hours", "minutes", "seconds", "msecs")("minutes"));
-    assert(!allAreAcceptedUnits!("days", "hours", "minutes", "seconds", "msecs")("usecs"));
-    assert(!allAreAcceptedUnits!("days", "hours", "minutes", "seconds", "msecs")("secs"));
+    assert(allAreAcceptedUnits!("hours", "seconds")(["seconds", "hours"]));
+    assert(!allAreAcceptedUnits!("hours", "seconds")(["minutes", "hours"]));
+    assert(!allAreAcceptedUnits!("hours", "seconds")(["seconds", "minutes"]));
+    assert(allAreAcceptedUnits!("days", "hours", "minutes", "seconds", "msecs")(["minutes"]));
+    assert(!allAreAcceptedUnits!("days", "hours", "minutes", "seconds", "msecs")(["usecs"]));
+    assert(!allAreAcceptedUnits!("days", "hours", "minutes", "seconds", "msecs")(["secs"]));
 }
 
 
@@ -3830,7 +3773,7 @@ unittest
     Whether the given time unit strings are arranged in order from largest to
     smallest.
   +/
-bool unitsAreInDescendingOrder(string[] units...)
+bool unitsAreInDescendingOrder(scope string[] units)
 {
     if (units.length <= 1)
         return true;
@@ -3870,70 +3813,13 @@ bool unitsAreInDescendingOrder(string[] units...)
 
 unittest
 {
-    assert(unitsAreInDescendingOrder("years", "months", "weeks", "days", "hours", "minutes",
-                                     "seconds", "msecs", "usecs", "hnsecs", "nsecs"));
-    assert(unitsAreInDescendingOrder("weeks", "hours", "msecs"));
-    assert(unitsAreInDescendingOrder("days", "hours", "minutes"));
-    assert(unitsAreInDescendingOrder("hnsecs"));
-    assert(!unitsAreInDescendingOrder("days", "hours", "hours"));
-    assert(!unitsAreInDescendingOrder("days", "hours", "days"));
-}
-
-
-/+
-    The time units which are one step larger than the given units.
-  +/
-template nextLargerTimeUnits(string units)
-    if (units == "days" ||
-       units == "hours" ||
-       units == "minutes" ||
-       units == "seconds" ||
-       units == "msecs" ||
-       units == "usecs" ||
-       units == "hnsecs" ||
-       units == "nsecs")
-{
-    static if (units == "days")
-        enum nextLargerTimeUnits = "weeks";
-    else static if (units == "hours")
-        enum nextLargerTimeUnits = "days";
-    else static if (units == "minutes")
-        enum nextLargerTimeUnits = "hours";
-    else static if (units == "seconds")
-        enum nextLargerTimeUnits = "minutes";
-    else static if (units == "msecs")
-        enum nextLargerTimeUnits = "seconds";
-    else static if (units == "usecs")
-        enum nextLargerTimeUnits = "msecs";
-    else static if (units == "hnsecs")
-        enum nextLargerTimeUnits = "usecs";
-    else static if (units == "nsecs")
-        enum nextLargerTimeUnits = "hnsecs";
-    else
-        static assert(0, "Broken template constraint");
-}
-
-///
-unittest
-{
-    assert(nextLargerTimeUnits!"minutes" == "hours");
-    assert(nextLargerTimeUnits!"hnsecs" == "usecs");
-}
-
-unittest
-{
-    assert(nextLargerTimeUnits!"nsecs" == "hnsecs");
-    assert(nextLargerTimeUnits!"hnsecs" == "usecs");
-    assert(nextLargerTimeUnits!"usecs" == "msecs");
-    assert(nextLargerTimeUnits!"msecs" == "seconds");
-    assert(nextLargerTimeUnits!"seconds" == "minutes");
-    assert(nextLargerTimeUnits!"minutes" == "hours");
-    assert(nextLargerTimeUnits!"hours" == "days");
-    assert(nextLargerTimeUnits!"days" == "weeks");
-
-    static assert(!__traits(compiles, nextLargerTimeUnits!"weeks"));
-    static assert(!__traits(compiles, nextLargerTimeUnits!"months"));
-    static assert(!__traits(compiles, nextLargerTimeUnits!"years"));
+    assert(unitsAreInDescendingOrder(["years", "months", "weeks", "days", "hours", "minutes",
+                                     "seconds", "msecs", "usecs", "hnsecs", "nsecs"]));
+    assert(unitsAreInDescendingOrder(["weeks", "hours", "msecs"]));
+    assert(unitsAreInDescendingOrder(["days", "hours", "minutes"]));
+    assert(unitsAreInDescendingOrder(["hnsecs"]));
+    assert(!unitsAreInDescendingOrder(["days", "hours", "hours"]));
+    assert(!unitsAreInDescendingOrder(["days", "hours", "days"]));
 }
 
 version (Darwin)
@@ -3973,9 +3859,9 @@ string doubleToString(double value) @safe pure nothrow
     if (value < 0 && cast(long)value == 0)
         result = "-0";
     else
-        result = signedToTempString(cast(long)value, 10).idup;
+        result = signedToTempString(cast(long)value).idup;
     result ~= '.';
-    result ~= unsignedToTempString(cast(ulong)(_abs((value - cast(long)value) * 1_000_000) + .5), 10);
+    result ~= unsignedToTempString(cast(ulong)(_abs((value - cast(long)value) * 1_000_000) + .5));
 
     while (result[$-1] == '0')
         result = result[0 .. $-1];
@@ -3999,7 +3885,7 @@ unittest
 
 version (CoreUnittest) const(char)* numToStringz()(long value) @trusted pure nothrow
 {
-    return (signedToTempString(value, 10) ~ "\0").ptr;
+    return (signedToTempString(value) ~ "\0").ptr;
 }
 
 
@@ -4124,9 +4010,9 @@ version (CoreUnittest) void assertApprox(D, E)(D actual,
 {
     if (actual.length < lower.length || actual.length > upper.length)
     {
-        throw new AssertError(msg ~ (": [" ~ signedToTempString(lower.length, 10) ~ "] [" ~
-                              signedToTempString(actual.length, 10) ~ "] [" ~
-                              signedToTempString(upper.length, 10) ~ "]").idup,
+        throw new AssertError(msg ~ (": [" ~ signedToTempString(lower.length) ~ "] [" ~
+                              signedToTempString(actual.length) ~ "] [" ~
+                              signedToTempString(upper.length) ~ "]").idup,
                               __FILE__, line);
     }
 }
@@ -4148,7 +4034,7 @@ version (CoreUnittest) void assertApprox()(long actual,
                                       size_t line = __LINE__)
 {
     if (actual < lower)
-        throw new AssertError(msg ~ ": lower: " ~ signedToTempString(actual, 10).idup, __FILE__, line);
+        throw new AssertError(msg ~ ": lower: " ~ signedToTempString(actual).idup, __FILE__, line);
     if (actual > upper)
-        throw new AssertError(msg ~ ": upper: " ~ signedToTempString(actual, 10).idup, __FILE__, line);
+        throw new AssertError(msg ~ ": upper: " ~ signedToTempString(actual).idup, __FILE__, line);
 }

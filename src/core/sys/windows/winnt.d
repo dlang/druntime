@@ -4,7 +4,7 @@
  * Translated from MinGW API for MS-Windows 3.12
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_winnt.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_winnt.d)
  */
 module core.sys.windows.winnt;
 version (Windows):
@@ -13,7 +13,7 @@ version (Windows):
 version (ANSI) {} else version = Unicode;
 
 public import core.sys.windows.basetsd, core.sys.windows.windef, core.sys.windows.winerror;
-private import core.sys.windows.w32api;
+import core.sys.windows.w32api;
 
 /* Translation Notes:
 The following macros are unneeded for D:

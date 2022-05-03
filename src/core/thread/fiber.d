@@ -12,6 +12,8 @@
 module core.thread.fiber;
 
 import core.thread.osthread;
+import core.thread.threadgroup;
+import core.thread.types;
 import core.thread.context;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -63,7 +65,13 @@ private
     }
     else version (PPC)
     {
-        version (Posix)
+        version (OSX)
+        {
+            version = AsmPPC_Darwin;
+            version = AsmExternal;
+            version = AlignFiberStackTo16Byte;
+        }
+        else version (Posix)
         {
             version = AsmPPC_Posix;
             version = AsmExternal;
@@ -71,7 +79,13 @@ private
     }
     else version (PPC64)
     {
-        version (Posix)
+        version (OSX)
+        {
+            version = AsmPPC_Darwin;
+            version = AsmExternal;
+            version = AlignFiberStackTo16Byte;
+        }
+        else version (Posix)
         {
             version = AlignFiberStackTo16Byte;
         }
@@ -531,6 +545,16 @@ class Fiber
         // the existence of debug symbols and other conditions. Avoid causing
         // stack overflows by defaulting to a larger stack size
         enum defaultStackPages = 8;
+    else version (OSX)
+    {
+        version (X86_64)
+            // libunwind on macOS 11 now requires more stack space than 16k, so
+            // default to a larger stack size. This is only applied to X86 as
+            // the PAGESIZE is still 4k, however on AArch64 it is 16k.
+            enum defaultStackPages = 8;
+        else
+            enum defaultStackPages = 4;
+    }
     else
         enum defaultStackPages = 4;
 
@@ -956,15 +980,26 @@ private:
         {
             version (Posix) import core.sys.posix.sys.mman; // mmap, MAP_ANON
 
+            static if ( __traits( compiles, ucontext_t ) )
+            {
+                // Stack size must be at least the minimum allowable by the OS.
+                if (sz < MINSIGSTKSZ)
+                    sz = MINSIGSTKSZ;
+            }
+
             static if ( __traits( compiles, mmap ) )
             {
                 // Allocate more for the memory guard
                 sz += guardPageSize;
 
+                int mmap_flags = MAP_PRIVATE | MAP_ANON;
+                version (OpenBSD)
+                    mmap_flags |= MAP_STACK;
+
                 m_pmem = mmap( null,
                                sz,
                                PROT_READ | PROT_WRITE,
-                               MAP_PRIVATE | MAP_ANON,
+                               mmap_flags,
                                -1,
                                0 );
                 if ( m_pmem == MAP_FAILED )
@@ -1289,6 +1324,28 @@ private:
                 pstack += int.sizeof * 20;
             }
 
+            assert( (cast(size_t) pstack & 0x0f) == 0 );
+        }
+        else version (AsmPPC_Darwin)
+        {
+            version (StackGrowsDown) {}
+            else static assert(false, "PowerPC Darwin only supports decrementing stacks");
+
+            uint wsize = size_t.sizeof;
+
+            // linkage + regs + FPRs + VRs
+            uint space = 8 * wsize + 20 * wsize + 18 * 8 + 12 * 16;
+            (cast(ubyte*)pstack - space)[0 .. space] = 0;
+
+            pstack -= wsize * 6;
+            *cast(size_t*)pstack = cast(size_t) &fiber_entryPoint; // LR
+            pstack -= wsize * 22;
+
+            // On Darwin PPC64 pthread self is in R13 (which is reserved).
+            // At present, it is not safe to migrate fibers between threads, but if that
+            // changes, then updating the value of R13 will also need to be handled.
+            version (PPC64)
+              *cast(size_t*)(pstack + wsize) = cast(size_t) Thread.getThis().m_addr;
             assert( (cast(size_t) pstack & 0x0f) == 0 );
         }
         else version (AsmMIPS_O32_Posix)
@@ -1719,7 +1776,7 @@ unittest
 
     try
     {
-        (new Fiber({
+        (new Fiber(function() {
             throw new Exception( MSG );
         })).call();
         assert( false, "Expected rethrown exception." );

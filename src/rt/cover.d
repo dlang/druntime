@@ -11,6 +11,8 @@
 
 module rt.cover;
 
+import core.internal.util.math : min, max;
+
 private
 {
     version (Windows)
@@ -136,8 +138,8 @@ extern (C) void dmd_coverSetMerge( bool flag )
  *
  * Params:
  *  filename = The name of the coverage file.
- *  valid    = ???
- *  data     = ???
+ *  valid    = Bit array containing the valid code lines for coverage
+ *  data     = Array containg the coverage hits of each line
  *  minPercent = minimal coverage of the module
  */
 extern (C) void _d_cover_register2(string filename, size_t[] valid, uint[] data, ubyte minPercent)
@@ -177,8 +179,41 @@ uint parseNum(const(char)[] s)
     return res;
 }
 
-T min(T)(T a, T b) { return a < b ? a : b; }
-T max(T)(T a, T b) { return b < a ? a : b; }
+const(char)[] parseContent(const(char)[] s)
+{
+    while (s.length && s[0] != '|')
+        s = s[1 .. $];
+    return s[1 .. $];
+}
+
+bool lstEquals(char[][] sourceLines, char[][] lstLines)
+{
+    if (sourceLines.length != lstLines.length - 1U)
+        return false;
+
+    foreach (i, line; sourceLines)
+    {
+        auto content = parseContent(lstLines[i]);
+        // length mismatch
+        if (line.length != content.length) return false;
+
+        // char content mismatch
+        foreach (j, c; content)
+            if (line[j] != c) return false;
+    }
+
+    return true;
+}
+
+unittest
+{
+    char[][] src = cast(char[][])[ "12345", " | 12345, asasd", "|", ".;" ];
+    char[][] lst = cast(char[][])[ "       |12345", "       | | 12345, asasd", "      1||", "0000000|.;", "" ];
+    char[][] badLst = cast(char[][])[ "       |12344", "       | | 12345, asasd", "      1||", "0000000|.;", "" ];
+    assert(lstEquals(src, lst));
+    assert(!lstEquals(src, []));
+    assert(!lstEquals(src, badLst));
+}
 
 shared static this()
 {
@@ -194,6 +229,7 @@ shared static ~this()
 
     auto buf = new char[NUMCHARS];
     auto lines = new char[][NUMLINES];
+    auto lstLines = new char[][NUMLINES];
 
     foreach (c; gdata)
     {
@@ -204,22 +240,31 @@ shared static ~this()
         lockFile(fileno(flst)); // gets unlocked by fclose
         scope(exit) fclose(flst);
 
-        if (config.merge && readFile(flst, buf))
-        {
-            splitLines(buf, lines);
-
-            foreach (i, line; lines[0 .. min($, c.data.length)])
-                c.data[i] += parseNum(line);
-        }
-
         if (!readFile(appendFN(config.srcpath, c.filename), buf))
             continue;
         splitLines(buf, lines);
 
+        // Calculate the minimum line length between the source file and c.data
+        auto minLineLength = min(c.data.length, lines.length);
+
+        foreach (i; 0 .. minLineLength)
+            lines[i] = expandTabs(lines[i]);
+
+        auto buf2 = new char[NUMCHARS];
+        if (config.merge && readFile(flst, buf2))
+        {
+            splitLines(buf2, lstLines);
+
+            // check if source is the same before merge
+            if (lstEquals(lines, lstLines))
+                foreach (i, line; lstLines[0 .. min($, c.data.length)])
+                    c.data[i] += parseNum(line);
+        }
+
         // Calculate the maximum number of digits in the line with the greatest
         // number of calls.
         uint maxCallCount;
-        foreach (n; c.data[0 .. min($, lines.length)])
+        foreach (n; c.data[0 .. minLineLength])
             maxCallCount = max(maxCallCount, n);
 
         // Make sure that there are a minimum of seven columns in each file so
@@ -233,10 +278,9 @@ shared static ~this()
         // rewind for overwriting
         fseek(flst, 0, SEEK_SET);
 
-        foreach (i, n; c.data[0 .. min($, lines.length)])
+        foreach (i, n; c.data[0 .. minLineLength])
         {
             auto line = lines[i];
-            line = expandTabs( line );
 
             if (n == 0)
             {
@@ -416,7 +460,8 @@ FILE* openOrCreateFile(string name)
     version (Windows)
         immutable fd = _wopen(toUTF16z(name), _O_RDWR | _O_CREAT | _O_BINARY, _S_IREAD | _S_IWRITE);
     else
-        immutable fd = open((name ~ '\0').ptr, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+        immutable fd = open((name ~ '\0').ptr, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |
+                S_IROTH | S_IWOTH);
     version (CRuntime_Microsoft)
         alias fdopen = _fdopen;
     version (Posix)

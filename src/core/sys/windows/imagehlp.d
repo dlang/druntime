@@ -5,7 +5,7 @@
  *
  * Authors: Stewart Gordon
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_imagehlp.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_imagehlp.d)
  */
 module core.sys.windows.imagehlp;
 version (Windows):
@@ -19,7 +19,7 @@ version (ANSI) {} else version = Unicode;
     as well provide it here.
 */
 
-private import core.sys.windows.winbase, core.sys.windows.windef;
+import core.sys.windows.winbase, core.sys.windows.windef;
 
 // FIXME: check types of constants
 

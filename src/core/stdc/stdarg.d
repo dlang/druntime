@@ -13,7 +13,7 @@
 module core.stdc.stdarg;
 
 @system:
-//@nogc:    // Not yet, need to make TypeInfo's member functions @nogc first
+@nogc:
 nothrow:
 
 version (X86_64)
@@ -48,7 +48,11 @@ version (MIPS64)  version = MIPS_Any;
 version (PPC)     version = PPC_Any;
 version (PPC64)   version = PPC_Any;
 
-version (ARM_Any)
+version (GNU)
+{
+    // Uses gcc.builtins
+}
+else version (ARM_Any)
 {
     // Darwin uses a simpler varargs implementation
     version (OSX) {}
@@ -263,6 +267,9 @@ T va_arg(T)(ref va_list ap)
 /**
  * Retrieve and store in parmn the next value that is of type T.
  */
+version (GNU)
+    void va_arg(T)(ref va_list ap, ref T parmn); // intrinsic
+else
 void va_arg(T)(ref va_list ap, ref T parmn)
 {
     parmn = va_arg!T(ap);

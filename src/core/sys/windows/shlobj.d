@@ -4,7 +4,7 @@
  * Translated from MinGW API for MS-Windows 4.0
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_shlobj.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_shlobj.d)
  */
 module core.sys.windows.shlobj;
 version (Windows):
@@ -18,10 +18,10 @@ pragma(lib, "shell32");
 // SHGetFolderPath in shfolder.dll on W9x, NT4, also in shell32.dll on W2K
 
 import core.sys.windows.commctrl, core.sys.windows.ole2, core.sys.windows.shlguid, core.sys.windows.shellapi;
-private import core.sys.windows.prsht, core.sys.windows.unknwn, core.sys.windows.w32api, core.sys.windows.winbase,
+import core.sys.windows.prsht, core.sys.windows.unknwn, core.sys.windows.w32api, core.sys.windows.winbase,
   core.sys.windows.winnt, core.sys.windows.winuser, core.sys.windows.wtypes, core.sys.windows.objfwd, core.sys.windows.objidl;
-private import core.sys.windows.winnetwk; // for NETRESOURCE
-private import core.sys.windows.oaidl : VARIANT;
+import core.sys.windows.winnetwk; // for NETRESOURCE
+import core.sys.windows.oaidl : VARIANT;
 
 
 // FIXME: clean up Windows version support
@@ -856,16 +856,6 @@ interface IEnumExtraSearch: IUnknown {
 alias IEnumExtraSearch LPENUMEXTRASEARCH;
 
 interface IShellFolder2 : IShellFolder {
-    HRESULT ParseDisplayName(HWND, LPBC, LPOLESTR, PULONG, LPITEMIDLIST*, PULONG);
-    HRESULT EnumObjects(HWND, DWORD, LPENUMIDLIST*);
-    HRESULT BindToObject(LPCITEMIDLIST, LPBC, REFIID, PVOID*);
-    HRESULT BindToStorage(LPCITEMIDLIST, LPBC, REFIID, PVOID*);
-    HRESULT CompareIDs(LPARAM, LPCITEMIDLIST, LPCITEMIDLIST);
-    HRESULT CreateViewObject(HWND, REFIID, PVOID*);
-    HRESULT GetAttributesOf(UINT, LPCITEMIDLIST*, PULONG);
-    HRESULT GetUIObjectOf(HWND, UINT, LPCITEMIDLIST*, REFIID, PUINT, PVOID*);
-    HRESULT GetDisplayNameOf(LPCITEMIDLIST, DWORD, LPSTRRET);
-    HRESULT SetNameOf(HWND, LPCITEMIDLIST, LPCOLESTR, DWORD, LPITEMIDLIST*);
     HRESULT GetDefaultSearchGUID(GUID*);
     HRESULT EnumSearches(IEnumExtraSearch*);
     HRESULT GetDefaultColumn(DWORD, ULONG*, ULONG*);

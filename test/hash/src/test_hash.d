@@ -13,6 +13,9 @@ void main()
     issue19568();
     issue19582();
     issue20034();
+    issue21642();
+    issue22024();
+    issue22076();
     testTypeInfoArrayGetHash1();
     testTypeInfoArrayGetHash2();
     pr2243();
@@ -216,8 +219,7 @@ void issue19582()
         }
     }
     enum b2 = () {
-            S[10] a;
-            return ((const S[] a) @nogc nothrow pure @safe => toUbyte(a))(a);
+            return ((const S[] a) @nogc nothrow pure @safe => toUbyte(a))(new S[10]);
         }();
 }
 
@@ -230,6 +232,84 @@ void issue20034()
     }
     // should compile
     assert(hashOf(E.a, 1));
+}
+
+/// [REG 2.084] hashOf will fail to compile for some structs/unions that recursively contain shared enums
+void issue21642() @safe nothrow pure
+{
+    enum C : char { _ = 1, }
+    union U { C c; void[0] _; }
+    shared union V { U u; }
+    cast(void) hashOf(V.init);
+    // Also test the underlying reason the above was failing.
+    import core.internal.convert : toUbyte;
+    shared C c;
+    assert(toUbyte(c) == [ubyte(1)]);
+}
+
+/// Accept enum type whose ultimate base type is a SIMD vector.
+void issue22024() @nogc nothrow pure @safe
+{
+    static if (is(__vector(float[2])))
+    {
+        enum E2 : __vector(float[2]) { a = __vector(float[2]).init, }
+        enum F2 : E2 { a = E2.init, }
+        assert(hashOf(E2.init) == hashOf(F2.init));
+        assert(hashOf(E2.init, 1) == hashOf(F2.init, 1));
+    }
+    static if (is(__vector(float[4])))
+    {
+        enum E4 : __vector(float[4]) { a = __vector(float[4]).init, }
+        enum F4 : E4 { a = E4.init, }
+        assert(hashOf(E4.init) == hashOf(F4.init));
+        assert(hashOf(E4.init, 1) == hashOf(F4.init, 1));
+    }
+}
+
+/// hashOf(S) can segfault if S.toHash is forwarded via `alias this` to a
+/// receiver which may be null.
+void issue22076()
+{
+    static struct S0 { Object a; alias a this; }
+
+    static struct S1
+    {
+        S0 a;
+        inout(S0)* b() inout return nothrow { return &a; }
+        alias b this;
+    }
+
+    static struct S2
+    {
+        S0 a;
+        S1 b;
+    }
+
+    extern(C++) static class C0
+    {
+        int foo() { return 0; } // Need at least one function in vtable.
+        S0 a; alias a this;
+    }
+
+    extern(C++) static class C1
+    {
+        S1 a;
+        inout(S1)* b() inout nothrow { return &a; }
+        alias b this;
+    }
+
+    cast(void) hashOf(S0.init);
+    cast(void) hashOf(S0.init, 0);
+    cast(void) hashOf(S1.init);
+    cast(void) hashOf(S1.init, 0);
+    cast(void) hashOf(S2.init);
+    cast(void) hashOf(S2.init, 0);
+    auto c0 = new C0();
+    cast(void) hashOf(c0);
+    cast(void) hashOf(c0, 0);
+    auto c1 = new C1();
+    cast(void) hashOf(c1);
+    cast(void) hashOf(c1, 0);
 }
 
 /// Tests ensure TypeInfo_Array.getHash uses element hash functions instead
@@ -338,11 +418,9 @@ void pr2243()
     enum Bar vsexpr = Bar();
     enum int[int] aaexpr = [99:2, 12:6, 45:4];
     enum Gun eexpr = Gun.A;
-    enum cdouble cexpr = 7+4i;
     enum Foo[] staexpr = [Foo(), Foo(), Foo()];
     enum Bar[] vsaexpr = [Bar(), Bar(), Bar()];
     enum realexpr = 7.88;
-    enum raexpr = [8.99L+86i, 3.12L+99i, 5.66L+12i];
     enum nullexpr = null;
     enum plstr = Plain();
     enum plarrstr = [Plain(), Plain(), Plain()];
@@ -366,7 +444,6 @@ void pr2243()
     enum h10 = vsexpr.hashOf();
     enum h11 = aaexpr.hashOf();
     enum h12 = eexpr.hashOf();
-    enum h13 = cexpr.hashOf();
     enum h14 = hashOf(new Boo);
     enum h15 = staexpr.hashOf();
     enum h16 = hashOf([new Boo, new Boo, new Boo]);
@@ -387,7 +464,6 @@ void pr2243()
     auto h27 = ptrexpr.hashOf();
 
     enum h28 = realexpr.hashOf();
-    enum h29 = raexpr.hashOf();
     enum h30 = nullexpr.hashOf();
     enum h31 = plstr.hashOf();
     enum h32 = plarrstr.hashOf();
@@ -405,7 +481,6 @@ void pr2243()
     auto v10 = vsexpr;
     auto v11 = aaexpr;
     auto v12 = eexpr;
-    auto v13 = cexpr;
     auto v14 = new Boo;
     auto v15 = staexpr;
     auto v16 = [new Boo, new Boo, new Boo];
@@ -427,7 +502,6 @@ void pr2243()
     auto v26 = dgexpr;
     auto v27 = ptrexpr;
     auto v28 = realexpr;
-    auto v29 = raexpr;
 
     //runtime hashes
     auto rth1 = hashOf(v1);
@@ -442,7 +516,6 @@ void pr2243()
     auto rth10 = hashOf(v10);
     auto rth11 = hashOf(v11);
     auto rth12 = hashOf(v12);
-    auto rth13 = hashOf(v13);
     auto rth14 = hashOf(v14);
     auto rth15 = hashOf(v15);
     auto rth16 = hashOf(v16);
@@ -460,7 +533,6 @@ void pr2243()
     auto rth26 = hashOf(v26);
     auto rth27 = hashOf(v27);
     auto rth28 = hashOf(v28);
-    auto rth29 = hashOf(v29);
 
     auto rth31 = hashOf(v31);
     auto rth32 = hashOf(v32);
@@ -478,7 +550,6 @@ void pr2243()
     assert(h10 == rth10);
     assert(h11 == rth11);
     assert(h12 == rth12);
-    assert(h13 == rth13);
     assert(h14 == rth14);
     assert(h15 == rth15);
     assert(h16 == rth16);
@@ -493,8 +564,7 @@ void pr2243()
     assert(h25 == rth25);
     assert(h26 == rth26);
     assert(h27 == rth27);
-    assert(h28 == rth28);
-    assert(h29 == rth29);*/
+    assert(h28 == rth28);*/
     assert(h30 == rth30);
     assert(h31 == rth31);
     assert(h32 == rth32);
@@ -520,7 +590,6 @@ void pr2243()
     auto tih10 = tiHashOf(v10);
     auto tih11 = tiHashOf(v11);
     auto tih12 = tiHashOf(v12);
-    auto tih13 = tiHashOf(v13);
     auto tih14 = tiHashOf(v14);
     auto tih15 = tiHashOf(v15);
     auto tih16 = tiHashOf(v16);
@@ -536,7 +605,6 @@ void pr2243()
     auto tih26 = tiHashOf(v26);
     auto tih27 = tiHashOf(v27);
     auto tih28 = tiHashOf(v28);
-    auto tih29 = tiHashOf(v29);
     auto tih30 = tiHashOf(v30);
     auto tih31 = tiHashOf(v31);
     auto tih32 = tiHashOf(v32);
@@ -554,7 +622,6 @@ void pr2243()
     //assert(tih10 == rth10); // need compiler-generated __xtoHash changes
     assert(tih11 == rth11);
     assert(tih12 == rth12);
-    assert(tih13 == rth13);
     assert(tih14 == rth14);
     assert(tih15 == rth15);
     assert(tih16 == rth16);
@@ -570,7 +637,6 @@ void pr2243()
     assert(tih26 == rth26);
     assert(tih27 == rth27);
     assert(tih28 == rth28);
-    assert(tih29 == rth29);
     assert(tih30 == rth30);
     assert(tih31 == rth31);
     assert(tih32 == rth32);

@@ -4,7 +4,7 @@
  * Translated from MinGW API for MS-Windows 3.10
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_winbase.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_winbase.d)
  */
 module core.sys.windows.winbase;
 version (Windows):
@@ -34,7 +34,7 @@ int wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int);
 */
 
 import core.sys.windows.windef, core.sys.windows.winver;
-private import core.sys.windows.basetyps, core.sys.windows.w32api, core.sys.windows.winnt;
+import core.sys.windows.basetyps, core.sys.windows.w32api, core.sys.windows.winnt;
 
 // FIXME:
 //alias void va_list;

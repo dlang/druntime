@@ -4,6 +4,7 @@
  * Copyright: Copyright Digital Mars 2000 - 2015.
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Martin Nowak
+ * Source: $(DRUNTIMESRC rt/_aaA.d)
  */
 module rt.aaA;
 
@@ -11,6 +12,7 @@ module rt.aaA;
 extern (C) immutable int _aaVersion = 1;
 
 import core.memory : GC;
+import core.internal.util.math : min, max;
 
 // grow threshold
 private enum GROW_NUM = 4;
@@ -285,15 +287,15 @@ TypeInfo_Struct fakeEntryTI(ref Impl aa, const TypeInfo keyti, const TypeInfo va
     void* p = GC.malloc(sizeti + (2 + rtisize) * (void*).sizeof);
     import core.stdc.string : memcpy;
 
-    memcpy(p, typeid(TypeInfo_Struct).initializer().ptr, sizeti);
+    memcpy(p, __traits(initSymbol, TypeInfo_Struct).ptr, sizeti);
 
     auto ti = cast(TypeInfo_Struct) p;
     auto extra = cast(TypeInfo*)(p + sizeti);
     extra[0] = cast() kti;
     extra[1] = cast() vti;
 
-    static immutable tiName = __MODULE__ ~ ".Entry!(...)";
-    ti.name = tiName;
+    static immutable tiMangledName = "S2rt3aaA__T5EntryZ";
+    ti.mangledName = tiMangledName;
 
     ti.m_RTInfo = rtisize > 0 ? rtinfoEntry(aa, keyinfo, valinfo, cast(size_t*)(extra + 2), rtisize) : rtinfo;
     ti.m_flags = ti.m_RTInfo is rtinfoNoPointers ? cast(TypeInfo_Struct.StructFlags)0 : TypeInfo_Struct.StructFlags.hasPointers;
@@ -479,16 +481,6 @@ pure nothrow @nogc unittest
         assert(nextpow2(n) == pow2);
 }
 
-private T min(T)(T a, T b) pure nothrow @nogc
-{
-    return a < b ? a : b;
-}
-
-private T max(T)(T a, T b) pure nothrow @nogc
-{
-    return b < a ? a : b;
-}
-
 //==============================================================================
 // API Implementation
 //------------------------------------------------------------------------------
@@ -503,7 +495,7 @@ extern (C) size_t _aaLen(scope const AA aa) pure nothrow @nogc
  * Lookup *pkey in aa.
  * Called only from implementation of (aa[key]) expressions when value is mutable.
  * Params:
- *      aa = associative array opaque pointer
+ *      paa = associative array opaque pointer
  *      ti = TypeInfo for the associative array
  *      valsz = ignored
  *      pkey = pointer to the key value
@@ -512,18 +504,18 @@ extern (C) size_t _aaLen(scope const AA aa) pure nothrow @nogc
  *      If key was not in the aa, a mutable pointer to newly inserted value which
  *      is set to all zeros
  */
-extern (C) void* _aaGetY(AA* aa, const TypeInfo_AssociativeArray ti,
+extern (C) void* _aaGetY(scope AA* paa, const TypeInfo_AssociativeArray ti,
     const size_t valsz, scope const void* pkey)
 {
     bool found;
-    return _aaGetX(aa, ti, valsz, pkey, found);
+    return _aaGetX(paa, ti, valsz, pkey, found);
 }
 
 /******************************
  * Lookup *pkey in aa.
  * Called only from implementation of require
  * Params:
- *      aa = associative array opaque pointer
+ *      paa = associative array opaque pointer
  *      ti = TypeInfo for the associative array
  *      valsz = ignored
  *      pkey = pointer to the key value
@@ -533,12 +525,16 @@ extern (C) void* _aaGetY(AA* aa, const TypeInfo_AssociativeArray ti,
  *      If key was not in the aa, a mutable pointer to newly inserted value which
  *      is set to all zeros
  */
-extern (C) void* _aaGetX(AA* aa, const TypeInfo_AssociativeArray ti,
+extern (C) void* _aaGetX(scope AA* paa, const TypeInfo_AssociativeArray ti,
     const size_t valsz, scope const void* pkey, out bool found)
 {
     // lazily alloc implementation
-    if (aa.impl is null)
-        aa.impl = new Impl(ti);
+    AA aa = *paa;
+    if (aa is null)
+    {
+        aa = new Impl(ti);
+        *paa = aa;
+    }
 
     // get hash and bucket for key
     immutable hash = calcHash(pkey, ti.key);
@@ -564,7 +560,7 @@ extern (C) void* _aaGetX(AA* aa, const TypeInfo_AssociativeArray ti,
     // update search cache and allocate entry
     aa.firstUsed = min(aa.firstUsed, cast(uint)(p - aa.buckets.ptr));
     p.hash = hash;
-    p.entry = allocEntry(aa.impl, pkey);
+    p.entry = allocEntry(aa, pkey);
     // postblit for key
     if (aa.flags & Impl.Flags.keyHasPostblit)
     {
@@ -628,7 +624,9 @@ extern (C) bool _aaDelX(AA aa, scope const TypeInfo keyti, scope const void* pke
         p.entry = null;
 
         ++aa.deleted;
-        if (aa.length * SHRINK_DEN < aa.dim * SHRINK_NUM)
+        // `shrink` reallocates, and allocating from a finalizer leads to
+        // InvalidMemoryError: https://issues.dlang.org/show_bug.cgi?id=21442
+        if (aa.length * SHRINK_DEN < aa.dim * SHRINK_NUM && !GC.inFinalizer())
             aa.shrink(keyti);
 
         return true;
@@ -641,16 +639,17 @@ extern (C) void _aaClear(AA aa) pure nothrow
 {
     if (!aa.empty)
     {
-        aa.impl.clear();
+        aa.clear();
     }
 }
 
 /// Rehash AA
 extern (C) void* _aaRehash(AA* paa, scope const TypeInfo keyti) pure nothrow
 {
-    if (!paa.empty)
-        paa.resize(nextpow2(INIT_DEN * paa.length / INIT_NUM));
-    return *paa;
+    AA aa = *paa;
+    if (!aa.empty)
+        aa.resize(nextpow2(INIT_DEN * aa.length / INIT_NUM));
+    return aa;
 }
 
 /// Return a GC allocated array of all values
@@ -788,7 +787,7 @@ extern (C) Impl* _d_assocarrayliteralTX(const TypeInfo_AssociativeArray ti, void
 /// compares 2 AAs for equality
 extern (C) int _aaEqual(scope const TypeInfo tiRaw, scope const AA aa1, scope const AA aa2)
 {
-    if (aa1.impl is aa2.impl)
+    if (aa1 is aa2)
         return true;
 
     immutable len = _aaLen(aa1);
@@ -816,8 +815,10 @@ extern (C) int _aaEqual(scope const TypeInfo tiRaw, scope const AA aa1, scope co
 }
 
 /// compute a hash
-extern (C) hash_t _aaGetHash(scope const AA* aa, scope const TypeInfo tiRaw) nothrow
+extern (C) hash_t _aaGetHash(scope const AA* paa, scope const TypeInfo tiRaw) nothrow
 {
+    const AA aa = *paa;
+
     if (aa.empty)
         return 0;
 
@@ -832,11 +833,9 @@ extern (C) hash_t _aaGetHash(scope const AA* aa, scope const TypeInfo tiRaw) not
     size_t h;
     foreach (b; aa.buckets)
     {
-        if (!b.filled)
-            continue;
-        size_t[2] h2 = [keyHash(b.entry), valHash(b.entry + off)];
         // use addition here, so that hash is independent of element order
-        h += hashOf(h2);
+        if (b.filled)
+            h += hashOf(valHash(b.entry + off), keyHash(b.entry));
     }
 
     return h;
@@ -854,7 +853,7 @@ struct Range
 
 extern (C) pure nothrow @nogc @safe
 {
-    Range _aaRange(return AA aa)
+    Range _aaRange(return scope AA aa)
     {
         if (!aa)
             return Range();
@@ -862,7 +861,7 @@ extern (C) pure nothrow @nogc @safe
         foreach (i; aa.firstUsed .. aa.dim)
         {
             if (aa.buckets[i].filled)
-                return Range(aa.impl, i);
+                return Range(aa, i);
         }
         return Range(aa, aa.dim);
     }

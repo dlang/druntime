@@ -36,6 +36,7 @@ nothrow:
  * greater than long.max, the result is
  * indeterminate.
  */
+deprecated("rndtonl is to be removed by 2.100. Please use round instead")
 extern (C) real rndtonl(real x);
 
 pure:
@@ -135,17 +136,24 @@ unittest {
 }
 
 /*******************************
- * Returns |x|
- *
+ * Compute the absolute value.
  *      $(TABLE_SV
  *      $(TR $(TH x)                 $(TH fabs(x)))
  *      $(TR $(TD $(PLUSMN)0.0)      $(TD +0.0) )
  *      $(TR $(TD $(PLUSMN)$(INFIN)) $(TD +$(INFIN)) )
  *      )
+ * It is implemented as a compiler intrinsic.
+ * Params:
+ *      x = floating point value
+ * Returns: |x|
+ * References: equivalent to `std.math.fabs`
  */
-float fabs(float x);    /* intrinsic */
-double fabs(double x);  /* intrinsic */ /// ditto
-real fabs(real x);      /* intrinsic */ /// ditto
+@safe pure nothrow @nogc
+{
+    float  fabs(float  x);
+    double fabs(double x); /// ditto
+    real   fabs(real   x); /// ditto
+}
 
 /**********************************
  * Rounds x to the nearest integer value, using the current rounding

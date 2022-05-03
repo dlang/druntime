@@ -167,6 +167,20 @@ extern(D):
     ///
     inout(T)[] opIndex() inout pure nothrow @safe @nogc                     { return as_array(); }
 
+    /// Two `basic_string`s are equal if they represent the same sequence of code units.
+    bool opEquals(scope const ref basic_string s) const pure nothrow @safe  { return as_array == s.as_array; }
+    /// ditto
+    bool opEquals(scope const T[] s) const pure nothrow @safe               { return as_array == s; }
+
+    /// Performs lexicographical comparison.
+    int opCmp(scope const ref basic_string rhs) const pure nothrow @safe    { return __cmp(as_array, rhs.as_array); }
+    /// ditto
+    int opCmp(scope const T[] rhs) const pure nothrow @safe                 { return __cmp(as_array, rhs); }
+
+    /// Hash to allow `basic_string`s to be used as keys for built-in associative arrays.
+    /// **The result will generally not be the same as C++ `std::hash<std::basic_string<T>>`.**
+    size_t toHash() const @nogc nothrow pure @safe                          { return .hashOf(as_array); }
+
     ///
     void clear()                                                            { eos(0); } // TODO: bounds-check
     ///
@@ -329,7 +343,7 @@ extern(D):
         ///
         inout(T)* data() inout @safe                                        { return _Get_data()._Myptr; }
         ///
-        inout(T)[] as_array() inout nothrow @trusted                        { return _Get_data()._Myptr[0 .. _Get_data()._Mysize]; }
+        inout(T)[] as_array() scope return inout nothrow @trusted           { return _Get_data()._Myptr[0 .. _Get_data()._Mysize]; }
         ///
         ref inout(T) at(size_type i) inout nothrow @trusted                 { return _Get_data()._Myptr[0 .. _Get_data()._Mysize][i]; }
 
@@ -1906,7 +1920,7 @@ extern(D):
         ///
         inout(T)* data() inout @safe                                        { return __get_pointer(); }
         ///
-        inout(T)[] as_array() inout nothrow @trusted                        { return __get_pointer()[0 .. size()]; }
+        inout(T)[] as_array() scope return inout nothrow @trusted           { return __get_pointer()[0 .. size()]; }
         ///
         ref inout(T) at(size_type i) inout nothrow @trusted                 { return __get_pointer()[0 .. size()][i]; }
 
@@ -2483,8 +2497,8 @@ extern(C++, (StdNamespace)):
     extern(D) @safe @nogc:
         pragma(inline, true)
         {
-            ref inout(Alloc) _Getal() inout pure nothrow { return _Mypair._Myval1; }
-            ref inout(ValTy) _Get_data() inout pure nothrow { return _Mypair._Myval2; }
+            ref inout(Alloc) _Getal() return inout pure nothrow { return _Mypair._Myval1; }
+            ref inout(ValTy) _Get_data() return inout pure nothrow { return _Mypair._Myval2; }
         }
 
         void _Orphan_all() nothrow { _Get_data._Base._Orphan_all(); }

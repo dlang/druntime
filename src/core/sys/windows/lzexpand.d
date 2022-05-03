@@ -4,7 +4,7 @@
  * Translated from MinGW Windows headers
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_lzexpand.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_lzexpand.d)
  */
 module core.sys.windows.lzexpand;
 version (Windows):
@@ -13,7 +13,7 @@ version (Windows):
 version (ANSI) {} else version = Unicode;
 pragma(lib, "lz32");
 
-private import core.sys.windows.winbase, core.sys.windows.windef;
+import core.sys.windows.winbase, core.sys.windows.windef;
 
 enum : LONG {
     LZERROR_BADINHANDLE  = -1,

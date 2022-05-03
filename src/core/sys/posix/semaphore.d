@@ -14,8 +14,8 @@
  */
 module core.sys.posix.semaphore;
 
-private import core.sys.posix.config;
-private import core.sys.posix.time;
+import core.sys.posix.config;
+import core.sys.posix.time;
 
 version (OSX)
     version = Darwin;
@@ -99,7 +99,7 @@ else version (NetBSD)
 }
 else version (OpenBSD)
 {
-    struct __sem { }
+    struct __sem;
     alias sem_t = __sem*;
 
     enum SEM_FAILED = cast(sem_t*) null;

@@ -4,7 +4,7 @@
  * Translated from MinGW Windows headers
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_lmerrlog.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_lmerrlog.d)
  */
 module core.sys.windows.lmerrlog;
 version (Windows):
@@ -12,8 +12,8 @@ version (Windows):
 
 // COMMENT: This appears to be only for Win16. All functions are deprecated.
 
-private import core.sys.windows.lmcons, core.sys.windows.windef;
-private import core.sys.windows.lmaudit; // for LPHLOG
+import core.sys.windows.lmcons, core.sys.windows.windef;
+import core.sys.windows.lmaudit; // for LPHLOG
 
 enum ERRLOG_BASE=3100;
 enum ERRLOG2_BASE=5700;

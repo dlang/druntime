@@ -109,12 +109,19 @@ betterc()
     make -f posix.mak betterc -j$N DUB="$HOME/dlang/dmd-${HOST_DMD_VER}/linux/bin64/dub"
 }
 
+publictests()
+{
+    # checkout a specific version of https://github.com/dlang/tools
+    if [ ! -d ../tools ] ; then
+        clone https://github.com/dlang/tools.git ../tools master --depth 1
+    fi
+
+    make -f posix.mak  publictests -j$N DUB="$HOME/dlang/dmd-${HOST_DMD_VER}/linux/bin64/dub"
+}
+
 codecov()
 {
-    # CodeCov gets confused by lst files which it can't matched
-    rm -rf test/runnable/extra-files
-    download "https://codecov.io/bash" "https://raw.githubusercontent.com/codecov/codecov-bash/master/codecov" "codecov.sh"
-    bash codecov.sh
+    OS_NAME=linux source ../dmd/ci/codecov.sh
 }
 
 case $1 in
@@ -122,6 +129,7 @@ case $1 in
     setup-repos) setup_repos ;;
     style) style ;;
     betterc) betterc ;;
+    publictests) publictests ;;
     coverage) coverage ;;
     codecov) codecov ;;
 esac

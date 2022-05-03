@@ -4,7 +4,7 @@
  * Translated from MinGW Windows headers
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_tlhelp32.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_tlhelp32.d)
  */
 module core.sys.windows.tlhelp32;
 version (Windows):
@@ -13,7 +13,7 @@ pragma(lib, "kernel32");
 
 version (ANSI) {} else version = Unicode;
 
-private import core.sys.windows.windef;
+import core.sys.windows.windef;
 
 enum : uint {
     HF32_DEFAULT = 1,

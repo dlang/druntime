@@ -31,6 +31,7 @@ void main()
     issue16974();
     issue18071();
     issue20440();
+    issue21442();
     testIterationWithConst();
     testStructArrayKey();
     miscTests1();
@@ -287,21 +288,20 @@ void testUpdate2()
     assert(updated);
 }
 
-void testByKey1()
+void testByKey1() @safe
 {
-    static assert(!__traits(compiles,
-        () @safe {
-            struct BadValue
-            {
-                int x;
-                this(this) @safe { *(cast(ubyte*)(null) + 100000) = 5; } // not @safe
-                alias x this;
-            }
+    static struct BadValue
+    {
+        int x;
+        this(this) @system { *(cast(ubyte*)(null) + 100000) = 5; } // not @safe
+        alias x this;
+    }
 
-            BadValue[int] aa;
-            () @safe { auto x = aa.byKey.front; } ();
-        }
-    ));
+    BadValue[int] aa;
+
+    // FIXME: Should be @system because of the postblit
+    if (false)
+        auto x = aa.byKey.front;
 }
 
 void testByKey2() nothrow pure
@@ -707,6 +707,40 @@ void issue20440() @safe
     S[S] aa;
     assert(aa.require(S(1), S(2)) == S(2));
     assert(aa[S(1)] == S(2));
+}
+
+///
+void issue21442()
+{
+    import core.memory;
+
+    size_t[size_t] glob;
+
+    class Foo
+    {
+        size_t count;
+
+        this (size_t entries) @safe
+        {
+            this.count = entries;
+            foreach (idx; 0 .. entries)
+                glob[idx] = idx;
+        }
+
+        ~this () @safe
+        {
+            foreach (idx; 0 .. this.count)
+                glob.remove(idx);
+        }
+    }
+
+    void bar () @safe
+    {
+        Foo f = new Foo(16);
+    }
+
+    bar();
+    GC.collect(); // Needs to happen from a GC collection
 }
 
 /// Verify iteration with const.

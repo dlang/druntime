@@ -60,26 +60,23 @@ int __cmp(T)(scope const T[] lhs, scope const T[] rhs) @trusted
         immutable len = lhs.length <= rhs.length ? lhs.length : rhs.length;
         foreach (const u; 0 .. len)
         {
-            static if (__traits(isFloating, T))
+            auto a = lhs.ptr[u], b = rhs.ptr[u];
+            static if (is(T : creal))
             {
-                immutable a = lhs.ptr[u], b = rhs.ptr[u];
-                static if (is(T == cfloat) || is(T == cdouble)
-                    || is(T == creal))
-                {
-                    // Use rt.cmath2._Ccmp instead ?
-                    auto r = (a.re > b.re) - (a.re < b.re);
-                    if (!r) r = (a.im > b.im) - (a.im < b.im);
-                }
-                else
-                {
-                    const r = (a > b) - (a < b);
-                }
-                if (r) return r;
+                // Use rt.cmath2._Ccmp instead ?
+                // Also: if NaN is present, numbers will appear equal.
+                auto r = (a.re > b.re) - (a.re < b.re);
+                if (!r) r = (a.im > b.im) - (a.im < b.im);
             }
-            else if (lhs.ptr[u] != rhs.ptr[u])
-                return lhs.ptr[u] < rhs.ptr[u] ? -1 : 1;
+            else
+            {
+                // This pattern for three-way comparison is better than conditional operators
+                // See e.g. https://godbolt.org/z/3j4vh1
+                const r = (a > b) - (a < b);
+            }
+            if (r) return r;
         }
-        return lhs.length < rhs.length ? -1 : (lhs.length > rhs.length);
+        return (lhs.length > rhs.length) - (lhs.length < rhs.length);
     }
 }
 
@@ -117,8 +114,8 @@ if (!__traits(isScalar, T1) && !__traits(isScalar, T2))
         }
         else static if (__traits(compiles, at(s1, u) < at(s2, u)))
         {
-            if (at(s1, u) != at(s2, u))
-                return at(s1, u) < at(s2, u) ? -1 : 1;
+            if (int result = (at(s1, u) > at(s2, u)) - (at(s1, u) < at(s2, u)))
+                return result;
         }
         else
         {
@@ -131,7 +128,7 @@ if (!__traits(isScalar, T1) && !__traits(isScalar, T2))
                 return c;
         }
     }
-    return s1.length < s2.length ? -1 : (s1.length > s2.length);
+    return (s1.length > s2.length) - (s1.length < s2.length);
 }
 
 // integral types
@@ -201,12 +198,6 @@ if (!__traits(isScalar, T1) && !__traits(isScalar, T2))
     compareMinMax!real;
     compareMinMax!float;
     compareMinMax!double;
-    compareMinMax!ireal;
-    compareMinMax!ifloat;
-    compareMinMax!idouble;
-    compareMinMax!creal;
-    //compareMinMax!cfloat;
-    compareMinMax!cdouble;
 
     // qualifiers
     compareMinMax!(const real);

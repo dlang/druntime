@@ -30,7 +30,7 @@ import core.sys.posix.pthread;
 import core.sys.darwin.mach.dyld;
 import core.sys.darwin.mach.getsect;
 import rt.deh, rt.minfo;
-import rt.util.container.array;
+import core.internal.container.array;
 
 struct SectionGroup
 {
@@ -49,7 +49,7 @@ struct SectionGroup
         return _moduleGroup.modules;
     }
 
-    @property ref inout(ModuleGroup) moduleGroup() inout nothrow @nogc
+    @property ref inout(ModuleGroup) moduleGroup() inout return nothrow @nogc
     {
         return _moduleGroup;
     }

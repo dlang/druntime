@@ -4,7 +4,7 @@
  * Translated from MinGW API for MS-Windows 3.12
  *
  * License: $(LINK2 http://www.boost.org/LICENSE_1_0.txt, Boost License 1.0)
- * Source: $(DRUNTIMESRC src/core/sys/windows/_commctrl.d)
+ * Source: $(DRUNTIMESRC core/sys/windows/_commctrl.d)
  */
 module core.sys.windows.commctrl;
 version (Windows):
@@ -13,9 +13,9 @@ version (Windows):
 version (ANSI) {} else version = Unicode;
 pragma(lib, "comctl32");
 
-private import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.winuser;
-private import core.sys.windows.winbase; // for SYSTEMTIME
-private import core.sys.windows.objfwd;  // for LPSTREAM
+import core.sys.windows.w32api, core.sys.windows.windef, core.sys.windows.winuser;
+import core.sys.windows.winbase; // for SYSTEMTIME
+import core.sys.windows.objfwd;  // for LPSTREAM
 
 import core.sys.windows.prsht;
 

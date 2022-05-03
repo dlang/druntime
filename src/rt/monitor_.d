@@ -4,6 +4,7 @@
  * Copyright: Copyright Digital Mars 2000 - 2015.
  * License:   $(HTTP www.boost.org/LICENSE_1_0.txt, Boost License 1.0).
  * Authors:   Walter Bright, Sean Kelly, Martin Nowak
+ * Source: $(DRUNTIMESRC rt/_monitor_.d)
  */
 module rt.monitor_;
 
@@ -24,15 +25,11 @@ in
 do
 {
     auto m = ensureMonitor(cast(Object) owner);
-    auto i = m.impl;
-    if (i is null)
+    if (m.impl is null)
     {
         atomicOp!("+=")(m.refs, cast(size_t) 1);
-        ownee.__monitor = owner.__monitor;
-        return;
     }
-    // If m.impl is set (ie. if this is a user-created monitor), assume
-    // the monitor is garbage collected and simply copy the reference.
+    // Assume the monitor is garbage collected and simply copy the reference.
     ownee.__monitor = owner.__monitor;
 }
 
@@ -233,7 +230,7 @@ struct Monitor
 
 private:
 
-@property ref shared(Monitor*) monitor(return Object h) pure nothrow @nogc
+@property ref shared(Monitor*) monitor(return scope Object h) pure nothrow @nogc
 {
     return *cast(shared Monitor**)&h.__monitor;
 }
