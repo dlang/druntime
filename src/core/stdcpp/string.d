@@ -49,10 +49,13 @@ else version (WatchOS)
 
 version (Darwin)
 {
-    // Apple decided to rock a different ABI... good for them!
+    // There exists an alternate layout that puts the data first,
+    // and is supposed to improve alignment.
+    // Apple enabled it by default.
     version = _LIBCPP_ABI_ALTERNATE_STRING_LAYOUT;
 }
 
+// https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html
 version (CppRuntime_Gcc)
 {
     version (_GLIBCXX_USE_CXX98_ABI)
@@ -79,6 +82,8 @@ enum Default = DefaultConstruct();
 /**
  * Character traits classes specify character properties and provide specific
  * semantics for certain operations on characters and sequences of characters.
+ *
+ * See_Also: https://en.cppreference.com/w/cpp/string/char_traits
  */
 extern(C++, (StdNamespace)) struct char_traits(CharT)
 {
