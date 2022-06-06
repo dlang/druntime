@@ -1433,8 +1433,6 @@ extern(D):
         }
         else
         {
-            pragma(msg, "libstdc++ std::__cxx11::basic_string is not yet supported; the struct contains an interior pointer which breaks D move semantics!");
-
             //----------------------------------------------------------------------------------
             // GCC/libstdc++ modern implementation
             //----------------------------------------------------------------------------------
@@ -1450,10 +1448,9 @@ extern(D):
                 _M_construct(str.ptr, str.length);
             }
             ///
-            this(this)
+            this(ref return scope basic_string rhs)
             {
-                assert(false);
-                // TODO: how do I know if it was local before?!
+                this(rhs.as_array());
             }
 
             ///

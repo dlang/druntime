@@ -9,13 +9,13 @@ OLDABITESTS:=
 
 ifeq (osx,$(OS))
 	TESTS11+=memory
-#	TESTS+=string
+	TESTS+=string
 #	TESTS+=vector
 endif
 ifeq (linux,$(OS))
 	TESTS11+=exception typeinfo
 	TESTS+=typeinfo
-#	TESTS+=string
+	TESTS+=string
 #	TESTS+=vector
 	OLDABITESTS+=string
 endif
