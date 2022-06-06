@@ -157,9 +157,9 @@ extern(D):
     enum size_type npos = size_type.max;
 
     ///
-    alias size_type = size_t;
+    alias size_type = Alloc.size_type;
     ///
-    alias difference_type = ptrdiff_t;
+    alias difference_type = Alloc.difference_type;
     ///
     alias value_type = T;
     ///
