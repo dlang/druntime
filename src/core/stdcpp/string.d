@@ -62,50 +62,8 @@ extern(C++, (StdNamespace)) struct char_traits(CharT)
 {
     alias char_type = CharT;
 
-    static size_t length(const(char_type)* s) @trusted pure nothrow @nogc
-    {
-        static if (is(char_type == char) || is(char_type == ubyte))
-        {
-            import core.stdc.string : strlen;
-            return strlen(s);
-        }
-        else
-        {
-            size_t len = 0;
-            for (; *s != char_type(0); ++s)
-                ++len;
-            return len;
-        }
-    }
-
-    static char_type* move(char_type* s1, const char_type* s2, size_t n) @trusted pure nothrow @nogc
-    {
-        import core.stdc.string : memmove;
-        import core.stdc.wchar_ : wmemmove;
-        import core.stdc.stddef : wchar_t;
-
-        if (n == 0)
-            return s1;
-
-        version (CRuntime_Microsoft)
-        {
-            enum crt = __traits(getTargetInfo, "cppRuntimeLibrary");
-            static if (crt.length >= 6 && crt[0 .. 6] == "msvcrt")
-                enum use_wmemmove = false; // https://issues.dlang.org/show_bug.cgi?id=20456
-            else
-                enum use_wmemmove = true;
-        }
-        else
-            enum use_wmemmove = true;
-
-        static if (use_wmemmove
-                && (is(char_type == wchar_t)
-                    || is(char_type == ushort) && wchar_t.sizeof == ushort.sizeof // Windows
-                    || is(char_type == uint) && wchar_t.sizeof == uint.sizeof)) // POSIX
-            return cast(char_type*) wmemmove(s1, s2, n);
-        else
-            return cast(char_type*) memmove(s1, s2, n * char_type.sizeof);
-    }
+    static size_t length(const(char_type)* s) @system @nogc;
+    static char_type* move(char_type* s1, const char_type* s2, size_t n) @system @nogc;
 }
 
 // I don't think we can have these here, otherwise symbols are emit to druntime, and we don't want that...
