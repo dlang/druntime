@@ -1,5 +1,27 @@
 /**
- * D header file for interaction with C++ std::string.
+ * D bindings for C++'s <string> header.
+ *
+ * The types in this modules are meant to facilitate C++ interoperability.
+ * Note that `std::string` cannot currently be explicitly defined here
+ * for various reasons. Users are encouraged to have a lightwheight module
+ * in their code, e.g. `cpptype`, publicly import this module, and define
+ * the types they wish to use, such as:
+ * ```
+ * alias std_string = basic_string!char;
+ * ```
+ *
+ * Target_support:
+ * Users should also be aware that the bindings depend on the platform
+ * and compiler they are targeting.
+ * MSVC++ (`CppRuntime_Microsoft`), clang++ (`CppRuntime_Clang`),
+ * and g++ (`CppRuntime_Gcc`) are all supported.
+ * Be aware that C++11 introduced a breaking change in the `std::string` ABI.
+ * When targeting G++ <= 5, or linking with code compiled with the
+ * $(LINK2 https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html, _GLIBCXX_USE_CXX11_ABI)
+ * directive, be sure to use `version = _GLIBCXX_USE_CXX98_ABI`.
+ * Lastly, some exotic programs might be compiled with the
+ * $(LINK2 https://stackoverflow.com/questions/21694302/what-are-the-mechanics-of-short-string-optimization-in-libc, alternate string layout),
+ * which is also supported, as it is the default on MacOS et al.
  *
  * Copyright: Copyright (c) 2019 D Language Foundation
  * License: Distributed under the
