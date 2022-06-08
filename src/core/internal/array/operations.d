@@ -13,6 +13,37 @@ version (GNU) version = GNU_OR_LDC;
 version (LDC) version = GNU_OR_LDC;
 
 /**
+Set all elements of an array to be a specified value.
+
+Meant to replace `_memset16`, `_memset32`, `_memset64`, `_memset80`, and
+`_memset128` from `rt/memset`, which are not linked in with `-betterC`.
+See: https://issues.dlang.org/show_bug.cgi?id=19946
+
+Params:
+    array = array to set
+    value = value to set each array element to
+*/
+void arraySet(T)(T[] array, T value)
+{
+    foreach (i; 0 .. array.length)
+        array[i] = value;
+}
+
+unittest
+{
+    float[3] getarr()
+    {
+        float[3] arr = void;
+        arraySet!float(arr, 2.0);
+        return arr;
+    }
+    auto rt = getarr();
+    enum ct = getarr();
+    assert(rt == [2.0, 2.0, 2.0]);
+    assert(rt == ct);
+}
+
+/**
  * Perform array (vector) operations and store the result in `res`.  Operand
  * types and operations are passed as template arguments in Reverse Polish
  * Notation (RPN).
