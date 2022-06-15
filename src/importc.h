@@ -55,3 +55,8 @@
  * Define it to do what other C compilers do.
  */
 #define __builtin_offsetof(t,i) ((typeof(sizeof(0)))((char *)&((t *)0)->i - (char *)0))
+
+/****************************
+ * Define it to do what other C compilers do.
+ */
+#define alignof(type) __builtin_offsetof(struct { char c; type member; }, member)
