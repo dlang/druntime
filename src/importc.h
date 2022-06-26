@@ -59,4 +59,9 @@
 /****************************
  * Define it to do what other C compilers do.
  */
-#define alignof(type) __builtin_offsetof(struct { char c; type member; }, member)
+#define _Alignof(type) __builtin_offsetof(struct { char c; type member; }, member)
+
+/****************************
+ * clang's preprocessor generates __alignof instead
+ */
+#define __alignof _Alignof
