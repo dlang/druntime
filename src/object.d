@@ -4353,6 +4353,8 @@ private void _doPostblit(T)(T[] arr)
     assert(test!Copy());
 }
 
+version (NoObjectDestroy) {}
+else
 /**
 Destroys the given object and optionally resets to initial state. It's used to
 _destroy an object, calling its destructor or finalizer so it no longer
@@ -4431,6 +4433,8 @@ nothrow @safe @nogc unittest
 private extern (C) void rt_finalize2(void* p, bool det = true, bool resetMemory = true) nothrow;
 
 /// ditto
+version (NoObjectDestroy) {}
+else
 void destroy(bool initialize = true, T)(T obj) if (is(T == class))
 {
     static if (__traits(getLinkage, T) == "C++")
@@ -4453,6 +4457,8 @@ void destroy(bool initialize = true, T)(T obj) if (is(T == class))
 }
 
 /// ditto
+version (NoObjectDestroy) {}
+else
 void destroy(bool initialize = true, T)(T obj) if (is(T == interface))
 {
     static assert(__traits(getLinkage, T) == "D", "Invalid call to destroy() on extern(" ~ __traits(getLinkage, T) ~ ") interface");
@@ -4743,6 +4749,8 @@ unittest
 }
 
 /// ditto
+version (NoObjectDestroy) {}
+else
 void destroy(bool initialize = true, T)(ref T obj)
 if (__traits(isStaticArray, T))
 {
@@ -4847,6 +4855,8 @@ if (__traits(isStaticArray, T))
 }
 
 /// ditto
+version (NoObjectDestroy) {}
+else
 void destroy(bool initialize = true, T)(ref T obj)
     if (!is(T == struct) && !is(T == interface) && !is(T == class) && !__traits(isStaticArray, T))
 {
