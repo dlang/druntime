@@ -107,6 +107,7 @@ DOCS=\
 	$(DOCDIR)\core_stdcpp_xutility.html \
 	$(DOCDIR)\core_stdcpp_new_.html \
 	$(DOCDIR)\core_stdcpp_string.html \
+	$(DOCDIR)\core_stdcpp_optional.html \
 	$(DOCDIR)\core_stdcpp_vector.html \
 	\
 	$(DOCDIR)\core_sync.html \
