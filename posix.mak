@@ -63,11 +63,11 @@ doc:
 # publictests:
 # 	$(QUIET)$(MAKE) -C $(DMD_DIR)/druntime -f posix.mak $@
 
-# auto-tester-build:
-# 	$(QUIET)$(MAKE) -C $(DMD_DIR)/druntime -f posix.mak $@
+auto-tester-build:
+	echo "Posix builds have been disabled on auto-tester"
 
-# auto-tester-test:
-# 	$(QUIET)$(MAKE) -C $(DMD_DIR)/druntime -f posix.mak $@
+auto-tester-test:
+	echo "Posix builds have been disabled on auto-tester"
 
 # buildkite-test:
 # 	$(QUIET)$(MAKE) -C $(DMD_DIR)/druntime -f posix.mak $@

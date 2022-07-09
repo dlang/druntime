@@ -79,11 +79,8 @@ import:
 # 	cd $(DMD_DIR)/druntime
 # 	$(MAKE_WIN32) $@
 
-# auto-tester-build:
-# 	cd $(DMD_DIR)/druntime
-# 	$(MAKE_WIN32) $@
+auto-tester-build:
+	echo "Windows builds have been disabled on auto-tester"
 
-# auto-tester-test:
-# 	cd $(DMD_DIR)/druntime
-# 	$(MAKE_WIN32) $@
-
+auto-tester-test:
+	echo "Windows builds have been disabled on auto-tester"
