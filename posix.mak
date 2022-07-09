@@ -42,8 +42,8 @@ doc:
 # zip:
 # 	$(QUIET)$(MAKE) -C $(DMD_DIR)/druntime -f posix.mak $@
 
-# install:
-# 	$(QUIET)$(MAKE) -C $(DMD_DIR)/druntime -f posix.mak $@
+install:
+	echo "Posix builds have been disabled"
 
 # clean:
 # 	$(QUIET)$(MAKE) -C $(DMD_DIR)/druntime -f posix.mak $@
