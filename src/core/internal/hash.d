@@ -669,14 +669,21 @@ size_t bytesHash()(scope const(void)* buf, size_t len, size_t seed)
 
 private template bytesHashAlignedBy(AlignType)
 {
-    alias bytesHashAlignedBy = bytesHash!(AlignType.alignof >= uint.alignof);
+    static if (size_t.sizeof == 4)
+        alias bytesHashAlignedBy = bytesHash32!(
+            AlignType.alignof >= uint.alignof ? uint.alignof :
+            ubyte.alignof);
+    else
+        alias bytesHashAlignedBy = bytesHash64!(
+            AlignType.alignof >= ulong.alignof ? ulong.alignof :
+            AlignType.alignof >= uint.alignof ? uint.alignof :
+            ubyte.alignof);
 }
 
 private template bytesHashWithExactSizeAndAlignment(SizeAndAlignType)
 {
-    static if (SizeAndAlignType.alignof < uint.alignof
-            ? SizeAndAlignType.sizeof <= 12
-            : SizeAndAlignType.sizeof <= 10)
+    static if (SizeAndAlignType.sizeof <= 3 || size_t.sizeof <= 4 &&
+             SizeAndAlignType.sizeof <= (SizeAndAlignType.alignof < uint.alignof ? 12 : 10))
         alias bytesHashWithExactSizeAndAlignment = smallBytesHash;
     else
         alias bytesHashWithExactSizeAndAlignment = bytesHashAlignedBy!SizeAndAlignType;
@@ -712,13 +719,36 @@ private uint get32bits()(scope const(ubyte)* x) @nogc nothrow pure @system
     }
 }
 
-/+
-Params:
-    dataKnownToBeAligned = whether the data is known at compile time to be uint-aligned.
-+/
-@nogc nothrow pure @trusted
-private size_t bytesHash(bool dataKnownToBeAligned)(scope const(ubyte)[] bytes, size_t seed)
+private ulong get64bits()(scope const(ubyte)* x) @nogc nothrow pure @system
 {
+    version (BigEndian)
+    {
+        return ((cast(ulong) x[0]) << 56) |
+               ((cast(ulong) x[1]) << 48) |
+               ((cast(ulong) x[2]) << 40) |
+               ((cast(ulong) x[3]) << 32) |
+               ((cast(ulong) x[4]) << 24) |
+               ((cast(ulong) x[5]) << 16) |
+               ((cast(ulong) x[6]) << 8)  |
+                (cast(ulong) x[7]);    }
+    else
+    {
+        return ((cast(ulong) x[7]) << 56) |
+               ((cast(ulong) x[6]) << 48) |
+               ((cast(ulong) x[5]) << 40) |
+               ((cast(ulong) x[4]) << 32) |
+               ((cast(ulong) x[3]) << 24) |
+               ((cast(ulong) x[2]) << 16) |
+               ((cast(ulong) x[1]) << 8)  |
+                (cast(ulong) x[0]);
+    }
+}
+
+static if (size_t.sizeof == 4)
+@nogc nothrow pure @trusted
+private uint bytesHash32(uint alignment)(scope const(ubyte)[] bytes, size_t seed)
+{
+    // MurmurHash3_x86_32.
     auto len = bytes.length;
     auto data = bytes.ptr;
     auto nblocks = len / 4;
@@ -734,10 +764,12 @@ private size_t bytesHash(bool dataKnownToBeAligned)(scope const(ubyte)[] bytes, 
     auto end_data = data+nblocks*uint.sizeof;
     for (; data!=end_data; data += uint.sizeof)
     {
-        static if (dataKnownToBeAligned)
+        static if (alignment == uint.alignof)
             uint k1 = __ctfe ? get32bits(data) : *(cast(const uint*) data);
-        else
+        else static if (alignment == ubyte.alignof)
             uint k1 = get32bits(data);
+        else
+            static assert(0, "Do not create unnecessary template instantiations.");
         k1 *= c1;
         k1 = (k1 << 15) | (k1 >> (32 - 15));
         k1 *= c2;
@@ -771,6 +803,74 @@ private size_t bytesHash(bool dataKnownToBeAligned)(scope const(ubyte)[] bytes, 
     return h1;
 }
 
+static if (size_t.sizeof == 8)
+@nogc nothrow pure @trusted
+private ulong bytesHash64(uint alignment)(scope const ubyte[] bytes, ulong seed)
+{
+    // MurmurHash3_x86_32 modified to be 64-bit using constants from MurmurHash3_x64_128.
+    alias h1 = seed;
+
+    enum ulong c1 = 0x87c37b91114253d5;
+    enum ulong c2 = 0x4cf5ad432745937f;
+    enum uint  c3 = 0x52dce729;
+
+    const(ubyte)* data = bytes.ptr;
+    //----------
+    // body
+    for (const end_data = bytes.ptr + (bytes.length & ~7);
+         data !is end_data;
+         data += 8)
+    {
+        static if (alignment == ulong.alignof)
+            auto k1 = __ctfe ? get64bits(data) : *cast(ulong*) data;
+        else static if (alignment == uint.alignof)
+        {
+            version (BigEndian)
+                auto k1 = __ctfe ? get64bits(data) : (((cast(ulong) *cast(uint*) data) << 32) | *cast(uint*) (data + 4));
+            else
+                auto k1 = __ctfe ? get64bits(data) : (((cast(ulong) *cast(uint*) (data + 4)) << 32) | *cast(uint*) data);
+        }
+        else static if (alignment == ubyte.alignof)
+            auto k1 = get64bits(data);
+        else
+            static assert(0, "Do not create unnecessary template instantiations.");
+
+        k1 *= c1;
+        k1 = (k1 << 31) | (k1 >> (64 - 31));
+        k1 *= c2;
+
+        h1 ^= k1;
+        h1 = (h1 << 27) | (h1 >> (64 - 27));
+        h1 = h1*5+c3;
+    }
+
+    //----------
+    // tail
+    ulong k1 = 0;
+
+    switch (bytes.length & 7)
+    {
+    case 7: k1 ^= (cast(ulong) data[6]) << 48; goto case;
+    case 6: k1 ^= (cast(ulong) data[5]) << 40; goto case;
+    case 5: k1 ^= (cast(ulong) data[4]) << 32; goto case;
+    case 4: k1 ^= (cast(ulong) data[3]) << 24; goto case;
+    case 3: k1 ^= (cast(ulong) data[2]) << 16; goto case;
+    case 2: k1 ^= (cast(ulong) data[1]) <<  8; goto case;
+    case 1: k1 ^= (cast(ulong) data[0]);
+            k1 *= c1; k1 = (k1 << 31) | (k1 >> (64 - 31)); k1 *= c2; h1 ^= k1;
+            goto default;
+    default:
+    }
+
+    //----------
+    // finalization
+    h1 ^= bytes.length;
+    // Force all bits of the hash block to avalanche.
+    h1 = (h1 ^ (h1 >> 33)) * 0xff51afd7ed558ccd;
+    h1 = (h1 ^ (h1 >> 33)) * 0xc4ceb9fe1a85ec53;
+    return h1 ^= h1 >> 33;
+}
+
 //  Check that bytesHash works with CTFE
 pure nothrow @system @nogc unittest
 {
@@ -788,15 +888,21 @@ pure nothrow @system @nogc unittest
     {
         const ubyte[7] a = [99, 4, 3, 2, 1, 5, 88];
         const uint[2] b = [0x04_03_02_01, 0x05_ff_ff_ff];
+        const ulong[1] c = [0x04_03_02_01_05_ff_ff_ff];
     }
     else
     {
         const ubyte[7] a = [99, 1, 2, 3, 4, 5, 88];
         const uint[2] b = [0x04_03_02_01, 0xff_ff_ff_05];
+        const ulong[1] c = [0xff_ff_ff_05_04_03_02_01];
     }
     // It is okay to change the below values if you make a change
     // that you expect to change the result of bytesHash.
-    assert(bytesHash(&a[1], a.length - 2, 0) == 2727459272);
-    assert(bytesHash(&b, 5, 0) == 2727459272);
-    assert(bytesHashAlignedBy!uint((cast(const ubyte*) &b)[0 .. 5], 0) == 2727459272);
+    enum expectedResult = size_t.sizeof == 4 ? 2727459272U : 10677742034643552556UL;
+    assert(bytesHash(&a[1], a.length - 2, 0) == expectedResult);
+    assert(bytesHash(&b, 5, 0) == expectedResult);
+    assert(bytesHashAlignedBy!uint((cast(const ubyte*) &b)[0 .. 5], 0) == expectedResult);
+    assert(bytesHashAlignedBy!ulong((cast(const ubyte*) &c)[0 .. 5], 0) == expectedResult);
+    assert(bytesHashAlignedBy!ulong((cast(const ubyte*) &c)[0 .. c.sizeof], 0) ==
+        (size_t.sizeof == 4 ? 2948526704 : 7625915911016357963));
 }
