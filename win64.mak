@@ -74,9 +74,8 @@ import:
 # 	cd $(DMD_DIR)/druntime
 # 	$(MAKE_WIN32) $@
 
-# install:
-# 	cd $(DMD_DIR)/druntime
-# 	$(MAKE_WIN32) $@
+install:
+	echo "Windows builds have been disabled"
 
 # clean:
 # 	cd $(DMD_DIR)/druntime
