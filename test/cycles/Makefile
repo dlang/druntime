@@ -10,7 +10,7 @@ all: $(addprefix $(ROOT)/,$(addsuffix .done,$(TESTS)))
 
 $(ROOT)/cycle_ignore.done: RETCODE=0
 $(ROOT)/cycle_ignore.done: LINES=0
-$(ROOT)/cycle_abort.done: RETCODE=1
+$(ROOT)/cycle_abort.done: RETCODE=4
 $(ROOT)/cycle_abort.done: LINES=7
 $(ROOT)/cycle_print.done: RETCODE=0
 $(ROOT)/cycle_print.done: LINES=6

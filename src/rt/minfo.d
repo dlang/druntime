@@ -361,7 +361,8 @@ struct ModuleGroup
 
                                     string errmsg = "";
                                     buildCycleMessage(idx, midx, (string x) {errmsg ~= x;});
-                                    throw new Error(errmsg, __FILE__, __LINE__);
+                                    assert(0, errmsg);
+
                                 case ignore:
                                     break;
                                 case print:
