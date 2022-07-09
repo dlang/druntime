@@ -1023,6 +1023,7 @@ pure @safe:
         U       // C
         W       // Windows
         R       // C++
+        Y       // Objective-C
 
     FuncAttrs:
         FuncAttr
@@ -1104,6 +1105,10 @@ pure @safe:
         case 'R': // C++
             popFront();
             put( "extern (C++) " );
+            break;
+        case 'Y': // Objective-C
+            popFront();
+            put( "extern (Objective-C) " );
             break;
         default:
             error();
@@ -1387,7 +1392,7 @@ pure @safe:
     {
         switch ( ch )
         {
-            case 'F', 'U', 'V', 'W', 'R':
+            case 'F', 'U', 'V', 'W', 'R', 'Y':
                 return true;
             default:
                 return false;
@@ -2423,6 +2428,10 @@ char[] mangleFunc(T:FT*, FT)(return scope const(char)[] fqn, return scope char[]
     {
         static assert(0, "Can't mangle extern(C++) functions.");
     }
+    else static if (isExternObjC!FT)
+    {
+        static assert(0, "Can't mangle extern(Objective-C) functions.");
+    }
     else
     {
         static assert(0, "Can't mangle function with unknown linkage ("~FT.stringof~").");
@@ -2467,6 +2476,11 @@ private template isExternCPP(FT) if (is(FT == function))
     enum isExternCPP = __traits(getLinkage, FT) == "C++";
 }
 
+private template isExternObjC(FT) if (is(FT == function))
+{
+    enum isExternObjC = __traits(getLinkage, FT) == "Objective-C";
+}
+
 private template hasPlainMangling(FT) if (is(FT == function))
 {
     enum lnk = __traits(getLinkage, FT);
@@ -2480,21 +2494,33 @@ private template hasPlainMangling(FT) if (is(FT == function))
     static extern(C) void fooC();
     static extern(Windows) void fooW();
     static extern(C++) void fooCPP();
+    version (D_ObjectiveC)
+    {
+        import core.attribute : selector;
 
-    bool check(FT)(bool isD, bool isCPP, bool isPlain)
+        extern(Objective-C)
+        class Foo
+        {
+            static void fooObjC() @selector("fooObjC");
+        }
+    }
+
+    bool check(FT)(bool isD, bool isCPP, bool isObjC, bool isPlain)
     {
         return isExternD!FT == isD && isExternCPP!FT == isCPP &&
-            hasPlainMangling!FT == isPlain;
+            isExternObjC!FT == isObjC && hasPlainMangling!FT == isPlain;
     }
-    static assert(check!(typeof(fooD))(true, false, false));
-    static assert(check!(typeof(fooC))(false, false, true));
-    static assert(check!(typeof(fooW))(false, false, true));
-    static assert(check!(typeof(fooCPP))(false, true, false));
+    static assert(check!(typeof(fooD))(true, false, false, false));
+    static assert(check!(typeof(fooC))(false, false, false, true));
+    static assert(check!(typeof(fooW))(false, false, false, true));
+    static assert(check!(typeof(fooCPP))(false, true, false, false));
+    version (D_ObjectiveC) static assert(check!(typeof(Foo.fooObjC))(false, false, true, false));
 
     static assert(__traits(compiles, mangleFunc!(typeof(&fooD))("")));
     static assert(__traits(compiles, mangleFunc!(typeof(&fooC))("")));
     static assert(__traits(compiles, mangleFunc!(typeof(&fooW))("")));
     static assert(!__traits(compiles, mangleFunc!(typeof(&fooCPP))("")));
+    version (D_ObjectiveC) static assert(!__traits(compiles, mangleFunc!(typeof(&Foo.fooObjC))("")));
 }
 
 /***
@@ -2628,7 +2654,6 @@ else
          `nothrow @trusted ulong std.algorithm.iteration.FilterResult!(std.typecons.Tuple!(int, "a", int, "b", int, "c").`
         ~`Tuple.rename!([0:"c", 2:"a"]).rename().__lambda1, int[]).FilterResult.__xtoHash(ref const(std.algorithm.iteration.`
         ~`FilterResult!(std.typecons.Tuple!(int, "a", int, "b", int, "c").Tuple.rename!([0:"c", 2:"a"]).rename().__lambda1, int[]).FilterResult))`],
-
         ["_D4test4rrs1FKPiZv",    "void test.rrs1(ref int*)"],
         ["_D4test4rrs1FMNkJPiZv", "void test.rrs1(scope return out int*)"],
         ["_D4test4rrs1FMNkKPiZv", "void test.rrs1(scope return ref int*)"],
@@ -2637,6 +2662,9 @@ else
         ["_D4test4rrs1FNkMJPiZv", "void test.rrs1(return scope out int*)"],
         ["_D4test4rrs1FNkMKPiZv", "void test.rrs1(return scope ref int*)"],
         ["_D4test4rrs1FNkMPiZv",  "void test.rrs1(return scope int*)"],
+        // Objective-C call convention
+        ["_D4objc__T7fooObjCTiZQlYNaNbNiNfiZv", "extern (Objective-C) pure nothrow @nogc @safe void objc.fooObjC!(int).fooObjC(int)"],
+        ["_D8demangle3fooYZv", "extern (Objective-C) void demangle.foo()"],
     ];
 
 
